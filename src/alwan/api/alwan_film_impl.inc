@@ -126,6 +126,444 @@ static int ALWAN_CORE_FN(film_table)(alwan_film_stock stock, ALWAN_CORE_T const 
             *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_velvia_50);
 #endif
             return 1;
+        case ALWAN_FILM_AGFA_VISTA_100:
+            *name = "Agfa Vista 100"; *manufacturer = "Agfa"; *year = 2001;
+#if ALWAN_TABLE_FILM_AGFA_VISTA_100
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_agfa_vista_100);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_C200:
+            *name = "Fuji C200"; *manufacturer = "Fujifilm"; *year = 2017;
+#if ALWAN_TABLE_FILM_FUJI_C200
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_c200);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_ETERNA_500_VIVID:
+            *name = "Fuji Eterna 500 Vivid"; *manufacturer = "Fujifilm"; *year = 2007;
+#if ALWAN_TABLE_FILM_FUJI_ETERNA_500_VIVID
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_eterna_500_vivid);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_NATURA_1600:
+            *name = "Fuji Natura 1600"; *manufacturer = "Fujifilm"; *year = 2003;
+#if ALWAN_TABLE_FILM_FUJI_NATURA_1600
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_natura_1600);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_PRO_160C:
+            *name = "Fuji Pro 160C"; *manufacturer = "Fujifilm"; *year = 2004;
+#if ALWAN_TABLE_FILM_FUJI_PRO_160C
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_pro_160c);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_PRO_160S:
+            *name = "Fuji Pro 160S"; *manufacturer = "Fujifilm"; *year = 2004;
+#if ALWAN_TABLE_FILM_FUJI_PRO_160S
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_pro_160s);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_PRO_400H:
+            *name = "Fuji Pro 400H"; *manufacturer = "Fujifilm"; *year = 2004;
+#if ALWAN_TABLE_FILM_FUJI_PRO_400H
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_pro_400h);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_SUPERIA_REALA:
+            *name = "Fuji Superia Reala"; *manufacturer = "Fujifilm"; *year = 1998;
+#if ALWAN_TABLE_FILM_FUJI_SUPERIA_REALA
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_superia_reala);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_SUPERIA_XTRA_400:
+            *name = "Fuji Superia X-Tra 400"; *manufacturer = "Fujifilm"; *year = 1998;
+#if ALWAN_TABLE_FILM_FUJI_SUPERIA_XTRA_400
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_superia_xtra_400);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5206:
+            *name = "Kodak Verita 200D 5206"; *manufacturer = "Kodak"; *year = 2026;
+#if ALWAN_TABLE_FILM_KODAK_5206
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5206);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5247:
+            *name = "Kodak 5247"; *manufacturer = "Kodak"; *year = 1950;
+#if ALWAN_TABLE_FILM_KODAK_5247
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5247);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5247_II:
+            *name = "Kodak 5247 II"; *manufacturer = "Kodak"; *year = 1974;
+#if ALWAN_TABLE_FILM_KODAK_5247_II
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5247_ii);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5247_II_ALT:
+            *name = "Kodak 5247 II Alt"; *manufacturer = "Kodak"; *year = 1974;
+#if ALWAN_TABLE_FILM_KODAK_5247_II_ALT
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5247_ii_alt);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5248:
+            *name = "Kodak 5248"; *manufacturer = "Kodak"; *year = 1952;
+#if ALWAN_TABLE_FILM_KODAK_5248
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5248);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_EXR_5248:
+            *name = "Kodak EXR 100T 5248"; *manufacturer = "Kodak"; *year = 1990;
+#if ALWAN_TABLE_FILM_KODAK_EXR_5248
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_exr_5248);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5250:
+            *name = "Kodak 5250"; *manufacturer = "Kodak"; *year = 1959;
+#if ALWAN_TABLE_FILM_KODAK_5250
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5250);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5277:
+            *name = "Kodak Vision 320T 5277"; *manufacturer = "Kodak"; *year = 1996;
+#if ALWAN_TABLE_FILM_KODAK_5277
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5277);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5293:
+            *name = "Kodak EXR 200T 5293"; *manufacturer = "Kodak"; *year = 1982;
+#if ALWAN_TABLE_FILM_KODAK_5293
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5293);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_AEROCOLOR:
+            *name = "Kodak Aerocolor IV 2460"; *manufacturer = "Kodak"; *year = 2009;
+#if ALWAN_TABLE_FILM_KODAK_AEROCOLOR
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_aerocolor);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_AEROCOLOR_LOW:
+            *name = "Kodak Aerocolor IV 2460 Low"; *manufacturer = "Kodak"; *year = 2009;
+#if ALWAN_TABLE_FILM_KODAK_AEROCOLOR_LOW
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_aerocolor_low);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_AEROCOLOR_HIGH:
+            *name = "Kodak Aerocolor IV 2460 High"; *manufacturer = "Kodak"; *year = 2009;
+#if ALWAN_TABLE_FILM_KODAK_AEROCOLOR_HIGH
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_aerocolor_high);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_GOLD_200:
+            *name = "Kodak Gold 200"; *manufacturer = "Kodak"; *year = 2007;
+#if ALWAN_TABLE_FILM_KODAK_GOLD_200
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_gold_200);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_PORTRA_160:
+            *name = "Kodak Portra 160"; *manufacturer = "Kodak"; *year = 2011;
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_160
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_portra_160);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_PORTRA_800:
+            *name = "Kodak Portra 800"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_800
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_portra_800);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_PORTRA_800_AT_1600:
+            *name = "Kodak Portra 800 @1600"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_800_AT_1600
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_portra_800_at_1600);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_PORTRA_800_AT_3200:
+            *name = "Kodak Portra 800 @3200"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_800_AT_3200
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_portra_800_at_3200);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_ULTRAMAX_400:
+            *name = "Kodak Ultramax 400"; *manufacturer = "Kodak"; *year = 2007;
+#if ALWAN_TABLE_FILM_KODAK_ULTRAMAX_400
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_ultramax_400);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_VERICOLOR_III:
+            *name = "Kodak Vericolor III"; *manufacturer = "Kodak"; *year = 1983;
+#if ALWAN_TABLE_FILM_KODAK_VERICOLOR_III
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_vericolor_iii);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5222_DEV_4:
+            *name = "Kodak 5222 Dev 4"; *manufacturer = "Kodak"; *year = 1959;
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_4
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5222_dev_4);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5222_DEV_5:
+            *name = "Kodak 5222 Dev 5"; *manufacturer = "Kodak"; *year = 1959;
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_5
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5222_dev_5);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5222_DEV_9:
+            *name = "Kodak 5222 Dev 9"; *manufacturer = "Kodak"; *year = 1959;
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_9
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5222_dev_9);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5222_DEV_12:
+            *name = "Kodak 5222 Dev 12"; *manufacturer = "Kodak"; *year = 1959;
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_12
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5222_dev_12);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_TRI_X_400:
+            *name = "Kodak Tri-X 400"; *manufacturer = "Kodak"; *year = 2007;
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_tri_x_400);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_TRI_X_400_DEV_7:
+            *name = "Kodak Trix-X 400 Dev 7"; *manufacturer = "Kodak"; *year = 2007;
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400_DEV_7
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_tri_x_400_dev_7);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_TRI_X_400_DEV_9:
+            *name = "Kodak Trix-X 400 Dev 9"; *manufacturer = "Kodak"; *year = 2007;
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400_DEV_9
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_tri_x_400_dev_9);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_TRI_X_400_DEV_11:
+            *name = "Kodak Trix-X 400 Dev 11"; *manufacturer = "Kodak"; *year = 2007;
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400_DEV_11
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_tri_x_400_dev_11);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_3523XD:
+            *name = "Fuji Eterna-CP 3523XD"; *manufacturer = "Fujifilm"; *year = 2010;
+#if ALWAN_TABLE_FILM_FUJI_3523XD
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_3523xd);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_CA_DPII:
+            *name = "Fuji Crystal Archive DPII"; *manufacturer = "Fujifilm"; *year = 2006;
+#if ALWAN_TABLE_FILM_FUJI_CA_DPII
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_ca_dpii);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_CA_MAXIMA:
+            *name = "Fuji Crystal Archive Maxima"; *manufacturer = "Fujifilm"; *year = 2006;
+#if ALWAN_TABLE_FILM_FUJI_CA_MAXIMA
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_ca_maxima);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_CA_PRO_PDII:
+            *name = "Fuji Crystal Archive Pro PDII"; *manufacturer = "Fujifilm"; *year = 2003;
+#if ALWAN_TABLE_FILM_FUJI_CA_PRO_PDII
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_ca_pro_pdii);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_CA_SUPER_C:
+            *name = "Fuji Crystal Archive Super Type C"; *manufacturer = "Fujifilm"; *year = 2007;
+#if ALWAN_TABLE_FILM_FUJI_CA_SUPER_C
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_ca_super_c);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJIFLEX_NEW:
+            *name = "Fujiflex Crystal Archive New Version"; *manufacturer = "Fujifilm"; *year = 0;
+#if ALWAN_TABLE_FILM_FUJIFLEX_NEW
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fujiflex_new);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJIFLEX_OLD:
+            *name = "Fujiflex Crystal Archive Old Version"; *manufacturer = "Fujifilm"; *year = 0;
+#if ALWAN_TABLE_FILM_FUJIFLEX_OLD
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fujiflex_old);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5381:
+            *name = "Kodak 5381"; *manufacturer = "Kodak"; *year = 1950;
+#if ALWAN_TABLE_FILM_KODAK_5381
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5381);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5383:
+            *name = "Kodak 5383"; *manufacturer = "Kodak"; *year = 1974;
+#if ALWAN_TABLE_FILM_KODAK_5383
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5383);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_5384:
+            *name = "Kodak 5384"; *manufacturer = "Kodak"; *year = 1981;
+#if ALWAN_TABLE_FILM_KODAK_5384
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_5384);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_DURAFLEX_PLUS:
+            *name = "Kodak Duraflex Plus"; *manufacturer = ""; *year = 2004;
+#if ALWAN_TABLE_FILM_KODAK_DURAFLEX_PLUS
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_duraflex_plus);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_ENDURA_PREMIER:
+            *name = "Kodak Endura Premier Paper"; *manufacturer = "Kodak"; *year = 0;
+#if ALWAN_TABLE_FILM_KODAK_ENDURA_PREMIER
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_endura_premier);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_EXR_5386:
+            *name = "Kodak EXR 5386"; *manufacturer = "Kodak"; *year = 1993;
+#if ALWAN_TABLE_FILM_KODAK_EXR_5386
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_exr_5386);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_PORTRA_ENDURA:
+            *name = "Kodak Portra Endura Paper"; *manufacturer = "Kodak"; *year = 0;
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_ENDURA
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_portra_endura);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_SUPRA_ENDURA:
+            *name = "Kodak Supra Endura Paper"; *manufacturer = "Kodak"; *year = 0;
+#if ALWAN_TABLE_FILM_KODAK_SUPRA_ENDURA
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_supra_endura);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_2302_DEV_2:
+            *name = "Kodak 2302 Dev 2"; *manufacturer = "Kodak"; *year = 1999;
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_2
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_2302_dev_2);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_2302_DEV_3:
+            *name = "Kodak 2302 Dev 3"; *manufacturer = "Kodak"; *year = 1999;
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_3
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_2302_dev_3);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_2302_DEV_5:
+            *name = "Kodak 2302 Dev 5"; *manufacturer = "Kodak"; *year = 1999;
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_5
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_2302_dev_5);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_2302_DEV_7:
+            *name = "Kodak 2302 Dev 7"; *manufacturer = "Kodak"; *year = 1999;
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_7
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_2302_dev_7);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_2302_DEV_9:
+            *name = "Kodak 2302 Dev 9"; *manufacturer = "Kodak"; *year = 1999;
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_9
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_2302_dev_9);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX:
+            *name = "Kodak Professional Polymax Fine-Art Paper"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX_GRADE_MINUS_1:
+            *name = "Kodak Polymax Fine-Art Paper Grade -1"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_MINUS_1
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax_grade_minus_1);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX_GRADE_0:
+            *name = "Kodak Polymax Fine-Art Paper Grade 0"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_0
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax_grade_0);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX_GRADE_1:
+            *name = "Kodak Polymax Fine-Art Paper Grade 1"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_1
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax_grade_1);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX_GRADE_2:
+            *name = "Kodak Polymax Fine-Art Paper Grade 2"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_2
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax_grade_2);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX_GRADE_3:
+            *name = "Kodak Polymax Fine-Art Paper Grade 3"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_3
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax_grade_3);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX_GRADE_4:
+            *name = "Kodak Polymax Fine-Art Paper Grade 4"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_4
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax_grade_4);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_POLYMAX_GRADE_5:
+            *name = "Kodak Polymax Fine-Art Paper Grade 5"; *manufacturer = "Kodak"; *year = 1998;
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_5
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_polymax_grade_5);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_FP100C:
+            *name = "Fuji FP-100C"; *manufacturer = "Fujifilm"; *year = 2002;
+#if ALWAN_TABLE_FILM_FUJI_FP100C
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_fp100c);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_INSTAX_COLOR:
+            *name = "Fuji Instax color"; *manufacturer = "Fujifilm"; *year = 0;
+#if ALWAN_TABLE_FILM_FUJI_INSTAX_COLOR
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_instax_color);
+#endif
+            return 1;
+        case ALWAN_FILM_FUJI_PROVIA_100F:
+            *name = "Fuji Provia 100F"; *manufacturer = "Fujifilm"; *year = 2000;
+#if ALWAN_TABLE_FILM_FUJI_PROVIA_100F
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_fuji_provia_100f);
+#endif
+            return 1;
+        case ALWAN_FILM_KODACHROME_64:
+            *name = "Kodachrome 64"; *manufacturer = "Kodak"; *year = 1974;
+#if ALWAN_TABLE_FILM_KODACHROME_64
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodachrome_64);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_AEROCHROME_III:
+            *name = "Kodak Aerochrome III Infrared Film 1443"; *manufacturer = "Kodak"; *year = 2001;
+#if ALWAN_TABLE_FILM_KODAK_AEROCHROME_III
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_aerochrome_iii);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_EKTACHROME_100D_ALT:
+            *name = "Kodak Ektachrome 100D alt."; *manufacturer = "Kodak"; *year = 2018;
+#if ALWAN_TABLE_FILM_KODAK_EKTACHROME_100D_ALT
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_ektachrome_100d_alt);
+#endif
+            return 1;
+        case ALWAN_FILM_ILFOCHROME_MICROGRAPHIC_M:
+            *name = "Ilfochrome Micrographic M"; *manufacturer = "Ilford"; *year = 0;
+#if ALWAN_TABLE_FILM_ILFOCHROME_MICROGRAPHIC_M
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_ilfochrome_micrographic_m);
+#endif
+            return 1;
+        case ALWAN_FILM_ILFOCHROME_MICROGRAPHIC_P:
+            *name = "Ilfochrome Micrographic P"; *manufacturer = "Ilford"; *year = 0;
+#if ALWAN_TABLE_FILM_ILFOCHROME_MICROGRAPHIC_P
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_ilfochrome_micrographic_p);
+#endif
+            return 1;
+        case ALWAN_FILM_KODAK_EKTACHROME_RADIANCE_III:
+            *name = "Kodak Ektachrome Radiance III Paper"; *manufacturer = "Kodak"; *year = 0;
+#if ALWAN_TABLE_FILM_KODAK_EKTACHROME_RADIANCE_III
+            *table = ALWAN_CORE_FNLIT(alwan_table_film_kodak_ektachrome_radiance_iii);
+#endif
+            return 1;
         default:
             return 0;
     }

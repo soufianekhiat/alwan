@@ -15,12 +15,13 @@ transmittance; a printer light through that transmittance exposes the print stoc
 has its own curves and dyes; and a projection light through the print, against the
 observer, gives XYZ.
 
-The profiles are spectral_film_lut's (Jan Lohse, MIT): 55 stocks digitised from the
+The profiles are spectral_film_lut's (Jan Lohse, MIT): stocks digitised from the
 manufacturers' sheets and profiled by its `FilmSpectral`. alwan ships that profiling's
-output for 14 of them, on 380-780 nm at 10 nm, and holds this pipeline to the model's
-over the same tables (suite 158). The model is float32 throughout, so agreement is
-within 5.4e-07 relative and not to the bit. Grain, halation and interlayer diffusion
-are spatial and not here.
+output for the whole of the package's exported catalogue at the pinned commit, 87
+profiles on 380-780 nm at 10 nm, and holds this pipeline to the model's over the same
+tables (suite 158). The model is float32 throughout, so agreement is within 1.1e-06
+relative over nine cases and not to the bit. Grain, halation and interlayer diffusion are spatial and
+not here.
 
 Every spectrum in this API has `ALWAN_FILM_BANDS` = 41 samples on that grid. Resample
 with `alwan_spd_resample`, or hand a Mallett 2019 spectrum (81 samples at 5 nm) to the
@@ -34,12 +35,14 @@ Every function has an `_f64` and an `_f32` form; this page shows `_f64`.
 
 ```c
 typedef enum {
-    ALWAN_FILM_KODAK_5203, ALWAN_FILM_KODAK_5207, ALWAN_FILM_KODAK_5213, ALWAN_FILM_KODAK_5219,
+    ALWAN_FILM_NONE = -1,
+    ALWAN_FILM_KODAK_5203 = 0, ALWAN_FILM_KODAK_5207, ALWAN_FILM_KODAK_5213, ALWAN_FILM_KODAK_5219,
     ALWAN_FILM_KODAK_PORTRA_400, ALWAN_FILM_KODAK_EKTAR_100, ALWAN_FILM_FUJI_ETERNA_500,
     ALWAN_FILM_KODAK_5222,                                          /* black and white negative */
     ALWAN_FILM_KODAK_2383, ALWAN_FILM_KODAK_2393, ALWAN_FILM_FUJI_3513DI,   /* prints */
     ALWAN_FILM_KODAK_2302,                                          /* black and white print */
     ALWAN_FILM_KODAK_EKTACHROME_100D, ALWAN_FILM_FUJI_VELVIA_50,    /* reversals */
+    ALWAN_FILM_AGFA_VISTA_100 = 14, /* ... the rest of the catalogue, 87 in all */
     ALWAN_FILM_STOCK_COUNT
 } alwan_film_stock;
 
@@ -50,6 +53,30 @@ alwan_status alwan_film_get_profile_f64(alwan_film_profile_f64 *out, alwan_film_
 `alwan_film_stock_info` answers for every stock; `alwan_film_get_profile` returns
 `ALWAN_E_NODATA` for one compiled out (`ALWAN_TABLES_FILM`, or the stock's own switch,
 `ALWAN_TABLE_FILM_KODAK_5219` and so on). Values are stable; new stocks append.
+
+The catalogue, in enum order after the first fourteen. Colour negatives: Agfa Vista
+100; Fuji C200, Eterna 500 Vivid, Natura 1600, Pro 160C, Pro 160S, Pro 400H, Superia
+Reala, Superia X-Tra 400; Kodak Verita 200D 5206, 5247, 5247 II and its alternate
+sheet, 5248, EXR 100T 5248, 5250, Vision 320T 5277, EXR 200T 5293, Aerocolor IV 2460
+with its low and high variants, Gold 200, Portra 160, Portra 800 and its pushes to
+1600 and 3200, Ultramax 400, Vericolor III. Black and white negatives: 5222 at four
+development times and Tri-X 400 at its base and three development times. Prints:
+Fuji Eterna-CP 3523XD, Crystal Archive DPII, Maxima, Pro PDII and Super Type C,
+Fujiflex old and new; Kodak 5381, 5383, 5384, Duraflex Plus, Endura Premier, EXR 5386,
+Portra Endura, Supra Endura. Black and white prints: 2302 at five development times,
+Polymax Fine-Art and its seven grades. Reversals: Fuji FP-100C, Instax, Provia 100F;
+Kodachrome 64; Kodak Aerochrome III and the alternate Ektachrome 100D sheet. Reversal
+prints, positive paper for a positive original: Ilfochrome Micrographic M and P,
+Kodak Ektachrome Radiance III. A variant is its own profile because it is its own
+curve; `alwan_film_stock_info` gives the sheet's name for any of them.
+
+Three profiles carry the model's own overshoot and ship as they are: Verita 5206's
+adjusted base spectrum dips to -0.66 at a band, Vericolor III's dye density to -0.49,
+and 5247's colour-masking matrix has a third row of -9.3, -45.0, 55.3, which amplifies
+that layer's exposure noise some fifty times and shows as blue speckle in a frame's
+shadows. Pass `masking = 0` to `alwan_film_develop`, or zero `color_masking` in the
+profile before a look or a render reads it, to print 5247 without it. Suite 158 prints
+the most negative base and the largest masking entry it saw.
 
 ### The profile
 

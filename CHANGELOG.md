@@ -74,11 +74,17 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Film.** Fourteen photographic stocks as their datasheets describe them, and the
-  pipeline from a scene spectrum to the projected print: Vision3 50D, 250D, 200T and
-  500T, Portra 400, Ektar 100, Eterna 500 and the black and white 5222 as negatives;
-  2383, 2393, Eterna-CP 3513DI and the black and white 2302 as prints; Ektachrome 100D
-  and Velvia 50 as reversals. `alwan_film_get_profile_{T}` hands out a stock's tables on
+- **Film.** Eighty-seven photographic stocks as their datasheets describe them, the
+  whole of spectral_film_lut's exported catalogue, and the pipeline from a scene
+  spectrum to the projected print. Negatives from Vision3 50D to 500T, the Verita, EXR,
+  Vision 320T and 5247 to 5250 era, Portra 160 to 800 with its pushes, Ektar, Gold,
+  Ultramax, Vericolor, Aerocolor, Agfa Vista and the Fuji C200, Pro, Superia, Natura
+  and Eterna sheets; 5222 and Tri-X at their development times; prints from 2383, 2393
+  and 3513DI to the Endura, Crystal Archive, Fujiflex and Duraflex papers, 2302 at its
+  development times and Polymax at its grades; Ektachrome 100D, Provia, Velvia,
+  Kodachrome 64, Aerochrome III, FP-100C and Instax as reversals; Ilfochrome and
+  Ektachrome Radiance as reversal prints. Every one is its own switch under
+  `ALWAN_TABLES_FILM`. `alwan_film_get_profile_{T}` hands out a stock's tables on
   380-780 nm at 10 nm: spectral sensitivity per layer, the characteristic curve on a
   uniform 1024-point log exposure grid, the dye densities, the base, the reference grey
   and the interlayer masking matrix. `alwan_film_expose`, `_calibrate`, `_develop`,
@@ -125,11 +131,18 @@ All notable changes to this project will be documented in this file.
   profiled by its `FilmSpectral`; alwan ships the profiling's output, not the
   digitisation, with the licence beside the tables, and gendata refuses to write a new
   profile unless a shipped one regenerates bit for bit. Suite 158 holds every stage to
-  that model over its own spectra, a colour negative printed, a black and white one
-  printed, a reversal projected and a still negative on the other print stock. The model
-  is float32 throughout, so nothing is to the bit: alwan's f64 lands within 5.4e-07
-  relative of it at every stage, and the suite prints the worst it saw. Grain, halation
-  and interlayer diffusion are spatial and are not in this release.
+  that model over its own spectra, nine cases: a colour negative printed, a black and
+  white one printed, a reversal projected, a still negative on the other cine print, a
+  pushed still negative on a colour paper, Tri-X on a graded paper, a second reversal
+  projected, a reversal on a reversal print, and Verita 5206 on 2383. The model is
+  float32 throughout, so nothing is to the bit: alwan's f64 lands within 1.1e-06
+  relative of it at every stage, and the suite prints the worst it saw. Three profiles
+  carry the model's own overshoot and ship as they are: Verita 5206's adjusted base
+  spectrum dips to -0.66 at a band, Vericolor III's dye density to -0.49, and 5247's
+  colour-masking matrix reaches 55 in its third row, which amplifies that layer's noise
+  by as much; `masking = 0` on `alwan_film_develop`, or a zeroed `color_masking` in the
+  profile, prints 5247 without it. The interlayer diffusion is spatial and is not in
+  this release.
 
 - **Typed image buffers for the spectral entry points.** The four upsamplers, Smits
   1999, Mallett 2019, Otsu 2018 and Jakob 2019, and `alwan_spectral_to_tristimulus` gain

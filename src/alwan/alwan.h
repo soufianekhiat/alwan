@@ -3857,8 +3857,19 @@ alwan_status alwan_rgb_to_spectrum_jakob2019_map_interleave_ex(void *out, size_t
  * 18 percent grey placed at 12.5 / ISO lux-seconds. alwan ships that output,
  * not the digitisation, and suite 158 holds this pipeline to that model's over
  * the same tables. The model is float32 throughout, so agreement is within
- * 5.4e-07 relative and not to the bit. Grain, halation and the interlayer
- * diffusion are spatial and are not here.
+ * 1.1e-06 relative over nine cases and not to the bit. Grain, halation and
+ * the interlayer diffusion are spatial and are not here.
+ *
+ * The catalogue is the whole of what the package exports at the pinned commit:
+ * 87 profiles, a development-time, push or grade variant being its own curve
+ * and so its own profile. Three of them carry a feature of the profiling worth
+ * knowing before reading their tables, the model's own output, shipped as it
+ * is: Verita 5206's adjusted base spectrum dips to -0.66 at a band, Vericolor
+ * III's dye density to -0.49, and 5247's colour-masking matrix has a third
+ * row of -9.3, -45.0, 55.3, so with masking on that layer's exposure noise is
+ * amplified some fifty times (blue speckle in a frame's shadows). A caller
+ * who wants 5247 without that passes masking = 0 to alwan_film_develop, or
+ * zeroes color_masking in the profile before the look or render reads it.
  *
  * Every stock is a switch under ALWAN_TABLES_FILM; a stock compiled out gives
  * ALWAN_E_NODATA from alwan_film_get_profile and nothing else is reachable.
@@ -3882,6 +3893,79 @@ typedef enum {
     ALWAN_FILM_KODAK_2302 = 11,                /* Kodak 2302, black and white print, no ISO */
     ALWAN_FILM_KODAK_EKTACHROME_100D = 12,     /* Kodak Ektachrome 100D, reversal, ISO 100 */
     ALWAN_FILM_FUJI_VELVIA_50 = 13,            /* Fuji Velvia 50, reversal, ISO 50 */
+    ALWAN_FILM_AGFA_VISTA_100 = 14,            /* Agfa Vista 100, negative, ISO 100 */
+    ALWAN_FILM_FUJI_C200 = 15,                 /* Fuji C200, negative, ISO 200 */
+    ALWAN_FILM_FUJI_ETERNA_500_VIVID = 16,     /* Fuji Eterna 500 Vivid, negative, ISO 500 */
+    ALWAN_FILM_FUJI_NATURA_1600 = 17,          /* Fuji Natura 1600, negative, ISO 1600 */
+    ALWAN_FILM_FUJI_PRO_160C = 18,             /* Fuji Pro 160C, negative, ISO 160 */
+    ALWAN_FILM_FUJI_PRO_160S = 19,             /* Fuji Pro 160S, negative, ISO 160 */
+    ALWAN_FILM_FUJI_PRO_400H = 20,             /* Fuji Pro 400H, negative, ISO 400 */
+    ALWAN_FILM_FUJI_SUPERIA_REALA = 21,        /* Fuji Superia Reala, negative, ISO 100 */
+    ALWAN_FILM_FUJI_SUPERIA_XTRA_400 = 22,     /* Fuji Superia X-Tra 400, negative, ISO 400 */
+    ALWAN_FILM_KODAK_5206 = 23,                /* Kodak Verita 200D 5206, negative, ISO 200 */
+    ALWAN_FILM_KODAK_5247 = 24,                /* Kodak 5247, negative, ISO 16 */
+    ALWAN_FILM_KODAK_5247_II = 25,             /* Kodak 5247 II, negative, ISO 100 */
+    ALWAN_FILM_KODAK_5247_II_ALT = 26,         /* Kodak 5247 II Alt, negative, ISO 125 */
+    ALWAN_FILM_KODAK_5248 = 27,                /* Kodak 5248, negative, ISO 25 */
+    ALWAN_FILM_KODAK_EXR_5248 = 28,            /* Kodak EXR 100T 5248, negative, ISO 100 */
+    ALWAN_FILM_KODAK_5250 = 29,                /* Kodak 5250, negative, ISO 50 */
+    ALWAN_FILM_KODAK_5277 = 30,                /* Kodak Vision 320T 5277, negative, ISO 320 */
+    ALWAN_FILM_KODAK_5293 = 31,                /* Kodak EXR 200T 5293, negative, ISO 250 */
+    ALWAN_FILM_KODAK_AEROCOLOR = 32,           /* Kodak Aerocolor IV 2460, negative, ISO 125 */
+    ALWAN_FILM_KODAK_AEROCOLOR_LOW = 33,       /* Kodak Aerocolor IV 2460 Low, negative, ISO 125 */
+    ALWAN_FILM_KODAK_AEROCOLOR_HIGH = 34,      /* Kodak Aerocolor IV 2460 High, negative, ISO 125 */
+    ALWAN_FILM_KODAK_GOLD_200 = 35,            /* Kodak Gold 200, negative, ISO 200 */
+    ALWAN_FILM_KODAK_PORTRA_160 = 36,          /* Kodak Portra 160, negative, ISO 160 */
+    ALWAN_FILM_KODAK_PORTRA_800 = 37,          /* Kodak Portra 800, negative, ISO 800 */
+    ALWAN_FILM_KODAK_PORTRA_800_AT_1600 = 38,  /* Kodak Portra 800 @1600, negative, ISO 800 */
+    ALWAN_FILM_KODAK_PORTRA_800_AT_3200 = 39,  /* Kodak Portra 800 @3200, negative, ISO 800 */
+    ALWAN_FILM_KODAK_ULTRAMAX_400 = 40,        /* Kodak Ultramax 400, negative, ISO 400 */
+    ALWAN_FILM_KODAK_VERICOLOR_III = 41,       /* Kodak Vericolor III, negative, ISO 160 */
+    ALWAN_FILM_KODAK_5222_DEV_4 = 42,          /* Kodak 5222 Dev 4, black and white negative, ISO 250 */
+    ALWAN_FILM_KODAK_5222_DEV_5 = 43,          /* Kodak 5222 Dev 5, black and white negative, ISO 250 */
+    ALWAN_FILM_KODAK_5222_DEV_9 = 44,          /* Kodak 5222 Dev 9, black and white negative, ISO 250 */
+    ALWAN_FILM_KODAK_5222_DEV_12 = 45,         /* Kodak 5222 Dev 12, black and white negative, ISO 250 */
+    ALWAN_FILM_KODAK_TRI_X_400 = 46,           /* Kodak Tri-X 400, black and white negative, ISO 400 */
+    ALWAN_FILM_KODAK_TRI_X_400_DEV_7 = 47,     /* Kodak Trix-X 400 Dev 7, black and white negative, ISO 400 */
+    ALWAN_FILM_KODAK_TRI_X_400_DEV_9 = 48,     /* Kodak Trix-X 400 Dev 9, black and white negative, ISO 400 */
+    ALWAN_FILM_KODAK_TRI_X_400_DEV_11 = 49,    /* Kodak Trix-X 400 Dev 11, black and white negative, ISO 400 */
+    ALWAN_FILM_FUJI_3523XD = 50,               /* Fuji Eterna-CP 3523XD, print, no ISO */
+    ALWAN_FILM_FUJI_CA_DPII = 51,              /* Fuji Crystal Archive DPII, print, no ISO */
+    ALWAN_FILM_FUJI_CA_MAXIMA = 52,            /* Fuji Crystal Archive Maxima, print, no ISO */
+    ALWAN_FILM_FUJI_CA_PRO_PDII = 53,          /* Fuji Crystal Archive Pro PDII, print, no ISO */
+    ALWAN_FILM_FUJI_CA_SUPER_C = 54,           /* Fuji Crystal Archive Super Type C, print, no ISO */
+    ALWAN_FILM_FUJIFLEX_NEW = 55,              /* Fujiflex Crystal Archive New Version, print, no ISO */
+    ALWAN_FILM_FUJIFLEX_OLD = 56,              /* Fujiflex Crystal Archive Old Version, print, no ISO */
+    ALWAN_FILM_KODAK_5381 = 57,                /* Kodak 5381, print, no ISO */
+    ALWAN_FILM_KODAK_5383 = 58,                /* Kodak 5383, print, no ISO */
+    ALWAN_FILM_KODAK_5384 = 59,                /* Kodak 5384, print, no ISO */
+    ALWAN_FILM_KODAK_DURAFLEX_PLUS = 60,       /* Kodak Duraflex Plus, print, no ISO */
+    ALWAN_FILM_KODAK_ENDURA_PREMIER = 61,      /* Kodak Endura Premier Paper, print, no ISO */
+    ALWAN_FILM_KODAK_EXR_5386 = 62,            /* Kodak EXR 5386, print, no ISO */
+    ALWAN_FILM_KODAK_PORTRA_ENDURA = 63,       /* Kodak Portra Endura Paper, print, no ISO */
+    ALWAN_FILM_KODAK_SUPRA_ENDURA = 64,        /* Kodak Supra Endura Paper, print, no ISO */
+    ALWAN_FILM_KODAK_2302_DEV_2 = 65,          /* Kodak 2302 Dev 2, black and white print, no ISO */
+    ALWAN_FILM_KODAK_2302_DEV_3 = 66,          /* Kodak 2302 Dev 3, black and white print, no ISO */
+    ALWAN_FILM_KODAK_2302_DEV_5 = 67,          /* Kodak 2302 Dev 5, black and white print, no ISO */
+    ALWAN_FILM_KODAK_2302_DEV_7 = 68,          /* Kodak 2302 Dev 7, black and white print, no ISO */
+    ALWAN_FILM_KODAK_2302_DEV_9 = 69,          /* Kodak 2302 Dev 9, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX = 70,             /* Kodak Professional Polymax Fine-Art Paper, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX_GRADE_MINUS_1 = 71, /* Kodak Polymax Fine-Art Paper Grade -1, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX_GRADE_0 = 72,     /* Kodak Polymax Fine-Art Paper Grade 0, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX_GRADE_1 = 73,     /* Kodak Polymax Fine-Art Paper Grade 1, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX_GRADE_2 = 74,     /* Kodak Polymax Fine-Art Paper Grade 2, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX_GRADE_3 = 75,     /* Kodak Polymax Fine-Art Paper Grade 3, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX_GRADE_4 = 76,     /* Kodak Polymax Fine-Art Paper Grade 4, black and white print, no ISO */
+    ALWAN_FILM_KODAK_POLYMAX_GRADE_5 = 77,     /* Kodak Polymax Fine-Art Paper Grade 5, black and white print, no ISO */
+    ALWAN_FILM_FUJI_FP100C = 78,               /* Fuji FP-100C, reversal, ISO 128 */
+    ALWAN_FILM_FUJI_INSTAX_COLOR = 79,         /* Fuji Instax color, reversal, ISO 1000 */
+    ALWAN_FILM_FUJI_PROVIA_100F = 80,          /* Fuji Provia 100F, reversal, ISO 100 */
+    ALWAN_FILM_KODACHROME_64 = 81,             /* Kodachrome 64, reversal, ISO 64 */
+    ALWAN_FILM_KODAK_AEROCHROME_III = 82,      /* Kodak Aerochrome III Infrared Film 1443, reversal, ISO 40 */
+    ALWAN_FILM_KODAK_EKTACHROME_100D_ALT = 83, /* Kodak Ektachrome 100D alt., reversal, ISO 100 */
+    ALWAN_FILM_ILFOCHROME_MICROGRAPHIC_M = 84, /* Ilfochrome Micrographic M, reversal print, no ISO */
+    ALWAN_FILM_ILFOCHROME_MICROGRAPHIC_P = 85, /* Ilfochrome Micrographic P, reversal print, no ISO */
+    ALWAN_FILM_KODAK_EKTACHROME_RADIANCE_III = 86, /* Kodak Ektachrome Radiance III Paper, reversal print, no ISO */
     ALWAN_FILM_STOCK_COUNT
 } alwan_film_stock;
 

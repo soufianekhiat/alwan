@@ -221,9 +221,11 @@ tables have their own switches, listed in `src/alwan/data/alwan_data_tables_conf
 each is on unless the minimal build turns it off. The SB2383 inset matrix always stays
 in, because `alwan_agx_default_params` has no way to report it missing.
 
-`ALWAN_TABLES_FILM` covers the 14 profiled film stocks and their four shared
-densitometry tables, 3,400 values a stock; a build with no film pipeline drops them
-with one `-D`, and each stock has its own `ALWAN_TABLE_FILM_*` switch under it.
+`ALWAN_TABLES_FILM` covers the 87 profiled film stocks and their four shared
+densitometry tables, 3,400 values a stock, about 3.5 MB in the two precisions; a build
+with no film pipeline drops them with one `-D`, and each stock has its own
+`ALWAN_TABLE_FILM_*` switch under it, so a build that wants Vision3 and 2383 alone
+keeps those two switches on and turns the group off.
 
 `ALWAN_TABLES_LIGHT_SOURCES` is the one group that is not simply a category. It
 covers the 56 measured lamps at the end of `alwan_illuminant`, which are more

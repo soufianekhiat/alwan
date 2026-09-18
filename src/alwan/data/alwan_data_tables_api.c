@@ -3514,6 +3514,1174 @@ alwan_f64 const alwan_table_film_fuji_velvia_50_f64[ALWAN_TABLE_FILM_STOCK_SIZE]
 #endif
 
 #endif
+#if ALWAN_TABLE_FILM_AGFA_VISTA_100
+/* ---- alwan_table_film_agfa_vista_100 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/AGFA_VISTA_100.csv, Agfa Vista 100 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_agfa_vista_100_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/AGFA_VISTA_100.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_agfa_vista_100_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/AGFA_VISTA_100.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_C200
+/* ---- alwan_table_film_fuji_c200 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_C200.csv, Fuji C200 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_c200_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_C200.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_c200_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_C200.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_ETERNA_500_VIVID
+/* ---- alwan_table_film_fuji_eterna_500_vivid ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_ETERNA_500_VIVID.csv, Fuji Eterna 500 Vivid profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_eterna_500_vivid_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_ETERNA_500_VIVID.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_eterna_500_vivid_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_ETERNA_500_VIVID.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_NATURA_1600
+/* ---- alwan_table_film_fuji_natura_1600 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_NATURA_1600.csv, Fuji Natura 1600 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_natura_1600_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_NATURA_1600.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_natura_1600_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_NATURA_1600.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_PRO_160C
+/* ---- alwan_table_film_fuji_pro_160c ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_PRO_160C.csv, Fuji Pro 160C profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_pro_160c_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PRO_160C.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_pro_160c_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PRO_160C.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_PRO_160S
+/* ---- alwan_table_film_fuji_pro_160s ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_PRO_160S.csv, Fuji Pro 160S profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_pro_160s_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PRO_160S.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_pro_160s_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PRO_160S.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_PRO_400H
+/* ---- alwan_table_film_fuji_pro_400h ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_PRO_400H.csv, Fuji Pro 400H profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_pro_400h_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PRO_400H.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_pro_400h_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PRO_400H.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_SUPERIA_REALA
+/* ---- alwan_table_film_fuji_superia_reala ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_SUPERIA_REALA.csv, Fuji Superia Reala profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_superia_reala_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_SUPERIA_REALA.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_superia_reala_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_SUPERIA_REALA.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_SUPERIA_XTRA_400
+/* ---- alwan_table_film_fuji_superia_xtra_400 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_SUPERIA_XTRA_400.csv, Fuji Superia X-Tra 400 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_superia_xtra_400_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_SUPERIA_XTRA_400.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_superia_xtra_400_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_SUPERIA_XTRA_400.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5206
+/* ---- alwan_table_film_kodak_5206 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5206.csv, Kodak Verita 200D 5206 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5206_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5206.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5206_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5206.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5247
+/* ---- alwan_table_film_kodak_5247 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5247.csv, Kodak 5247 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5247_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5247.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5247_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5247.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5247_II
+/* ---- alwan_table_film_kodak_5247_ii ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5247_II.csv, Kodak 5247 II profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5247_ii_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5247_II.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5247_ii_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5247_II.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5247_II_ALT
+/* ---- alwan_table_film_kodak_5247_ii_alt ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5247_II_ALT.csv, Kodak 5247 II Alt profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5247_ii_alt_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5247_II_ALT.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5247_ii_alt_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5247_II_ALT.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5248
+/* ---- alwan_table_film_kodak_5248 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5248.csv, Kodak 5248 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5248_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5248.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5248_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5248.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_EXR_5248
+/* ---- alwan_table_film_kodak_exr_5248 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_EXR_5248.csv, Kodak EXR 100T 5248 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_exr_5248_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EXR_5248.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_exr_5248_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EXR_5248.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5250
+/* ---- alwan_table_film_kodak_5250 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5250.csv, Kodak 5250 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5250_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5250.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5250_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5250.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5277
+/* ---- alwan_table_film_kodak_5277 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5277.csv, Kodak Vision 320T 5277 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5277_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5277.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5277_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5277.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5293
+/* ---- alwan_table_film_kodak_5293 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5293.csv, Kodak EXR 200T 5293 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5293_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5293.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5293_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5293.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_AEROCOLOR
+/* ---- alwan_table_film_kodak_aerocolor ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_AEROCOLOR.csv, Kodak Aerocolor IV 2460 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_aerocolor_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCOLOR.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_aerocolor_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCOLOR.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_AEROCOLOR_LOW
+/* ---- alwan_table_film_kodak_aerocolor_low ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_AEROCOLOR_LOW.csv, Kodak Aerocolor IV 2460 Low profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_aerocolor_low_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCOLOR_LOW.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_aerocolor_low_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCOLOR_LOW.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_AEROCOLOR_HIGH
+/* ---- alwan_table_film_kodak_aerocolor_high ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_AEROCOLOR_HIGH.csv, Kodak Aerocolor IV 2460 High profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_aerocolor_high_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCOLOR_HIGH.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_aerocolor_high_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCOLOR_HIGH.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_GOLD_200
+/* ---- alwan_table_film_kodak_gold_200 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_GOLD_200.csv, Kodak Gold 200 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_gold_200_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_GOLD_200.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_gold_200_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_GOLD_200.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_160
+/* ---- alwan_table_film_kodak_portra_160 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_PORTRA_160.csv, Kodak Portra 160 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_portra_160_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_160.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_portra_160_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_160.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_800
+/* ---- alwan_table_film_kodak_portra_800 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_PORTRA_800.csv, Kodak Portra 800 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_portra_800_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_800.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_portra_800_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_800.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_800_AT_1600
+/* ---- alwan_table_film_kodak_portra_800_at_1600 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_PORTRA_800_AT_1600.csv, Kodak Portra 800 @1600 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_portra_800_at_1600_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_800_AT_1600.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_portra_800_at_1600_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_800_AT_1600.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_800_AT_3200
+/* ---- alwan_table_film_kodak_portra_800_at_3200 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_PORTRA_800_AT_3200.csv, Kodak Portra 800 @3200 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_portra_800_at_3200_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_800_AT_3200.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_portra_800_at_3200_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_800_AT_3200.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_ULTRAMAX_400
+/* ---- alwan_table_film_kodak_ultramax_400 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_ULTRAMAX_400.csv, Kodak Ultramax 400 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_ultramax_400_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_ULTRAMAX_400.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_ultramax_400_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_ULTRAMAX_400.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_VERICOLOR_III
+/* ---- alwan_table_film_kodak_vericolor_iii ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_VERICOLOR_III.csv, Kodak Vericolor III profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_vericolor_iii_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_VERICOLOR_III.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_vericolor_iii_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_VERICOLOR_III.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_4
+/* ---- alwan_table_film_kodak_5222_dev_4 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5222_DEV_4.csv, Kodak 5222 Dev 4 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5222_dev_4_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_4.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5222_dev_4_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_4.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_5
+/* ---- alwan_table_film_kodak_5222_dev_5 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5222_DEV_5.csv, Kodak 5222 Dev 5 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5222_dev_5_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_5.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5222_dev_5_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_5.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_9
+/* ---- alwan_table_film_kodak_5222_dev_9 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5222_DEV_9.csv, Kodak 5222 Dev 9 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5222_dev_9_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_9.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5222_dev_9_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_9.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5222_DEV_12
+/* ---- alwan_table_film_kodak_5222_dev_12 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5222_DEV_12.csv, Kodak 5222 Dev 12 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5222_dev_12_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_12.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5222_dev_12_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5222_DEV_12.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400
+/* ---- alwan_table_film_kodak_tri_x_400 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_TRI_X_400.csv, Kodak Tri-X 400 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_tri_x_400_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_tri_x_400_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400_DEV_7
+/* ---- alwan_table_film_kodak_tri_x_400_dev_7 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_TRI_X_400_DEV_7.csv, Kodak Trix-X 400 Dev 7 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_tri_x_400_dev_7_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400_DEV_7.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_tri_x_400_dev_7_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400_DEV_7.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400_DEV_9
+/* ---- alwan_table_film_kodak_tri_x_400_dev_9 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_TRI_X_400_DEV_9.csv, Kodak Trix-X 400 Dev 9 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_tri_x_400_dev_9_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400_DEV_9.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_tri_x_400_dev_9_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400_DEV_9.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_TRI_X_400_DEV_11
+/* ---- alwan_table_film_kodak_tri_x_400_dev_11 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_TRI_X_400_DEV_11.csv, Kodak Trix-X 400 Dev 11 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_tri_x_400_dev_11_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400_DEV_11.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_tri_x_400_dev_11_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_TRI_X_400_DEV_11.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_3523XD
+/* ---- alwan_table_film_fuji_3523xd ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_3523XD.csv, Fuji Eterna-CP 3523XD profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_3523xd_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_3523XD.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_3523xd_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_3523XD.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_CA_DPII
+/* ---- alwan_table_film_fuji_ca_dpii ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_CA_DPII.csv, Fuji Crystal Archive DPII profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_ca_dpii_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_DPII.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_ca_dpii_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_DPII.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_CA_MAXIMA
+/* ---- alwan_table_film_fuji_ca_maxima ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_CA_MAXIMA.csv, Fuji Crystal Archive Maxima profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_ca_maxima_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_MAXIMA.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_ca_maxima_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_MAXIMA.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_CA_PRO_PDII
+/* ---- alwan_table_film_fuji_ca_pro_pdii ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_CA_PRO_PDII.csv, Fuji Crystal Archive Pro PDII profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_ca_pro_pdii_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_PRO_PDII.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_ca_pro_pdii_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_PRO_PDII.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_CA_SUPER_C
+/* ---- alwan_table_film_fuji_ca_super_c ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_CA_SUPER_C.csv, Fuji Crystal Archive Super Type C profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_ca_super_c_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_SUPER_C.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_ca_super_c_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_CA_SUPER_C.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJIFLEX_NEW
+/* ---- alwan_table_film_fujiflex_new ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJIFLEX_NEW.csv, Fujiflex Crystal Archive New Version profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fujiflex_new_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJIFLEX_NEW.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fujiflex_new_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJIFLEX_NEW.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJIFLEX_OLD
+/* ---- alwan_table_film_fujiflex_old ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJIFLEX_OLD.csv, Fujiflex Crystal Archive Old Version profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fujiflex_old_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJIFLEX_OLD.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fujiflex_old_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJIFLEX_OLD.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5381
+/* ---- alwan_table_film_kodak_5381 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5381.csv, Kodak 5381 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5381_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5381.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5381_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5381.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5383
+/* ---- alwan_table_film_kodak_5383 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5383.csv, Kodak 5383 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5383_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5383.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5383_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5383.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_5384
+/* ---- alwan_table_film_kodak_5384 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_5384.csv, Kodak 5384 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_5384_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5384.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_5384_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_5384.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_DURAFLEX_PLUS
+/* ---- alwan_table_film_kodak_duraflex_plus ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_DURAFLEX_PLUS.csv, Kodak Duraflex Plus profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_duraflex_plus_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_DURAFLEX_PLUS.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_duraflex_plus_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_DURAFLEX_PLUS.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_ENDURA_PREMIER
+/* ---- alwan_table_film_kodak_endura_premier ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_ENDURA_PREMIER.csv, Kodak Endura Premier Paper profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_endura_premier_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_ENDURA_PREMIER.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_endura_premier_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_ENDURA_PREMIER.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_EXR_5386
+/* ---- alwan_table_film_kodak_exr_5386 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_EXR_5386.csv, Kodak EXR 5386 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_exr_5386_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EXR_5386.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_exr_5386_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EXR_5386.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_PORTRA_ENDURA
+/* ---- alwan_table_film_kodak_portra_endura ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_PORTRA_ENDURA.csv, Kodak Portra Endura Paper profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_portra_endura_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_ENDURA.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_portra_endura_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_PORTRA_ENDURA.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_SUPRA_ENDURA
+/* ---- alwan_table_film_kodak_supra_endura ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_SUPRA_ENDURA.csv, Kodak Supra Endura Paper profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_supra_endura_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_SUPRA_ENDURA.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_supra_endura_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_SUPRA_ENDURA.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_2
+/* ---- alwan_table_film_kodak_2302_dev_2 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_2302_DEV_2.csv, Kodak 2302 Dev 2 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_2302_dev_2_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_2.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_2302_dev_2_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_2.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_3
+/* ---- alwan_table_film_kodak_2302_dev_3 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_2302_DEV_3.csv, Kodak 2302 Dev 3 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_2302_dev_3_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_3.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_2302_dev_3_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_3.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_5
+/* ---- alwan_table_film_kodak_2302_dev_5 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_2302_DEV_5.csv, Kodak 2302 Dev 5 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_2302_dev_5_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_5.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_2302_dev_5_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_5.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_7
+/* ---- alwan_table_film_kodak_2302_dev_7 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_2302_DEV_7.csv, Kodak 2302 Dev 7 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_2302_dev_7_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_7.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_2302_dev_7_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_7.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_2302_DEV_9
+/* ---- alwan_table_film_kodak_2302_dev_9 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_2302_DEV_9.csv, Kodak 2302 Dev 9 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_2302_dev_9_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_9.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_2302_dev_9_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_2302_DEV_9.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX
+/* ---- alwan_table_film_kodak_polymax ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX.csv, Kodak Professional Polymax Fine-Art Paper profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_MINUS_1
+/* ---- alwan_table_film_kodak_polymax_grade_minus_1 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX_GRADE_MINUS_1.csv, Kodak Polymax Fine-Art Paper Grade -1 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_grade_minus_1_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_MINUS_1.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_grade_minus_1_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_MINUS_1.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_0
+/* ---- alwan_table_film_kodak_polymax_grade_0 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX_GRADE_0.csv, Kodak Polymax Fine-Art Paper Grade 0 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_grade_0_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_0.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_grade_0_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_0.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_1
+/* ---- alwan_table_film_kodak_polymax_grade_1 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX_GRADE_1.csv, Kodak Polymax Fine-Art Paper Grade 1 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_grade_1_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_1.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_grade_1_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_1.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_2
+/* ---- alwan_table_film_kodak_polymax_grade_2 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX_GRADE_2.csv, Kodak Polymax Fine-Art Paper Grade 2 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_grade_2_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_2.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_grade_2_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_2.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_3
+/* ---- alwan_table_film_kodak_polymax_grade_3 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX_GRADE_3.csv, Kodak Polymax Fine-Art Paper Grade 3 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_grade_3_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_3.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_grade_3_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_3.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_4
+/* ---- alwan_table_film_kodak_polymax_grade_4 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX_GRADE_4.csv, Kodak Polymax Fine-Art Paper Grade 4 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_grade_4_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_4.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_grade_4_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_4.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_POLYMAX_GRADE_5
+/* ---- alwan_table_film_kodak_polymax_grade_5 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_POLYMAX_GRADE_5.csv, Kodak Polymax Fine-Art Paper Grade 5 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_polymax_grade_5_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_5.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_polymax_grade_5_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_POLYMAX_GRADE_5.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_FP100C
+/* ---- alwan_table_film_fuji_fp100c ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_FP100C.csv, Fuji FP-100C profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_fp100c_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_FP100C.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_fp100c_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_FP100C.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_INSTAX_COLOR
+/* ---- alwan_table_film_fuji_instax_color ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_INSTAX_COLOR.csv, Fuji Instax color profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_instax_color_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_INSTAX_COLOR.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_instax_color_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_INSTAX_COLOR.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_FUJI_PROVIA_100F
+/* ---- alwan_table_film_fuji_provia_100f ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/FUJI_PROVIA_100F.csv, Fuji Provia 100F profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_fuji_provia_100f_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PROVIA_100F.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_fuji_provia_100f_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/FUJI_PROVIA_100F.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODACHROME_64
+/* ---- alwan_table_film_kodachrome_64 ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODACHROME_64.csv, Kodachrome 64 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodachrome_64_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODACHROME_64.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodachrome_64_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODACHROME_64.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_AEROCHROME_III
+/* ---- alwan_table_film_kodak_aerochrome_iii ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_AEROCHROME_III.csv, Kodak Aerochrome III Infrared Film 1443 profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_aerochrome_iii_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCHROME_III.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_aerochrome_iii_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_AEROCHROME_III.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_EKTACHROME_100D_ALT
+/* ---- alwan_table_film_kodak_ektachrome_100d_alt ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_EKTACHROME_100D_ALT.csv, Kodak Ektachrome 100D alt. profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_ektachrome_100d_alt_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EKTACHROME_100D_ALT.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_ektachrome_100d_alt_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EKTACHROME_100D_ALT.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_ILFOCHROME_MICROGRAPHIC_M
+/* ---- alwan_table_film_ilfochrome_micrographic_m ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/ILFOCHROME_MICROGRAPHIC_M.csv, Ilfochrome Micrographic M profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_ilfochrome_micrographic_m_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/ILFOCHROME_MICROGRAPHIC_M.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_ilfochrome_micrographic_m_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/ILFOCHROME_MICROGRAPHIC_M.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_ILFOCHROME_MICROGRAPHIC_P
+/* ---- alwan_table_film_ilfochrome_micrographic_p ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/ILFOCHROME_MICROGRAPHIC_P.csv, Ilfochrome Micrographic P profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_ilfochrome_micrographic_p_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/ILFOCHROME_MICROGRAPHIC_P.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_ilfochrome_micrographic_p_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/ILFOCHROME_MICROGRAPHIC_P.csv"
+};
+#endif
+
+#endif
+#if ALWAN_TABLE_FILM_KODAK_EKTACHROME_RADIANCE_III
+/* ---- alwan_table_film_kodak_ektachrome_radiance_iii ----
+ * extent ALWAN_TABLE_FILM_STOCK_SIZE. Reader: api/alwan_film_impl.inc, direct index
+ * Source: film/KODAK_EKTACHROME_RADIANCE_III.csv, Kodak Ektachrome Radiance III Paper profiled (MIT, spectral_film_lut) */
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_film_kodak_ektachrome_radiance_iii_f32[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EKTACHROME_RADIANCE_III.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_film_kodak_ektachrome_radiance_iii_f64[ALWAN_TABLE_FILM_STOCK_SIZE] = {
+#include "film/KODAK_EKTACHROME_RADIANCE_III.csv"
+};
+#endif
+
+#endif
 
 
 ALWAN_DIAG_POP

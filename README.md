@@ -310,9 +310,11 @@ Low-level colour science operations:
 - Bayer demosaicing: bilinear, Malvar 2004, Menon 2007, bit-exact to
   colour-demosaicing
 - RGB->spectrum upsampling: Smits 1999, Mallett 2019, Jakob & Hanika 2019
-- Film: 14 profiled stocks (Vision3, Portra, Ektar, Eterna, 5222, 2383, 2393,
-  3513DI, 2302, Ektachrome 100D, Velvia 50), scene spectrum to negative to print
-  to projection, ISO 5-3 status densitometry, held to spectral_film_lut; a look
+- Film: 87 profiled stocks, the whole spectral_film_lut catalogue (Vision3, Portra,
+  Ektar, Gold, Eterna, Superia, Pro, the 5247 to 5293 era, Tri-X and 5222; 2383,
+  2393, 3513DI, Endura, Crystal Archive, Polymax; Ektachrome, Provia, Velvia,
+  Kodachrome, Aerochrome; Ilfochrome), scene spectrum to negative to print to
+  projection, ISO 5-3 status densitometry, held to spectral_film_lut; a look
   on scene-linear footage as shot; halation from a derived base-reflection
   kernel and grain from the sheet's RMS granularity by Selwyn's law, with
   Newson's Boolean disc model for pictures (experimental)
@@ -861,7 +863,7 @@ Function documentation with signatures, parameters, and usage patterns:
 - **[Transfer Functions](docs/api/transfer-functions.md)**: EOTFs/OETFs for SDR/HDR (sRGB, PQ, HLG, log curves)
 - **[Matrix Operations](docs/api/matrix-operations.md)**: 3x3 matrix math for linear transforms
 - **[Spectral Operations](docs/api/spectral.md)**: SPD integration, CMFs, illuminants
-- **[Film](docs/api/film.md)**: 14 profiled stocks, negative to print to projection, status densitometry
+- **[Film](docs/api/film.md)**: 87 profiled stocks, negative to print to projection, status densitometry
 - **[Color Appearance](docs/api/color-appearance.md)**: CIECAM02, CAM16, LLAB, Hellwig2022, Kim2009, ATD95
 - **[Color Difference](docs/api/color-difference.md)**: DeltaE metrics (DeltaE76, DeltaE94, DeltaE00, CMC, CAM02/16-LCD/SCD)
 - **[Gamut Operations](docs/api/gamut.md)**: gamut mapping and analysis
