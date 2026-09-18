@@ -92,6 +92,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CLF import.** `alwan_clf_import` reads a Common LUT Format ProcessList and
+  `alwan_clf_apply_{T}_map_interleave` evaluates it, so an ACES LMT or an OCIO transform
+  comes into alwan rather than only out of it. Five ProcessNode types are understood:
+  Matrix (3x3 or 3x4), Range, Exponent in all four of its styles, LUT1D and LUT3D.
+  `alwan_clf_node_count` and `alwan_clf_node_type_at` say what was read, and
+  `alwan_clf_destroy` frees it. The XML is scanned by a reader that understands exactly
+  CLF's shape rather than a general parser, and the whole file is read into memory first,
+  so the sizes a header declares and the data that follows cannot disagree.
+
+  A file carrying any other node is REFUSED with `ALWAN_E_NODATA` rather than partly
+  applied: a ProcessList missing one of its stages is not the transform, and a wrong
+  answer is worse than none.
+
+  What each node means was measured against OpenColorIO reading the same file rather
+  than transcribed, and suite 162 pins it over eleven cases, each node alone and one
+  chain of five. Worst 2.8e-05, which is OCIO's own float32 evaluation of an exponent;
+  the Matrix, Range and LUT cases sit at 1e-8.
+
 - **3D LUT inversion.** `alwan_lut3d_invert_{T}` builds the cube that undoes a cube:
   Newton's method per node on the 3x3 system, the Jacobian by central differences over
   half a forward cell, a fixed step count so a deterministic build takes one path, and

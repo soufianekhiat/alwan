@@ -253,6 +253,9 @@ EXPORTS
     alwan_ciecam16_forward_f64
     alwan_ciecam16_inverse_f32
     alwan_ciecam16_inverse_f64
+    alwan_clf_apply_f32_map_interleave
+    alwan_clf_apply_f64_map_interleave
+    alwan_clf_destroy
     alwan_clf_export_buffer_f32
     alwan_clf_export_buffer_f64
     alwan_clf_export_f32
@@ -261,6 +264,11 @@ EXPORTS
     alwan_clf_export_view_buffer_f64
     alwan_clf_export_view_f32
     alwan_clf_export_view_f64
+    alwan_clf_id
+    alwan_clf_import
+    alwan_clf_import_buffer
+    alwan_clf_node_count
+    alwan_clf_node_type_at
     alwan_cmy_to_cmyk_f32
     alwan_cmy_to_cmyk_f32_map_interleave
     alwan_cmy_to_cmyk_f32_map_planar

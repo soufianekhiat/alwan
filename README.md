@@ -3,9 +3,9 @@
 > **Alwan** (ألوان): Arabic for "colours"
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-161%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-191%2C150%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-427%20sets-blue)](#validation)
+[![tests](https://img.shields.io/badge/tests-162%20suites-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-191%2C544%20per%20run-brightgreen)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-429%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -104,7 +104,8 @@ What makes Alwan different from other colour libraries:
   analytic engine and JP2499, 12 colour appearance models, spectral
   upsampling, CVD simulation, 11 gamut-mapping entry points (including an
   HDR ICtCp mapper and 19 spatial picture-formation methods), the DeltaE
-  family, LUT baking and interchange (.cube, .spi1d, .spi3d, .3dl, .csp, .spimtx, CLF)
+  family, LUT baking, inversion and interchange (.cube, .spi1d, .spi3d, .3dl, .csp,
+  .spimtx, CLF read and write)
 - Six host targets verified in CI (Linux/macOS/Windows x x64/ARM)
 
 ---
@@ -636,23 +637,23 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 161, all passing |
-| Test cases | 1,039 |
-| Checks executed per run | 191,150 |
-| Assertion sites in the tests | 4,320 |
-| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 427 |
+| Test suites | 162, all passing |
+| Test cases | 1,042 |
+| Checks executed per run | 191,544 |
+| Assertion sites in the tests | 4,366 |
+| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 429 |
 | Embedded data tables | 947 |
-| Exported symbols | 1,911 |
-| Internal symbols reached by a test or a public entry point | 182 of 206 (88%) |
+| Exported symbols | 1,919 |
+| Internal symbols reached by a test or a public entry point | 202 of 226 (89%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL under dxc | 40 of 43 |
 
 Two of these deserve the emphasis:
 
-**191,150 checks per run** is what actually executes, not what is written. A
+**191,544 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,320 assertion sites would undersell the suite more than
+so counting the 4,366 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -850,7 +851,7 @@ Documentation lives in the [docs/](docs/) folder. [alwan.h](src/alwan/alwan.h) i
 - **[Examples](docs/examples.md)**: 12 practical examples
   - Typed single-pixel and planar conversions
   - Image conversion with strides and premultiplied alpha
-  - LUT baking and inversion, `.cube` / `.spi1d` / `.spi3d` / `.3dl` / `.csp` / `.spimtx` read and write, CLF export
+  - LUT baking and inversion, `.cube` / `.spi1d` / `.spi3d` / `.3dl` / `.csp` / `.spimtx` read and write, CLF read and write
   - Half-float and integer-normalization / video workflows
 
 ### API Reference

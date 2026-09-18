@@ -1,7 +1,8 @@
 # LUT Baking, Interchange And Sampling API
 
 Bake a colour pipeline into a lookup table, move that table in and out of
-`.cube`, `.spi1d`, `.spi3d`, `.3dl`, `.csp`, `.spimtx` and CLF, and sample it.
+`.cube`, `.spi1d`, `.spi3d`, `.3dl`, `.csp`, `.spimtx` and CLF, sample it, and
+invert it.
 
 > **Precision variants:** Every function shown as `name_{T}` exists in two forms:
 > `name_f32` (single precision, `float`) and `name_f64` (double precision, `double`).
@@ -549,6 +550,75 @@ is where `lut_size` applies.
 Note the argument order on the buffer forms: `bytes_written` comes before
 `buf_size`, the opposite of `alwan_cube_export_3d_buffer_{T}`. Both are
 `ALWAN_E_RANGE` when the buffer is too small.
+
+> **The LUT3D array is written in CLF's order, which is not alwan's.** CLF has
+> blue varying fastest and red slowest; alwan holds a cube R-fastest, as `.cube`
+> stores it. The writer treated the two as the same until 2026-09-18, so every
+> CLF exported with a view transform before that has its red and blue axes
+> exchanged. Greys were unaffected, which is why it went unnoticed. Suite 80
+> pins the order now.
+
+---
+
+## CLF import
+
+```c
+typedef struct alwan_clf_s alwan_clf;
+
+typedef enum {
+    ALWAN_CLF_NODE_MATRIX, ALWAN_CLF_NODE_RANGE, ALWAN_CLF_NODE_EXPONENT,
+    ALWAN_CLF_NODE_LUT1D,  ALWAN_CLF_NODE_LUT3D
+} alwan_clf_node_type;
+
+alwan_status alwan_clf_import(alwan_clf **out, char const *path, alwan_ctx *ctx);
+alwan_status alwan_clf_import_buffer(alwan_clf **out, char const *buf, size_t len, alwan_ctx *ctx);
+void alwan_clf_destroy(alwan_clf *clf, alwan_ctx *ctx);
+
+size_t alwan_clf_node_count(alwan_clf const *clf);
+alwan_status alwan_clf_node_type_at(alwan_clf_node_type *out, alwan_clf const *clf, size_t index);
+char const *alwan_clf_id(alwan_clf const *clf);
+
+alwan_status alwan_clf_apply_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                alwan_{T} const *in, size_t in_stride,
+                                                size_t count, alwan_clf const *clf);
+```
+
+Read a ProcessList and evaluate it, so an ACES LMT or an OCIO transform comes
+into alwan rather than only out of it. The object owns its tables; free it with
+`alwan_clf_destroy`. `ctx` is taken for symmetry and not used.
+
+Five ProcessNode types are understood: Matrix (3x3 or 3x4), Range, Exponent
+(`basicFwd`, `basicRev`, `monCurveFwd`, `monCurveRev`), LUT1D and LUT3D.
+
+> **A file carrying any other node is refused, not partly applied.** A
+> ProcessList missing one of its stages is not the transform, and a wrong answer
+> is worse than none, so an ASC_CDL or a Log node returns `ALWAN_E_NODATA` for
+> the whole file. The same goes for an Exponent style this reader does not
+> implement.
+
+Evaluation runs in double on both precision paths, because a CLF is decimal text
+and there is nothing an f32 pass would preserve.
+
+### What the nodes mean
+
+None of this was transcribed from the specification. Each node was written out,
+evaluated by OpenColorIO, and the pair is what suite 162 holds the reader to:
+
+| node | meaning |
+|---|---|
+| Range | `(in - minIn) * (maxOut - minOut) / (maxIn - minIn) + minOut`, clamped to `[minOut, maxOut]` unless `style="noClamp"` |
+| basicFwd / basicRev | `max(x, 0)^g` and `max(x, 0)^(1/g)` |
+| monCurveFwd | a linear segment below `xb = a / (g - 1)`, then `((x + a) / (1 + a))^g`; the segment's slope is `yb / xb` with `yb` the curve at `xb`, so value and slope both carry across, and negative input stays on the segment |
+| monCurveRev | the same with the axes exchanged |
+
+Worst against OCIO over eleven cases: 2.8e-05, which is OCIO's own float32
+evaluation of an exponent. The Matrix, Range and LUT cases sit at 1e-8.
+
+> **One trap, recorded because it produced four confident wrong answers before
+> it was caught.** OCIO caches a processor against the file *path*. Reusing a
+> filename while probing returns the first file's transform for every later one,
+> and the mismatch looks exactly like a formula error. Give every probe file its
+> own name.
 
 ---
 

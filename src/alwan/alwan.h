@@ -8596,6 +8596,64 @@ alwan_status alwan_spimtx_export_f32(char const *path, alwan_mat3x3_f32 const *m
                                      alwan_f32 const *offset);
 
 /* ----------------------------------------------------------------
+ * CLF Import
+ *
+ * CLF (Common LUT Format, SMPTE ST 2136-1) records a transform's operations
+ * rather than only their samples, which is why an ACES LMT or an OCIO
+ * transform survives a trip through it where a .cube does not. These read one
+ * back and evaluate it.
+ *
+ * Five ProcessNode types are understood: Matrix, Range, Exponent, LUT1D and
+ * LUT3D. A file carrying any other node is REFUSED with ALWAN_E_NODATA rather
+ * than partly applied, because a pipeline missing one of its stages is not the
+ * transform, and a wrong answer is worse than none.
+ *
+ * The semantics were measured against OpenColorIO reading the same file rather
+ * than transcribed, and suite 162 pins them. Note that CLF orders a LUT3D
+ * array with BLUE varying fastest where alwan and .cube are R-fastest; the
+ * reader transposes, and so does the writer since 2026-09-18.
+ * ---------------------------------------------------------------- */
+
+typedef struct alwan_clf_s alwan_clf;
+
+typedef enum {
+    ALWAN_CLF_NODE_MATRIX = 0,
+    ALWAN_CLF_NODE_RANGE = 1,
+    ALWAN_CLF_NODE_EXPONENT = 2,
+    ALWAN_CLF_NODE_LUT1D = 3,
+    ALWAN_CLF_NODE_LUT3D = 4
+} alwan_clf_node_type;
+
+/* Read a ProcessList. The object owns its tables; free it with
+ * alwan_clf_destroy. ctx is accepted for symmetry and not used.
+ *
+ * ALWAN_E_NODATA: not a CLF, an empty ProcessList, or a node type or style
+ *      this reader does not implement. ALWAN_E_INVALID: a file that cannot be
+ *      opened, or malformed XML, or a value that is not finite.
+ *      ALWAN_E_RANGE: a file above 64 MiB, a ProcessList of more than 256
+ *      nodes, or a LUT dimension outside 2 to 65536 (1D) or 2 to 256 (3D). */
+alwan_status alwan_clf_import(alwan_clf **out, char const *path, alwan_ctx *ctx);
+alwan_status alwan_clf_import_buffer(alwan_clf **out, char const *buf, size_t len, alwan_ctx *ctx);
+void alwan_clf_destroy(alwan_clf *clf, alwan_ctx *ctx);
+
+/* What was read: how many nodes, what each one is, and the ProcessList's id.
+ * The id points into the object and lives as long as it does. */
+size_t alwan_clf_node_count(alwan_clf const *clf);
+alwan_status alwan_clf_node_type_at(alwan_clf_node_type *out, alwan_clf const *clf, size_t index);
+char const *alwan_clf_id(alwan_clf const *clf);
+
+/* Apply the whole ProcessList, in order, to interleaved RGB.
+ * Strides are in bytes; 0 means tightly packed. Evaluation runs in double on
+ * both paths, because the file is decimal text and there is nothing an f32
+ * pass would preserve. */
+alwan_status alwan_clf_apply_f64_map_interleave(alwan_f64 *out, size_t out_stride,
+                                                alwan_f64 const *in, size_t in_stride,
+                                                size_t count, alwan_clf const *clf);
+alwan_status alwan_clf_apply_f32_map_interleave(alwan_f32 *out, size_t out_stride,
+                                                alwan_f32 const *in, size_t in_stride,
+                                                size_t count, alwan_clf const *clf);
+
+/* ----------------------------------------------------------------
  * Color Interop Forum -- Interop ID Strings
  *
  * Bidirectional lookup between alwan_rgb_space enum values and
