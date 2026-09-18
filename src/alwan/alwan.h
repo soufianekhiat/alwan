@@ -8469,6 +8469,61 @@ alwan_status alwan_3dl_import_f32(alwan_f32 *lut, int *out_size, char const *pat
 alwan_status alwan_3dl_export_f64(char const *path, alwan_f64 const *lut, int size, int bit_depth);
 alwan_status alwan_3dl_export_f32(char const *path, alwan_f32 const *lut, int size, int bit_depth);
 
+/* Import a 3D LUT from a Cinespace .csp file.
+ * lut: output, size^3 * 3 values R-fastest, or NULL to query
+ * out_size: receives the cube edge length, 2 to 256
+ * prelut_in, prelut_out: output, the per-channel prelut, channel 0's points
+ *      then channel 1's then channel 2's, packed by the counts reported in
+ *      out_prelut_size. Both may be NULL; see below.
+ * out_prelut_size: receives the three per-channel point counts, may be NULL
+ *
+ * .csp is R-fastest on disk, like .cube, unlike .spi3d and .3dl.
+ *
+ * The prelut is a per-channel piecewise-linear remap applied to the input
+ * BEFORE the cube is addressed, which is how a shaper for log material is
+ * stored, and each channel carries its own point count. It cannot be
+ * delivered through a cube-only signature, so it is not quietly dropped:
+ * passing NULL for prelut_in and prelut_out against a file whose prelut is
+ * not the identity returns ALWAN_E_INVALID. The ordinary file, whose prelut
+ * is the two-point identity every writer emits when there is no shaper,
+ * reads with NULL.
+ *
+ * Query first with lut NULL to size the buffers: out_size and the three
+ * counts are set from the header, and no sample data is read. A prelut of
+ * more than 1024 points per channel is taken as a real shaper rather than
+ * compared point by point, so it is refused when no buffers are supplied. */
+alwan_status alwan_csp_import_3d_f64(alwan_f64 *lut, int *out_size, alwan_f64 *prelut_in,
+                                     alwan_f64 *prelut_out, int *out_prelut_size, char const *path);
+alwan_status alwan_csp_import_3d_f32(alwan_f32 *lut, int *out_size, alwan_f32 *prelut_in,
+                                     alwan_f32 *prelut_out, int *out_prelut_size, char const *path);
+
+/* Export a 3D LUT to a Cinespace .csp file.
+ * lut: size^3 * 3 values, R-fastest
+ * prelut_in, prelut_out, prelut_size: the per-channel prelut, or all NULL to
+ *      write the two-point identity. When prelut_size is given, both value
+ *      buffers must be too, and each count is 2 to 65536. */
+alwan_status alwan_csp_export_3d_f64(char const *path, alwan_f64 const *lut, int size,
+                                     alwan_f64 const *prelut_in, alwan_f64 const *prelut_out,
+                                     int const *prelut_size);
+alwan_status alwan_csp_export_3d_f32(char const *path, alwan_f32 const *lut, int size,
+                                     alwan_f32 const *prelut_in, alwan_f32 const *prelut_out,
+                                     int const *prelut_size);
+
+/* Read and write a Sony .spimtx: a 3x3 matrix and a per-channel offset.
+ * matrix: row-major, as alwan_mat3x3 stores it
+ * offset: three values in the same units as the data, may be NULL
+ *
+ * The file holds the offsets in 16-bit code units, so an offset of 65535 on
+ * disk adds exactly 1.0 to that channel. Measured against OCIO rather than
+ * read off a specification. These entry points take and return the offset in
+ * the values' own units, so the file's convention stays in the file. */
+alwan_status alwan_spimtx_import_f64(alwan_mat3x3_f64 *matrix, alwan_f64 *offset, char const *path);
+alwan_status alwan_spimtx_import_f32(alwan_mat3x3_f32 *matrix, alwan_f32 *offset, char const *path);
+alwan_status alwan_spimtx_export_f64(char const *path, alwan_mat3x3_f64 const *matrix,
+                                     alwan_f64 const *offset);
+alwan_status alwan_spimtx_export_f32(char const *path, alwan_mat3x3_f32 const *matrix,
+                                     alwan_f32 const *offset);
+
 /* ----------------------------------------------------------------
  * Color Interop Forum -- Interop ID Strings
  *

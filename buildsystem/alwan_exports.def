@@ -346,6 +346,10 @@ EXPORTS
     alwan_csf_barten1999_params_default_f64
     alwan_csf_f32
     alwan_csf_f64
+    alwan_csp_export_3d_f32
+    alwan_csp_export_3d_f64
+    alwan_csp_import_3d_f32
+    alwan_csp_import_3d_f64
     alwan_css_color_3_keyword_to_rgb_f32
     alwan_css_color_3_keyword_to_rgb_f64
     alwan_css_gamut_f32_map_interleave
@@ -1517,6 +1521,10 @@ EXPORTS
     alwan_spi3d_export_f64
     alwan_spi3d_import_f32
     alwan_spi3d_import_f64
+    alwan_spimtx_export_f32
+    alwan_spimtx_export_f64
+    alwan_spimtx_import_f32
+    alwan_spimtx_import_f64
     alwan_srgb_to_hpluv_f32
     alwan_srgb_to_hpluv_f64
     alwan_srgb_to_hsluv_f32

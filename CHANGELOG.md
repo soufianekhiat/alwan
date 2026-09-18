@@ -74,9 +74,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Three more LUT interchange formats.** `.spi1d` and `.spi3d` (Sony Pictures
-  Imageworks) and `.3dl` (Autodesk, both the Flame and the Lustre flavour), read and
-  written, beside the `.cube` pair that was already here. `alwan_spi1d_import_{T}`
+- **Five more LUT interchange formats.** `.spi1d`, `.spi3d` and `.spimtx` (Sony
+  Pictures Imageworks), `.3dl` (Autodesk, both the Flame and the Lustre flavour) and
+  `.csp` (Cinespace), read and written, beside the `.cube` pair that was already here. `alwan_spi1d_import_{T}`
   reports the file's component count and input domain rather than assuming either; the
   domain is reported and never applied, since alwan's 1-D samplers address [0, 1].
   `alwan_3dl_import_{T}` takes the output bit depth from the Lustre header where there
@@ -92,6 +92,16 @@ All notable changes to this project will be documented in this file.
   that pins, rather than compared byte for byte against OCIO, because two writers can
   differ in spacing and digits and mean the same table; `.spi3d` and `.spi1d` round trip
   bit for bit and `.3dl` to within half a step of the depth asked for.
+
+  `.csp` carries a prelut: a per-channel piecewise-linear remap applied before the cube
+  is addressed, which is how a shaper for log material is stored, and each channel may
+  have its own point count. It is never dropped silently. `alwan_csp_import_3d_{T}`
+  takes buffers for it, and passing NULL for them against a file whose prelut is not
+  the identity is `ALWAN_E_INVALID`, not a quiet loss; the ordinary file, whose prelut
+  is the two-point identity, reads with NULL. `.spimtx` is a 3x3 matrix and three
+  offsets, and the file holds those offsets in 16-bit code units, so 65535 on disk adds
+  exactly 1.0. That was measured against OCIO rather than read off a specification, and
+  the entry points take and return the offset in the data's own units.
 
   One difference from OCIO 2.5, and the suite pins it. A `.3dl` mesh line at size 3
   holds three numbers and looks exactly like a data line, so OCIO cannot read back the

@@ -577,6 +577,296 @@ static alwan_status tdl_export(char const *path, lutfmt_source const *src, int s
 }
 
 /* ================================================================
+ * .csp, Cinespace
+ *
+ *   CSPLUTV100
+ *   3D
+ *   BEGIN METADATA ... END METADATA
+ *   <n>                         one block per channel, R then G then B
+ *   <n input values>
+ *   <n output values>
+ *   ... twice more ...
+ *   N N N
+ *   r g b                       one line per sample, R-fastest
+ *
+ * The three blocks are the prelut: a per-channel piecewise-linear remap
+ * applied to the input BEFORE the cube is addressed, which is how a shaper
+ * for log material is stored. Each channel carries its own point count.
+ *
+ * A prelut cannot be delivered through a cube-only signature, so it is not
+ * quietly dropped: the reader takes buffers for it, and passing NULL for
+ * those buffers against a file whose prelut is not the identity is
+ * ALWAN_E_INVALID rather than a silent loss. The common file, whose prelut
+ * is the two-point identity every writer emits when there is no shaper,
+ * reads with NULL.
+ *
+ * Unlike .spi3d and .3dl, this format is R-fastest on disk, as .cube is.
+ * ================================================================ */
+
+enum { ALWAN__CSP_PRELUT_MAX = 65536, ALWAN__CSP_KEEP = 1024 };
+
+/* Read up to max numbers from one line. Returns the count. */
+static int csp_numbers(char const *s, double *out, int max) {
+    int n = 0;
+    while (*s && n < max) {
+        char *end = NULL;
+        double v;
+        s = lutfmt_skip_ws(s);
+        if (!*s) break;
+        v = strtod(s, &end);
+        if (end == s) break;
+        out[n++] = v;
+        s = end;
+    }
+    return n;
+}
+
+/* The next non-blank line, or 0 at end of file. */
+static int csp_line(FILE *f, char *buf, size_t cap, char const **out) {
+    while (fgets(buf, (int)cap, f)) {
+        char const *s = lutfmt_skip_ws(buf);
+        if (lutfmt_blank(s)) continue;
+        *out = s;
+        return 1;
+    }
+    return 0;
+}
+
+static alwan_status csp_import_3d(lutfmt_sink const *sink, int *out_size,
+                                  lutfmt_sink const *pre_in, lutfmt_sink const *pre_out,
+                                  int *out_prelut_size, char const *path) {
+    FILE *f;
+    char *saved;
+    char line[8192];
+    char const *s;
+    int status = ALWAN_OK;
+    int size = 0, c, identity = 1;
+    int counts[3];
+    size_t written = 0;
+    long row = 0;
+
+    if (!out_size || !path) return ALWAN_E_INVALID;
+    f = fopen(path, "rb");
+    if (!f) return ALWAN_E_INVALID;
+    saved = lutfmt_save_lc_numeric();
+    counts[0] = counts[1] = counts[2] = 0;
+
+    if (!csp_line(f, line, sizeof line, &s) || strncmp(s, "CSPLUTV100", 10) != 0) {
+        status = ALWAN_E_NODATA; goto done;
+    }
+    if (!csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+    if (strncmp(s, "3D", 2) != 0) { status = ALWAN_E_NODATA; goto done; }   /* 1D is a different table */
+
+    /* Metadata is optional, and its body is free text. */
+    if (!csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+    if (strncmp(s, "BEGIN METADATA", 14) == 0) {
+        for (;;) {
+            if (!csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+            if (strncmp(s, "END METADATA", 12) == 0) break;
+        }
+        if (!csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+    }
+
+    /* Three prelut blocks: a count, then its inputs, then its outputs, each of
+     * which may wrap over several lines. */
+    for (c = 0; c < 3; c++) {
+        double keep[ALWAN__CSP_KEEP];      /* the input half, for the identity test */
+        int n, half, kept;
+        n = atoi(s);
+        if (n < 2 || n > ALWAN__CSP_PRELUT_MAX) { status = ALWAN_E_RANGE; goto done; }
+        counts[c] = n;
+        kept = n <= ALWAN__CSP_KEEP;
+        for (half = 0; half < 2; half++) {
+            lutfmt_sink const *into = half ? pre_out : pre_in;
+            int k = 0;
+            if (!csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+            while (k < n) {
+                double chunk[256];
+                int m = csp_numbers(s, chunk, (int)(sizeof chunk / sizeof chunk[0]));
+                int j;
+                if (m <= 0) { status = ALWAN_E_INVALID; goto done; }
+                for (j = 0; j < m && k < n; j++, k++) {
+                    if (!lutfmt_finite(chunk[j])) { status = ALWAN_E_INVALID; goto done; }
+                    if (into && into->p) lutfmt_put(into, written + (size_t)k, chunk[j]);
+                    if (half == 0) {
+                        if (kept) keep[k] = chunk[j];
+                    } else if (kept) {
+                        if (keep[k] != chunk[j]) identity = 0;
+                    }
+                }
+                if (k >= n) break;
+                if (!csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+            }
+        }
+        /* A prelut too long to hold for the comparison is a real shaper, not the
+         * identity any writer emits for "no shaper". */
+        if (!kept) identity = 0;
+        written += (size_t)n;
+        if (c < 2 && !csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+    }
+
+    if (!csp_line(f, line, sizeof line, &s)) { status = ALWAN_E_NODATA; goto done; }
+    {
+        double dims[3];
+        if (csp_numbers(s, dims, 3) != 3) { status = ALWAN_E_INVALID; goto done; }
+        if (dims[0] != dims[1] || dims[1] != dims[2]) { status = ALWAN_E_RANGE; goto done; }
+        size = (int)dims[0];
+        if (size < 2 || size > 256) { status = ALWAN_E_RANGE; goto done; }
+    }
+    *out_size = size;
+    if (out_prelut_size) {
+        out_prelut_size[0] = counts[0];
+        out_prelut_size[1] = counts[1];
+        out_prelut_size[2] = counts[2];
+    }
+    if (!(pre_in && pre_in->p) && !identity) { status = ALWAN_E_INVALID; goto done; }
+    if (!sink->p) goto done;                            /* size query */
+
+    while (csp_line(f, line, sizeof line, &s)) {
+        double v[3];
+        if (csp_numbers(s, v, 3) != 3) { status = ALWAN_E_INVALID; goto done; }
+        if (row >= (long)size * size * size) { status = ALWAN_E_RANGE; goto done; }
+        if (!lutfmt_finite(v[0]) || !lutfmt_finite(v[1]) || !lutfmt_finite(v[2])) {
+            status = ALWAN_E_INVALID; goto done;
+        }
+        lutfmt_put(sink, (size_t)row * 3 + 0, v[0]);    /* R-fastest, as stored */
+        lutfmt_put(sink, (size_t)row * 3 + 1, v[1]);
+        lutfmt_put(sink, (size_t)row * 3 + 2, v[2]);
+        row++;
+    }
+    if (row != (long)size * size * size) status = ALWAN_E_RANGE;
+
+done:
+    lutfmt_restore_lc_numeric(saved);
+    fclose(f);
+    return status;
+}
+
+static alwan_status csp_export_3d(char const *path, lutfmt_source const *src, int size,
+                                  lutfmt_source const *pre_in, lutfmt_source const *pre_out,
+                                  int const *prelut_size) {
+    FILE *f;
+    char *saved;
+    char const *fmt1, *fmt3;
+    int c, i;
+    size_t at = 0;
+    long k;
+
+    if (!path || !src->p) return ALWAN_E_INVALID;
+    if (size < 2 || size > 256) return ALWAN_E_RANGE;
+    if (prelut_size) {
+        if (!pre_in || !pre_in->p || !pre_out || !pre_out->p) return ALWAN_E_INVALID;
+        for (c = 0; c < 3; c++) {
+            if (prelut_size[c] < 2 || prelut_size[c] > ALWAN__CSP_PRELUT_MAX) return ALWAN_E_RANGE;
+        }
+    }
+
+    f = fopen(path, "wb");
+    if (!f) return ALWAN_E_INVALID;
+    saved = lutfmt_save_lc_numeric();
+    fmt1 = src->is_f32 ? "%.9g" : "%.17g";
+    fmt3 = src->is_f32 ? "%.9g %.9g %.9g\n" : "%.17g %.17g %.17g\n";
+
+    fprintf(f, "CSPLUTV100\n3D\n\nBEGIN METADATA\nEND METADATA\n\n");
+    for (c = 0; c < 3; c++) {
+        int n = prelut_size ? prelut_size[c] : 2;
+        int half;
+        fprintf(f, "%d\n", n);
+        for (half = 0; half < 2; half++) {
+            lutfmt_source const *from = half ? pre_out : pre_in;
+            for (i = 0; i < n; i++) {
+                if (i) fprintf(f, " ");
+                if (prelut_size) fprintf(f, fmt1, lutfmt_get(from, at + (size_t)i));
+                else fprintf(f, fmt1, i ? 1.0 : 0.0);
+            }
+            fprintf(f, "\n");
+        }
+        if (prelut_size) at += (size_t)n;
+    }
+    fprintf(f, "\n%d %d %d\n", size, size, size);
+    for (k = 0; k < (long)size * size * size; k++) {
+        fprintf(f, fmt3, lutfmt_get(src, (size_t)k * 3 + 0),
+                lutfmt_get(src, (size_t)k * 3 + 1), lutfmt_get(src, (size_t)k * 3 + 2));
+    }
+
+    lutfmt_restore_lc_numeric(saved);
+    if (fclose(f) != 0) return ALWAN_E_INVALID;
+    return ALWAN_OK;
+}
+
+/* ================================================================
+ * .spimtx
+ *
+ *   m00 m01 m02 o0
+ *   m10 m11 m12 o1
+ *   m20 m21 m22 o2
+ *
+ * Twelve numbers: a 3x3 matrix and a per-channel offset. The offsets are
+ * stored in 16-bit code units and divide by 65535, measured against OCIO:
+ * an offset of 65535 in the file adds exactly 1.0 to the channel. This API
+ * takes and returns the offset in the values' own units, so the file's
+ * convention stays in the file.
+ * ================================================================ */
+
+static alwan_status spimtx_import(double *m9, double *off3, char const *path) {
+    FILE *f;
+    char *saved;
+    char line[1024];
+    double v[12];
+    int n = 0, i;
+    int status = ALWAN_OK;
+
+    if (!path) return ALWAN_E_INVALID;
+    f = fopen(path, "rb");
+    if (!f) return ALWAN_E_INVALID;
+    saved = lutfmt_save_lc_numeric();
+
+    while (n < 12 && fgets(line, sizeof line, f)) {
+        char const *s = lutfmt_skip_ws(line);
+        if (lutfmt_blank(s)) continue;
+        n += csp_numbers(s, v + n, 12 - n);
+    }
+    if (n != 12) { status = ALWAN_E_NODATA; goto done; }
+    for (i = 0; i < 12; i++) {
+        if (!lutfmt_finite(v[i])) { status = ALWAN_E_INVALID; goto done; }
+    }
+    for (i = 0; i < 3; i++) {
+        m9[i * 3 + 0] = v[i * 4 + 0];
+        m9[i * 3 + 1] = v[i * 4 + 1];
+        m9[i * 3 + 2] = v[i * 4 + 2];
+        off3[i] = v[i * 4 + 3] / 65535.0;
+    }
+
+done:
+    lutfmt_restore_lc_numeric(saved);
+    fclose(f);
+    return status;
+}
+
+static alwan_status spimtx_export(char const *path, double const *m9, double const *off3, int is_f32) {
+    FILE *f;
+    char *saved;
+    char const *fmt;
+    int i;
+
+    if (!path || !m9) return ALWAN_E_INVALID;
+    for (i = 0; i < 9; i++) if (!lutfmt_finite(m9[i])) return ALWAN_E_INVALID;
+    if (off3) for (i = 0; i < 3; i++) if (!lutfmt_finite(off3[i])) return ALWAN_E_INVALID;
+
+    f = fopen(path, "wb");
+    if (!f) return ALWAN_E_INVALID;
+    saved = lutfmt_save_lc_numeric();
+    fmt = is_f32 ? "%.9g %.9g %.9g %.9g\n" : "%.17g %.17g %.17g %.17g\n";
+    for (i = 0; i < 3; i++) {
+        fprintf(f, fmt, m9[i * 3 + 0], m9[i * 3 + 1], m9[i * 3 + 2],
+                (off3 ? off3[i] : 0.0) * 65535.0);
+    }
+    lutfmt_restore_lc_numeric(saved);
+    if (fclose(f) != 0) return ALWAN_E_INVALID;
+    return ALWAN_OK;
+}
+
+/* ================================================================
  * Public entry points: one pair per format per precision.
  * ================================================================ */
 
@@ -665,4 +955,86 @@ alwan_status alwan_3dl_export_f32(char const *path, alwan_f32 const *lut, int si
     lutfmt_source src;
     src.p = lut; src.is_f32 = 1;
     return tdl_export(path, &src, size, bit_depth);
+}
+
+alwan_status alwan_csp_import_3d_f64(alwan_f64 *lut, int *out_size, alwan_f64 *prelut_in,
+                                     alwan_f64 *prelut_out, int *out_prelut_size, char const *path) {
+    lutfmt_sink sink, pin, pout;
+    sink.p = lut; sink.is_f32 = 0;
+    pin.p = prelut_in; pin.is_f32 = 0;
+    pout.p = prelut_out; pout.is_f32 = 0;
+    return csp_import_3d(&sink, out_size, &pin, &pout, out_prelut_size, path);
+}
+
+alwan_status alwan_csp_import_3d_f32(alwan_f32 *lut, int *out_size, alwan_f32 *prelut_in,
+                                     alwan_f32 *prelut_out, int *out_prelut_size, char const *path) {
+    lutfmt_sink sink, pin, pout;
+    sink.p = lut; sink.is_f32 = 1;
+    pin.p = prelut_in; pin.is_f32 = 1;
+    pout.p = prelut_out; pout.is_f32 = 1;
+    return csp_import_3d(&sink, out_size, &pin, &pout, out_prelut_size, path);
+}
+
+alwan_status alwan_csp_export_3d_f64(char const *path, alwan_f64 const *lut, int size,
+                                     alwan_f64 const *prelut_in, alwan_f64 const *prelut_out,
+                                     int const *prelut_size) {
+    lutfmt_source src, pin, pout;
+    src.p = lut; src.is_f32 = 0;
+    pin.p = prelut_in; pin.is_f32 = 0;
+    pout.p = prelut_out; pout.is_f32 = 0;
+    return csp_export_3d(path, &src, size, &pin, &pout, prelut_size);
+}
+
+alwan_status alwan_csp_export_3d_f32(char const *path, alwan_f32 const *lut, int size,
+                                     alwan_f32 const *prelut_in, alwan_f32 const *prelut_out,
+                                     int const *prelut_size) {
+    lutfmt_source src, pin, pout;
+    src.p = lut; src.is_f32 = 1;
+    pin.p = prelut_in; pin.is_f32 = 1;
+    pout.p = prelut_out; pout.is_f32 = 1;
+    return csp_export_3d(path, &src, size, &pin, &pout, prelut_size);
+}
+
+alwan_status alwan_spimtx_import_f64(alwan_mat3x3_f64 *matrix, alwan_f64 *offset, char const *path) {
+    double m9[9], off3[3];
+    alwan_status st;
+    int i;
+    if (!matrix) return ALWAN_E_INVALID;
+    st = spimtx_import(m9, off3, path);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < 9; i++) matrix->m[i] = m9[i];
+    if (offset) for (i = 0; i < 3; i++) offset[i] = off3[i];
+    return ALWAN_OK;
+}
+
+alwan_status alwan_spimtx_import_f32(alwan_mat3x3_f32 *matrix, alwan_f32 *offset, char const *path) {
+    double m9[9], off3[3];
+    alwan_status st;
+    int i;
+    if (!matrix) return ALWAN_E_INVALID;
+    st = spimtx_import(m9, off3, path);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < 9; i++) matrix->m[i] = (alwan_f32)m9[i];
+    if (offset) for (i = 0; i < 3; i++) offset[i] = (alwan_f32)off3[i];
+    return ALWAN_OK;
+}
+
+alwan_status alwan_spimtx_export_f64(char const *path, alwan_mat3x3_f64 const *matrix,
+                                     alwan_f64 const *offset) {
+    double m9[9], off3[3];
+    int i;
+    if (!matrix) return ALWAN_E_INVALID;
+    for (i = 0; i < 9; i++) m9[i] = matrix->m[i];
+    for (i = 0; i < 3; i++) off3[i] = offset ? offset[i] : 0.0;
+    return spimtx_export(path, m9, offset ? off3 : NULL, 0);
+}
+
+alwan_status alwan_spimtx_export_f32(char const *path, alwan_mat3x3_f32 const *matrix,
+                                     alwan_f32 const *offset) {
+    double m9[9], off3[3];
+    int i;
+    if (!matrix) return ALWAN_E_INVALID;
+    for (i = 0; i < 9; i++) m9[i] = (double)matrix->m[i];
+    for (i = 0; i < 3; i++) off3[i] = offset ? (double)offset[i] : 0.0;
+    return spimtx_export(path, m9, offset ? off3 : NULL, 1);
 }

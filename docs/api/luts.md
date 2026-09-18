@@ -1,7 +1,7 @@
 # LUT Baking, Interchange And Sampling API
 
 Bake a colour pipeline into a lookup table, move that table in and out of
-`.cube`, `.spi1d`, `.spi3d`, `.3dl` and CLF, and sample it.
+`.cube`, `.spi1d`, `.spi3d`, `.3dl`, `.csp`, `.spimtx` and CLF, and sample it.
 
 > **Precision variants:** Every function shown as `name_{T}` exists in two forms:
 > `name_f32` (single precision, `float`) and `name_f64` (double precision, `double`).
@@ -15,7 +15,8 @@ Three separate jobs live on this page, and they compose in that order:
 
 1. **Bake.** Evaluate a conversion, or a conversion plus a view transform, on a
    regular grid and write the result to a buffer you own.
-2. **Interchange.** Write that buffer as `.cube` or CLF, or read one back.
+2. **Interchange.** Write that buffer as `.cube`, `.spi1d`, `.spi3d`, `.3dl`,
+   `.csp` or CLF, or read one back.
 3. **Sample.** Interpolate the table at an arbitrary coordinate.
 
 Nothing here allocates. Every entry point writes into a buffer the caller sized,
@@ -257,10 +258,10 @@ against a number the file chose.
 
 ---
 
-## .spi1d, .spi3d and .3dl
+## .spi1d, .spi3d, .3dl, .csp and .spimtx
 
-Three more sample formats beside `.cube`, and the same caveat applies to all of
-them: they record numbers, not meaning. What a table converts from and to is
+Five more interchange formats beside `.cube`, and the same caveat applies to all
+of them: they record numbers, not meaning. What a table converts from and to is
 yours to track.
 
 The caller allocates and `lut = NULL` queries the size, the same two-pass idiom
@@ -324,6 +325,54 @@ state, and the Flame flavour is written otherwise.
 > not make that distinction and cannot read back the size-3 `.3dl` it writes, in
 > either flavour. This reader can. Suite 161 pins the case.
 
+### Cinespace .csp
+
+```c
+alwan_status alwan_csp_import_3d_{T}(alwan_{T} *lut, int *out_size,
+                                     alwan_{T} *prelut_in, alwan_{T} *prelut_out,
+                                     int *out_prelut_size, char const *path);
+alwan_status alwan_csp_export_3d_{T}(char const *path, alwan_{T} const *lut, int size,
+                                     alwan_{T} const *prelut_in, alwan_{T} const *prelut_out,
+                                     int const *prelut_size);
+```
+
+`.csp` is R-fastest on disk, like `.cube`, unlike the two above. What makes it
+different is the **prelut**: a per-channel piecewise-linear remap applied to the
+input before the cube is addressed, which is how a shaper for log material is
+stored. Each channel carries its own point count, and they need not agree.
+
+> **A prelut is never dropped silently.** It cannot be delivered through a
+> cube-only signature, so passing `NULL` for `prelut_in` and `prelut_out` against
+> a file whose prelut is not the identity returns `ALWAN_E_INVALID`. The ordinary
+> file, whose prelut is the two-point identity every writer emits when there is
+> no shaper, reads with `NULL`. Query first with `lut = NULL` to size the
+> buffers: the cube edge and the three counts are set from the header.
+
+The prelut buffers are packed channel after channel, by the counts reported:
+channel 0's points, then channel 1's, then channel 2's. On export, pass all
+three prelut arguments or none; none writes the two-point identity.
+
+A prelut of more than 1024 points per channel is taken as a real shaper rather
+than compared point by point, so it is refused when no buffers are supplied.
+
+### Sony .spimtx
+
+```c
+alwan_status alwan_spimtx_import_{T}(alwan_mat3x3_{T} *matrix, alwan_{T} *offset,
+                                     char const *path);
+alwan_status alwan_spimtx_export_{T}(char const *path, alwan_mat3x3_{T} const *matrix,
+                                     alwan_{T} const *offset);
+```
+
+Twelve numbers: three rows of a 3x3 matrix, each followed by that channel's
+offset. `offset` may be `NULL` on both sides; on export that writes zeros.
+
+> **The file holds the offsets in 16-bit code units.** An offset of 65535 on disk
+> adds exactly 1.0 to the channel. This was measured against OCIO rather than
+> read off a specification, and suite 161 pins it. These entry points take and
+> return the offset in the data's own units, so the file's convention stays in
+> the file.
+
 ### What is checked
 
 Suite 161 holds each reader to OpenColorIO's own evaluation of the same file at
@@ -334,8 +383,21 @@ the axes went, and an ordering mistake would survive.
 
 The writers are not compared against OCIO's bytes, since two writers can differ
 in spacing and digits and mean the same table. They are read back through the
-reader that was just pinned: `.spi3d` and `.spi1d` round trip bit for bit, and
-`.3dl` to within half a step of the depth asked for.
+reader that was just pinned: `.spi3d`, `.spi1d` and `.csp` round trip bit for
+bit, prelut included, and `.3dl` to within half a step of the depth asked for.
+
+Two cases need a different bound, and the suite says why.
+
+- A `.csp` with a real shaper is checked end to end: the prelut alwan read is
+  applied, the cube is sampled, and the result must land where OCIO lands. OCIO
+  resamples a prelut onto a uniform grid before applying it rather than
+  interpolating the file's own points, so the two agree exactly at the ends and
+  differ by about a thousandth through a curved shaper. That bound still catches
+  every structural mistake, which miss by a tenth or more. The exact parse is
+  pinned separately on a file the generator wrote, whose three prelut blocks have
+  different point counts.
+- `.spimtx` has no grid at all, so it is applied to probe points and compared,
+  and its matrix and offsets are pinned entry by entry.
 
 ---
 
