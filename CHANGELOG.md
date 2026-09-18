@@ -92,6 +92,48 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **CxF3 measurement files.** `alwan_chart_load_{T}` now reads CxF3 (ISO 17972-1:2015)
+  beside CGATS.17, which is the format the spectrophotometer vendors write. There is no new
+  entry point and no format argument: the loader looks at the first byte that is not
+  whitespace, sends an XML buffer to the CxF reader and everything else to the CGATS one, and
+  fills the same `alwan_chart_{T}`. `alwan_chart_xyz_{T}`, `alwan_chart_reflectance_{T}`,
+  `alwan_chart_lab_{T}`, `alwan_chart_device_values_{T}`, `alwan_chart_header_{T}` and
+  `alwan_cmyk_model_from_chart_{T}` all answer for a CxF unchanged, which is the reason to read
+  a second format rather than to grow a parallel API. Bytes that open with `<` but are not a
+  CxF fall through to the CGATS reader instead of being claimed, so the error describes what is
+  actually wrong with them. The export count is unchanged.
+
+  An `Object` becomes a patch; `ReflectanceSpectrum`, `ColorCIELab` and `ColorCIEXYZ` carry the
+  colorimetry in the order the columns have in CGATS; `ColorCMYK` and `ColorRGB` the device
+  values; the `ColorSpecification` the illuminant, the observer and the wavelength grid when
+  the spectra do not state their own; `FileInformation` the header keys. Element names are
+  matched on the local name, so `cc:`, `cxf:` and no prefix all read. Two spectral grids in one
+  file is `ALWAN_E_INVALID` rather than a resample, because resampling would be a guess about
+  which grid the caller meant.
+
+  This one is NOT testable against a reference, and the header says so. colour-science has no
+  CxF reader and neither does anything else alwan depends on, so unlike CLF there is no second
+  implementation to hand the same file to; the element shapes were written from ISO 17972-1,
+  the CxF3 core schema and X-Rite's developer documentation. What suite 163 does pin is the two
+  halves that can be: the colorimetry is colour-science's answer for the same spectra, and every
+  case that can be is written twice from one set of numbers, once as CGATS and once as CxF3,
+  with the two required to load to the same chart. A reader that dropped a patch or attached a
+  spectrum to the wrong object fails that with no CxF oracle in sight.
+
+  Writing the fixture turned up a quadrature difference worth recording. alwan closes an odd
+  last interval of Simpson's rule with a trapezoid and scipy corrects the whole integral, so on
+  an even number of sample points the two land 9.9e-06 apart for reasons that have nothing to do
+  with colour. The fixture uses 37 points, where both run plain Simpson, and the agreement is
+  then 5.6e-16.
+
+- **One XML scanner, not two.** The structural scanning the CLF reader had grown is now
+  `api/alwan_xml_common.h`, shared with the CxF reader: tags, attributes, self-closing forms,
+  comments, the declaration, a DOCTYPE, skipping an element whole, and namespace-prefix-blind
+  name comparison. Numbers stay with each caller on purpose, because CLF parses with strtod
+  under a saved `LC_NUMERIC` and the chart reader hand-parses so a comma-decimal locale cannot
+  change what a file means, and putting a number reader in the shared header would force one of
+  those choices on the other. No behaviour change; suite 162's twenty-five cases cover the port.
+
 - **CLF import.** `alwan_clf_import` reads a Common LUT Format ProcessList and
   `alwan_clf_apply_{T}_map_interleave` evaluates it, so an ACES LMT or an OCIO transform
   comes into alwan rather than only out of it. Every ProcessNode type CLF defines is

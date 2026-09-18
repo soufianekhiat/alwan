@@ -50,6 +50,7 @@
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include "alwan_xml_common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -134,90 +135,18 @@ static int clf_finite(double v) {
     return (v == v) && (v > -1e308) && (v < 1e308);
 }
 
-/* ---------------------------------------------------------------- scanning */
+/* --------------------------------------------------------------- scanning
 
-typedef struct {
-    char const *p;
-    char const *end;
-} clf_scan;
-
-static void clf_skip_space(clf_scan *s) {
-    while (s->p < s->end && (*s->p == ' ' || *s->p == '\t' || *s->p == '\r' || *s->p == '\n')) {
-        s->p++;
-    }
-}
-
-static int clf_starts_with(clf_scan const *s, char const *lit) {
-    size_t n = strlen(lit);
-    return (size_t)(s->end - s->p) >= n && strncmp(s->p, lit, n) == 0;
-}
-
-/* Skip to just past the first occurrence of lit. Returns 0 at end of input. */
-static int clf_skip_past(clf_scan *s, char const *lit) {
-    size_t n = strlen(lit);
-    while (s->p + n <= s->end) {
-        if (strncmp(s->p, lit, n) == 0) { s->p += n; return 1; }
-        s->p++;
-    }
-    s->p = s->end;
-    return 0;
-}
-
-/* An element or attribute name: letters, digits, underscore, colon, dot, dash. */
-static int clf_name_char(char c) {
-    return isalnum((unsigned char)c) || c == '_' || c == ':' || c == '.' || c == '-';
-}
-
-static int clf_read_name(clf_scan *s, char *buf, size_t cap) {
-    size_t n = 0;
-    while (s->p < s->end && clf_name_char(*s->p)) {
-        if (n + 1 < cap) buf[n] = *s->p;
-        n++;
-        s->p++;
-    }
-    buf[n < cap ? n : cap - 1] = '\0';
-    return n > 0 && n < cap;
-}
-
-/* One attribute of the element being read. Returns 1 on an attribute, 0 when the
- * element's tag ends, -1 on malformed input. *self_closing is set at the end. */
-static int clf_read_attr(clf_scan *s, char *name, char *value, int *self_closing) {
-    char quote;
-    size_t n = 0;
-    clf_skip_space(s);
-    if (s->p >= s->end) return -1;
-    if (*s->p == '/') {
-        s->p++;
-        if (s->p >= s->end || *s->p != '>') return -1;
-        s->p++;
-        *self_closing = 1;
-        return 0;
-    }
-    if (*s->p == '>') { s->p++; *self_closing = 0; return 0; }
-    if (!clf_read_name(s, name, CLF_NAME_CAP)) return -1;
-    clf_skip_space(s);
-    if (s->p >= s->end || *s->p != '=') return -1;
-    s->p++;
-    clf_skip_space(s);
-    if (s->p >= s->end || (*s->p != '"' && *s->p != '\'')) return -1;
-    quote = *s->p++;
-    while (s->p < s->end && *s->p != quote) {
-        if (n + 1 < CLF_VALUE_CAP) value[n] = *s->p;
-        n++;
-        s->p++;
-    }
-    if (s->p >= s->end) return -1;
-    s->p++;
-    if (n >= CLF_VALUE_CAP) return -1;          /* an attribute longer than we hold */
-    value[n] = '\0';
-    return 1;
-}
+ * The XML shape is scanned by alwan_xml_common.h, shared with the CxF3 reader.
+ * What stays here is CLF's own: numbers, which this file parses with strtod
+ * under a saved LC_NUMERIC where the chart reader hand-parses, and the node
+ * semantics below. */
 
 /* Exactly one number, wherever the scanner stands. */
-static int clf_read_one(clf_scan *s, double *out) {
+static int clf_read_one(alwan__xml_scan *s, double *out) {
     char *endp = NULL;
     double v;
-    clf_skip_space(s);
+    alwan__xml_skip_space(s);
     if (s->p >= s->end || *s->p == '<') return 0;
     v = strtod(s->p, &endp);
     if (endp == s->p) return 0;
@@ -228,12 +157,12 @@ static int clf_read_one(clf_scan *s, double *out) {
 }
 
 /* Read numbers until the closing tag of the element holding them. */
-static int clf_read_numbers(clf_scan *s, double *out, size_t want, size_t *got) {
+static int clf_read_numbers(alwan__xml_scan *s, double *out, size_t want, size_t *got) {
     size_t n = 0;
     for (;;) {
         char *endp = NULL;
         double v;
-        clf_skip_space(s);
+        alwan__xml_skip_space(s);
         if (s->p >= s->end) return 0;
         if (*s->p == '<') break;
         v = strtod(s->p, &endp);
@@ -275,45 +204,33 @@ static int clf_channel_index(char const *v) {
     return -1;
 }
 
-/* Skip an element's content, including any nested elements, to its close tag. */
-static int clf_skip_element(clf_scan *s, char const *name) {
-    char close[CLF_NAME_CAP + 4];
-    size_t n = strlen(name);
-    if (n + 4 >= sizeof close) return 0;
-    close[0] = '<'; close[1] = '/';
-    memcpy(close + 2, name, n);
-    close[n + 2] = '>';
-    close[n + 3] = '\0';
-    return clf_skip_past(s, close);
-}
-
-static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_name);
+static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *node_name);
 
 /* Parse the body of one ProcessNode. The scanner sits just past its open tag. */
-static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_name) {
+static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *node_name) {
     char name[CLF_NAME_CAP], value[CLF_VALUE_CAP];
     (void)node_name;
     for (;;) {
-        clf_skip_space(s);
+        alwan__xml_skip_space(s);
         if (s->p >= s->end) return ALWAN_E_INVALID;
-        if (clf_starts_with(s, "<!--")) {
-            if (!clf_skip_past(s, "-->")) return ALWAN_E_INVALID;
+        if (alwan__xml_starts_with(s, "<!--")) {
+            if (!alwan__xml_skip_past(s, "-->")) return ALWAN_E_INVALID;
             continue;
         }
         if (s->p + 1 < s->end && s->p[0] == '<' && s->p[1] == '/') {
             /* The node's own close tag ends it. */
-            if (!clf_skip_past(s, ">")) return ALWAN_E_INVALID;
+            if (!alwan__xml_skip_past(s, ">")) return ALWAN_E_INVALID;
             return ALWAN_OK;
         }
         if (*s->p != '<') { s->p++; continue; }          /* stray text */
         s->p++;
-        if (!clf_read_name(s, name, sizeof name)) return ALWAN_E_INVALID;
+        if (!alwan__xml_read_name(s, name, sizeof name)) return ALWAN_E_INVALID;
 
         if (strcmp(name, "Array") == 0) {
             int dims[4];
             int ndim = 0, self = 0, r;
             size_t want, got = 0;
-            while ((r = clf_read_attr(s, name, value, &self)) == 1) {
+            while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) {
                 if (strcmp(name, "dim") == 0) {
                     char const *q = value;
                     while (*q && ndim < 4) {
@@ -393,7 +310,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
             } else {
                 return ALWAN_E_INVALID;                  /* an Array where none belongs */
             }
-            if (!self && !clf_skip_element(s, "Array")) return ALWAN_E_INVALID;
+            if (!self && !alwan__xml_skip_element(s, "Array")) return ALWAN_E_INVALID;
             continue;
         }
 
@@ -401,7 +318,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
             int self = 0, r, ch = -1;
             double g = 1.0, a = 0.0;
             int have_a = 0;
-            while ((r = clf_read_attr(s, name, value, &self)) == 1) {
+            while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) {
                 if (strcmp(name, "exponent") == 0) g = strtod(value, NULL);
                 else if (strcmp(name, "offset") == 0) { a = strtod(value, NULL); have_a = 1; }
                 else if (strcmp(name, "channel") == 0) ch = clf_channel_index(value);
@@ -419,7 +336,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
                 op->g[ch] = g;
                 op->a[ch] = a;
             }
-            if (!self && !clf_skip_element(s, "ExponentParams")) return ALWAN_E_INVALID;
+            if (!self && !alwan__xml_skip_element(s, "ExponentParams")) return ALWAN_E_INVALID;
             continue;
         }
 
@@ -429,7 +346,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
              * and stops at their own close tag. */
             int self = 0, r;
             alwan_status st;
-            while ((r = clf_read_attr(s, name, value, &self)) == 1) { /* ignored */ }
+            while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) { /* ignored */ }
             if (r < 0) return ALWAN_E_INVALID;
             if (self) continue;
             st = clf_parse_body(s, op, node_name);
@@ -448,7 +365,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
             which = (elem[0] == 'S' && elem[1] == 'l') ? 0 :
                     (elem[0] == 'O') ? 1 : (elem[0] == 'P') ? 2 : 3;
             want = (which == 3) ? 1u : 3u;
-            while ((r = clf_read_attr(s, name, value, &self)) == 1) { /* ignored */ }
+            while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) { /* ignored */ }
             if (r < 0) return ALWAN_E_INVALID;
             if (self) return ALWAN_E_INVALID;
             if (!clf_read_numbers(s, v, want, &got) || got != want) return ALWAN_E_INVALID;
@@ -456,13 +373,13 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
             else if (which == 1) { op->cdl_offset[0] = v[0]; op->cdl_offset[1] = v[1]; op->cdl_offset[2] = v[2]; }
             else if (which == 2) { op->power[0] = v[0]; op->power[1] = v[1]; op->power[2] = v[2]; }
             else { op->sat = v[0]; }
-            if (!clf_skip_element(s, elem)) return ALWAN_E_INVALID;
+            if (!alwan__xml_skip_element(s, elem)) return ALWAN_E_INVALID;
             continue;
         }
 
         if (strcmp(name, "LogParams") == 0) {
             int self = 0, r;
-            while ((r = clf_read_attr(s, name, value, &self)) == 1) {
+            while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) {
                 double d = strtod(value, NULL);
                 if (!clf_finite(d)) return ALWAN_E_INVALID;
                 if (strcmp(name, "base") == 0) op->log_base = d;
@@ -477,7 +394,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
             if (!(op->log_base > 1.0) || op->ls_slope == 0.0 || op->lin_slope == 0.0) {
                 return ALWAN_E_INVALID;
             }
-            if (!self && !clf_skip_element(s, "LogParams")) return ALWAN_E_INVALID;
+            if (!self && !alwan__xml_skip_element(s, "LogParams")) return ALWAN_E_INVALID;
             continue;
         }
 
@@ -493,7 +410,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
                 int self = 0, r;
                 double v[1];
                 size_t got = 0;
-                while ((r = clf_read_attr(s, name, value, &self)) == 1) { /* no attributes used */ }
+                while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) { /* no attributes used */ }
                 if (r < 0) return ALWAN_E_INVALID;
                 if (self) return ALWAN_E_INVALID;
                 if (!clf_read_numbers(s, v, 1, &got) || got != 1) return ALWAN_E_INVALID;
@@ -503,7 +420,7 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
                     case 2: op->min_out = v[0]; break;
                     default: op->max_out = v[0]; break;
                 }
-                if (!clf_skip_element(s, bounds[bi])) return ALWAN_E_INVALID;
+                if (!alwan__xml_skip_element(s, bounds[bi])) return ALWAN_E_INVALID;
                 continue;
             }
         }
@@ -515,9 +432,9 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
             size_t n = strlen(name);
             if (n + 1 > sizeof elem) return ALWAN_E_INVALID;
             memcpy(elem, name, n + 1);
-            while ((r = clf_read_attr(s, name, value, &self)) == 1) { /* ignored */ }
+            while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) { /* ignored */ }
             if (r < 0) return ALWAN_E_INVALID;
-            if (!self && !clf_skip_element(s, elem)) return ALWAN_E_INVALID;
+            if (!self && !alwan__xml_skip_element(s, elem)) return ALWAN_E_INVALID;
         }
     }
 }
@@ -749,7 +666,7 @@ static void clf_free(alwan_clf *clf) {
 }
 
 static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
-    clf_scan s;
+    alwan__xml_scan s;
     alwan_clf *clf;
     char name[CLF_NAME_CAP], value[CLF_VALUE_CAP];
     char *saved;
@@ -768,21 +685,13 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
     saved = clf_save_lc_numeric();
 
     /* The prologue: declarations and comments, then <ProcessList ...>. */
-    for (;;) {
-        clf_skip_space(&s);
-        if (s.p >= s.end) { status = ALWAN_E_NODATA; goto done; }
-        if (clf_starts_with(&s, "<?")) { if (!clf_skip_past(&s, "?>")) { status = ALWAN_E_INVALID; goto done; } continue; }
-        if (clf_starts_with(&s, "<!--")) { if (!clf_skip_past(&s, "-->")) { status = ALWAN_E_INVALID; goto done; } continue; }
-        if (clf_starts_with(&s, "<!")) { if (!clf_skip_past(&s, ">")) { status = ALWAN_E_INVALID; goto done; } continue; }
-        break;
-    }
-    if (s.p >= s.end || *s.p != '<') { status = ALWAN_E_NODATA; goto done; }
+    if (!alwan__xml_skip_prologue(&s)) { status = ALWAN_E_NODATA; goto done; }
     s.p++;
-    if (!clf_read_name(&s, name, sizeof name) || strcmp(name, "ProcessList") != 0) {
+    if (!alwan__xml_read_name(&s, name, sizeof name) || strcmp(name, "ProcessList") != 0) {
         status = ALWAN_E_NODATA;                 /* not a CLF */
         goto done;
     }
-    while ((r = clf_read_attr(&s, name, value, &self)) == 1) {
+    while ((r = alwan__xml_read_attr(&s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) {
         if (strcmp(name, "id") == 0) {
             size_t n = strlen(value);
             if (n >= CLF_ID_CAP) n = CLF_ID_CAP - 1;
@@ -793,16 +702,16 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
     if (r < 0) { status = ALWAN_E_INVALID; goto done; }
 
     for (;;) {
-        clf_skip_space(&s);
+        alwan__xml_skip_space(&s);
         if (s.p >= s.end) { status = ALWAN_E_INVALID; goto done; }   /* no close tag */
-        if (clf_starts_with(&s, "<!--")) {
-            if (!clf_skip_past(&s, "-->")) { status = ALWAN_E_INVALID; goto done; }
+        if (alwan__xml_starts_with(&s, "<!--")) {
+            if (!alwan__xml_skip_past(&s, "-->")) { status = ALWAN_E_INVALID; goto done; }
             continue;
         }
-        if (clf_starts_with(&s, "</ProcessList")) break;
+        if (alwan__xml_starts_with(&s, "</ProcessList")) break;
         if (*s.p != '<') { s.p++; continue; }
         s.p++;
-        if (!clf_read_name(&s, name, sizeof name)) { status = ALWAN_E_INVALID; goto done; }
+        if (!alwan__xml_read_name(&s, name, sizeof name)) { status = ALWAN_E_INVALID; goto done; }
 
         {
             clf_op *op;
@@ -819,9 +728,9 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
                 char elem[CLF_NAME_CAP];
                 size_t n = strlen(name);
                 memcpy(elem, name, n + 1);
-                while ((r = clf_read_attr(&s, name, value, &self)) == 1) { /* ignored */ }
+                while ((r = alwan__xml_read_attr(&s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) { /* ignored */ }
                 if (r < 0) { status = ALWAN_E_INVALID; goto done; }
-                if (!self && !clf_skip_element(&s, elem)) { status = ALWAN_E_INVALID; goto done; }
+                if (!self && !alwan__xml_skip_element(&s, elem)) { status = ALWAN_E_INVALID; goto done; }
                 continue;
             } else {
                 /* A ProcessNode this reader does not implement. Applying the rest
@@ -835,7 +744,7 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
             clf_op_init(op);
             op->type = type;
 
-            while ((r = clf_read_attr(&s, name, value, &self)) == 1) {
+            while ((r = alwan__xml_read_attr(&s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) {
                 if (strcmp(name, "style") == 0) {
                     if (type == ALWAN_CLF_NODE_RANGE) {
                         if (strcmp(value, "noClamp") == 0) op->clamp = 0;

@@ -60,7 +60,14 @@ static int alwan__chart_eq_n(char const *span, size_t n, char const *key) {
  * caller running in a comma-decimal locale must still read the same file the
  * same way. Rejects trailing junk rather than accepting a prefix, so a
  * malformed cell fails the load instead of silently reading as its first
- * few digits. */
+ * few digits.
+ *
+ * NOT correctly rounded, and that is the price of the locale independence.
+ * Accumulating digit by digit can land one unit in the last place away from
+ * the nearest double to the decimal written, where the library strtod would
+ * not. One ULP is far below what any instrument reports, and every reader in
+ * this library goes through here, so two files carrying the same decimals
+ * still load to the same bits. */
 static double alwan__chart_strtod(char const *s, size_t n, int *ok) {
     size_t i = 0;
     int neg = 0, any = 0;

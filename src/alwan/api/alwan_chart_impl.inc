@@ -96,6 +96,65 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__chart_add_header)(ALWAN_CORE_CHART *
 }
 
 /* ----------------------------------------------------------------
+ * Spectral to tristimulus
+ *
+ * A spectral file integrates once, at load, so alwan_chart_xyz is a lookup
+ * whichever family the file carried. The spectra stay reachable through
+ * alwan_chart_reflectance for a caller who wants another illuminant. Shared
+ * by the CGATS and the CxF3 path, which differ in how they reach a spectrum
+ * and not at all in what one means.
+ * ---------------------------------------------------------------- */
+
+static alwan_status ALWAN_CORE_FNLIT(alwan__chart_integrate_spectra)(ALWAN_CORE_CHART *c,
+                                                                     alwan_ctx *ctx) {
+    ALWAN_CORE_SPD refl, illum, diffuser;
+    ALWAN_CORE_XYZ white;
+    alwan_status st;
+    size_t i, row;
+    memset(&refl, 0, sizeof(refl));
+    memset(&illum, 0, sizeof(illum));
+    memset(&diffuser, 0, sizeof(diffuser));
+    st = ALWAN_CORE_FNLIT(alwan_spd_illuminant)(&illum, c->illuminant, ctx);
+    if (st != ALWAN_OK) return st;
+    st = ALWAN_CORE_FNLIT(alwan_spd_create)(&refl, c->spectral_min_nm, c->spectral_max_nm, c->bands, ctx);
+    if (st != ALWAN_OK) { ALWAN_CORE_FNLIT(alwan_spd_destroy)(&illum, ctx); return st; }
+    st = ALWAN_CORE_FNLIT(alwan_spd_create)(&diffuser, c->spectral_min_nm, c->spectral_max_nm, c->bands, ctx);
+    if (st != ALWAN_OK) {
+        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&refl, ctx);
+        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&illum, ctx);
+        return st;
+    }
+
+    /* alwan_xyz_from_spd returns the raw integral, which is what an emissive
+     * SPD wants. A reflectance is relative: Y = 1 for a perfect diffuser under
+     * the same light, on the same grid. Same normalisation
+     * alwan_color_checker_data applies to its spectral targets, so the
+     * embedded and loaded paths answer alike. */
+    for (i = 0; i < diffuser.count; i++) diffuser.values[i] = (ALWAN_CORE_T)1;
+    st = ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(&white, &diffuser, &illum, c->observer,
+                                              ALWAN_INTEGRATE_SIMPSON, (ALWAN_CORE_T)0, ctx);
+    if (st == ALWAN_OK && white.y <= (ALWAN_CORE_T)0) st = ALWAN_E_DIVZERO;
+    if (st == ALWAN_OK) {
+        for (row = 0; row < c->patch_count; row++) {
+            ALWAN_CORE_XYZ xyz;
+            for (i = 0; i < c->bands; i++) refl.values[i] = c->spectra[row * c->bands + i];
+            st = ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(&xyz, &refl, &illum, c->observer,
+                                                      ALWAN_INTEGRATE_SIMPSON, (ALWAN_CORE_T)0, ctx);
+            if (st != ALWAN_OK) break;
+            c->xyz[row * 3 + 0] = xyz.x / white.y;
+            c->xyz[row * 3 + 1] = xyz.y / white.y;
+            c->xyz[row * 3 + 2] = xyz.z / white.y;
+        }
+    }
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&refl, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&illum, ctx);
+    ALWAN_CORE_FNLIT(alwan_spd_destroy)(&diffuser, ctx);
+    return st;
+}
+
+#include "alwan_chart_cxf_impl.inc"
+
+/* ----------------------------------------------------------------
  * Load from a buffer
  *
  * Two passes over the same buffer: the first reads the header and the
@@ -127,6 +186,27 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
     if (out) *out = NULL;
     if (!out || !buf || len == 0) return ALWAN_E_INVALID;
 
+    /* Skip a UTF-8 BOM: instruments write one often enough to matter. */
+    if (len >= 3 && (unsigned char)buf[0] == 0xEF &&
+        (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) bom = 3;
+
+    /* CxF3 is XML and CGATS is not, so the first byte that is not whitespace
+     * says which reader gets the buffer without anything being guessed. The
+     * CxF reader reports whether the root element proved it was one: if it did
+     * not, the bytes fall through to CGATS, which then says what is actually
+     * wrong with them. If it did, its answer stands, so a damaged CxF is not
+     * reported as a damaged CGATS file. */
+    {
+        size_t probe = bom;
+        while (probe < len && alwan__chart_is_space(buf[probe])) probe++;
+        if (probe < len && buf[probe] == '<') {
+            int is_cxf = 0;
+            alwan_status cst = ALWAN_CORE_FNLIT(alwan__chart_load_cxf)(out, buf + bom, len - bom,
+                                                                       &is_cxf, ctx);
+            if (is_cxf) return cst;
+        }
+    }
+
     c = (ALWAN_CORE_CHART *)ALWAN_ALLOC(sizeof(*c), sizeof(void *));
     if (!c) return ALWAN_E_NOMEM;
     memset(c, 0, sizeof(*c));
@@ -136,10 +216,6 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
     fields = (alwan__chart_tok *)ALWAN_ALLOC(sizeof(*fields) * ALWAN_CHART_MAX_FIELDS, sizeof(void *));
     cells  = (alwan__chart_tok *)ALWAN_ALLOC(sizeof(*cells)  * ALWAN_CHART_MAX_FIELDS, sizeof(void *));
     if (!fields || !cells) { st = ALWAN_E_NOMEM; goto fail; }
-
-    /* Skip a UTF-8 BOM: instruments write one often enough to matter. */
-    if (len >= 3 && (unsigned char)buf[0] == 0xEF &&
-        (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) bom = 3;
 
     /* --- pass 1 --- */
     pos = bom;
@@ -401,50 +477,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
         row++;
     }
 
-    /* A spectral file integrates once, here, so alwan_chart_xyz is a lookup
-     * whichever family the file carried. The spectra stay reachable through
-     * alwan_chart_reflectance for a caller who wants another illuminant. */
     if (c->source == ALWAN_CHART_SOURCE_SPECTRAL) {
-        ALWAN_CORE_SPD refl, illum, diffuser;
-        ALWAN_CORE_XYZ white;
-        memset(&refl, 0, sizeof(refl));
-        memset(&illum, 0, sizeof(illum));
-        memset(&diffuser, 0, sizeof(diffuser));
-        st = ALWAN_CORE_FNLIT(alwan_spd_illuminant)(&illum, c->illuminant, ctx);
-        if (st != ALWAN_OK) goto fail;
-        st = ALWAN_CORE_FNLIT(alwan_spd_create)(&refl, c->spectral_min_nm, c->spectral_max_nm, c->bands, ctx);
-        if (st != ALWAN_OK) { ALWAN_CORE_FNLIT(alwan_spd_destroy)(&illum, ctx); goto fail; }
-        st = ALWAN_CORE_FNLIT(alwan_spd_create)(&diffuser, c->spectral_min_nm, c->spectral_max_nm, c->bands, ctx);
-        if (st != ALWAN_OK) {
-            ALWAN_CORE_FNLIT(alwan_spd_destroy)(&refl, ctx);
-            ALWAN_CORE_FNLIT(alwan_spd_destroy)(&illum, ctx);
-            goto fail;
-        }
-
-        /* alwan_xyz_from_spd returns the raw integral, which is what an
-         * emissive SPD wants. A reflectance is relative: Y = 1 for a perfect
-         * diffuser under the same light, on the same grid. Same normalisation
-         * alwan_color_checker_data applies to its spectral targets, so the
-         * embedded and loaded paths answer alike. */
-        for (i = 0; i < diffuser.count; i++) diffuser.values[i] = (ALWAN_CORE_T)1;
-        st = ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(&white, &diffuser, &illum, c->observer,
-                                                  ALWAN_INTEGRATE_SIMPSON, (ALWAN_CORE_T)0, ctx);
-        if (st == ALWAN_OK && white.y <= (ALWAN_CORE_T)0) st = ALWAN_E_DIVZERO;
-        if (st == ALWAN_OK) {
-            for (row = 0; row < c->patch_count; row++) {
-                ALWAN_CORE_XYZ xyz;
-                for (i = 0; i < c->bands; i++) refl.values[i] = c->spectra[row * c->bands + i];
-                st = ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(&xyz, &refl, &illum, c->observer,
-                                                          ALWAN_INTEGRATE_SIMPSON, (ALWAN_CORE_T)0, ctx);
-                if (st != ALWAN_OK) break;
-                c->xyz[row * 3 + 0] = xyz.x / white.y;
-                c->xyz[row * 3 + 1] = xyz.y / white.y;
-                c->xyz[row * 3 + 2] = xyz.z / white.y;
-            }
-        }
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&refl, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&illum, ctx);
-        ALWAN_CORE_FNLIT(alwan_spd_destroy)(&diffuser, ctx);
+        st = ALWAN_CORE_FNLIT(alwan__chart_integrate_spectra)(c, ctx);
         if (st != ALWAN_OK) goto fail;
     }
 

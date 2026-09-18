@@ -19,6 +19,12 @@
  * hand gets its real values, and alwan needs no network, no per-vendor table
  * and no licence to data it cannot redistribute.
  *
+ * It also reads CxF3 (ISO 17972-1), which is what the spectrophotometer
+ * vendors write, into the same object: the loader looks at the first byte
+ * that is not whitespace and sends an XML buffer to the CxF reader in
+ * alwan_cxf_common.h. Nothing downstream of the load knows which format the
+ * chart came from, which is the reason to read a second one at all.
+ *
  * SERIAL is a header key like any other, which is what makes a serial lookup
  * an application's job rather than this library's: read the QR, scan a
  * directory, compare alwan_chart_header(c, "SERIAL"), and on a miss send the
@@ -33,6 +39,7 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_colorspace_core.h"   /* alwan_lab_to_xyz_{T}_v, for the LAB_* path */
 #include "alwan_chart_common.h"
+#include "alwan_cxf_common.h"
 #include <stdio.h>
 #include <string.h>
 

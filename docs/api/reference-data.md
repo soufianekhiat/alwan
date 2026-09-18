@@ -917,6 +917,25 @@ alwan reads OpenQualia's Measurement File Standard, which is CGATS.17-2009 with 
 header keys, carried as `.oqm.txt` beside the target or downloaded from the QR label on it. The
 same parser reads a plain CGATS batch reference file, since it is the same structure.
 
+It also reads **CxF3** (ISO 17972-1:2015), which is what the spectrophotometer vendors write.
+The loader looks at the first byte that is not whitespace: an XML buffer goes to the CxF reader
+and everything else to the CGATS one, so there is nothing to select and no format argument. A
+CxF loads into the same `alwan_chart_{T}`, which is the whole reason to read a second format:
+`alwan_chart_xyz_{T}`, `alwan_chart_reflectance_{T}` and `alwan_cmyk_model_from_chart_{T}` do
+not grow a variant, and code written against a CGATS file reads a CxF file unchanged. Bytes
+that open with `<` but are not a CxF fall through to the CGATS reader rather than being claimed,
+so the error you get describes what is actually wrong with them.
+
+What is read from a CxF: each `Object` becomes a patch, named by its `Name`, else its `Id`, else
+its position. `ReflectanceSpectrum`, `ColorCIELab`, `ColorCIEXYZ`, `ColorCMYK` and `ColorRGB`
+carry the colorimetry and the device values, in the same order of preference the columns have
+above. The `ColorSpecification` supplies the illuminant and the observer, and the wavelength
+grid when the spectra do not state their own `StartWL` and `Increment`. `FileInformation`
+becomes header keys, so `alwan_chart_header_{T}` answers for a CxF the way it does for a CGATS
+file. Element names are matched on the local name, so `cc:`, `cxf:` and no prefix at all all
+read. Two spectra of different lengths in one file is `ALWAN_E_INVALID`: `alwan_spd_{T}` is one
+uniform grid, and resampling one onto the other would be a guess about which you meant.
+
 ```c
 alwan_chart_f64 *chart = NULL;
 if (alwan_chart_load_f64(&chart, "DT-AR-2023088.oqm.txt", ctx) == ALWAN_OK) {

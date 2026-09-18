@@ -5941,6 +5941,15 @@ alwan_status alwan_color_checker_grid(int *columns, int *rows, alwan_colorchecke
  * present, then LAB_*, then reflectance columns spelled SPEC_560, SPECTRAL_NM560 or nm560,
  * which are integrated against the file's own ILLUMINANT and OBSERVER.
  *
+ * It also reads CxF3 (ISO 17972-1), which is what the spectrophotometer vendors write, into
+ * the same object. The first byte that is not whitespace decides: an XML buffer goes to the
+ * CxF reader, anything else to the CGATS one, so there is no format argument and nothing to
+ * select. Every function below answers for either. In a CxF an Object is a patch,
+ * ReflectanceSpectrum / ColorCIELab / ColorCIEXYZ carry the colorimetry in that same order of
+ * preference, ColorCMYK and ColorRGB the device values, the ColorSpecification the illuminant,
+ * observer and wavelength grid, and FileInformation the header keys. Element names are matched
+ * on the local name, so cc:, cxf: and no prefix all read.
+ *
  * A serial lookup is the application's job, and the pieces are here for it: read the QR code,
  * scan a directory of measurements, compare alwan_chart_header(chart, "SERIAL"), and on a miss
  * point the user at the vendor's measurement page. alwan does no network access.
