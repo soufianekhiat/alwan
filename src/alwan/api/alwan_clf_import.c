@@ -10,10 +10,24 @@
  * transform survives a trip through it where a .cube does not. alwan wrote CLF
  * from the start; this reads it.
  *
- * Five ProcessNode types are understood: Matrix, Range, Exponent, LUT1D and
- * LUT3D. A file carrying any other node is REFUSED rather than partly applied,
- * because a pipeline missing one of its stages is not the transform and is
- * worse than no answer at all.
+ * Every ProcessNode type CLF defines is understood: Matrix, Range, Exponent,
+ * LUT1D, LUT3D, ASC_CDL and Log. A file carrying a style one of them does not
+ * implement is REFUSED rather than partly applied, because a pipeline missing
+ * one of its stages is not the transform and is worse than no answer at all.
+ *
+ * The two added later, also measured rather than transcribed:
+ *
+ *   ASC_CDL      (in * slope + offset)^power per channel, then the saturation
+ *                about the Rec. 709 luma. Fwd and Rev hold the SOP result in
+ *                [0, 1] before the power and the final result after the
+ *                saturation; the NoClamp pair do neither and pass a negative
+ *                through the power unchanged rather than raising it.
+ *   Log          log2, log10 and their inverses; linToLog and logToLin with
+ *                the five parameters; and the camera pair, which adds a linear
+ *                segment below linSideBreak whose slope is the curve's own
+ *                slope there unless the file states one. A logarithm's input
+ *                is floored at the smallest normal float32, as OCIO does, so
+ *                log10(0) is -37.9298 rather than an infinity.
  *
  * Every number in here was measured against OpenColorIO reading the same file
  * rather than transcribed from the specification, and suite 162 pins them:
@@ -55,6 +69,18 @@ enum {
 /* Exponent styles, in the order the spec names them. */
 enum { CLF_BASIC_FWD = 0, CLF_BASIC_REV, CLF_MON_FWD, CLF_MON_REV };
 
+/* ASC_CDL styles. The two clamping ones hold the SOP result and the final result
+ * in [0, 1]; the others let both run. */
+enum { CLF_CDL_FWD = 0, CLF_CDL_REV, CLF_CDL_FWD_NC, CLF_CDL_REV_NC };
+
+/* Log styles. The camera pair carries a linear segment below linSideBreak. */
+enum { CLF_LOG_LOG2 = 0, CLF_LOG_LOG10, CLF_LOG_ANTILOG2, CLF_LOG_ANTILOG10,
+       CLF_LOG_LIN_TO_LOG, CLF_LOG_LOG_TO_LIN, CLF_LOG_CAM_LIN_TO_LOG, CLF_LOG_CAM_LOG_TO_LIN };
+
+/* OCIO floors a logarithm's input at the smallest normal float32, so log10(0) comes
+ * back as -37.9298 rather than an infinity. Measured, and matched here. */
+#define CLF_LOG_FLOOR 1.17549435e-38
+
 typedef struct {
     int type;                     /* alwan_clf_node_type */
     /* Matrix: row-major 3x4, the fourth column an offset that is zero for a 3x3 */
@@ -65,6 +91,11 @@ typedef struct {
     /* Exponent, per channel because CLF allows a channel attribute */
     double g[3], a[3];
     int style;
+    /* ASC_CDL */
+    double slope[3], cdl_offset[3], power[3], sat;
+    /* Log */
+    double log_base, ls_slope, ls_offset, lin_slope, lin_offset, lin_break, linear_slope;
+    int has_linear_slope;
     /* LUT1D: size * channels values. LUT3D: size^3 * 3, R-fastest in memory. */
     double *data;
     int size;
@@ -225,6 +256,16 @@ static void clf_op_init(clf_op *op) {
     op->clamp = 1;
     op->max_in = 1.0;
     op->max_out = 1.0;
+    for (i = 0; i < 3; i++) { op->slope[i] = 1.0; op->cdl_offset[i] = 0.0; op->power[i] = 1.0; }
+    op->sat = 1.0;
+    op->log_base = 2.0;
+    op->ls_slope = 1.0;
+    op->lin_slope = 1.0;
+    op->ls_offset = 0.0;
+    op->lin_offset = 0.0;
+    op->lin_break = 0.0;
+    op->linear_slope = 0.0;
+    op->has_linear_slope = 0;
 }
 
 static int clf_channel_index(char const *v) {
@@ -245,6 +286,8 @@ static int clf_skip_element(clf_scan *s, char const *name) {
     close[n + 3] = '\0';
     return clf_skip_past(s, close);
 }
+
+static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_name);
 
 /* Parse the body of one ProcessNode. The scanner sits just past its open tag. */
 static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_name) {
@@ -380,6 +423,64 @@ static alwan_status clf_parse_body(clf_scan *s, clf_op *op, char const *node_nam
             continue;
         }
 
+        if (strcmp(name, "SOPNode") == 0 || strcmp(name, "SatNode") == 0 ||
+            strcmp(name, "SATNode") == 0) {
+            /* These only group their children, so the same body parser reads them
+             * and stops at their own close tag. */
+            int self = 0, r;
+            alwan_status st;
+            while ((r = clf_read_attr(s, name, value, &self)) == 1) { /* ignored */ }
+            if (r < 0) return ALWAN_E_INVALID;
+            if (self) continue;
+            st = clf_parse_body(s, op, node_name);
+            if (st != ALWAN_OK) return st;
+            continue;
+        }
+
+        if (strcmp(name, "Slope") == 0 || strcmp(name, "Offset") == 0 ||
+            strcmp(name, "Power") == 0 || strcmp(name, "Saturation") == 0) {
+            int self = 0, r, which;
+            double v[3];
+            size_t got = 0, want;
+            char elem[CLF_NAME_CAP];
+            size_t ln = strlen(name);
+            memcpy(elem, name, ln + 1);
+            which = (elem[0] == 'S' && elem[1] == 'l') ? 0 :
+                    (elem[0] == 'O') ? 1 : (elem[0] == 'P') ? 2 : 3;
+            want = (which == 3) ? 1u : 3u;
+            while ((r = clf_read_attr(s, name, value, &self)) == 1) { /* ignored */ }
+            if (r < 0) return ALWAN_E_INVALID;
+            if (self) return ALWAN_E_INVALID;
+            if (!clf_read_numbers(s, v, want, &got) || got != want) return ALWAN_E_INVALID;
+            if (which == 0) { op->slope[0] = v[0]; op->slope[1] = v[1]; op->slope[2] = v[2]; }
+            else if (which == 1) { op->cdl_offset[0] = v[0]; op->cdl_offset[1] = v[1]; op->cdl_offset[2] = v[2]; }
+            else if (which == 2) { op->power[0] = v[0]; op->power[1] = v[1]; op->power[2] = v[2]; }
+            else { op->sat = v[0]; }
+            if (!clf_skip_element(s, elem)) return ALWAN_E_INVALID;
+            continue;
+        }
+
+        if (strcmp(name, "LogParams") == 0) {
+            int self = 0, r;
+            while ((r = clf_read_attr(s, name, value, &self)) == 1) {
+                double d = strtod(value, NULL);
+                if (!clf_finite(d)) return ALWAN_E_INVALID;
+                if (strcmp(name, "base") == 0) op->log_base = d;
+                else if (strcmp(name, "logSideSlope") == 0) op->ls_slope = d;
+                else if (strcmp(name, "logSideOffset") == 0) op->ls_offset = d;
+                else if (strcmp(name, "linSideSlope") == 0) op->lin_slope = d;
+                else if (strcmp(name, "linSideOffset") == 0) op->lin_offset = d;
+                else if (strcmp(name, "linSideBreak") == 0) op->lin_break = d;
+                else if (strcmp(name, "linearSlope") == 0) { op->linear_slope = d; op->has_linear_slope = 1; }
+            }
+            if (r < 0) return ALWAN_E_INVALID;
+            if (!(op->log_base > 1.0) || op->ls_slope == 0.0 || op->lin_slope == 0.0) {
+                return ALWAN_E_INVALID;
+            }
+            if (!self && !clf_skip_element(s, "LogParams")) return ALWAN_E_INVALID;
+            continue;
+        }
+
         {
             /* The Range bounds are elements with text content. */
             static char const *const bounds[4] = { "minInValue", "maxInValue",
@@ -487,6 +588,106 @@ static void clf_lut3d_sample(clf_op const *op, double const *in, double *out) {
     }
 }
 
+/* ASC CDL. The SOP is out = (in * slope + offset)^power per channel, then the
+ * saturation is applied about the Rec. 709 luma. Measured against OCIO: the
+ * clamping styles hold the SOP result in [0, 1] BEFORE the power and the final
+ * result in [0, 1] after the saturation; the no-clamp styles do neither and
+ * pass a negative through the power unchanged rather than raising it. */
+static double clf_cdl_luma(double const *v) {
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+}
+
+static double clf_unit(double x) {
+    if (!(x > 0.0)) return 0.0;                 /* NaN lands here too */
+    return x > 1.0 ? 1.0 : x;
+}
+
+static void clf_apply_cdl(clf_op const *op, double *v) {
+    int const clamp = (op->style == CLF_CDL_FWD || op->style == CLF_CDL_REV);
+    int const reverse = (op->style == CLF_CDL_REV || op->style == CLF_CDL_REV_NC);
+    double luma;
+    int c;
+
+    if (!reverse) {
+        for (c = 0; c < 3; c++) {
+            double x = v[c] * op->slope[c] + op->cdl_offset[c];
+            if (clamp) x = clf_unit(x);
+            v[c] = (x > 0.0) ? pow(x, op->power[c]) : x;
+            if (clamp) v[c] = clf_unit(v[c]);
+        }
+        luma = clf_cdl_luma(v);
+        for (c = 0; c < 3; c++) v[c] = luma + op->sat * (v[c] - luma);
+        if (clamp) for (c = 0; c < 3; c++) v[c] = clf_unit(v[c]);
+        return;
+    }
+
+    /* The same stages undone, in the other order. */
+    if (clamp) for (c = 0; c < 3; c++) v[c] = clf_unit(v[c]);
+    luma = clf_cdl_luma(v);
+    if (op->sat != 0.0) {
+        for (c = 0; c < 3; c++) v[c] = luma + (v[c] - luma) / op->sat;
+    }
+    for (c = 0; c < 3; c++) {
+        double x = v[c];
+        if (clamp) x = clf_unit(x);
+        if (x > 0.0 && op->power[c] != 0.0) x = pow(x, 1.0 / op->power[c]);
+        x = (op->slope[c] != 0.0) ? (x - op->cdl_offset[c]) / op->slope[c] : 0.0;
+        v[c] = clamp ? clf_unit(x) : x;
+    }
+}
+
+/* Log. The plain styles are the logarithm and its inverse; linToLog and its
+ * inverse carry the five parameters; the camera pair adds a linear segment
+ * below linSideBreak whose slope is the curve's own slope there unless the file
+ * states one. All measured against OCIO. */
+static double clf_log_channel(clf_op const *op, double x) {
+    double const lb = log(op->log_base);
+    switch (op->style) {
+        case CLF_LOG_LOG2:
+            return log(x < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : x) / log(2.0);
+        case CLF_LOG_LOG10:
+            return log10(x < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : x);
+        case CLF_LOG_ANTILOG2:
+            return pow(2.0, x);
+        case CLF_LOG_ANTILOG10:
+            return pow(10.0, x);
+        case CLF_LOG_LIN_TO_LOG: {
+            double const arg = op->lin_slope * x + op->lin_offset;
+            return op->ls_slope * log(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb + op->ls_offset;
+        }
+        case CLF_LOG_LOG_TO_LIN: {
+            double const e = (x - op->ls_offset) / op->ls_slope;
+            return (pow(op->log_base, e) - op->lin_offset) / op->lin_slope;
+        }
+        case CLF_LOG_CAM_LIN_TO_LOG: {
+            double const xb = op->lin_break;
+            double const arg = op->lin_slope * xb + op->lin_offset;
+            double const yb = op->ls_slope * log(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb
+                              + op->ls_offset;
+            double const m = op->has_linear_slope ? op->linear_slope
+                                                  : (op->ls_slope * op->lin_slope) / (arg * lb);
+            if (x <= xb) return yb + (x - xb) * m;
+            {
+                double const a2 = op->lin_slope * x + op->lin_offset;
+                return op->ls_slope * log(a2 < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : a2) / lb + op->ls_offset;
+            }
+        }
+        default: {
+            double const xb = op->lin_break;
+            double const arg = op->lin_slope * xb + op->lin_offset;
+            double const yb = op->ls_slope * log(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb
+                              + op->ls_offset;
+            double const m = op->has_linear_slope ? op->linear_slope
+                                                  : (op->ls_slope * op->lin_slope) / (arg * lb);
+            if (x <= yb) return (m != 0.0) ? xb + (x - yb) / m : xb;
+            {
+                double const e = (x - op->ls_offset) / op->ls_slope;
+                return (pow(op->log_base, e) - op->lin_offset) / op->lin_slope;
+            }
+        }
+    }
+}
+
 static void clf_apply_op(clf_op const *op, double *v) {
     int c;
     switch (op->type) {
@@ -517,6 +718,12 @@ static void clf_apply_op(clf_op const *op, double *v) {
             break;
         case ALWAN_CLF_NODE_LUT1D:
             for (c = 0; c < 3; c++) v[c] = clf_lut1d_sample(op, v[c], c);
+            break;
+        case ALWAN_CLF_NODE_ASC_CDL:
+            clf_apply_cdl(op, v);
+            break;
+        case ALWAN_CLF_NODE_LOG:
+            for (c = 0; c < 3; c++) v[c] = clf_log_channel(op, v[c]);
             break;
         default: {
             double o[3];
@@ -605,6 +812,8 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
             else if (strcmp(name, "Exponent") == 0) type = ALWAN_CLF_NODE_EXPONENT;
             else if (strcmp(name, "LUT1D") == 0) type = ALWAN_CLF_NODE_LUT1D;
             else if (strcmp(name, "LUT3D") == 0) type = ALWAN_CLF_NODE_LUT3D;
+            else if (strcmp(name, "ASC_CDL") == 0) type = ALWAN_CLF_NODE_ASC_CDL;
+            else if (strcmp(name, "Log") == 0) type = ALWAN_CLF_NODE_LOG;
             else if (strcmp(name, "Description") == 0 || strcmp(name, "InputDescriptor") == 0 ||
                      strcmp(name, "OutputDescriptor") == 0 || strcmp(name, "Info") == 0) {
                 char elem[CLF_NAME_CAP];
@@ -633,6 +842,22 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
                         else if (strcmp(value, "Clamp") != 0 && strcmp(value, "clamp") != 0) {
                             status = ALWAN_E_NODATA; goto done;
                         }
+                    } else if (type == ALWAN_CLF_NODE_ASC_CDL) {
+                        if (strcmp(value, "Fwd") == 0) style = CLF_CDL_FWD;
+                        else if (strcmp(value, "Rev") == 0) style = CLF_CDL_REV;
+                        else if (strcmp(value, "FwdNoClamp") == 0) style = CLF_CDL_FWD_NC;
+                        else if (strcmp(value, "RevNoClamp") == 0) style = CLF_CDL_REV_NC;
+                        else { status = ALWAN_E_NODATA; goto done; }
+                    } else if (type == ALWAN_CLF_NODE_LOG) {
+                        if (strcmp(value, "log2") == 0) style = CLF_LOG_LOG2;
+                        else if (strcmp(value, "log10") == 0) style = CLF_LOG_LOG10;
+                        else if (strcmp(value, "antiLog2") == 0) style = CLF_LOG_ANTILOG2;
+                        else if (strcmp(value, "antiLog10") == 0) style = CLF_LOG_ANTILOG10;
+                        else if (strcmp(value, "linToLog") == 0) style = CLF_LOG_LIN_TO_LOG;
+                        else if (strcmp(value, "logToLin") == 0) style = CLF_LOG_LOG_TO_LIN;
+                        else if (strcmp(value, "cameraLinToLog") == 0) style = CLF_LOG_CAM_LIN_TO_LOG;
+                        else if (strcmp(value, "cameraLogToLin") == 0) style = CLF_LOG_CAM_LOG_TO_LIN;
+                        else { status = ALWAN_E_NODATA; goto done; }
                     } else if (type == ALWAN_CLF_NODE_EXPONENT) {
                         if (strcmp(value, "basicFwd") == 0) style = CLF_BASIC_FWD;
                         else if (strcmp(value, "basicRev") == 0) style = CLF_BASIC_REV;
@@ -643,7 +868,8 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
                 }
             }
             if (r < 0) { status = ALWAN_E_INVALID; goto done; }
-            if (type == ALWAN_CLF_NODE_EXPONENT) {
+            if (type == ALWAN_CLF_NODE_EXPONENT || type == ALWAN_CLF_NODE_ASC_CDL ||
+                type == ALWAN_CLF_NODE_LOG) {
                 if (style < 0) { status = ALWAN_E_INVALID; goto done; }   /* style is required */
                 op->style = style;
             }

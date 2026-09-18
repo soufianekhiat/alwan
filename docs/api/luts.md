@@ -567,7 +567,8 @@ typedef struct alwan_clf_s alwan_clf;
 
 typedef enum {
     ALWAN_CLF_NODE_MATRIX, ALWAN_CLF_NODE_RANGE, ALWAN_CLF_NODE_EXPONENT,
-    ALWAN_CLF_NODE_LUT1D,  ALWAN_CLF_NODE_LUT3D
+    ALWAN_CLF_NODE_LUT1D,  ALWAN_CLF_NODE_LUT3D,  ALWAN_CLF_NODE_ASC_CDL,
+    ALWAN_CLF_NODE_LOG
 } alwan_clf_node_type;
 
 alwan_status alwan_clf_import(alwan_clf **out, char const *path, alwan_ctx *ctx);
@@ -587,14 +588,17 @@ Read a ProcessList and evaluate it, so an ACES LMT or an OCIO transform comes
 into alwan rather than only out of it. The object owns its tables; free it with
 `alwan_clf_destroy`. `ctx` is taken for symmetry and not used.
 
-Five ProcessNode types are understood: Matrix (3x3 or 3x4), Range, Exponent
-(`basicFwd`, `basicRev`, `monCurveFwd`, `monCurveRev`), LUT1D and LUT3D.
+Every ProcessNode type CLF defines is understood: Matrix (3x3 or 3x4), Range,
+Exponent (`basicFwd`, `basicRev`, `monCurveFwd`, `monCurveRev`), LUT1D, LUT3D,
+ASC_CDL (`Fwd`, `Rev`, `FwdNoClamp`, `RevNoClamp`) and Log (`log2`, `log10`,
+`antiLog2`, `antiLog10`, `linToLog`, `logToLin`, `cameraLinToLog`,
+`cameraLogToLin`).
 
-> **A file carrying any other node is refused, not partly applied.** A
-> ProcessList missing one of its stages is not the transform, and a wrong answer
-> is worse than none, so an ASC_CDL or a Log node returns `ALWAN_E_NODATA` for
-> the whole file. The same goes for an Exponent style this reader does not
-> implement.
+> **A file carrying anything else is refused, not partly applied.** A ProcessList
+> missing one of its stages is not the transform, and a wrong answer is worse
+> than none, so one of the nodes OCIO writes into a CTF but CLF does not define,
+> such as `ExposureContrast` or `FixedFunction`, returns `ALWAN_E_NODATA` for the
+> whole file. The same goes for a style one of the seven does not list.
 
 Evaluation runs in double on both precision paths, because a CLF is decimal text
 and there is nothing an f32 pass would preserve.
@@ -610,9 +614,17 @@ evaluated by OpenColorIO, and the pair is what suite 162 holds the reader to:
 | basicFwd / basicRev | `max(x, 0)^g` and `max(x, 0)^(1/g)` |
 | monCurveFwd | a linear segment below `xb = a / (g - 1)`, then `((x + a) / (1 + a))^g`; the segment's slope is `yb / xb` with `yb` the curve at `xb`, so value and slope both carry across, and negative input stays on the segment |
 | monCurveRev | the same with the axes exchanged |
+| ASC_CDL | `(in * slope + offset)^power` per channel, then the saturation about the Rec. 709 luma. `Fwd` and `Rev` hold the SOP result in `[0, 1]` before the power and the final result after the saturation; the NoClamp pair do neither and pass a negative through the power unchanged |
+| log2 / log10 | the logarithm, with the input floored at the smallest normal float32, so `log10(0)` is -37.9298 and `log2(0)` is -126 |
+| linToLog | `logSideSlope * log_base(linSideSlope * x + linSideOffset) + logSideOffset`, with the same floor |
+| logToLin | that inverted |
+| cameraLinToLog | the same curve with a linear segment below `linSideBreak`, whose slope is the curve's own slope there unless `linearSlope` is given |
+| cameraLogToLin | that inverted |
 
-Worst against OCIO over eleven cases: 2.8e-05, which is OCIO's own float32
-evaluation of an exponent. The Matrix, Range and LUT cases sit at 1e-8.
+Worst against OCIO over twenty-five cases: 5.3e-03 on `logToLin`, whose answer
+reaches 1585, which is 3.4e-06 of the value. Held per case at 3e-05 of the case's
+own peak, because OCIO evaluates in float32 and its `pow` is a fast
+approximation. The Matrix, Range and LUT cases sit at 1e-8.
 
 > **One trap, recorded because it produced four confident wrong answers before
 > it was caught.** OCIO caches a processor against the file *path*. Reusing a

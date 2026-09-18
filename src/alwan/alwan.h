@@ -8603,10 +8603,12 @@ alwan_status alwan_spimtx_export_f32(char const *path, alwan_mat3x3_f32 const *m
  * transform survives a trip through it where a .cube does not. These read one
  * back and evaluate it.
  *
- * Five ProcessNode types are understood: Matrix, Range, Exponent, LUT1D and
- * LUT3D. A file carrying any other node is REFUSED with ALWAN_E_NODATA rather
- * than partly applied, because a pipeline missing one of its stages is not the
- * transform, and a wrong answer is worse than none.
+ * Every ProcessNode type CLF defines is understood: Matrix, Range, Exponent,
+ * LUT1D, LUT3D, ASC_CDL and Log. A file carrying anything else, such as one of
+ * the nodes OCIO writes into a CTF, or a style outside those seven nodes'
+ * lists, is REFUSED with ALWAN_E_NODATA rather than partly applied, because a
+ * pipeline missing one of its stages is not the transform, and a wrong answer
+ * is worse than none.
  *
  * The semantics were measured against OpenColorIO reading the same file rather
  * than transcribed, and suite 162 pins them. Note that CLF orders a LUT3D
@@ -8621,7 +8623,9 @@ typedef enum {
     ALWAN_CLF_NODE_RANGE = 1,
     ALWAN_CLF_NODE_EXPONENT = 2,
     ALWAN_CLF_NODE_LUT1D = 3,
-    ALWAN_CLF_NODE_LUT3D = 4
+    ALWAN_CLF_NODE_LUT3D = 4,
+    ALWAN_CLF_NODE_ASC_CDL = 5,
+    ALWAN_CLF_NODE_LOG = 6
 } alwan_clf_node_type;
 
 /* Read a ProcessList. The object owns its tables; free it with

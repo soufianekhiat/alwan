@@ -94,21 +94,33 @@ All notable changes to this project will be documented in this file.
 
 - **CLF import.** `alwan_clf_import` reads a Common LUT Format ProcessList and
   `alwan_clf_apply_{T}_map_interleave` evaluates it, so an ACES LMT or an OCIO transform
-  comes into alwan rather than only out of it. Five ProcessNode types are understood:
-  Matrix (3x3 or 3x4), Range, Exponent in all four of its styles, LUT1D and LUT3D.
+  comes into alwan rather than only out of it. Every ProcessNode type CLF defines is
+  understood: Matrix (3x3 or 3x4), Range, Exponent in all four of its styles, LUT1D,
+  LUT3D, ASC_CDL in all four of its styles, and Log in all eight of its styles.
   `alwan_clf_node_count` and `alwan_clf_node_type_at` say what was read, and
   `alwan_clf_destroy` frees it. The XML is scanned by a reader that understands exactly
   CLF's shape rather than a general parser, and the whole file is read into memory first,
   so the sizes a header declares and the data that follows cannot disagree.
 
-  A file carrying any other node is REFUSED with `ALWAN_E_NODATA` rather than partly
+  A file carrying anything else is REFUSED with `ALWAN_E_NODATA` rather than partly
   applied: a ProcessList missing one of its stages is not the transform, and a wrong
-  answer is worse than none.
+  answer is worse than none. That covers the nodes OCIO writes into a CTF but CLF does
+  not define, such as `ExposureContrast`, and any style outside the seven nodes' lists.
 
   What each node means was measured against OpenColorIO reading the same file rather
-  than transcribed, and suite 162 pins it over eleven cases, each node alone and one
-  chain of five. Worst 2.8e-05, which is OCIO's own float32 evaluation of an exponent;
-  the Matrix, Range and LUT cases sit at 1e-8.
+  than transcribed, and suite 162 pins it over twenty-five cases: each node and style
+  alone, and two chains, because a reader can get every node right and still apply them
+  in the wrong order. Each case is held to 3e-05 of its own peak answer rather than a
+  fixed distance, since OCIO evaluates in float32 and its `pow` is a fast approximation:
+  `antiLog10(1.4)` is 25.12 and OCIO puts it 6.7e-05 away, while `log2` of the smallest
+  normal float is -126 and matches to 1.5e-05. The Matrix, Range and LUT cases sit at
+  1e-8.
+
+  Two details of the Log node are worth recording because they are not in the text of
+  the specification. OCIO floors a logarithm's input at the smallest normal float32, so
+  `log10(0)` is -37.9298 rather than an infinity, and alwan matches that. The camera
+  styles' linear segment below `linSideBreak` takes the curve's own slope at the break
+  unless the file states `linearSlope`.
 
 - **3D LUT inversion.** `alwan_lut3d_invert_{T}` builds the cube that undoes a cube:
   Newton's method per node on the 3x3 system, the Jacobian by central differences over

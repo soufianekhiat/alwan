@@ -639,21 +639,21 @@ Re-run it against any checkout to reproduce the table.
 |---|---|
 | Test suites | 162, all passing |
 | Test cases | 1,042 |
-| Checks executed per run | 191,544 |
-| Assertion sites in the tests | 4,366 |
+| Checks executed per run | 192,006 |
+| Assertion sites in the tests | 4,380 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 429 |
 | Embedded data tables | 947 |
 | Exported symbols | 1,919 |
-| Internal symbols reached by a test or a public entry point | 202 of 226 (89%) |
+| Internal symbols reached by a test or a public entry point | 206 of 230 (90%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL under dxc | 40 of 43 |
 
 Two of these deserve the emphasis:
 
-**191,544 checks per run** is what actually executes, not what is written. A
+**192,006 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,366 assertion sites would undersell the suite more than
+so counting the 4,380 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
