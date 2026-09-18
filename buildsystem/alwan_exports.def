@@ -331,6 +331,18 @@ EXPORTS
     alwan_colour_correction_matrix_cheung2004_f64
     alwan_colour_correction_matrix_finlayson2015_f32
     alwan_colour_correction_matrix_finlayson2015_f64
+    alwan_colour_solid_bins
+    alwan_colour_solid_contains_f32
+    alwan_colour_solid_contains_f64
+    alwan_colour_solid_create_f32
+    alwan_colour_solid_create_f64
+    alwan_colour_solid_destroy
+    alwan_colour_solid_num_facets
+    alwan_colour_solid_num_vertices
+    alwan_colour_solid_vertices_f32
+    alwan_colour_solid_vertices_f64
+    alwan_colour_solid_white_f32
+    alwan_colour_solid_white_f64
     alwan_complementary_wavelength_f32
     alwan_complementary_wavelength_f64
     alwan_content_light_level_compute_f32

@@ -92,6 +92,40 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **The optimal colour solid, and no convex hull.** `alwan_colour_solid_create_{T}` builds
+  the Rosch-MacAdam solid for an observer and an illuminant, and
+  `alwan_colour_solid_contains_{T}` says whether a tristimulus is a colour a surface could
+  have at all. Pointer's gamut, which alwan already had, is a chromaticity boundary measured
+  from real samples; this is the harder limit underneath it, and it is computed rather than
+  tabulated.
+
+  The implementation is short because the set has a name. A reflectance lies in [0, 1] at each
+  wavelength, so the achievable tristimulus form `{ sum_i R_i w_i : 0 <= R_i <= 1 }`, which is
+  a zonotope: the image of a cube under a linear map. A zonotope's support in a direction is
+  `sum_i max(0, n . w_i)`, because the best reflectance for that direction is 1 wherever the
+  dot product is positive, and its facet normals are the cross products of pairs of generators.
+  So membership is exact with two dot products per facet, and needs no hull library, no
+  Delaunay triangulation and none of the degeneracy handling either would bring. The vertices
+  are the classical optimal colour stimuli, which fall out of the same fact and are
+  Schrodinger's two-transition reflectances.
+
+  `alwan_colour_solid_vertices_{T}`, `_white_{T}`, `_num_vertices`, `_num_facets` and `_bins`
+  report what was built. `bins` is 3 to 256; the build is cubic in it.
+
+  Suite 164 pins two different claims against colour-science: the vertices term by term, worst
+  2.4e-15 over four observer and illuminant combinations, and membership over 480 probes.
+  colour answers membership with a Delaunay mesh and alwan answers from the facets, so
+  agreement between two different algorithms for one set is evidence the identity holds rather
+  than a restatement of the code. The probes include vertices nudged a thousandth in and out
+  along the direction they are extreme in, which is where a hull and a facet test would part
+  company if they were going to. All 480 agree.
+
+  One detail worth recording: the quadrature is rectangles, not the trapezoid rule
+  `alwan_xyz_from_spd_{T}` applies. A pulse wave is a band that is wholly on or wholly off, so
+  weighting the two end bands at half would contradict what the construction means. The
+  generators come from `alwan_spectral_weights_observer_{T}` with the end columns doubled and
+  the rows renormalised, which reproduces colour-science's own generator matrix to 1.7e-16.
+
 - **CxF3 measurement files.** `alwan_chart_load_{T}` now reads CxF3 (ISO 17972-1:2015)
   beside CGATS.17, which is the format the spectrophotometer vendors write. There is no new
   entry point and no format argument: the loader looks at the first byte that is not

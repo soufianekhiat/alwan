@@ -250,6 +250,73 @@ Test whether an xy chromaticity falls within Pointer's gamut (the gamut of real 
 
 ---
 
+### The optimal colour solid
+
+```c
+typedef struct alwan_colour_solid_s alwan_colour_solid;
+
+alwan_status alwan_colour_solid_create_{T}(alwan_colour_solid **out,
+                                           alwan_{T} wavelength_min, alwan_{T} wavelength_max,
+                                           size_t bins, alwan_observer_type observer,
+                                           alwan_illuminant illuminant, alwan_ctx *ctx);
+void alwan_colour_solid_destroy(alwan_colour_solid *solid, alwan_ctx *ctx);
+
+size_t alwan_colour_solid_num_vertices(alwan_colour_solid const *solid);
+size_t alwan_colour_solid_num_facets(alwan_colour_solid const *solid);
+size_t alwan_colour_solid_bins(alwan_colour_solid const *solid);
+
+alwan_status alwan_colour_solid_vertices_{T}(alwan_xyz_{T} *out, size_t capacity,
+                                             alwan_colour_solid const *solid);
+alwan_status alwan_colour_solid_white_{T}(alwan_xyz_{T} *out, alwan_colour_solid const *solid);
+alwan_status alwan_colour_solid_contains_{T}(int *inside, alwan_colour_solid const *solid,
+                                             alwan_xyz_{T} const *xyz, alwan_{T} tolerance);
+```
+
+Pointer's gamut above is a chromaticity boundary measured from real samples. This is the
+harder limit underneath it: every tristimulus a surface **could** have under one light and
+one observer, whatever the surface is made of. The Rosch-MacAdam solid.
+
+A reflectance lies in `[0, 1]` at each wavelength, so the set of achievable tristimulus is
+
+```
+{ sum_i R_i w_i : 0 <= R_i <= 1 },   w_i = k S_i xbar_i
+```
+
+with `k` chosen so a perfect reflector reads `Y = 1`. That is a **zonotope**, the image of a
+cube under a linear map, and naming it is what makes this code short. A zonotope's support in
+a direction `n` is `sum_i max(0, n . w_i)`, because the best reflectance for that direction is
+simply 1 wherever `n . w_i` is positive, and its facet normals are the cross products of pairs
+of generators. So `alwan_colour_solid_contains_{T}` is exact with two dot products per facet
+and needs no convex hull, no Delaunay triangulation, and none of the degeneracy handling
+either would bring.
+
+The vertices are the classical optimal colour stimuli and they fall out of the same fact.
+Maximising `n . x` over the cube picks `R_i = 1` exactly where `n . w_i > 0`, and for a
+three-dimensional colour signal that changes sign at most twice as `n` turns, which is
+Schrodinger's result: the optimal reflectances are the ones with at most two transitions. There
+are `bins * (bins - 1) + 2` of them and they come back in the order colour-science's
+`generate_pulse_waves` produces, so the two can be compared term by term.
+
+**Choosing `bins`.** It is the number of wavelength bands, 3 to 256. Building the solid is
+cubic in it and the object then holds up to `bins * (bins - 1) / 2` facets, so pick the
+resolution the question needs rather than the largest. A band is wholly on or wholly off in
+this construction, so the quadrature is rectangles, not the trapezoid rule
+`alwan_xyz_from_spd_{T}` would apply; the difference is the two end bands.
+
+`tolerance` is in XYZ units and is applied outward, so 0 tests the solid itself and a small
+positive value admits a point that rounding put just outside. A NaN component is
+`ALWAN_E_INVALID` rather than an answer, because every comparison against a NaN is false and
+the point would otherwise read as inside.
+
+Suite 164 pins two different claims against colour-science: the vertices term by term, worst
+2.4e-15, and membership over 480 probes, which colour answers with a Delaunay mesh and alwan
+answers from the facets. Agreement between two different algorithms for one set is evidence the
+identity holds rather than a restatement of the code. The probes include vertices nudged a
+thousandth in and out along the direction they are extreme in, which is where a hull and a
+facet test would part company if they were going to.
+
+---
+
 ### Dominant Wavelength and Excitation Purity
 
 ```c

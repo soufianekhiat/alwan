@@ -3003,6 +3003,62 @@ alwan_status alwan_spd_analyze_shape_f32(alwan_spd_shape_f32 *shape_out, alwan_s
 int alwan_is_within_pointer_gamut_f32(alwan_vec2_f32 const *xy);
 int alwan_is_within_pointer_gamut_f64(alwan_vec2_f64 const *xy);
 
+/* ----------------------------------------------------------------
+ * Optimal colour solid (Rosch-MacAdam)
+ *
+ * The set of every tristimulus a SURFACE can have, under one light and one
+ * observer. A reflectance lies in [0, 1] at each wavelength, so the set is
+ *
+ *     { sum_i R_i w_i : 0 <= R_i <= 1 },   w_i = k S_i xbar_i
+ *
+ * with k such that a perfect reflector reads Y = 1. That is a zonotope, which
+ * is what makes membership exact here rather than a mesh test: a zonotope's
+ * support in a direction is sum_i max(0, n . w_i), and its facet normals are
+ * the cross products of pairs of generators, so alwan_colour_solid_contains
+ * needs no convex hull and no triangulation.
+ *
+ * The vertices are the classical optimal colour stimuli, the reflectances with
+ * at most two transitions, and there are bins * (bins - 1) + 2 of them. They
+ * come back in the order colour-science's generate_pulse_waves produces, so
+ * the two can be compared term by term; suite 164 does.
+ *
+ * bins is the number of wavelength bands, 3 to 256. Building the solid is
+ * cubic in it and the object then holds bins * (bins - 1) / 2 facets, so a
+ * caller picks bins for the resolution it needs rather than the largest.
+ * A band is wholly on or wholly off in this construction, so the quadrature is
+ * rectangles, not the trapezoid rule alwan_xyz_from_spd would apply.
+ * ---------------------------------------------------------------- */
+
+typedef struct alwan_colour_solid_s alwan_colour_solid;
+
+alwan_status alwan_colour_solid_create_f64(alwan_colour_solid **out, alwan_f64 wavelength_min, alwan_f64 wavelength_max, size_t bins, alwan_observer_type observer, alwan_illuminant illuminant, alwan_ctx *ctx);
+alwan_status alwan_colour_solid_create_f32(alwan_colour_solid **out, alwan_f32 wavelength_min, alwan_f32 wavelength_max, size_t bins, alwan_observer_type observer, alwan_illuminant illuminant, alwan_ctx *ctx);
+void alwan_colour_solid_destroy(alwan_colour_solid *solid, alwan_ctx *ctx);
+
+/* What was built: the vertex count is bins * (bins - 1) + 2, the facet count is
+ * how many of the bins * (bins - 1) / 2 generator pairs spanned a plane. */
+size_t alwan_colour_solid_num_vertices(alwan_colour_solid const *solid);
+size_t alwan_colour_solid_num_facets(alwan_colour_solid const *solid);
+size_t alwan_colour_solid_bins(alwan_colour_solid const *solid);
+
+/* The optimal colour stimuli. ALWAN_E_RANGE when capacity is short of
+ * alwan_colour_solid_num_vertices. */
+alwan_status alwan_colour_solid_vertices_f64(alwan_xyz_f64 *out, size_t capacity, alwan_colour_solid const *solid);
+alwan_status alwan_colour_solid_vertices_f32(alwan_xyz_f32 *out, size_t capacity, alwan_colour_solid const *solid);
+
+/* The solid's white point: every band fully reflected, so Y is 1 by
+ * construction and X and Z are the illuminant's. */
+alwan_status alwan_colour_solid_white_f64(alwan_xyz_f64 *out, alwan_colour_solid const *solid);
+alwan_status alwan_colour_solid_white_f32(alwan_xyz_f32 *out, alwan_colour_solid const *solid);
+
+/* Whether a tristimulus is a colour a surface could have. Exact for the solid
+ * on this band grid: *inside is 1 when the point violates no facet, and the
+ * facets are all of them. tolerance is in the same units as XYZ and is applied
+ * outward, so 0 tests the solid itself and a small positive value admits a
+ * point that rounding put just outside. A NaN component is ALWAN_E_INVALID. */
+alwan_status alwan_colour_solid_contains_f64(int *inside, alwan_colour_solid const *solid, alwan_xyz_f64 const *xyz, alwan_f64 tolerance);
+alwan_status alwan_colour_solid_contains_f32(int *inside, alwan_colour_solid const *solid, alwan_xyz_f32 const *xyz, alwan_f32 tolerance);
+
 /* Get Pointer's Gamut boundary points
  * Returns array of xy chromaticity coordinates defining the boundary
  * count_out: receives the number of boundary points (32)
