@@ -201,6 +201,15 @@ alwan_film_look_finish_f64_map_interleave(xyz, 24, h, 24, pixels, &look, ctx);  
 `expose` stops at the negative's linear layer exposures, calibrated and pushed, before
 the log; `finish` takes them through the log, the masking, the curves, the print and
 the projection. Back to back they are `alwan_film_render_rgb` to the bit (suite 159).
+`finish` itself splits into `alwan_film_look_develop` (to the negative's activations)
+and `alwan_film_look_print` (through the print and the projection), again to the bit
+(suite 160), so grain can act on the developed negative:
+
+```c
+alwan_film_look_develop_f64_map_interleave(d, 24, h, 24, pixels, &look, ctx);
+alwan_film_grain_density_f64(d, width * 24, width, height, &grain, ctx);
+alwan_film_look_print_f64_map_interleave(xyz, 24, d, 24, pixels, &look, ctx);
+```
 
 ---
 
@@ -237,6 +246,62 @@ the derivation's own statements (energy, symmetry, the rim at `r_c`, the Fresnel
 suppression inside it, a point source becoming exactly strength times the kernel, a
 flat field staying flat) and the sources it was written from are in the header.
 Everything under `experimental/` is research code and may change between releases.
+
+---
+
+## Grain (experimental)
+
+Newson, Faraj, Galerne and Delon's Boolean model: a developed layer is a field of
+opaque discs, the dye clouds, with Poisson centres and log-normal radii, and a pixel's
+value is the fraction of its area they cover. The process intensity is
+`-ln(1 - u) / (pi E[R^2])`, so the expected coverage is `u` itself and the grain is
+what the discreteness of the discs adds. Rendered by Monte Carlo as the paper does:
+each output pixel takes `samples` points, each jittered by a Gaussian of
+`filter_sigma`, and counts how many land inside a disc; each input cell's discs come
+from a generator seeded by the cell, the channel and `seed`, so the field is the same
+on every run and however the pixels are visited.
+
+```c
+alwan_film_grain_params g;
+alwan_film_grain_params_default(&g, 0.5);       /* radius 0.5 px, one size, jitter 0.8, 64 samples, seed 1 */
+alwan_film_grain_f64(image, width * 3 * sizeof(alwan_f64), width, height, 3, &g, ctx);   /* any [0, 1] image */
+alwan_film_grain_density_f64(d, width * 3 * sizeof(alwan_f64), width, height, &g, ctx);  /* a negative's activations */
+```
+
+That is the paper's use, on a picture, with the discs as large as the radius makes
+them. It is not how a colour negative's density is built: a layer's density is thousands
+of dye clouds a fraction of a micrometre across, weakly absorbing, through the depth of
+the emulsion, and one opaque disc field per layer at `D = 1` comes out a hundred times
+grainier than any datasheet (the first version of the plate showed exactly that).
+
+`alwan_film_grain_density` is the limit that describes the negative. Stack many thin
+Boolean fields whose transmittances multiply and `ln T` becomes a sum of small
+independent terms: Gaussian, with variance `D ln10 pi r^2 / A` over a sampling area `A`,
+which is Selwyn's law, `sigma_D^2 A` proportional to `D`. The sheet's RMS granularity
+is that constant measured at `D = 1` through a 48 um aperture, so the size comes from
+the sheet and the pixel pitch on the film, and there is no radius to choose:
+
+    sigma_D(pixel) = (rms / 1000) sqrt(D) sqrt(A_48 / pitch^2),   A_48 = pi 24^2 um^2
+
+```c
+alwan_film_grain_density_params g;
+alwan_film_grain_density_params_default(&g, neg.rms_granularity, 5.86);   /* 500T's 4.4, a 35 mm frame at 4K */
+alwan_film_grain_density_f64(d, width * 3 * sizeof(alwan_f64), width, height, &g, ctx);
+```
+
+Gaussian on `D` per layer and pixel from a stream seeded by the pixel and the layer; the
+mean density is kept exactly and a zero stays zero. Vision3 500T's 4.4 at 5.86 um is
+0.032 at `D = 1`; Super 8 at 2K (2.8 um) is 0.066. `layer_scale` weights the three
+layers.
+
+No two implementations of a stochastic renderer agree pixel for pixel, so suite 160
+pins the models' statements. For the disc model: black stays black, a flat field keeps
+its mean, the same seed is the same bits, more samples are less noise, bigger discs are
+coarser grain. For the negative: the spread is the formula's to 5 %, a quarter of the
+density is half the spread, twice the pitch is half the spread, a zero scale leaves a
+layer untouched, and the stock's own grain on a printed grey keeps its value within
+five percent. The papers, and Selwyn and Dainty and Shaw for the limit, are named in
+the header.
 
 ---
 

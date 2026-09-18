@@ -619,21 +619,26 @@ static alwan_status ALWAN_CORE_FN(film_look_expose_tile)(ALWAN_CORE_FN(film_look
     return ALWAN_OK;
 }
 
-/* One pixel from linear layer exposures to XYZ relative to the clear base: the floor
- * and the log alwan_film_expose applies, then develop, print and project. */
-static alwan_status ALWAN_CORE_FN(film_look_finish_pixel)(ALWAN_CORE_FN(film_look_state) const *s,
-                                                          ALWAN_CORE_T const h[3], ALWAN_CORE_T o[3]) {
-    ALWAN_CORE_T log_h[3], d[3], dp[3];
-    ALWAN_CORE_XYZ xyz;
-    alwan_status st;
+/* One pixel from linear layer exposures to the negative's activations: the floor and
+ * the log alwan_film_expose applies, then develop with the stock's masking. */
+static alwan_status ALWAN_CORE_FN(film_look_develop_pixel)(ALWAN_CORE_FN(film_look_state) const *s,
+                                                           ALWAN_CORE_T const h[3], ALWAN_CORE_T d[3]) {
+    ALWAN_CORE_T log_h[3];
     int c;
     for (c = 0; c < 3; c++) {
         ALWAN_CORE_T v = h[c];
         if (v < ALWAN_CORE_LITERAL(1e-16)) v = ALWAN_CORE_LITERAL(1e-16);
         log_h[c] = ALWAN_CORE_LOG10(v);
     }
-    st = ALWAN_CORE_FNLIT(alwan_film_develop)(d, &s->neg, log_h, s->neg.color_masking != ALWAN_CORE_LITERAL(0.0));
-    if (st != ALWAN_OK) return st;
+    return ALWAN_CORE_FNLIT(alwan_film_develop)(d, &s->neg, log_h, s->neg.color_masking != ALWAN_CORE_LITERAL(0.0));
+}
+
+/* One pixel from the negative's activations to XYZ relative to the clear base. */
+static alwan_status ALWAN_CORE_FN(film_look_print_pixel)(ALWAN_CORE_FN(film_look_state) const *s,
+                                                         ALWAN_CORE_T const d[3], ALWAN_CORE_T o[3]) {
+    ALWAN_CORE_T dp[3];
+    ALWAN_CORE_XYZ xyz;
+    alwan_status st;
     if (s->has_print) {
         st = ALWAN_CORE_FNLIT(alwan_film_print)(dp, &s->neg, d, &s->prt, s->printer);
         if (st != ALWAN_OK) return st;
@@ -645,6 +650,48 @@ static alwan_status ALWAN_CORE_FN(film_look_finish_pixel)(ALWAN_CORE_FN(film_loo
     o[0] = xyz.x / s->white_y;
     o[1] = xyz.y / s->white_y;
     o[2] = xyz.z / s->white_y;
+    return ALWAN_OK;
+}
+
+static alwan_status ALWAN_CORE_FN(film_look_finish_pixel)(ALWAN_CORE_FN(film_look_state) const *s,
+                                                          ALWAN_CORE_T const h[3], ALWAN_CORE_T o[3]) {
+    ALWAN_CORE_T d[3];
+    alwan_status const st = ALWAN_CORE_FN(film_look_develop_pixel)(s, h, d);
+    if (st != ALWAN_OK) return st;
+    return ALWAN_CORE_FN(film_look_print_pixel)(s, d, o);
+}
+
+alwan_status ALWAN_FILM_MAPNAME(alwan_film_look_develop, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *density_out, size_t out_stride, ALWAN_CORE_T const *exposure_in, size_t in_stride, size_t count,
+        alwan_film_look const *look, alwan_ctx *ctx) {
+    ALWAN_CORE_FN(film_look_state) s;
+    alwan_status st;
+    size_t i;
+    if (!density_out || !exposure_in || !look || count == 0) return ALWAN_E_INVALID;
+    st = ALWAN_CORE_FN(film_look_setup)(&s, look, ctx);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        st = ALWAN_CORE_FN(film_look_develop_pixel)(&s, (ALWAN_CORE_T const *)((char const *)exposure_in + i * in_stride),
+                                                    (ALWAN_CORE_T *)((char *)density_out + i * out_stride));
+        if (st != ALWAN_OK) return st;
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_FILM_MAPNAME(alwan_film_look_print, ALWAN_CORE_SUFFIX)(
+        ALWAN_CORE_T *xyz_out, size_t out_stride, ALWAN_CORE_T const *density_in, size_t in_stride, size_t count,
+        alwan_film_look const *look, alwan_ctx *ctx) {
+    ALWAN_CORE_FN(film_look_state) s;
+    alwan_status st;
+    size_t i;
+    if (!xyz_out || !density_in || !look || count == 0) return ALWAN_E_INVALID;
+    st = ALWAN_CORE_FN(film_look_setup)(&s, look, ctx);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        st = ALWAN_CORE_FN(film_look_print_pixel)(&s, (ALWAN_CORE_T const *)((char const *)density_in + i * in_stride),
+                                                  (ALWAN_CORE_T *)((char *)xyz_out + i * out_stride));
+        if (st != ALWAN_OK) return st;
+    }
     return ALWAN_OK;
 }
 

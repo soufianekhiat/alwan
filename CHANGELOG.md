@@ -108,6 +108,19 @@ All notable changes to this project will be documented in this file.
   suite 159 pins the derivation's own statements and the header names what it was
   written from.
 
+  The second operator is **grain**, also experimental, in two forms. `alwan_film_grain`
+  is Newson, Faraj, Galerne and Delon's Boolean disc model on a picture, rendered by
+  Monte Carlo with the process intensity that makes it mean-preserving and a per-cell
+  seeded generator so the field is the same on every run. `alwan_film_grain_density`
+  is that model's many-thin-layers limit on a negative's activations, which is Selwyn's
+  law: Gaussian on density with a spread of `(rms / 1000) sqrt(D) sqrt(A_48 / pitch^2)`,
+  so the stock's own RMS granularity and the pixel pitch on the film set the size and
+  there is no radius to choose. One opaque disc field per layer, the obvious first
+  attempt, is a hundred times grainier than any sheet. `finish` splits once more into
+  `alwan_film_look_develop` and `alwan_film_look_print`, to the bit, so the grain can
+  sit on the developed negative. Suite 160 pins the models' statements; the papers, and
+  Selwyn and Dainty and Shaw for the limit, are in the header.
+
   The profiles are spectral_film_lut's (Jan Lohse, MIT), digitised from the sheets and
   profiled by its `FilmSpectral`; alwan ships the profiling's output, not the
   digitisation, with the licence beside the tables, and gendata refuses to write a new

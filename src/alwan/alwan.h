@@ -4098,6 +4098,16 @@ alwan_status alwan_film_look_expose_f32_map_interleave(alwan_f32 *exposure_out, 
 alwan_status alwan_film_look_finish_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_look_finish_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 
+/* finish in two, for an operator on the developed negative: alwan_film_look_develop
+ * takes linear exposures to the negative's layer activations (the log, the masking
+ * and the curves), alwan_film_look_print takes activations through the print and
+ * the projection. Back to back they are alwan_film_look_finish to the bit; with
+ * alwan_film_grain_density between them they are the grainy negative printed. */
+alwan_status alwan_film_look_develop_f64_map_interleave(alwan_f64 *density_out, size_t out_stride, alwan_f64 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_develop_f32_map_interleave(alwan_f32 *density_out, size_t out_stride, alwan_f32 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_print_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *density_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_print_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *density_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+
 /* ----------------------------------------------------------------
  * EXPERIMENTAL: film halation (src/alwan/experimental/alwan_film_halation.c)
  *
@@ -4157,6 +4167,94 @@ alwan_status alwan_film_halation_kernel_f32(alwan_f32 *kernel_out, size_t *radiu
  * rim of 8 pixels at reach 3 is 2,401 taps a pixel. */
 alwan_status alwan_film_halation_f64(alwan_f64 *exposure, size_t row_stride, size_t width, size_t height, alwan_film_halation_params const *params, alwan_ctx *ctx);
 alwan_status alwan_film_halation_f32(alwan_f32 *exposure, size_t row_stride, size_t width, size_t height, alwan_film_halation_params const *params, alwan_ctx *ctx);
+
+/* ----------------------------------------------------------------
+ * EXPERIMENTAL: film grain (src/alwan/experimental/alwan_film_grain.c)
+ *
+ * Newson, Faraj, Galerne and Delon's Boolean grain model: a developed layer is
+ * a field of opaque discs, the dye clouds, whose centres are a Poisson process
+ * and whose radii are log-normal, and a pixel's value is the fraction of its
+ * area they cover. For coverage u the process intensity is
+ *
+ *   lambda(u) = -ln(1 - u) / (pi (r^2 + sigma_r^2))
+ *
+ * so the expected coverage is u itself: the model is mean-preserving, and the
+ * grain is what the discreteness of the discs adds. It is rendered by Monte
+ * Carlo, as the paper does: each output pixel takes `samples` points, each
+ * jittered by a Gaussian of `filter_sigma`, and counts how many land inside a
+ * disc; the discs of an input cell are drawn from a generator seeded by the
+ * cell, the channel and `seed`, so the field is the same however the pixels
+ * are visited and the same on every run. The radius is in pixels; smaller is
+ * finer and dearer, since a cell near white holds ln(10^4) / (pi r^2) discs.
+ *
+ * alwan_film_grain renders any image in [0, 1], channels independent, with
+ * the discs as large as the radius makes them. That is the paper's use, on a
+ * picture. It is NOT how a colour negative's density is built, and the film
+ * route below does not stack it through Nutting's relation: a layer's density
+ * is thousands of dye clouds a fraction of a micrometre across, weakly
+ * absorbing, through the depth of the emulsion, and one opaque disc field per
+ * layer at D = 1 comes out a hundred times grainier than any datasheet.
+ *
+ * alwan_film_grain_density is that limit. Stack K thin Boolean fields whose
+ * transmittances multiply and let K grow: ln T becomes a sum of many small
+ * independent terms, Gaussian, with variance D ln10 pi r^2 / A over a sampling
+ * area A, which is Selwyn's law, sigma_D^2 A proportional to D. The sheet's
+ * RMS granularity is exactly that constant measured at D = 1 through a 48 um
+ * aperture, so the size comes from the sheet and the pixel pitch on the film,
+ * with no radius to choose:
+ *
+ *   sigma_D(pixel) = (rms / 1000) sqrt(D) sqrt(A_48 / pitch^2),  A_48 = pi 24^2 um^2
+ *
+ * added per layer and pixel as Gaussian noise on D from a stream seeded by
+ * (seed, pixel, layer). Vision3 500T's 4.4 at a 4K scan of a 35 mm frame
+ * (5.9 um a pixel) is 0.032 at D = 1. The mean density is kept exactly.
+ *
+ * NOT TESTABLE AGAINST A REFERENCE. The published implementation renders with
+ * its own generator and sampling order, so no two implementations agree pixel
+ * for pixel and none should be expected to. Suite 160 pins the models' own
+ * statements: zero stays zero, a flat field keeps its mean, the same seed
+ * gives the same bits, more samples give less noise, bigger discs are coarser;
+ * and for the density route, the spread the formula gives to 5 %, Selwyn's
+ * square root in D, the inverse pitch, a layer scale of zero leaving a layer
+ * untouched. Written from: A. Newson, J. Delon, B. Galerne, "A Stochastic
+ * Film Grain Model for Resolution-Independent Rendering", Computer Graphics
+ * Forum 36(8), 2017; A. Newson, N. Faraj, B. Galerne, J. Delon, "Realistic
+ * Film Grain Rendering", IPOL 7, 2017, https://doi.org/10.5201/ipol.2017.192
+ * (the algorithm and its pseudo-code; the generator here is its own); and for
+ * the limit, E. W. H. Selwyn, "A Theory of Graininess", Photographic Journal
+ * 75, 1935, and J. C. Dainty and R. Shaw, "Image Science", Academic Press
+ * 1974, chapter 8. Research code: results may change.
+ * ---------------------------------------------------------------- */
+typedef struct {
+    alwan_f64 radius;        /* mean disc radius in pixels; 0.5 by default */
+    alwan_f64 radius_sigma;  /* standard deviation of the log-normal radius; 0 for one size */
+    alwan_f64 filter_sigma;  /* Gaussian jitter of each sample, in pixels; 0.8 by default */
+    size_t samples;          /* Monte Carlo samples per pixel; 64 by default, more is smoother */
+    unsigned long long seed; /* the field; the same seed is the same grain */
+} alwan_film_grain_params;
+
+alwan_status alwan_film_grain_params_default(alwan_film_grain_params *params, alwan_f64 radius);
+
+/* In place on an image in [0, 1], `channels` (1 to 4) values per pixel, rows
+ * row_stride bytes apart. Values outside [0, 1] are clamped first. */
+alwan_status alwan_film_grain_f64(alwan_f64 *image, size_t row_stride, size_t width, size_t height, int channels, alwan_film_grain_params const *params, alwan_ctx *ctx);
+alwan_status alwan_film_grain_f32(alwan_f32 *image, size_t row_stride, size_t width, size_t height, int channels, alwan_film_grain_params const *params, alwan_ctx *ctx);
+
+typedef struct {
+    alwan_f64 rms_granularity;   /* the sheet's number: RMS density x 1000 at D = 1, 48 um aperture; alwan_film_profile.rms_granularity */
+    alwan_f64 pixel_pitch;       /* micrometres on the film: 5.9 for a 35 mm frame at 4K, 2.8 for Super 8 at 2K */
+    alwan_f64 layer_scale[3];    /* per-layer multiplier on the spread; 1, 1, 1 by default */
+    unsigned long long seed;
+} alwan_film_grain_density_params;
+
+/* rms_granularity and pixel_pitch positive; scales 1, seed 1. */
+alwan_status alwan_film_grain_density_params_default(alwan_film_grain_density_params *params, alwan_f64 rms_granularity, alwan_f64 pixel_pitch);
+
+/* In place on a negative's layer activations, three per pixel, rows row_stride
+ * bytes apart: Selwyn grain, the mean density kept exactly, D held at zero
+ * where it was zero. */
+alwan_status alwan_film_grain_density_f64(alwan_f64 *density, size_t row_stride, size_t width, size_t height, alwan_film_grain_density_params const *params, alwan_ctx *ctx);
+alwan_status alwan_film_grain_density_f32(alwan_f32 *density, size_t row_stride, size_t width, size_t height, alwan_film_grain_density_params const *params, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model
