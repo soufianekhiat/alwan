@@ -516,6 +516,12 @@ EXPORTS
     alwan_dng_xyz_to_camera_matrix_f64
     alwan_dominant_wavelength_f32
     alwan_dominant_wavelength_f64
+    alwan_ellipse_canonical_f32
+    alwan_ellipse_canonical_f64
+    alwan_ellipse_fit_halir1998_f32
+    alwan_ellipse_fit_halir1998_f64
+    alwan_ellipse_general_f32
+    alwan_ellipse_general_f64
     alwan_eotf_apply_f32
     alwan_eotf_apply_f64
     alwan_excitation_purity_f32

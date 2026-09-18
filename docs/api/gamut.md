@@ -250,6 +250,54 @@ Test whether an xy chromaticity falls within Pointer's gamut (the gamut of real 
 
 ---
 
+### Fitting an ellipse
+
+```c
+alwan_status alwan_ellipse_fit_halir1998_{T}(alwan_{T} *coefficients_out,
+                                             alwan_vec2_{T} const *points, size_t count);
+alwan_status alwan_ellipse_canonical_{T}(alwan_{T} *canonical_out, alwan_{T} const *coefficients);
+alwan_status alwan_ellipse_general_{T}(alwan_{T} *coefficients_out, alwan_{T} const *canonical);
+```
+
+Halir and Flusser (1998). The direct method of Fitzgibbon, Pilu and Fisher constrains the fit
+to an ellipse rather than any conic, so the answer cannot come back a hyperbola however the
+points are spread; Halir and Flusser's contribution is to split the scatter matrix so the
+eigenproblem is 3x3 and well conditioned instead of 6x6 and nearly singular.
+
+Two ways of writing one ellipse. The **general** form is six coefficients,
+`a x^2 + b x y + c y^2 + d x + e y + f = 0`, which is what the fit produces. The
+**canonical** form is five numbers: centre x, centre y, the two semi-axes, and the rotation
+in degrees. The two axes come back along and across the rotation and are **not** sorted into
+major and minor.
+
+The six coefficients have no natural scale, since any non-zero multiple is the same ellipse.
+They come back with unit 2-norm and `a > 0`, which is always well defined: an ellipse has
+`4ac > b^2`, so `a` and `c` share a sign and neither is zero. Without a stated convention the
+answer would be reproducible only against whichever eigenvector solver produced it.
+
+**The points are centred and scaled before the fit, and this matters more than it sounds.**
+A MacAdam 1942 ellipse is about 1e-3 across at a chromaticity near 0.19, a shape a
+five-hundredth of its own distance from the origin. Then `x^2`, `xy` and `y^2` barely vary
+across the whole point set, the scatter matrix goes nearly rank deficient, and the eigen step
+has nothing left to resolve. Measured on all twenty-five published ellipses: alwan recovers
+them to 2e-13. colour-science, which does not normalise, is off by up to 2.2e-4 in the
+semi-axes, which on an ellipse whose semi-minor axis is 5e-4 is a fifth of the shape, and its
+rotation is wrong by up to 24 degrees. On one of the twenty-five its eigenvalues come out
+complex and it returns twelve coefficients that its own canonical-form conversion cannot
+unpack. Suite 165 holds alwan to the published parameters and records the gap.
+
+Fewer than five points is `ALWAN_E_RANGE`, since five determine a conic. Points that no
+ellipse fits, such as points on a line or one point repeated, are `ALWAN_E_RANGE` as well
+rather than a degenerate answer. A general form that is not an ellipse has no canonical form
+and is `ALWAN_E_RANGE`.
+
+A circle has no rotation, and `alwan_ellipse_canonical_{T}` returns 0 for it rather than the
+arc tangent of two quantities that are both rounding noise. Points generated on a circle leave
+`b` at about 1e-16 rather than exactly zero, which is enough to miss a test for zero: measured,
+that returned -9.43 degrees for a circle before the guard went in.
+
+---
+
 ### The optimal colour solid
 
 ```c

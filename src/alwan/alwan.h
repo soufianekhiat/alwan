@@ -3004,6 +3004,45 @@ int alwan_is_within_pointer_gamut_f32(alwan_vec2_f32 const *xy);
 int alwan_is_within_pointer_gamut_f64(alwan_vec2_f64 const *xy);
 
 /* ----------------------------------------------------------------
+ * Ellipse fitting
+ *
+ * Halir and Flusser (1998), "Numerically Stable Direct Least Squares Fitting
+ * of Ellipses". Fitzgibbon, Pilu and Fisher's direct method constrains the fit
+ * to an ellipse rather than any conic, so the answer cannot come back a
+ * hyperbola however the points are spread; Halir and Flusser's contribution is
+ * to split the scatter matrix so the eigenproblem is 3x3 and well conditioned
+ * instead of 6x6 and nearly singular.
+ *
+ * Two ways of writing one ellipse. The GENERAL form is six coefficients,
+ *
+ *     a x^2 + b x y + c y^2 + d x + e y + f = 0
+ *
+ * which is what the fit produces. The CANONICAL form is five numbers: centre
+ * x, centre y, the two semi-axes, and the rotation in degrees. The two axes
+ * come back in the order colour-science returns them, along and across the
+ * rotation, and are NOT sorted into major and minor.
+ *
+ * The six coefficients have no natural scale, since multiplying all of them by
+ * a non-zero constant is the same ellipse. They come back with unit 2-norm and
+ * a > 0, which is always well defined here: an ellipse has 4ac > b^2, so a and
+ * c share a sign and neither is zero. The canonical form is unaffected.
+ *
+ * Fewer than five points is ALWAN_E_RANGE, since five determine a conic.
+ * Points that no ellipse fits, such as points on a line, are ALWAN_E_RANGE as
+ * well rather than a degenerate answer.
+ * ---------------------------------------------------------------- */
+
+alwan_status alwan_ellipse_fit_halir1998_f64(alwan_f64 *coefficients_out, alwan_vec2_f64 const *points, size_t count);
+alwan_status alwan_ellipse_fit_halir1998_f32(alwan_f32 *coefficients_out, alwan_vec2_f32 const *points, size_t count);
+
+/* General to canonical and back. canonical_out takes 5 values, coefficients 6.
+ * A general form that is not an ellipse is ALWAN_E_RANGE. */
+alwan_status alwan_ellipse_canonical_f64(alwan_f64 *canonical_out, alwan_f64 const *coefficients);
+alwan_status alwan_ellipse_canonical_f32(alwan_f32 *canonical_out, alwan_f32 const *coefficients);
+alwan_status alwan_ellipse_general_f64(alwan_f64 *coefficients_out, alwan_f64 const *canonical);
+alwan_status alwan_ellipse_general_f32(alwan_f32 *coefficients_out, alwan_f32 const *canonical);
+
+/* ----------------------------------------------------------------
  * Optimal colour solid (Rosch-MacAdam)
  *
  * The set of every tristimulus a SURFACE can have, under one light and one

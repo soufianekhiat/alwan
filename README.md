@@ -3,9 +3,9 @@
 > **Alwan** (ألوان): Arabic for "colours"
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-164%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-193%2C125%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-432%20sets-blue)](#validation)
+[![tests](https://img.shields.io/badge/tests-165%20suites-brightgreen)](#validation)
+[![checks](https://img.shields.io/badge/checks-193%2C507%20per%20run-brightgreen)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-434%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -637,13 +637,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 164, all passing |
-| Test cases | 1,051 |
-| Checks executed per run | 193,125 |
-| Assertion sites in the tests | 4,479 |
-| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 432 |
+| Test suites | 165, all passing |
+| Test cases | 1,054 |
+| Checks executed per run | 193,507 |
+| Assertion sites in the tests | 4,512 |
+| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 434 |
 | Embedded data tables | 947 |
-| Exported symbols | 1,931 |
+| Exported symbols | 1,937 |
 | Internal symbols reached by a test or a public entry point | 204 of 228 (89%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -651,9 +651,9 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**193,125 checks per run** is what actually executes, not what is written. A
+**193,507 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,479 assertion sites would undersell the suite more than
+so counting the 4,512 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -687,7 +687,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 164 test suites, single binary
+./build/tests/Release/alwan_tests   # 165 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -734,7 +734,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 164 test suites + reference fixtures
++-- tests/                   # 165 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals

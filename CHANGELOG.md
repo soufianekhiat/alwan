@@ -92,6 +92,40 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Ellipse fitting, and the normalisation that makes it usable.**
+  `alwan_ellipse_fit_halir1998_{T}` fits an ellipse to scattered points by the direct method
+  of Halir and Flusser (1998), so the answer cannot come back a hyperbola however the points
+  are spread. `alwan_ellipse_canonical_{T}` and `alwan_ellipse_general_{T}` move between the
+  six general coefficients and the centre, semi-axes and rotation.
+
+  The six coefficients come back with unit 2-norm and `a > 0`. They have no natural scale,
+  since any non-zero multiple is the same ellipse, so without a stated convention the answer
+  would be reproducible only against whichever eigenvector solver produced it.
+
+  **The points are centred and scaled before the fit and the conic is mapped back after**, and
+  that is what makes the routine work on the data it exists for. A MacAdam 1942 ellipse is
+  about 1e-3 across at a chromaticity near 0.19, so `x^2`, `xy` and `y^2` barely vary across
+  the point set and the scatter matrix goes nearly rank deficient. Measured on all
+  twenty-five published ellipses: alwan recovers them to 2e-13. colour-science, which does
+  not normalise, is off by up to 2.2e-4 in the semi-axes, a fifth of the shape for one whose
+  semi-minor axis is 5e-4, with rotations wrong by up to 24 degrees; on one of the twenty-five
+  its eigenvalues come out complex and it returns twelve coefficients that its own
+  canonical-form conversion cannot unpack.
+
+  Suite 165 therefore uses two oracles. Every case is generated from a known ellipse, so the
+  geometry is the oracle and would catch both libraries being wrong the same way.
+  colour-science is a second opinion on the six well-conditioned cases, where the two agree to
+  2.5e-10. On the twenty-five MacAdam ellipses the test instead requires alwan to be a
+  thousand times nearer the published parameters than colour is.
+
+  Two smaller things the suite settles. A circle has no rotation, and the canonical form
+  returns 0 for it rather than the arc tangent of two quantities that are both rounding noise:
+  points generated on a circle leave `b` at about 1e-16, enough to miss a test for zero, and
+  that returned -9.43 degrees before the guard. And the test measures position and angle
+  separately rather than taking a maximum over both, because a maximum would be comparing a
+  chromaticity with a degree: the noisy fits land within 2.5e-05 in xy and 0.03 degrees, and
+  one number would have reported 0.03 and read it as the larger error.
+
 - **The optimal colour solid, and no convex hull.** `alwan_colour_solid_create_{T}` builds
   the Rosch-MacAdam solid for an observer and an illuminant, and
   `alwan_colour_solid_contains_{T}` says whether a tristimulus is a colour a surface could
