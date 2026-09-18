@@ -1055,14 +1055,29 @@ target's own numbers.
 
 Everything in alwan that reads a file the program did not write:
 
-- `alwan_chart_load_{T}` and `..._load_buffer_{T}`, CGATS.17 / OpenQualia
+- `alwan_chart_load_{T}` and `..._load_buffer_{T}`, CGATS.17 / OpenQualia and,
+  since 2026-09-18, CxF3 (ISO 17972-1). One entry point reads both: the first
+  byte that is not whitespace decides which parser the bytes go to.
 - `alwan_cube_import_3d_{T}`, `..._1d_{T}` and their `_buffer` twins
+- `alwan_spi1d_import_{T}`, `alwan_spi3d_import_{T}`, `alwan_3dl_import_{T}`,
+  `alwan_csp_import_{T}`, `alwan_spimtx_import_{T}`
+- `alwan_clf_import` and `alwan_clf_import_buffer`. **CLF is no longer export
+  only**, which it was when this section was first written.
 
-That is all of it. CLF is export only, and the ACES dump path writes rather
-than reads and is behind `ALWAN_GENDATA_DUMP_ACES2` in any case.
+The ACES dump path writes rather than reads and is behind
+`ALWAN_GENDATA_DUMP_ACES2` in any case. This list has grown twice since it was
+called complete, so check it against the tree rather than trusting it.
 
-Both were given an adversarial pass on 2026-09-09, and both had the same class
-of defect: a value that parses is not yet a value worth storing.
+The first two were given an adversarial pass on 2026-09-09, and both had the
+same class of defect: a value that parses is not yet a value worth storing.
+
+The readers added since are built on the same two guards rather than audited
+after the fact. Every one of them parses numbers through a routine that
+rejects a non-finite result by comparing against a bound instead of against
+`HUGE_VAL`, and bounds every count it allocates from: the CxF reader caps
+objects and bands, and takes the product through `alwan_safe_array_size` so a
+32-bit `size_t` cannot wrap into a buffer smaller than the loop that fills it
+believes.
 
 - The chart parser had three, all in code written that morning: an unbounded
   exponent accumulator (`1e99999999999`, signed overflow), a scaling loop that

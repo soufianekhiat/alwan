@@ -523,14 +523,25 @@ static alwan_status alwan__cxf_parse(alwan__cxf_doc *d, char const *buf, size_t 
     if (st != ALWAN_OK) { alwan__cxf_free(d); return st; }
     if (d->count == 0) { alwan__cxf_free(d); return ALWAN_E_NODATA; }
 
-    d->objects = (alwan__cxf_object *)ALWAN_ALLOC(sizeof(*d->objects) * d->count, sizeof(void *));
-    if (!d->objects) { alwan__cxf_free(d); return ALWAN_E_NOMEM; }
-    memset(d->objects, 0, sizeof(*d->objects) * d->count);
+    {
+        size_t bytes = alwan_safe_array_size(d->count, sizeof(*d->objects));
+        if (bytes == 0) { alwan__cxf_free(d); return ALWAN_E_RANGE; }
+        d->objects = (alwan__cxf_object *)ALWAN_ALLOC(bytes, sizeof(void *));
+        if (!d->objects) { alwan__cxf_free(d); return ALWAN_E_NOMEM; }
+        memset(d->objects, 0, bytes);
+    }
 
     if (d->bands >= 2) {
-        d->spectra = (double *)ALWAN_ALLOC(sizeof(double) * d->count * d->bands, sizeof(double));
+        /* count and bands are each capped, but their product is what gets
+         * allocated and a 32-bit size_t wraps well before the caps do. A file
+         * that asks for more than fits is refused rather than handed a buffer
+         * smaller than the loop that fills it believes. */
+        size_t cells = alwan_safe_array_size(d->count, d->bands);
+        size_t bytes = alwan_safe_array_size(cells, sizeof(double));
+        if (cells == 0 || bytes == 0) { alwan__cxf_free(d); return ALWAN_E_RANGE; }
+        d->spectra = (double *)ALWAN_ALLOC(bytes, sizeof(double));
         if (!d->spectra) { alwan__cxf_free(d); return ALWAN_E_NOMEM; }
-        memset(d->spectra, 0, sizeof(double) * d->count * d->bands);
+        memset(d->spectra, 0, bytes);
     }
 
     st = alwan__cxf_walk(d, buf, len, 1, NULL);
