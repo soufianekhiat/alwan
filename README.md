@@ -637,7 +637,7 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 161, all passing |
-| Test cases | 1,038 |
+| Test cases | 1,039 |
 | Checks executed per run | 191,150 |
 | Assertion sites in the tests | 4,320 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 427 |

@@ -163,13 +163,22 @@ static void clf_write_lut3d(clf_writer *w, alwan_f64 const *lut,
     if (desc) clf_write(w, "    <Description>%s</Description>\n", desc);
     clf_write(w, "    <Array dim=\"%d %d %d 3\">\n", size, size, size);
 
-    /* CLF data order: R varies fastest, then G, then B (same as Alwan's internal order) */
-    size_t const total = (size_t)size * (size_t)size * (size_t)size;
-    for (size_t i = 0; i < total; i++) {
-        clf_write(w, "      %.17g %.17g %.17g\n",
-                  (double)lut[i * 3 + 0],
-                  (double)lut[i * 3 + 1],
-                  (double)lut[i * 3 + 2]);
+    /* CLF orders a LUT3D array with BLUE varying fastest and red slowest, which is
+     * the opposite of the R-fastest order alwan holds a cube in and .cube stores on
+     * disk. The two were treated as the same here until 2026-09-18, so every CLF
+     * alwan wrote with a LUT3D node had its red and blue axes exchanged: greys came
+     * back right, which is why it went unnoticed, and a saturated colour came back
+     * as the wrong one. Checked against OpenColorIO reading the file. */
+    for (int r = 0; r < size; r++) {
+        for (int g = 0; g < size; g++) {
+            for (int b = 0; b < size; b++) {
+                size_t const i = ((size_t)b * (size_t)size + (size_t)g) * (size_t)size + (size_t)r;
+                clf_write(w, "      %.17g %.17g %.17g\n",
+                          (double)lut[i * 3 + 0],
+                          (double)lut[i * 3 + 1],
+                          (double)lut[i * 3 + 2]);
+            }
+        }
     }
 
     clf_write(w, "    </Array>\n");

@@ -45,6 +45,24 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Every CLF alwan exported with a view transform had its 3D LUT transposed.** CLF
+  orders a LUT3D array with blue varying fastest and red slowest; alwan holds a cube the
+  other way round, R-fastest, which is what `.cube` stores on disk, and
+  `alwan_clf_export_view_{T}` treated the two as the same and said so in a comment. The
+  effect was an exchange of the red and blue axes: greys sit on the diagonal and came
+  back correct, which is why it survived, while a saturated colour came back as a
+  different colour. Measured against OpenColorIO reading the file, ACEScg (0.6, 0.15,
+  0.1) through an exported CLF came back (0.31, 0.27, 0.68) where alwan's own pipeline
+  gives (0.67, 0.19, 0.24).
+
+  Fixed, and pinned: suite 80 reads the array back out of the file alwan just wrote and
+  compares it against the same cube baked directly, in both orders. The CLF order has to
+  match to 0.0 and alwan's own order has to not, since a cube symmetric enough to satisfy
+  both would prove nothing; it is off by 0.94. With the fix, five of six probe colours
+  agree with OCIO to 2e-4. The sixth is a saturated ACEScg red that converts to linear
+  sRGB with a channel at 1.315, which the CLF's gamut-clamp Range node clips and the
+  baked cube does not, so that one differs by design rather than by error.
+
 - **The experimental RGB fit could read past a buffer.** `alwan_rgb_fit_params.percentile`
   becomes an index into the sorted per-sample errors, and nothing validated it. At 1.5
   the block path read past the end of that buffer, since it clamped nothing, and a NaN or
