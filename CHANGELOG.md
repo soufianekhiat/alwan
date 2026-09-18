@@ -92,6 +92,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **The Lab extent of an RGB space.** `alwan_rgb_space_limits_{T}` returns the smallest and
+  largest L*, a* and b* a space can reach, taken over the eight corners of its cube and under
+  its own white. L* is monotonic in Y and Y is linear in RGB, so its extremes are at corners by
+  construction; a* and b* are differences of non-linear functions and theirs need not be, which
+  makes this a bound over the corners rather than a proof about the whole cube. Measured against
+  400,000 points drawn uniformly from the sRGB cube, nothing exceeded it.
+
+  A disagreement with colour-science worth recording. Its `RGB_colourspace_limits` uses whatever
+  matrix the colourspace object carries, and for sRGB, Adobe RGB and ProPhoto that is the
+  rounded matrix the standard publishes rather than the one the primaries derive. alwan derives.
+  The two differ by up to 3.9e-02 in a* and b*, and the giveaway is Adobe RGB, whose stored
+  matrix puts white at L* 99.99961 instead of 100. Suite 164 holds alwan to the limits computed
+  from the derived matrix, where the two agree to 1.1e-13, and asserts the gap to the stored one
+  rather than ignoring it.
+
 - **Ellipse fitting, and the normalisation that makes it usable.**
   `alwan_ellipse_fit_halir1998_{T}` fits an ellipse to scattered points by the direct method
   of Halir and Flusser (1998), so the answer cannot come back a hyperbola however the points

@@ -1290,6 +1290,8 @@ EXPORTS
     alwan_rgb_space_by_enum_f64
     alwan_rgb_space_get_tfs_f32
     alwan_rgb_space_get_tfs_f64
+    alwan_rgb_space_limits_f32
+    alwan_rgb_space_limits_f64
     alwan_rgb_to_cmy_f32
     alwan_rgb_to_cmy_f32_map_interleave
     alwan_rgb_to_cmy_f32_map_planar

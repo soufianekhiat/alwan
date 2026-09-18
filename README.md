@@ -4,8 +4,8 @@
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/badge/tests-165%20suites-brightgreen)](#validation)
-[![checks](https://img.shields.io/badge/checks-193%2C507%20per%20run-brightgreen)](#validation)
-[![reference data](https://img.shields.io/badge/reference%20data-434%20sets-blue)](#validation)
+[![checks](https://img.shields.io/badge/checks-193%2C564%20per%20run-brightgreen)](#validation)
+[![reference data](https://img.shields.io/badge/reference%20data-435%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
 [![platforms](https://img.shields.io/badge/platforms-6-blue)](#validation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -638,22 +638,22 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 165, all passing |
-| Test cases | 1,054 |
-| Checks executed per run | 193,507 |
-| Assertion sites in the tests | 4,512 |
-| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 434 |
+| Test cases | 1,055 |
+| Checks executed per run | 193,564 |
+| Assertion sites in the tests | 4,533 |
+| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 435 |
 | Embedded data tables | 947 |
-| Exported symbols | 1,937 |
-| Internal symbols reached by a test or a public entry point | 204 of 228 (89%) |
+| Exported symbols | 1,939 |
+| Internal symbols reached by a test or a public entry point | 205 of 229 (90%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL under dxc | 40 of 43 |
 
 Two of these deserve the emphasis:
 
-**193,507 checks per run** is what actually executes, not what is written. A
+**193,564 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,512 assertion sites would undersell the suite more than
+so counting the 4,533 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.

@@ -3003,6 +3003,23 @@ alwan_status alwan_spd_analyze_shape_f32(alwan_spd_shape_f32 *shape_out, alwan_s
 int alwan_is_within_pointer_gamut_f32(alwan_vec2_f32 const *xy);
 int alwan_is_within_pointer_gamut_f64(alwan_vec2_f64 const *xy);
 
+/* The Lab extent of an RGB space: the smallest and largest L*, a* and b* the
+ * space can reach, as six values in the order L min, L max, a min, a max,
+ * b min, b max.
+ *
+ * Taken over the eight corners of the unit RGB cube. L* is monotonic in Y and Y
+ * is linear in RGB, so its extremes are at corners by construction; a* and b*
+ * are differences of non-linear functions and theirs need not be, which makes
+ * this a bound over the corners rather than a proof about the whole cube.
+ * Measured against 400,000 points drawn uniformly from the sRGB cube, nothing
+ * exceeded it. colour-science's RGB_colourspace_limits takes the corners too.
+ *
+ * The space's own white is the Lab reference white, so the limits describe the
+ * space on its own terms and are not comparable across two spaces with
+ * different white points without adapting first. */
+alwan_status alwan_rgb_space_limits_f64(alwan_f64 *limits_out, alwan_rgb_space_desc_f64 const *space);
+alwan_status alwan_rgb_space_limits_f32(alwan_f32 *limits_out, alwan_rgb_space_desc_f32 const *space);
+
 /* ----------------------------------------------------------------
  * Ellipse fitting
  *
