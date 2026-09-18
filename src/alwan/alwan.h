@@ -8509,6 +8509,45 @@ alwan_status alwan_csp_export_3d_f32(char const *path, alwan_f32 const *lut, int
                                      alwan_f32 const *prelut_in, alwan_f32 const *prelut_out,
                                      int const *prelut_size);
 
+/* Import a Resolve .cube: a 1D shaper and a 3D cube in one file.
+ * lut: output, size^3 * 3 values R-fastest, or NULL to query the sizes
+ * out_size: receives the cube edge length, 2 to 256
+ * shaper: output, shaper_size * 3 values, one RGB row per sample, or NULL
+ * out_shaper_size: receives the shaper's sample count, or 0 where the file has
+ *      none, may be NULL
+ * out_range: receives the shaper's LUT_1D_INPUT_RANGE pair, may be NULL
+ *
+ * The shaper is a per-channel curve, uniformly sampled over that input range,
+ * whose output addresses the cube: it is how a cube stays small over log
+ * material. Its rows sit above the cube's in the file and carry no marker of
+ * their own, so a reader that skips only the keyword takes the first of them
+ * as cube samples. alwan_cube_import_3d_{T} therefore refuses a file with a
+ * LUT_1D_SIZE outright, with ALWAN_E_INVALID, rather than reading it wrong,
+ * and alwan_cube_import_1d_{T} refuses one with a LUT_3D_SIZE for the same
+ * reason: neither table is the transform on its own.
+ *
+ * A file with no shaper reads here too, reporting a shaper size of 0 and
+ * leaving the shaper buffer untouched, so this one call takes any .cube. A
+ * file that does have one and a NULL shaper buffer is ALWAN_E_INVALID. */
+alwan_status alwan_cube_import_3d_shaper_f64(alwan_f64 *lut, int *out_size, alwan_f64 *shaper,
+                                             int *out_shaper_size, alwan_f64 *out_range,
+                                             char const *path);
+alwan_status alwan_cube_import_3d_shaper_f32(alwan_f32 *lut, int *out_size, alwan_f32 *shaper,
+                                             int *out_shaper_size, alwan_f32 *out_range,
+                                             char const *path);
+
+/* Export a Resolve .cube. shaper_size 0 writes a plain .cube and ignores the
+ * shaper and the range; otherwise shaper holds shaper_size * 3 values and
+ * range_max must exceed range_min. title may be NULL. */
+alwan_status alwan_cube_export_3d_shaper_f64(char const *path, alwan_f64 const *lut, int size,
+                                             alwan_f64 const *shaper, int shaper_size,
+                                             alwan_f64 range_min, alwan_f64 range_max,
+                                             char const *title);
+alwan_status alwan_cube_export_3d_shaper_f32(char const *path, alwan_f32 const *lut, int size,
+                                             alwan_f32 const *shaper, int shaper_size,
+                                             alwan_f32 range_min, alwan_f32 range_max,
+                                             char const *title);
+
 /* Read and write a Sony .spimtx: a 3x3 matrix and a per-channel offset.
  * matrix: row-major, as alwan_mat3x3 stores it
  * offset: three values in the same units as the data, may be NULL

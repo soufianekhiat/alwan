@@ -370,12 +370,16 @@ EXPORTS
     alwan_cube_export_3d_buffer_f64
     alwan_cube_export_3d_f32
     alwan_cube_export_3d_f64
+    alwan_cube_export_3d_shaper_f32
+    alwan_cube_export_3d_shaper_f64
     alwan_cube_import_1d_f32
     alwan_cube_import_1d_f64
     alwan_cube_import_3d_buffer_f32
     alwan_cube_import_3d_buffer_f64
     alwan_cube_import_3d_f32
     alwan_cube_import_3d_f64
+    alwan_cube_import_3d_shaper_f32
+    alwan_cube_import_3d_shaper_f64
     alwan_cubehelix_to_rgb_f32
     alwan_cubehelix_to_rgb_f64
     alwan_d_series_illuminant_xy_f32

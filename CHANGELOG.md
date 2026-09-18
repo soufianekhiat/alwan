@@ -103,6 +103,16 @@ All notable changes to this project will be documented in this file.
   exactly 1.0. That was measured against OCIO rather than read off a specification, and
   the entry points take and return the offset in the data's own units.
 
+  The Resolve `.cube` joins them: that variant may carry a `LUT_1D_SIZE` shaper and a
+  `LUT_3D_SIZE` cube in one file, with the shaper's rows above the cube's and no marker
+  of their own. `alwan_cube_import_3d_shaper_{T}` reads both, and a file with no shaper
+  reads through it too, so one call takes any `.cube`. The plain readers no longer skip
+  the keyword and read the shaper's rows as cube samples: `alwan_cube_import_3d_{T}`
+  refuses a file with a `LUT_1D_SIZE` and `alwan_cube_import_1d_{T}` one with a
+  `LUT_3D_SIZE`, both with `ALWAN_E_INVALID`, because neither table is the transform on
+  its own. Before this they read on and failed with `ALWAN_E_RANGE` after writing the
+  wrong values into the caller's buffer.
+
   One difference from OCIO 2.5, and the suite pins it. A `.3dl` mesh line at size 3
   holds three numbers and looks exactly like a data line, so OCIO cannot read back the
   size-3 file it writes, in either flavour. It is still decidable, because with L

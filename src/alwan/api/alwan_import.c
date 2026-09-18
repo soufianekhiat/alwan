@@ -106,7 +106,12 @@ alwan_status alwan_cube_import_3d_f64(alwan_f64 *lut, int *out_size,
             if (!lut) { *out_size = size; goto done; } /* size query only */
             continue;
         }
-        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue; /* skip 1D in 3D loader */
+        /* A Resolve .cube can carry a 1D shaper and a 3D cube in one file, and the
+         * shaper's rows sit above the cube's. Skipping only the keyword would read
+         * those rows as cube samples, so this reader refuses the file outright and
+         * says which call takes it: alwan_cube_import_3d_shaper_{T}. A file with a
+         * LUT_1D_SIZE and no LUT_3D_SIZE is a 1D table and lands here too. */
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) { err = ALWAN_E_INVALID; goto done; }
         if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
@@ -167,7 +172,10 @@ alwan_status alwan_cube_import_1d_f64(alwan_f64 *lut, int *out_size,
             if (!lut) { *out_size = size; goto done_1d; } /* size query only */
             continue;
         }
-        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) continue;
+        /* The mirror of the 3D readers: a file carrying both a shaper and a cube
+         * is neither table on its own, so it goes to alwan_cube_import_3d_shaper_{T}
+         * rather than coming back here as half of itself. */
+        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) { err = ALWAN_E_INVALID; goto done_1d; }
         if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
@@ -240,7 +248,8 @@ alwan_status alwan_cube_import_3d_buffer_f64(alwan_f64 *lut, int *out_size,
             if (!lut) { *out_size = size; goto done_buf; } /* size query only */
             continue;
         }
-        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue;
+        /* A shaper belongs to alwan_cube_import_3d_shaper_{T}; see the f64 3D reader. */
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) { err = ALWAN_E_INVALID; goto done_buf; }
         if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
@@ -305,7 +314,8 @@ alwan_status alwan_cube_import_3d_f32(alwan_f32 *lut, int *out_size, char const 
             if (!lut) { *out_size = size; goto done_3d_f32; } /* size query only */
             continue;
         }
-        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue;
+        /* A shaper belongs to alwan_cube_import_3d_shaper_{T}; see the f64 3D reader. */
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) { err = ALWAN_E_INVALID; goto done_3d_f32; }
         if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
@@ -364,7 +374,10 @@ alwan_status alwan_cube_import_1d_f32(alwan_f32 *lut, int *out_size, char const 
             if (!lut) { *out_size = size; goto done_1d_f32; } /* size query only */
             continue;
         }
-        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) continue;
+        /* The mirror of the 3D readers: a file carrying both a shaper and a cube
+         * is neither table on its own, so it goes to alwan_cube_import_3d_shaper_{T}
+         * rather than coming back here as half of itself. */
+        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) { err = ALWAN_E_INVALID; goto done_1d_f32; }
         if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;
@@ -427,7 +440,8 @@ alwan_status alwan_cube_import_3d_buffer_f32(alwan_f32 *lut, int *out_size,
             if (!lut) { *out_size = size; goto done_buf_f32; } /* size query only */
             continue;
         }
-        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) continue;
+        /* A shaper belongs to alwan_cube_import_3d_shaper_{T}; see the f64 3D reader. */
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) { err = ALWAN_E_INVALID; goto done_buf_f32; }
         if (strncmp(s, "DOMAIN_MIN", 10) == 0) continue;
         if (strncmp(s, "DOMAIN_MAX", 10) == 0) continue;
         if (strncmp(s, "TITLE", 5) == 0) continue;

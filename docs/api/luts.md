@@ -15,8 +15,8 @@ Three separate jobs live on this page, and they compose in that order:
 
 1. **Bake.** Evaluate a conversion, or a conversion plus a view transform, on a
    regular grid and write the result to a buffer you own.
-2. **Interchange.** Write that buffer as `.cube`, `.spi1d`, `.spi3d`, `.3dl`,
-   `.csp` or CLF, or read one back.
+2. **Interchange.** Write that buffer as `.cube` (plain or with a Resolve
+   shaper), `.spi1d`, `.spi3d`, `.3dl`, `.csp` or CLF, or read one back.
 3. **Sample.** Interpolate the table at an arbitrary coordinate.
 
 Nothing here allocates. Every entry point writes into a buffer the caller sized,
@@ -260,8 +260,9 @@ against a number the file chose.
 
 ## .spi1d, .spi3d, .3dl, .csp and .spimtx
 
-Five more interchange formats beside `.cube`, and the same caveat applies to all
-of them: they record numbers, not meaning. What a table converts from and to is
+Five more interchange formats beside `.cube`, plus the Resolve `.cube` that
+carries a shaper, and the same caveat applies to all of them: they record
+numbers, not meaning. What a table converts from and to is
 yours to track.
 
 The caller allocates and `lut = NULL` queries the size, the same two-pass idiom
@@ -373,6 +374,35 @@ offset. `offset` may be `NULL` on both sides; on export that writes zeros.
 > return the offset in the data's own units, so the file's convention stays in
 > the file.
 
+### The Resolve .cube: a shaper and a cube in one file
+
+```c
+alwan_status alwan_cube_import_3d_shaper_{T}(alwan_{T} *lut, int *out_size,
+                                             alwan_{T} *shaper, int *out_shaper_size,
+                                             alwan_{T} *out_range, char const *path);
+alwan_status alwan_cube_export_3d_shaper_{T}(char const *path, alwan_{T} const *lut, int size,
+                                             alwan_{T} const *shaper, int shaper_size,
+                                             alwan_{T} range_min, alwan_{T} range_max,
+                                             char const *title);
+```
+
+A Resolve `.cube` may carry `LUT_1D_SIZE` and `LUT_3D_SIZE` together: a
+per-channel curve, uniformly sampled over `LUT_1D_INPUT_RANGE`, whose output
+addresses the cube. It is how a cube stays small over log material, and it is
+the same idea as the `.csp` prelut stored as a uniform table instead of
+irregular pairs.
+
+> **The shaper's rows carry no marker of their own.** They sit above the cube's
+> rows, so a reader that skips only the keyword takes the first of them as cube
+> samples. `alwan_cube_import_3d_{T}` therefore refuses a file with a
+> `LUT_1D_SIZE` outright, with `ALWAN_E_INVALID`, and `alwan_cube_import_1d_{T}`
+> refuses one with a `LUT_3D_SIZE`, because neither table is the transform on
+> its own.
+
+A file with no shaper reads through this call too, reporting a shaper size of 0
+and leaving the buffer untouched, so one call takes any `.cube`. On export,
+`shaper_size = 0` writes a plain `.cube` that the ordinary reader takes.
+
 ### What is checked
 
 Suite 161 holds each reader to OpenColorIO's own evaluation of the same file at
@@ -398,6 +428,8 @@ Two cases need a different bound, and the suite says why.
   different point counts.
 - `.spimtx` has no grid at all, so it is applied to probe points and compared,
   and its matrix and offsets are pinned entry by entry.
+- The Resolve shaper is uniformly sampled, so OCIO applies it without that
+  resampling and the composition holds to float32 round-off, 7.7e-08.
 
 ---
 

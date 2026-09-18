@@ -867,6 +867,145 @@ static alwan_status spimtx_export(char const *path, double const *m9, double con
 }
 
 /* ================================================================
+ * Resolve .cube: a 1D shaper and a 3D cube in one file
+ *
+ *   LUT_1D_SIZE <n>
+ *   LUT_1D_INPUT_RANGE <lo> <hi>
+ *   LUT_3D_SIZE <N>
+ *   r g b            n shaper rows, uniformly sampled over the input range
+ *   r g b            N^3 cube rows, R-fastest
+ *
+ * The shaper is a per-channel curve whose output addresses the cube, which is
+ * how a cube stays small over log material. Its rows sit above the cube's and
+ * carry no marker of their own, so a reader that skips only the keyword takes
+ * the first n of them as cube samples; the readers in alwan_import.c refuse
+ * such a file outright and name this call instead.
+ *
+ * A file with no LUT_1D_SIZE reads here too, reporting a shaper size of 0, so
+ * this one entry point takes any .cube.
+ * ================================================================ */
+
+static alwan_status cube_shaper_import(lutfmt_sink const *sink, int *out_size,
+                                       lutfmt_sink const *shaper, int *out_shaper_size,
+                                       double *out_range, char const *path) {
+    FILE *f;
+    char *saved;
+    char line[1024];
+    int status = ALWAN_OK;
+    int size = 0, shaper_size = 0;
+    long row = 0, want_shaper, want_cube;
+    double lo = 0.0, hi = 1.0;
+
+    if (!out_size || !path) return ALWAN_E_INVALID;
+    f = fopen(path, "rb");
+    if (!f) return ALWAN_E_INVALID;
+    saved = lutfmt_save_lc_numeric();
+
+    while (fgets(line, sizeof line, f)) {
+        char const *s = lutfmt_skip_ws(line);
+        double v[3];
+        if (lutfmt_blank(s)) continue;
+        if (strncmp(s, "LUT_1D_INPUT_RANGE", 18) == 0) {
+            if (csp_numbers(s + 18, v, 2) != 2 || !lutfmt_finite(v[0]) || !lutfmt_finite(v[1])) {
+                status = ALWAN_E_INVALID; goto done;
+            }
+            lo = v[0]; hi = v[1];
+            continue;
+        }
+        if (strncmp(s, "LUT_1D_SIZE", 11) == 0) {
+            shaper_size = atoi(s + 11);
+            if (shaper_size < 2 || shaper_size > 65536) { status = ALWAN_E_RANGE; goto done; }
+            continue;
+        }
+        if (strncmp(s, "LUT_3D_SIZE", 11) == 0) {
+            size = atoi(s + 11);
+            if (size < 2 || size > 256) { status = ALWAN_E_RANGE; goto done; }
+            continue;
+        }
+        if (strncmp(s, "DOMAIN_MIN", 10) == 0 || strncmp(s, "DOMAIN_MAX", 10) == 0 ||
+            strncmp(s, "TITLE", 5) == 0) {
+            continue;
+        }
+        /* The first data row ends the header, and both sizes are known by then:
+         * the format puts every keyword above the numbers. */
+        if (size == 0) { status = ALWAN_E_NODATA; goto done; }
+        if (!sink->p) break;                       /* size query: the header is enough */
+        if (shaper_size > 0 && !(shaper && shaper->p)) { status = ALWAN_E_INVALID; goto done; }
+        if (csp_numbers(s, v, 3) != 3) { status = ALWAN_E_INVALID; goto done; }
+        if (!lutfmt_finite(v[0]) || !lutfmt_finite(v[1]) || !lutfmt_finite(v[2])) {
+            status = ALWAN_E_INVALID; goto done;
+        }
+        want_shaper = (long)shaper_size;
+        want_cube = (long)size * size * size;
+        if (row < want_shaper) {
+            lutfmt_put(shaper, (size_t)row * 3 + 0, v[0]);
+            lutfmt_put(shaper, (size_t)row * 3 + 1, v[1]);
+            lutfmt_put(shaper, (size_t)row * 3 + 2, v[2]);
+        } else if (row < want_shaper + want_cube) {
+            size_t at = (size_t)(row - want_shaper) * 3;
+            lutfmt_put(sink, at + 0, v[0]);
+            lutfmt_put(sink, at + 1, v[1]);
+            lutfmt_put(sink, at + 2, v[2]);
+        } else {
+            status = ALWAN_E_RANGE; goto done;      /* more rows than the header declares */
+        }
+        row++;
+    }
+    if (size == 0) { status = ALWAN_E_NODATA; goto done; }
+    *out_size = size;
+    if (out_shaper_size) *out_shaper_size = shaper_size;
+    if (out_range) { out_range[0] = lo; out_range[1] = hi; }
+    if (sink->p && row != (long)shaper_size + (long)size * size * size) status = ALWAN_E_RANGE;
+
+done:
+    lutfmt_restore_lc_numeric(saved);
+    fclose(f);
+    return status;
+}
+
+static alwan_status cube_shaper_export(char const *path, lutfmt_source const *src, int size,
+                                       lutfmt_source const *shaper, int shaper_size,
+                                       double lo, double hi, char const *title) {
+    FILE *f;
+    char *saved;
+    char const *fmt;
+    long k;
+
+    if (!path || !src->p) return ALWAN_E_INVALID;
+    if (size < 2 || size > 256) return ALWAN_E_RANGE;
+    if (shaper_size != 0) {
+        if (shaper_size < 2 || shaper_size > 65536) return ALWAN_E_RANGE;
+        if (!shaper || !shaper->p) return ALWAN_E_INVALID;
+        if (!lutfmt_finite(lo) || !lutfmt_finite(hi) || !(hi > lo)) return ALWAN_E_INVALID;
+    }
+
+    f = fopen(path, "wb");
+    if (!f) return ALWAN_E_INVALID;
+    saved = lutfmt_save_lc_numeric();
+    fmt = src->is_f32 ? "%.9g %.9g %.9g\n" : "%.17g %.17g %.17g\n";
+
+    if (title && title[0]) fprintf(f, "TITLE \"%s\"\n", title);
+    if (shaper_size) {
+        fprintf(f, "LUT_1D_SIZE %d\n", shaper_size);
+        fprintf(f, src->is_f32 ? "LUT_1D_INPUT_RANGE %.9g %.9g\n" : "LUT_1D_INPUT_RANGE %.17g %.17g\n",
+                lo, hi);
+    }
+    fprintf(f, "LUT_3D_SIZE %d\n", size);
+    for (k = 0; k < (long)shaper_size; k++) {
+        fprintf(f, fmt, lutfmt_get(shaper, (size_t)k * 3 + 0),
+                lutfmt_get(shaper, (size_t)k * 3 + 1), lutfmt_get(shaper, (size_t)k * 3 + 2));
+    }
+    for (k = 0; k < (long)size * size * size; k++) {
+        fprintf(f, fmt, lutfmt_get(src, (size_t)k * 3 + 0),
+                lutfmt_get(src, (size_t)k * 3 + 1), lutfmt_get(src, (size_t)k * 3 + 2));
+    }
+
+    lutfmt_restore_lc_numeric(saved);
+    if (fclose(f) != 0) return ALWAN_E_INVALID;
+    return ALWAN_OK;
+}
+
+/* ================================================================
  * Public entry points: one pair per format per precision.
  * ================================================================ */
 
@@ -1027,6 +1166,56 @@ alwan_status alwan_spimtx_export_f64(char const *path, alwan_mat3x3_f64 const *m
     for (i = 0; i < 9; i++) m9[i] = matrix->m[i];
     for (i = 0; i < 3; i++) off3[i] = offset ? offset[i] : 0.0;
     return spimtx_export(path, m9, offset ? off3 : NULL, 0);
+}
+
+alwan_status alwan_cube_import_3d_shaper_f64(alwan_f64 *lut, int *out_size, alwan_f64 *shaper,
+                                             int *out_shaper_size, alwan_f64 *out_range,
+                                             char const *path) {
+    lutfmt_sink sink, sh;
+    double range[2];
+    alwan_status st;
+    sink.p = lut; sink.is_f32 = 0;
+    sh.p = shaper; sh.is_f32 = 0;
+    st = cube_shaper_import(&sink, out_size, &sh, out_shaper_size, range, path);
+    if (st == ALWAN_OK && out_range) { out_range[0] = range[0]; out_range[1] = range[1]; }
+    return st;
+}
+
+alwan_status alwan_cube_import_3d_shaper_f32(alwan_f32 *lut, int *out_size, alwan_f32 *shaper,
+                                             int *out_shaper_size, alwan_f32 *out_range,
+                                             char const *path) {
+    lutfmt_sink sink, sh;
+    double range[2];
+    alwan_status st;
+    sink.p = lut; sink.is_f32 = 1;
+    sh.p = shaper; sh.is_f32 = 1;
+    st = cube_shaper_import(&sink, out_size, &sh, out_shaper_size, range, path);
+    if (st == ALWAN_OK && out_range) {
+        out_range[0] = (alwan_f32)range[0];
+        out_range[1] = (alwan_f32)range[1];
+    }
+    return st;
+}
+
+alwan_status alwan_cube_export_3d_shaper_f64(char const *path, alwan_f64 const *lut, int size,
+                                             alwan_f64 const *shaper, int shaper_size,
+                                             alwan_f64 range_min, alwan_f64 range_max,
+                                             char const *title) {
+    lutfmt_source src, sh;
+    src.p = lut; src.is_f32 = 0;
+    sh.p = shaper; sh.is_f32 = 0;
+    return cube_shaper_export(path, &src, size, &sh, shaper_size, range_min, range_max, title);
+}
+
+alwan_status alwan_cube_export_3d_shaper_f32(char const *path, alwan_f32 const *lut, int size,
+                                             alwan_f32 const *shaper, int shaper_size,
+                                             alwan_f32 range_min, alwan_f32 range_max,
+                                             char const *title) {
+    lutfmt_source src, sh;
+    src.p = lut; src.is_f32 = 1;
+    sh.p = shaper; sh.is_f32 = 1;
+    return cube_shaper_export(path, &src, size, &sh, shaper_size, (double)range_min,
+                              (double)range_max, title);
 }
 
 alwan_status alwan_spimtx_export_f32(char const *path, alwan_mat3x3_f32 const *matrix,
