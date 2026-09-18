@@ -248,6 +248,45 @@ int alwan_is_within_pointer_gamut_{T}(alwan_vec2_{T} const *xy);
 
 Test whether an xy chromaticity falls within Pointer's gamut (the gamut of real surface colors).
 
+```c
+alwan_status alwan_pointer_gamut_max_chroma_{T}(alwan_{T} *chroma_out,
+                                                alwan_{T} lightness, alwan_{T} hue_deg);
+alwan_status alwan_pointer_gamut_white_{T}(alwan_xyz_{T} *out);
+int alwan_is_within_pointer_gamut_lab_{T}(alwan_lab_{T} const *lab);
+int alwan_is_within_pointer_gamut_xyz_{T}(alwan_xyz_{T} const *xyz);
+```
+
+Pointer's gamut **as a volume**, rather than the chromaticity outline above. Pointer (1980)
+measured the greatest chroma a real surface colour reaches at each CIELAB lightness and hue,
+on a regular grid: sixteen lightnesses from 15 to 90 in steps of 5, and thirty-six hues from
+0 to 350 in steps of 10. `alwan_pointer_gamut_max_chroma_{T}` interpolates that table
+bilinearly, wrapping in hue because hue is a circle, and returns `ALWAN_E_RANGE` outside 15
+to 90 in lightness, where the measurement says nothing and an extrapolation would be an
+invention.
+
+**This is not a convex hull, and the difference is not small.** colour-science's
+`is_within_pointer_gamut` converts the table to XYZ and tests membership against a Delaunay
+mesh, which is the convex hull of the data. Pointer's gamut is not convex, so the hull admits
+colours the measurement says are not there. Take each of the 575 non-zero grid directions and
+push its chroma past its own tabulated maximum:
+
+| chroma beyond the published maximum | colour's hull calls inside | alwan |
+|---|---|---|
+| 2 % | 329 of 575 | 0 |
+| 5 % | 246 of 575 | 0 |
+| 10 % | 166 of 575 | 0 |
+| 25 % | 80 of 575 | 0 |
+
+Reading the table for what it says answers all of those correctly by construction. Suite 40
+records the gap rather than papering over it, and would fail if alwan ever drifted towards a
+hull.
+
+`alwan_pointer_gamut_white_{T}` is the white the table is referenced to, and it is **not**
+`ALWAN_ILLUMINANT_C`. That rounds to (0.31006, 0.31616); Pointer's data is against illuminant
+C computed to more places, (0.31005673430392799, 0.31614570478920401). The difference moves a
+Lab by about 0.01, which is enough to change an answer at the boundary. The `_xyz_{T}`
+predicate uses it, so a caller passing tristimulus does not have to know.
+
 ---
 
 ### Fitting an ellipse

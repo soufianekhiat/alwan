@@ -237,6 +237,148 @@ static alwan_vec2_f64 const POINTER_GAMUT_BOUNDARY[32] = {
 };
 ALWAN_DIAG_POP
 
+/* Pointer's Gamut as a VOLUME rather than a chromaticity outline.
+ *
+ * Pointer (1980) measured the greatest chroma a real surface colour reaches at
+ * each lightness and hue, on a regular grid: sixteen lightnesses from 15 to 90
+ * in steps of 5, and thirty-six hues from 0 to 350 in steps of 10. Only the
+ * chroma is stored, since the grid is what it is; the suite asserts the grid
+ * against colour-science's full (L, C, h) table.
+ *
+ * WHY THIS IS NOT A CONVEX HULL, which is what colour-science tests against.
+ * The gamut is not convex, and hulling it admits colours the measurement says
+ * are not there. Measured: take each of the 575 non-zero grid directions and
+ * push its chroma 25 per cent PAST the tabulated maximum, and colour's hull
+ * still calls 80 of them inside; push it only 2 per cent past and it calls 329
+ * of 575 inside, more than half. Reading the table for what it says instead,
+ * which is what happens here, answers those correctly by construction.
+ *
+ * Source: Pointer (1980), "The Gamut of Real Surface Colours", via
+ * colour-science's DATA_POINTER_GAMUT_VOLUME. */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const POINTER_GAMUT_VOLUME[16 * 36] = {
+#include "../data/gamut/pointer_gamut_volume_chroma.csv"
+};
+ALWAN_DIAG_POP
+
+enum { ALWAN_POINTER_L_COUNT = 16, ALWAN_POINTER_H_COUNT = 36 };
+
+/* The white the table is referenced to. NOT alwan's ALWAN_ILLUMINANT_C, which
+ * is the rounded (0.31006, 0.31616): Pointer's data is against illuminant C
+ * computed to more places, and the difference moves a Lab by about 0.01, which
+ * is enough to change an answer at the boundary. */
+#define ALWAN_POINTER_WHITE_X 0.31005673430392799
+#define ALWAN_POINTER_WHITE_Y 0.31614570478920401
+
+/* Bilinear on the grid, wrapping in hue because hue is a circle. Lightness
+ * does not wrap: outside 15 to 90 the measurement says nothing, which is
+ * reported rather than extrapolated. */
+static int alwan_pointer_max_chroma(double *out, double lightness, double hue_deg) {
+    double tL, th, c00, c01, c10, c11;
+    int i, j, j2;
+    if (!(lightness >= 15.0) || !(lightness <= 90.0)) return 0;
+    hue_deg = hue_deg - 360.0 * floor(hue_deg / 360.0);
+    if (!(hue_deg >= 0.0 && hue_deg < 360.0)) hue_deg = 0.0;     /* NaN lands here */
+
+    tL = (lightness - 15.0) / 5.0;
+    i = (int)tL;
+    if (i > ALWAN_POINTER_L_COUNT - 2) i = ALWAN_POINTER_L_COUNT - 2;
+    tL -= (double)i;
+
+    th = hue_deg / 10.0;
+    j = (int)th;
+    if (j > ALWAN_POINTER_H_COUNT - 1) j = ALWAN_POINTER_H_COUNT - 1;
+    th -= (double)j;
+    j2 = (j + 1) % ALWAN_POINTER_H_COUNT;
+
+    c00 = POINTER_GAMUT_VOLUME[(size_t)i * ALWAN_POINTER_H_COUNT + (size_t)j];
+    c01 = POINTER_GAMUT_VOLUME[(size_t)i * ALWAN_POINTER_H_COUNT + (size_t)j2];
+    c10 = POINTER_GAMUT_VOLUME[(size_t)(i + 1) * ALWAN_POINTER_H_COUNT + (size_t)j];
+    c11 = POINTER_GAMUT_VOLUME[(size_t)(i + 1) * ALWAN_POINTER_H_COUNT + (size_t)j2];
+    *out = (1.0 - tL) * ((1.0 - th) * c00 + th * c01)
+         + tL * ((1.0 - th) * c10 + th * c11);
+    return 1;
+}
+
+alwan_status alwan_pointer_gamut_max_chroma_f64(alwan_f64 *chroma_out, alwan_f64 lightness,
+                                                alwan_f64 hue_deg) {
+    double c;
+    if (!chroma_out) return ALWAN_E_INVALID;
+    if (!alwan_pointer_max_chroma(&c, (double)lightness, (double)hue_deg)) {
+        return ALWAN_E_RANGE;
+    }
+    *chroma_out = (alwan_f64)c;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_pointer_gamut_max_chroma_f32(alwan_f32 *chroma_out, alwan_f32 lightness,
+                                                alwan_f32 hue_deg) {
+    double c;
+    if (!chroma_out) return ALWAN_E_INVALID;
+    if (!alwan_pointer_max_chroma(&c, (double)lightness, (double)hue_deg)) {
+        return ALWAN_E_RANGE;
+    }
+    *chroma_out = (alwan_f32)c;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_pointer_gamut_white_f64(alwan_xyz_f64 *out) {
+    if (!out) return ALWAN_E_INVALID;
+    out->x = ALWAN_POINTER_WHITE_X / ALWAN_POINTER_WHITE_Y;
+    out->y = 1.0;
+    out->z = (1.0 - ALWAN_POINTER_WHITE_X - ALWAN_POINTER_WHITE_Y) / ALWAN_POINTER_WHITE_Y;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_pointer_gamut_white_f32(alwan_xyz_f32 *out) {
+    if (!out) return ALWAN_E_INVALID;
+    out->x = (alwan_f32)(ALWAN_POINTER_WHITE_X / ALWAN_POINTER_WHITE_Y);
+    out->y = (alwan_f32)1.0;
+    out->z = (alwan_f32)((1.0 - ALWAN_POINTER_WHITE_X - ALWAN_POINTER_WHITE_Y)
+                         / ALWAN_POINTER_WHITE_Y);
+    return ALWAN_OK;
+}
+
+static int alwan_pointer_within_lab(double L, double a, double b) {
+    double cmax;
+    double const chroma = sqrt(a * a + b * b);
+    double hue = atan2(b, a) * (180.0 / 3.14159265358979323846);
+    if (!alwan_pointer_max_chroma(&cmax, L, hue)) return 0;
+    return chroma <= cmax;
+}
+
+int alwan_is_within_pointer_gamut_lab_f64(alwan_lab_f64 const *lab) {
+    if (!lab) return 0;
+    return alwan_pointer_within_lab((double)lab->L, (double)lab->a, (double)lab->b);
+}
+
+int alwan_is_within_pointer_gamut_lab_f32(alwan_lab_f32 const *lab) {
+    if (!lab) return 0;
+    return alwan_pointer_within_lab((double)lab->L, (double)lab->a, (double)lab->b);
+}
+
+int alwan_is_within_pointer_gamut_xyz_f64(alwan_xyz_f64 const *xyz) {
+    alwan_xyz_f64 white;
+    alwan_lab_f64 lab;
+    if (!xyz) return 0;
+    alwan_pointer_gamut_white_f64(&white);
+    alwan_xyz_to_lab_f64(&lab, xyz, &white);
+    return alwan_pointer_within_lab(lab.L, lab.a, lab.b);
+}
+
+int alwan_is_within_pointer_gamut_xyz_f32(alwan_xyz_f32 const *xyz) {
+    alwan_xyz_f64 white, q;
+    alwan_lab_f64 lab;
+    if (!xyz) return 0;
+    alwan_pointer_gamut_white_f64(&white);
+    q.x = (alwan_f64)xyz->x;
+    q.y = (alwan_f64)xyz->y;
+    q.z = (alwan_f64)xyz->z;
+    alwan_xyz_to_lab_f64(&lab, &q, &white);
+    return alwan_pointer_within_lab(lab.L, lab.a, lab.b);
+}
+
 /* Check if a point is inside a 2D polygon using ray casting algorithm
  * Returns 1 if inside, 0 if outside */
 static int alwan_point_in_polygon(alwan_vec2_f64 const *point,

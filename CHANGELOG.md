@@ -92,6 +92,31 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Pointer's gamut as a volume, and it is not a convex hull.**
+  `alwan_pointer_gamut_max_chroma_{T}` gives the greatest chroma a real surface colour reaches
+  at a CIELAB lightness and hue, from Pointer's (1980) published grid of sixteen lightnesses
+  by thirty-six hues, and `alwan_is_within_pointer_gamut_lab_{T}` and `_xyz_{T}` answer
+  membership from it. alwan already had the chromaticity outline; this is the volume under it.
+
+  colour-science's `is_within_pointer_gamut` tests against a Delaunay mesh over the table,
+  which is its convex hull. Pointer's gamut is not convex, so that admits colours the
+  measurement says are not there. Push each of the 575 non-zero grid directions past its own
+  tabulated maximum chroma and colour's hull still calls 329 of 575 inside at 2 per cent past,
+  and 80 of 575 inside at 25 per cent past. alwan calls none of them inside, because reading
+  the table for what it says answers them by construction. Suite 40 asserts both halves of
+  that, so a drift towards a hull would fail rather than pass quietly.
+
+  `alwan_pointer_gamut_white_{T}` is the white the table is referenced to and it is not
+  `ALWAN_ILLUMINANT_C`. That rounds to (0.31006, 0.31616) where Pointer's data is against
+  (0.31005673430392799, 0.31614570478920401), a difference that moves a Lab by about 0.01 and
+  changes answers at the boundary. Using the rounded one failed the suite's own white check,
+  which is how the eight-digit constant was caught.
+
+  Also fixed while regenerating the table: `gendata/data/reference_data.py` had stopped
+  running at all, because colour-science made `ColourChecker` a dataclass rather than a
+  mapping and `len()` on one now raises. The Pointer boundary and ColorChecker CSVs it also
+  writes regenerate byte-identically, which is the check that nothing else had drifted.
+
 - **The Lab extent of an RGB space.** `alwan_rgb_space_limits_{T}` returns the smallest and
   largest L*, a* and b* a space can reach, taken over the eight corners of its cube and under
   its own white. L* is monotonic in Y and Y is linear in RGB, so its extremes are at corners by

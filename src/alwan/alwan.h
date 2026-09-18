@@ -3115,6 +3115,40 @@ alwan_status alwan_colour_solid_white_f32(alwan_xyz_f32 *out, alwan_colour_solid
 alwan_status alwan_colour_solid_contains_f64(int *inside, alwan_colour_solid const *solid, alwan_xyz_f64 const *xyz, alwan_f64 tolerance);
 alwan_status alwan_colour_solid_contains_f32(int *inside, alwan_colour_solid const *solid, alwan_xyz_f32 const *xyz, alwan_f32 tolerance);
 
+/* Pointer's Gamut as a VOLUME rather than the chromaticity outline above.
+ *
+ * Pointer (1980) measured the greatest chroma a real surface colour reaches at
+ * each CIELAB lightness and hue, on a regular grid: sixteen lightnesses from 15
+ * to 90 in steps of 5, and thirty-six hues from 0 to 350 in steps of 10.
+ * alwan_pointer_gamut_max_chroma_{T} interpolates that table bilinearly,
+ * wrapping in hue because hue is a circle and refusing outside 15 to 90 in
+ * lightness, where the measurement says nothing: that is ALWAN_E_RANGE rather
+ * than an extrapolation.
+ *
+ * NOT A CONVEX HULL, which is what colour-science's is_within_pointer_gamut
+ * tests against, and the difference is not small. The gamut is not convex, so
+ * hulling it admits colours the measurement says are not there: push each of
+ * the 575 non-zero grid directions 25 per cent past its tabulated maximum
+ * chroma and colour still calls 80 of them inside; push it 2 per cent past and
+ * it calls 329 of 575 inside, more than half. Reading the table for what it
+ * says answers those correctly by construction.
+ *
+ * alwan_pointer_gamut_white_{T} is the white the table is referenced to. It is
+ * NOT ALWAN_ILLUMINANT_C, which rounds to (0.31006, 0.31616): Pointer's data is
+ * against illuminant C computed to more places, (0.31005673430392799,
+ * 0.31614570478920401), and
+ * the difference moves a Lab by about 0.01, enough to change an answer at the
+ * boundary. The _xyz_{T} predicate uses it, so a caller passing XYZ does not
+ * have to know. */
+alwan_status alwan_pointer_gamut_max_chroma_f64(alwan_f64 *chroma_out, alwan_f64 lightness, alwan_f64 hue_deg);
+alwan_status alwan_pointer_gamut_max_chroma_f32(alwan_f32 *chroma_out, alwan_f32 lightness, alwan_f32 hue_deg);
+alwan_status alwan_pointer_gamut_white_f64(alwan_xyz_f64 *out);
+alwan_status alwan_pointer_gamut_white_f32(alwan_xyz_f32 *out);
+int alwan_is_within_pointer_gamut_lab_f64(alwan_lab_f64 const *lab);
+int alwan_is_within_pointer_gamut_lab_f32(alwan_lab_f32 const *lab);
+int alwan_is_within_pointer_gamut_xyz_f64(alwan_xyz_f64 const *xyz);
+int alwan_is_within_pointer_gamut_xyz_f32(alwan_xyz_f32 const *xyz);
+
 /* Get Pointer's Gamut boundary points
  * Returns array of xy chromaticity coordinates defining the boundary
  * count_out: receives the number of boundary points (32)
