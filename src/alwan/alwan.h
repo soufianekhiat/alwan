@@ -6129,12 +6129,25 @@ alwan_status alwan_extrapolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in,
  *   Duv within 8.8e-05 everywhere tested
  *   CCT within 28 K (0.3%) for points on the locus, degrading to ~220 K at
  *   |Duv| = 0.01
- * The CCT residual is the Kang 2002 locus approximation this uses, not the
+ * The CCT residual is the cubic locus approximation this uses, not the
  * minimiser, which recovers its own locus to within 1e-13. An earlier version
- * of this comment claimed CCT <= 1 K; that was never achievable with a Kang
- * locus, and the solver of the time was in fact returning its McCamy seed
- * unrefined above 7300 K, for 5496 K of error at 25000 K. If you need CCT
- * tighter than this, the locus model has to change, not the search. */
+ * of this comment claimed CCT <= 1 K; that was never achievable with an
+ * approximated locus, and the solver of the time was in fact returning its
+ * McCamy seed unrefined above 7300 K, for 5496 K of error at 25000 K. If you
+ * need CCT tighter than this, the locus model has to change, not the search.
+ *
+ * Measured directly, which is the sharper way to say the same thing: take a
+ * point that lies EXACTLY on the real Planckian locus, Planck's law integrated
+ * against the 1931 observer's 1 nm colour matching functions, and this function
+ * should return Duv = 0 and that point's own temperature. It returns
+ *
+ *     |Duv| up to 3.7e-04, worst at 1667 K, the bottom of the range
+ *     CCT out by up to 26.9 K, which is 0.27 per cent
+ *
+ * and that gap is the locus model alone. For scale, an ANSI C78.377 bin is
+ * 0.006 of Duv wide, so this is about six per cent of one. Suite 17 pins both
+ * figures. If you need better, alwan_uv_to_cct_ohno2013_{T} reads a real
+ * Planckian table rather than an approximation and is the accurate path. */
 alwan_status alwan_cct_duv_optimize_f64(alwan_f64 *cct_out, alwan_f64 *duv_out, alwan_vec2_f64 const *xy);
 alwan_status alwan_cct_duv_optimize_f32(alwan_f32 *cct_out, alwan_f32 *duv_out, alwan_vec2_f32 const *xy);
 
