@@ -5559,6 +5559,19 @@ alwan_status alwan_michaelis_menten_substrate_abebe2017_f32(alwan_f32 *substrate
  * is NOT what the reference does between samples: it uses Sprague, and the
  * difference reaches 1.8e-02 in the resulting matrix. A caller with measured
  * primaries should therefore expect their own numbers, not another library's.
+ *
+ * THE MODEL CAN GO SINGULAR, AND THIS DOES NOT GUARD AGAINST IT. Each row of
+ * the opponent matrix is divided by its own sum, and for some display and some
+ * shift that sum passes through zero. On the embedded Apple Studio Display it
+ * happens near an L shift of 11.5 nm, where a coefficient reaches 1066: a
+ * matrix that would destroy any image it touched. colour-science returns the
+ * same value to 2.6e-08, because it is the model doing this rather than either
+ * implementation, and alwan follows it rather than inventing a threshold for
+ * where a large coefficient becomes an unusable one.
+ *
+ * So a caller sweeping shifts on measured primaries should look at what comes
+ * back. The published tables never show this because they sample one display
+ * at eleven points and none of them lands near a pole.
  * ---------------------------------------------------------------- */
 
 typedef enum {
