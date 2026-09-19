@@ -7497,7 +7497,27 @@ typedef enum {
  * default. The luminance operators, NORMALIZATION and LOGARITHMIC to REINHARD2004,
  * take luminance as the weighted sum of R, G and B, and need every luminance finite
  * and not negative. NORMALIZATION divides by the peak luminance (a zero peak gives
- * black). REINHARD2004 maps each channel against its adaptation level; a zero channel
+ * black).
+ *
+ * REINHARD2004's GLOBAL ADAPTATION TERM is worth knowing about before using it
+ * with light_adaptation below 1 and chromatic_adaptation below 1, which is the
+ * only place it has any effect. The term is
+ *
+ *     I_g = c * mean(channel) + (1 - c) * <a mean of luminance>
+ *
+ * and alwan takes the LOG average of luminance there, following colour-hdri,
+ * which is the reference the rest of this operator is pinned to. OpenCV's
+ * TonemapReinhard and pfstmo's reinhard05 both take the ARITHMETIC mean. The
+ * two are not close: on suite 130's own image the log average is 0.301 where
+ * the arithmetic mean is 23.02, and the outputs are 0.314 apart. With
+ * light_adaptation or chromatic_adaptation at 1 the term drops out and the
+ * question does not arise.
+ *
+ * Which reading is Reinhard and Devlin's is not settled here and alwan has not
+ * been changed on an argument; suite 130 pins the current behaviour so that it
+ * is deliberate, and roadmap 3.4 carries the open question.
+ *
+ * REINHARD2004 maps each channel against its adaptation level; a zero channel
  * stays zero, and with chromatic_adaptation above 0 no channel may be negative. The
  * others scale RGB by L_d / L and map a pixel with zero luminance to black. SIMPLE,
  * GAMMA and FILMIC apply their formula to each value as it is. ALWAN_E_INVALID for an
