@@ -92,6 +92,30 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Machado 2009 as a continuous model, so CVD can be simulated for the actual display.**
+  `alwan_cvd_matrix_machado2009_shift_{T}` derives the colour vision deficiency matrix from the
+  Stockman and Sharpe cone fundamentals rather than interpolating between the eleven matrices
+  the paper tabulates. Those eleven are right for eleven severities on the display the authors
+  used, a 1997 CRT, and cannot answer for anything else.
+
+  The display is not a detail. Full protanopia on that CRT and on an Apple Studio Display
+  differ by 0.40 in a matrix coefficient. `alwan_display_primaries_spd_{T}` reaches both
+  embedded sets, and a caller can pass measured spectra for their own panel. Passing NULL for
+  all three primaries gives the CRT the published tables were made with, which reproduces
+  colour-science to 1e-14 over twenty-four matrices spanning both displays and twelve shifts.
+
+  The shifts are in nanometres rather than a severity in [0, 1]: the paper's protanomaly and
+  deuteranomaly run 0 to 20, its tritanomaly tables use 5 to 59, and the authors say the shift
+  paradigm is an approximation there rather than a model of tritanopia.
+
+  Two things about the spectra that cost a cycle each and are now written down. The published
+  primaries are at 5 nm and the reference resamples them with Sprague; doing it linearly moves
+  the derived matrix by up to 1.8e-02, so gendata calls the reference and alwan embeds the 1 nm
+  result rather than reimplementing Sprague to produce a constant. And extrapolating those
+  spectra by holding the last measured value instead of by zero leaves a primary emitting
+  0.0066 from 781 nm to 830 nm, a tail that alone moves the matrix by 7e-06. That was a bug in
+  alwan's own generator, found by the disagreement it caused.
+
 - **Pointer's gamut as a volume, and it is not a convex hull.**
   `alwan_pointer_gamut_max_chroma_{T}` gives the greatest chroma a real surface colour reaches
   at a CIELAB lightness and hue, from Pointer's (1980) published grid of sixteen lightnesses

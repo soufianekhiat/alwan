@@ -402,6 +402,8 @@ EXPORTS
     alwan_cube_import_3d_shaper_f64
     alwan_cubehelix_to_rgb_f32
     alwan_cubehelix_to_rgb_f64
+    alwan_cvd_matrix_machado2009_shift_f32
+    alwan_cvd_matrix_machado2009_shift_f64
     alwan_d_series_illuminant_xy_f32
     alwan_d_series_illuminant_xy_f64
     alwan_data_get_illuminant_a_f32
@@ -504,6 +506,8 @@ EXPORTS
     alwan_din99_to_lab_f64_map_planar
     alwan_din99_to_lab_map_interleave_ex
     alwan_din99_to_lab_map_planar_ex
+    alwan_display_primaries_spd_f32
+    alwan_display_primaries_spd_f64
     alwan_dng_camera_neutral_to_xy_f32
     alwan_dng_camera_neutral_to_xy_f64
     alwan_dng_camera_to_xyz_matrix_f32

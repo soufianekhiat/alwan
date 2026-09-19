@@ -5502,6 +5502,44 @@ alwan_status alwan_simulate_protanopia_map_interleave_ex(void *out, size_t out_s
 alwan_status alwan_simulate_deuteranopia_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 severity);
 alwan_status alwan_simulate_tritanopia_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 severity);
 
+/* ----------------------------------------------------------------
+ * Machado 2009 as a continuous model
+ *
+ * The call below interpolates between the eleven matrices the paper
+ * tabulates. Those are right for those eleven severities ON THE DISPLAY THE
+ * AUTHORS USED, a 1997 CRT, and they cannot answer for a different display.
+ * This derives the matrix from the cone fundamentals instead, so any shift and
+ * any display can be asked for.
+ *
+ * shift_l, shift_m and shift_s are the cone shifts in nanometres, not a
+ * severity in [0, 1]. The paper's protanomaly and deuteranomaly run 0 to 20;
+ * its tritanomaly tables use 5 to 59, and the authors say plainly that the
+ * shift paradigm is an approximation there rather than a model of tritanopia.
+ *
+ * primary_r, primary_g and primary_b are the display's spectra. Pass NULL for
+ * all three to get the 1997 CRT the published tables were made with, which is
+ * embedded at 1 nm and reproduces colour-science's answer. Passing measured
+ * spectra instead resamples them with alwan's own linear interpolation, which
+ * is NOT what the reference does between samples: it uses Sprague, and the
+ * difference reaches 1.8e-02 in the resulting matrix. A caller with measured
+ * primaries should therefore expect their own numbers, not another library's.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_DISPLAY_PRIMARIES_CRT_BRAINARD1997 = 0,  /* what the published tables use */
+    ALWAN_DISPLAY_PRIMARIES_APPLE_STUDIO = 1,
+    ALWAN_DISPLAY_PRIMARIES_COUNT = 2
+} alwan_display_primaries;
+
+/* The embedded display spectra, 390 to 830 nm at 1 nm. Creates three SPDs;
+ * the caller destroys each with alwan_spd_destroy. */
+alwan_status alwan_display_primaries_spd_f64(alwan_spd_f64 *r, alwan_spd_f64 *g, alwan_spd_f64 *b, alwan_display_primaries which, alwan_ctx *ctx);
+alwan_status alwan_display_primaries_spd_f32(alwan_spd_f32 *r, alwan_spd_f32 *g, alwan_spd_f32 *b, alwan_display_primaries which, alwan_ctx *ctx);
+
+/* The CVD matrix for a given set of cone shifts, in the display's own RGB. */
+alwan_status alwan_cvd_matrix_machado2009_shift_f64(alwan_mat3x3_f64 *out, alwan_f64 shift_l, alwan_f64 shift_m, alwan_f64 shift_s, alwan_spd_f64 const *primary_r, alwan_spd_f64 const *primary_g, alwan_spd_f64 const *primary_b, alwan_ctx *ctx);
+alwan_status alwan_cvd_matrix_machado2009_shift_f32(alwan_mat3x3_f32 *out, alwan_f32 shift_l, alwan_f32 shift_m, alwan_f32 shift_s, alwan_spd_f32 const *primary_r, alwan_spd_f32 const *primary_g, alwan_spd_f32 const *primary_b, alwan_ctx *ctx);
+
 /* Machado 2009 CVD Simulation
  * Models anomalous trichromacy via cone spectral sensitivity shifting.
  * More physiologically accurate than Brettel for partial deficiency.

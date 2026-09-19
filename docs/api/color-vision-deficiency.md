@@ -322,3 +322,57 @@ alwan_simulate_deuteranopia_f64_map_interleave(
 - [Color Difference](color-difference.md): Measuring perceptual difference
 - [Vision Science](vision.md): Visual perception models
 - [Map / Batch API](../map.md): Stride-adjacent batch convention and `_ex` dispatch
+
+---
+
+## Machado 2009 as a continuous model
+
+```c
+typedef enum {
+    ALWAN_DISPLAY_PRIMARIES_CRT_BRAINARD1997 = 0,
+    ALWAN_DISPLAY_PRIMARIES_APPLE_STUDIO = 1
+} alwan_display_primaries;
+
+alwan_status alwan_display_primaries_spd_{T}(alwan_spd_{T} *r, alwan_spd_{T} *g, alwan_spd_{T} *b,
+                                             alwan_display_primaries which, alwan_ctx *ctx);
+
+alwan_status alwan_cvd_matrix_machado2009_shift_{T}(alwan_mat3x3_{T} *out,
+                                                    alwan_{T} shift_l, alwan_{T} shift_m,
+                                                    alwan_{T} shift_s,
+                                                    alwan_spd_{T} const *primary_r,
+                                                    alwan_spd_{T} const *primary_g,
+                                                    alwan_spd_{T} const *primary_b,
+                                                    alwan_ctx *ctx);
+```
+
+`alwan_simulate_cvd_machado_{T}` above interpolates between the eleven matrices the paper
+tabulates. Those are right for those eleven severities **on the display the authors used**, a
+1997 CRT, and they cannot answer for a different display. This derives the matrix instead.
+
+The model shifts the Stockman and Sharpe cone fundamentals, projects both the normal and the
+shifted ones onto the paper's opponent axes, integrates each against each display primary's
+spectrum, and takes `inv(normal) * shifted`. The shifts are in **nanometres**, not a severity
+in `[0, 1]`: the paper's protanomaly and deuteranomaly run 0 to 20, and its tritanomaly tables
+use 5 to 59, with the authors saying plainly that the shift paradigm is an approximation there
+rather than a model of tritanopia.
+
+**The display changes the answer, which is the whole reason this exists.** Full protanopia on
+the 1997 CRT and on an Apple Studio Display differ by 0.40 in a matrix coefficient. Simulating
+deficiency for a modern panel with a 1997 CRT's matrices is simulating it for the wrong
+display.
+
+Pass `NULL` for all three primaries to get that CRT, which is embedded at 1 nm and reproduces
+colour-science's answer to 1e-14. Pass measured spectra to get your own display.
+
+**One caveat about measured primaries.** The published spectra are at 5 nm and the reference
+resamples them with Sprague interpolation. Resampling linearly instead moves the derived matrix
+by up to 1.8e-02, which is a thousand times the agreement otherwise available, so the built-in
+sets are embedded already resampled rather than interpolated at run time. A caller passing
+measured spectra gets alwan's own linear resampling between samples, and should expect their
+own numbers rather than another library's. Supplying spectra already on a 1 nm grid avoids the
+question entirely.
+
+A related trap, recorded because it cost a cycle: extrapolating those spectra by **holding the
+last measured value** rather than by zero leaves a display primary emitting 0.0066 from 781 nm
+to 830 nm, and that tail alone moves the derived matrix by 7e-06. A display emits nothing past
+the end of its measurement.
