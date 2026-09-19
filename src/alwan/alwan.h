@@ -7523,6 +7523,24 @@ typedef enum {
  * scale of its input: doubling every pixel gives the same picture. That is the
  * operator behaving as published, not a normalisation applied on top.
  *
+ * THE OPERATOR IS NOT MONOTONE AT EVERY BIAS, and that is the published
+ * formula rather than anything alwan does to it. The denominator grows like
+ * L^(log b / log 0.5) while the numerator grows like log L, so for a small
+ * enough bias on a wide enough scene the denominator wins and a brighter pixel
+ * comes out darker. Measured on a luminance ramp, the first inversion appears
+ * at about
+ *
+ *     bias 0.50   3 decades of scene range
+ *     bias 0.70   5 decades
+ *     bias 0.80   8 decades
+ *     bias 0.85   none up to 8 decades, and the same above it
+ *
+ * so the default is safe on anything a camera produces, while 0.70, which is
+ * inside the paper's own recommended range of 0.7 to 0.9, inverts tones on a
+ * five-decade scene. Suite 169 pins both ends of that. alwan does not clamp it:
+ * the operator is what it is, and a caller choosing a low bias for a very high
+ * range scene should know what it does rather than have it quietly repaired.
+ *
  * OpenCV's TonemapDrago wraps the same formula in two steps of its own, an
  * affine rescale of the input to [0, 1] and a min-max rescale of the output,
  * and drops the 1 / log10(L_wmax + 1) term that the rescale makes redundant.

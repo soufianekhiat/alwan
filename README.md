@@ -639,7 +639,7 @@ Re-run it against any checkout to reproduce the table.
 |---|---|
 | Test suites | 169, all passing |
 | Test cases | 1,075 |
-| Checks executed per run | 197,271 |
+| Checks executed per run | 197,292 |
 | Assertion sites in the tests | 4,794 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 439 |
 | Embedded data tables | 950 |
@@ -651,7 +651,7 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**197,271 checks per run** is what actually executes, not what is written. A
+**197,292 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
 so counting the 4,794 assertion sites would undersell the suite more than
 thirtyfold.

@@ -124,6 +124,25 @@ All notable changes to this project will be documented in this file.
   reaches 2 in the limit. A smaller bias steepens it, and b = 0.5 makes the exponent
   exactly 1.
 
+  Which leads to the one thing a caller really has to know, and it is a property of the
+  published formula rather than of this implementation. THE OPERATOR IS NOT MONOTONE AT
+  EVERY BIAS. The denominator grows like `L^(log b / log 0.5)` and the numerator like
+  `log L`, so for a small enough bias on a wide enough scene the denominator wins and a
+  brighter pixel comes out darker. Measured on a luminance ramp, the first inversion is
+  at about
+
+      bias 0.50   3 decades of scene range
+      bias 0.70   5 decades
+      bias 0.80   8 decades
+      bias 0.85   none up to 8 decades
+
+  so the default is safe on anything a camera produces, while 0.70, which is inside the
+  paper's own recommended range of 0.7 to 0.9, inverts tones on a five-decade scene.
+  alwan does not clamp it: the operator is what it is, and a caller choosing a low bias
+  for a very high range scene should be told rather than quietly repaired. Suite 169
+  pins nine points of that boundary, from bias 0.50 at two decades, still monotone, to
+  bias 0.50 at three, where 62 of 399 steps go backwards.
+
   Only the gamma 1, saturation 1 path is compared, and nothing is lost by that: alwan
   has neither parameter on this operator, `ALWAN_TONEMAP_GAMMA` being its own. It is
   also the only path OpenCV can be asked for, since it raises an intermediate to a
