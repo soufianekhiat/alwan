@@ -92,6 +92,53 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **A display's tone response, fitted from measured patches.**
+  `alwan_display_gog_fit_{T}` takes pairs of normalised drive and normalised luminance off a
+  meter and returns the curve that joins them, as `alwan_display_gog_{T}`:
+
+      GOG    L = (gain d + offset)^gamma
+      GOGO   L = (gain d + offset)^gamma + flare
+
+  The flare is what the room, the screen surface and the meter add to black, and it is why a
+  measured display almost never reads zero at zero. Pass `with_flare` non-zero to fit it.
+  `alwan_display_gog_eval_{T}` applies the model and `alwan_display_gog_invert_{T}` inverts it
+  in closed form, so a caller can go either way once the fit is in hand.
+
+  The fit gets there in two stages, because the obvious way does not work. Gain and gamma trade
+  off against each other, so the luminance residual has a long curved valley and a general
+  optimiser started cold wanders along it. But the model straightens: for a fixed gamma and
+  flare, `(L - c)^(1/gamma) = gain d + offset` is an ordinary line whose best gain and offset
+  follow in closed form, so the search runs over one parameter, or two with the flare, with the
+  other two solved exactly inside it. A short simplex on the true luminance residual then
+  finishes. `rms_out`, which may be NULL, is that residual, the quantity the fit minimises
+  rather than the straightened one it started from.
+
+  Deterministic by construction: a fixed initial simplex, a fixed iteration count, nothing
+  random and no convergence test that could stop somewhere else on another machine. The same
+  patches give the same answer bit for bit.
+
+  A GOG fit needs at least four patches and a GOGO five, since a fit to exactly as many points
+  as it has parameters says nothing about the display; fewer is `ALWAN_E_RANGE`. A luminance
+  below the flare has no drive and is `ALWAN_E_RANGE` too, because a display cannot go darker
+  than its own black. A non-finite measurement is `ALWAN_E_INVALID` rather than something the
+  fit works around.
+
+  NOT TESTABLE AGAINST A REFERENCE, and the header says so: nothing in colour-science fits
+  either model. Suite 167 uses the geometry instead, generating patches from a known model and
+  requiring the fit to return its parameters, which is the stronger check since agreeing with a
+  second implementation would not catch both being wrong the same way. Seven cases come back to
+  about 1e-15, so the suite's bounds are 1e-11. With 1e-03 of noise on the patches the fitted
+  curve stays within 3.1e-04 of the true one everywhere. And fitting a display that has flare
+  without the flare term costs six orders of magnitude of residual, 1.17e-03 against 6.65e-17,
+  which is the term earning its place as an assertion rather than a claim. Published in Berns
+  (1996), "Methods for characterizing CRT displays", Displays 16(4).
+
+  One case is there to keep the second stage honest. A negative offset is legal and drives the
+  first patch below zero, where the model floors at the flare, so the straightened fit sees a
+  point that is not on its line and the closed-form start comes out biased. The refinement
+  works where a floored point costs nothing and pulls the offset back to -0.02 exactly. Without
+  it the suite would still pass six cases of seven.
+
 - **The Michaelis-Menten relation, made callable.** `alwan_michaelis_menten_rate_{T}` and
   `..._substrate_{T}`, plus the `_abebe2017_` pair that carries the extra `b_m` term. The
   saturating two-parameter curve was already inside the library twice, as

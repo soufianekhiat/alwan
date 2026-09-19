@@ -5503,6 +5503,51 @@ alwan_status alwan_simulate_deuteranopia_map_interleave_ex(void *out, size_t out
 alwan_status alwan_simulate_tritanopia_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 severity);
 
 /* ----------------------------------------------------------------
+ * Display tone response: GOG and GOGO
+ *
+ * A display on a meter gives pairs of drive and luminance, and these fit the
+ * curve that joins them:
+ *
+ *   GOG    L = (gain d + offset)^gamma
+ *   GOGO   L = (gain d + offset)^gamma + flare
+ *
+ * with d normalised to [0, 1] and L normalised too. The flare is what the
+ * room, the screen surface and the meter add to black, and it is why a
+ * measured display almost never reads zero at zero. Pass with_flare non-zero
+ * to fit it; a GOG fit leaves it at zero.
+ *
+ * NOT TESTABLE AGAINST A REFERENCE. Nothing in colour-science fits either
+ * model, so suite 167 uses the geometry instead: patches are generated from a
+ * known model and the fit has to return its parameters. That is the stronger
+ * check anyway, since it would catch two implementations being wrong the same
+ * way. Published in Berns (1996), "Methods for characterizing CRT displays".
+ *
+ * rms_out, which may be NULL, is the root mean square LUMINANCE residual, and
+ * it is the quantity the fit minimises. The fit gets there in two stages: for
+ * a fixed gamma and flare the model straightens into a line whose best gain
+ * and offset follow in closed form, so the search is over one or two
+ * parameters rather than three or four, and a short fixed-iteration simplex
+ * then finishes on the real residual. Both stages are deterministic, with a
+ * fixed iteration count and no convergence test, so the answer does not move
+ * between machines.
+ *
+ * A GOG fit needs at least four points and a GOGO fit five: a fit to as many
+ * points as it has parameters says nothing about the display. Fewer is
+ * ALWAN_E_RANGE.
+ *
+ * alwan_display_gog_invert_{T} is closed form. A luminance below the flare is
+ * ALWAN_E_RANGE, since the display cannot go darker than its own black.
+ * ---------------------------------------------------------------- */
+
+alwan_status alwan_display_gog_fit_f64(alwan_display_gog_f64 *out, alwan_f64 *rms_out, alwan_f64 const *digital, alwan_f64 const *luminance, size_t count, int with_flare);
+alwan_status alwan_display_gog_fit_f32(alwan_display_gog_f32 *out, alwan_f32 *rms_out, alwan_f32 const *digital, alwan_f32 const *luminance, size_t count, int with_flare);
+
+alwan_status alwan_display_gog_eval_f64(alwan_f64 *luminance_out, alwan_display_gog_f64 const *model, alwan_f64 digital);
+alwan_status alwan_display_gog_eval_f32(alwan_f32 *luminance_out, alwan_display_gog_f32 const *model, alwan_f32 digital);
+alwan_status alwan_display_gog_invert_f64(alwan_f64 *digital_out, alwan_display_gog_f64 const *model, alwan_f64 luminance);
+alwan_status alwan_display_gog_invert_f32(alwan_f32 *digital_out, alwan_display_gog_f32 const *model, alwan_f32 luminance);
+
+/* ----------------------------------------------------------------
  * Michaelis-Menten
  *
  * The saturating two-parameter curve, which arrived in colour science through

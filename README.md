@@ -3,7 +3,7 @@
 > **Alwan** (ألوان): Arabic for "colours"
 
 [![CI](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/soufianekhiat/alwan/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-166%20suites-brightgreen)](#validation)
+[![tests](https://img.shields.io/badge/tests-167%20suites-brightgreen)](#validation)
 [![checks](https://img.shields.io/badge/checks-195%2C662%20per%20run-brightgreen)](#validation)
 [![reference data](https://img.shields.io/badge/reference%20data-438%20sets-blue)](#validation)
 [![configurations](https://img.shields.io/badge/configurations-8-blue)](#validation)
@@ -637,23 +637,23 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 166, all passing |
-| Test cases | 1,062 |
-| Checks executed per run | 195,662 |
-| Assertion sites in the tests | 4,613 |
+| Test suites | 167, all passing |
+| Test cases | 1,066 |
+| Checks executed per run | 196,020 |
+| Assertion sites in the tests | 4,678 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 438 |
 | Embedded data tables | 950 |
-| Exported symbols | 1,959 |
-| Internal symbols reached by a test or a public entry point | 216 of 240 (90%) |
+| Exported symbols | 1,965 |
+| Internal symbols reached by a test or a public entry point | 224 of 248 (90%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL under dxc | 40 of 43 |
 
 Two of these deserve the emphasis:
 
-**195,662 checks per run** is what actually executes, not what is written. A
+**196,020 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,613 assertion sites would undersell the suite more than
+so counting the 4,678 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -687,7 +687,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 166 test suites, single binary
+./build/tests/Release/alwan_tests   # 167 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -734,7 +734,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 166 test suites + reference fixtures
++-- tests/                   # 167 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals

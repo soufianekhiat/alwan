@@ -219,6 +219,19 @@ typedef struct {
 } ALWAN_TN(alwan_spd_shape);
 
 /* ----------------------------------------------------------------
+ * Display tone response
+ * ---------------------------------------------------------------- */
+
+/* GOG and GOGO: L = (gain * d + offset)^gamma + flare, with d the normalised
+ * drive and L the normalised luminance. flare is zero for a GOG fit. */
+typedef struct {
+    ALWAN_T gain;
+    ALWAN_T offset;
+    ALWAN_T gamma;
+    ALWAN_T flare;
+} ALWAN_TN(alwan_display_gog);
+
+/* ----------------------------------------------------------------
  * Measured Chart
  * ---------------------------------------------------------------- */
 
