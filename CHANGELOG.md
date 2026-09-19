@@ -92,6 +92,51 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Mantiuk 2006: the first LOCAL tone mapper.** `alwan_tonemap_mantiuk2006_{T}`, with
+  `alwan_tonemap_local_params_{T}`. Every tone mapper alwan had until now is a curve: a
+  pixel's result depends on that pixel and on statistics of the whole image. This one is
+  not. It takes the log luminance apart into contrasts at every scale, shrinks each
+  through a response curve, and then solves for the image whose contrasts those are. A
+  pixel's result therefore depends on its neighbours, which is what lets it hold local
+  texture while losing global range, and it is why the call takes a width and a height
+  rather than a count.
+
+  Suite 170 shows the difference rather than asserting it. Two identical grey patches,
+  one on a dark surround and one on a bright one, come out at 0.2088 and 0.2092: no
+  operator in `alwan_tonemap_global_{T}` can do that, because none of them can see the
+  surround. Changing a single pixel in one corner moves the opposite corner by 3.7e-05,
+  since the reconstruction couples the whole image and there are no tiles in it.
+
+  The reconstruction is a least-squares problem solved by conjugate gradients, and two
+  things about that are worth stating. The operator it inverts has constants in its null
+  space, so the answer is fixed only up to overall level; the iteration starts at the
+  image's own log luminance and never leaves that level, which is what gives the output
+  a meaningful anchor and why it is NOT normalised on the way out. And the solve stops
+  on a relative residual of 1e-3 rather than an iteration count, reaching it in five to
+  thirteen steps against a cap of 100. That is what makes the result reproducible at
+  all: a solver that stopped on a count would make the answer a property of its own loop
+  rather than of the equations, and no second implementation could agree with it.
+  `iterations_out` reports the count so a caller can see a result that capped.
+
+  Reproduces OpenCV's `TonemapMantiuk` to 1.1e-06 in float32 across five cases, two
+  image sizes, three scales and two saturations, once OpenCV's framing is taken off as
+  it was for Drago. Reproducing it meant reproducing two choices that are not the
+  obvious ones: the pyramid halves with a BILINEAR RESIZE rather than a Gaussian
+  pyrDown, so the Mertens pyramid already in alwan is the wrong tool and this operator
+  carries its own; and the level count is `(int)(logf(min(w, h)) / logf(2))` computed in
+  FLOAT, kept exactly rather than replaced with an integer log, because a float landing
+  a hair under an integer would drop a level and change the picture.
+
+  One case in the fixture is 35 x 27 on purpose. A power-of-two image gives the pyramid
+  exact halves and the resize degenerates to averaging pairs; an odd one makes it
+  resample, and it also takes 13 conjugate gradient steps where the even case takes 7.
+  A single well-behaved size would have hidden both.
+
+  `luminance_weights` follows the rest of alwan: zero is the sRGB primaries' Y row.
+  OpenCV uses Rec.601 luma, 0.299 / 0.587 / 0.114, which is a different quantity and the
+  wrong one for linear light, so the suite passes it explicitly to compare like with
+  like. Published in Mantiuk, Myszkowski and Seidel, ACM TAP 3(3), 2006.
+
 - **Drago 2003, adaptive logarithmic mapping.** `ALWAN_TONEMAP_DRAGO2003`, the twelfth
   operator of `alwan_tonemap_global_{T}`, with `drago_bias` added to
   `alwan_tonemap_params_{T}`. Luminance is divided by its own log average, and

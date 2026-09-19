@@ -7576,6 +7576,44 @@ alwan_status alwan_tonemap_global_f64(alwan_f64 *rgb_out, size_t out_stride, alw
 alwan_status alwan_tonemap_global_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_tonemap_operator op, alwan_tonemap_params_f32 const *params);
 
 /* ----------------------------------------------------------------
+ * Local tone mapping: Mantiuk 2006
+ *
+ * Every operator above is a curve: a pixel's result depends on that pixel and on
+ * statistics of the image. This one is not. It takes the log luminance apart into
+ * contrasts at every scale, shrinks each of them through a response curve, and then
+ * solves for the image whose contrasts those are. A pixel's result therefore depends
+ * on its neighbours, and on their neighbours, which is what lets it hold local texture
+ * while losing global range, and which is also why it takes a width and a height
+ * rather than a count.
+ *
+ * rgb_in and rgb_out are interleaved RGB, rows a stride apart; out may be in. params
+ * NULL is every default. scale is how hard contrasts are pulled in, 0 reading as 0.7,
+ * and larger means flatter. saturation is the exponent on each channel's ratio to
+ * luminance, 0 reading as 1. iterations_out, which may be NULL, receives how many
+ * conjugate gradient steps the solve took; it stops on a relative residual of 1e-3 and
+ * caps at 100, and in practice it takes five to ten, so a result at the cap is worth
+ * looking at.
+ *
+ * The luminance weights follow the rest of alwan: zero is the sRGB primaries' Y row.
+ * OpenCV uses Rec.601 luma, 0.299, 0.587 and 0.114, which is a different quantity and
+ * the wrong one for linear light; suite 170 passes it explicitly to compare.
+ *
+ * The output is NOT normalised. The solve is anchored at the image's own mean log
+ * luminance, which is what the iteration's starting point fixes, so the result has a
+ * meaningful level and the caller decides what to do with it. An image smaller than
+ * 2 x 2 is ALWAN_E_RANGE, and a negative or non-finite luminance is ALWAN_E_INVALID.
+ *
+ * Reproduces OpenCV's TonemapMantiuk to 2e-06 in float32, which is that type's
+ * precision, once OpenCV's own framing is taken off: it rescales its input to [0, 1]
+ * before the operator and its output to [0, 1] afterwards, neither of which is in the
+ * paper. Published in Mantiuk, Myszkowski and Seidel, "A Perceptual Framework for
+ * Contrast Processing of High Dynamic Range Images", ACM TAP 3(3), 2006.
+ * ---------------------------------------------------------------- */
+
+alwan_status alwan_tonemap_mantiuk2006_f64(alwan_f64 *rgb_out, size_t out_row_stride, alwan_f64 const *rgb_in, size_t in_row_stride, size_t width, size_t height, alwan_tonemap_local_params_f64 const *params, int *iterations_out);
+alwan_status alwan_tonemap_mantiuk2006_f32(alwan_f32 *rgb_out, size_t out_row_stride, alwan_f32 const *rgb_in, size_t in_row_stride, size_t width, size_t height, alwan_tonemap_local_params_f32 const *params, int *iterations_out);
+
+/* ----------------------------------------------------------------
  * BT.2408: HLG and PQ in display light
  *
  * ITU-R BT.2408 converts between the two BT.2100 systems through display light on
