@@ -92,6 +92,44 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Drago 2003, adaptive logarithmic mapping.** `ALWAN_TONEMAP_DRAGO2003`, the twelfth
+  operator of `alwan_tonemap_global_{T}`, with `drago_bias` added to
+  `alwan_tonemap_params_{T}`. Luminance is divided by its own log average, and
+
+      L_d = (L_dmax / 100) / log10(L_wmax + 1)
+            * log(L_w + 1) / log(2 + 8 (L_w / L_wmax)^(log b / log 0.5))
+
+  so the base of the logarithm slides with the luminance: 2 at black, 10 at the peak,
+  and `drago_bias` sets how it moves between them. The paper's recommended range is 0.7
+  to 0.9 and the default is 0.85. `L_dmax` is `display_peak`, in cd/m2, which Tumblin
+  1999 already read. A `drago_bias` outside (0, 1] is `ALWAN_E_INVALID`; 1 is legal and
+  makes the base 10 everywhere.
+
+  Because the log average divides out, the operator is invariant to a uniform scale of
+  its input: the same scene six stops brighter gives the same picture, to 5.4e-15. That
+  is the published operator, not a normalisation applied on top, and it is worth saying
+  because the obvious way to check it would not distinguish the two.
+
+  Pinned against OpenCV's `TonemapDrago` to 3.2e-07 in float32, which is where a
+  float32 fixture lands. OpenCV wraps the same formula in two steps of its own, an
+  affine rescale of the input to [0, 1] and a min-max rescale of the output, and the
+  second makes the paper's `1 / log10(L_wmax + 1)` term redundant so it drops it. Suite
+  169 feeds both sides the already-rescaled image and applies the output rescale to
+  alwan's result, so what is compared is the operator and what is removed is the
+  framing. alwan ships the paper.
+
+  One thing the suite measures that is worth knowing before reaching for this operator:
+  the slide is GENTLE at the default bias. The exponent is log 0.85 / log 0.5 = 0.234,
+  so a pixel 3.6 decades below the peak still sits at base 3.15, not 2; the base only
+  reaches 2 in the limit. A smaller bias steepens it, and b = 0.5 makes the exponent
+  exactly 1.
+
+  Only the gamma 1, saturation 1 path is compared, and nothing is lost by that: alwan
+  has neither parameter on this operator, `ALWAN_TONEMAP_GAMMA` being its own. It is
+  also the only path OpenCV can be asked for, since it raises an intermediate to a
+  fractional power without guarding a negative one and so returns NaN on some images
+  and not others.
+
 - **A measured display, as a model, and the LUT that calibrates it.**
   `alwan_display_model_fit_{T}` turns a meter run into a model of what a display does with
   any signal. Give it one drive axis and three ramps of measured XYZ, one per channel, and

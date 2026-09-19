@@ -20,6 +20,7 @@ typedef struct {
     double f, m, a, c;
     int automatic_m;
     double A, B, C, D, E, F, bias, white;
+    double drago_b;
 } alwan__tm_params;
 
 /* A zero field is its default. */
@@ -45,12 +46,20 @@ static double alwan__tm_pow0(double x, double y) {
 
 static int alwan__tm_uses_luminance(int op) {
     return op == (int)ALWAN_TONEMAP_NORMALIZATION ||
+           op == (int)ALWAN_TONEMAP_DRAGO2003 ||
            (op >= (int)ALWAN_TONEMAP_LOGARITHMIC && op <= (int)ALWAN_TONEMAP_REINHARD2004);
 }
 
 /* The operators that scale RGB by L_d / L, and so map zero luminance to black. */
 static int alwan__tm_scales_by_ratio(int op) {
-    return op >= (int)ALWAN_TONEMAP_LOGARITHMIC && op <= (int)ALWAN_TONEMAP_TUMBLIN1999;
+    return op == (int)ALWAN_TONEMAP_DRAGO2003 ||
+           (op >= (int)ALWAN_TONEMAP_LOGARITHMIC && op <= (int)ALWAN_TONEMAP_TUMBLIN1999);
+}
+
+/* The operators that need the log average of luminance. */
+static int alwan__tm_uses_log_average(int op) {
+    return op == (int)ALWAN_TONEMAP_EXPONENTIAL || op == (int)ALWAN_TONEMAP_REINHARD2004 ||
+           op == (int)ALWAN_TONEMAP_DRAGO2003;
 }
 
 /* Each operator's ranges, checked after the defaults are in. */
@@ -70,6 +79,10 @@ static int alwan__tm_valid(alwan__tm_params const *t, int op) {
         return t->l_da > 0.0 && t->c_max > 0.0 && t->l_max > 0.0;
     case ALWAN_TONEMAP_REINHARD2004:
         return t->m > 0.0 && t->a >= 0.0 && t->a <= 1.0 && t->c >= 0.0 && t->c <= 1.0;
+    case ALWAN_TONEMAP_DRAGO2003:
+        /* b = 1 is legal and makes the exponent zero, so the base is 10 everywhere;
+         * b = 0 has no logarithm and b > 1 inverts the slide. */
+        return t->drago_b > 0.0 && t->drago_b <= 1.0 && t->l_max > 0.0;
     default:
         return 1;
     }
@@ -121,6 +134,7 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__tm_read)(alwan__tm_params *t, ALWAN_
     t->F = alwan__tm_or((double)in->toe_denominator, 0.3);
     t->bias = alwan__tm_or((double)in->exposure_bias, 2.0);
     t->white = alwan__tm_or((double)in->linear_white, 11.2);
+    t->drago_b = alwan__tm_or((double)in->drago_bias, 0.85);
     return ALWAN_OK;
 }
 
@@ -132,11 +146,12 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
     int const lum = alwan__tm_uses_luminance(o), ratio = alwan__tm_scales_by_ratio(o);
     double l_max = 0.0, l_min = DBL_MAX, s_log = 0.0, s_tum = 0.0, c_sum[3] = { 0.0, 0.0, 0.0 };
     double scale = 0.0, extra = 0.0, f_white = 1.0, ig[3] = { 0.0, 0.0, 0.0 };
+    double drago_lav = 1.0, drago_peak = 1.0;
     alwan_status st;
     size_t i;
     int ch;
 
-    if (!rgb_out || !rgb_in || o < (int)ALWAN_TONEMAP_SIMPLE || o > (int)ALWAN_TONEMAP_FILMIC) {
+    if (!rgb_out || !rgb_in || o < (int)ALWAN_TONEMAP_SIMPLE || o > (int)ALWAN_TONEMAP_DRAGO2003) {
         return ALWAN_E_INVALID;
     }
     st = ALWAN_CORE_FNLIT(alwan__tm_read)(&t, params);
@@ -156,7 +171,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
             if (!(L >= 0.0) || L > DBL_MAX) return ALWAN_E_INVALID;
             l_max = L > l_max ? L : l_max;
             l_min = L < l_min ? L : l_min;
-            if (o == (int)ALWAN_TONEMAP_EXPONENTIAL || o == (int)ALWAN_TONEMAP_REINHARD2004) {
+            if (alwan__tm_uses_log_average(o)) {
                 s_log += ALWAN_LN_F64(L + ALWAN__TM_EPS);
             }
             if (o == (int)ALWAN_TONEMAP_TUMBLIN1999) s_tum += ALWAN_LN_F64(L + ALWAN__TM_TUMBLIN_EPS);
@@ -208,6 +223,17 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
         for (ch = 0; ch < 3; ch++) ig[ch] = t.c * (c_sum[ch] / (double)count) + (1.0 - t.c) * l_lav;
         break;
     }
+    case ALWAN_TONEMAP_DRAGO2003: {
+        /* Luminance is measured against its own log average, which is what makes the
+         * operator invariant to a uniform scale of the image. */
+        drago_lav = ALWAN_EXP_F64(s_log / (double)count);
+        drago_peak = drago_lav > 0.0 ? l_max / drago_lav : 0.0;
+        extra = ALWAN_LN_F64(t.drago_b) / ALWAN_LN_F64(0.5);
+        scale = drago_peak > 0.0
+              ? (t.l_max / 100.0) / ALWAN_LOG10_F64(drago_peak + 1.0)
+              : 0.0;
+        break;
+    }
     default:
         break;
     }
@@ -251,6 +277,14 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
         case ALWAN_TONEMAP_TUMBLIN1999:
             Ld = scale * ALWAN_POW_F64(L / l_min, extra);
             break;
+        case ALWAN_TONEMAP_DRAGO2003: {
+            /* The base of the logarithm slides from 2 at black to 10 at the peak, and
+             * drago_bias sets how it gets there. */
+            double const lw = L / drago_lav;
+            double const base = ALWAN_LN_F64(2.0 + 8.0 * alwan__tm_pow0(lw / drago_peak, extra));
+            Ld = scale * ALWAN_LN_F64(lw + 1.0) / base;
+            break;
+        }
         case ALWAN_TONEMAP_REINHARD2004:
             for (ch = 0; ch < 3; ch++) {
                 double const il = t.c * x[ch] + (1.0 - t.c) * L;

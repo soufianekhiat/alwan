@@ -163,6 +163,7 @@ typedef struct {
     ALWAN_T toe_denominator;      /* F; 0 reads as 0.3 */
     ALWAN_T exposure_bias;        /* 0 reads as 2 */
     ALWAN_T linear_white;         /* the input value mapped to 1; 0 reads as 11.2 */
+    ALWAN_T drago_bias;           /* Drago 2003 b, the bias of the log base; 0 reads as 0.85 */
 } ALWAN_TN(alwan_tonemap_params);
 
 /* Parameters of alwan_lightness_{T} and alwan_luminance_from_lightness_{T}. A zero

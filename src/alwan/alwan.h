@@ -7471,9 +7471,9 @@ alwan_status alwan_reinhard_calibrated_f64(alwan_f64 *out, alwan_f64 L,
 /* ----------------------------------------------------------------
  * Global tone mapping operators
  *
- * The eleven global operators of colour-hdri over an image of interleaved RGB: the
- * simple mappings collected by Banterle et al. 2011, Schlick 1994, Tumblin, Hodgins
- * and Guenter 1999, Reinhard and Devlin 2005 and Hable 2010. All but SIMPLE, GAMMA
+ * The eleven global operators of colour-hdri over an image of interleaved RGB, plus
+ * Drago 2003: the simple mappings collected by Banterle et al. 2011, Schlick 1994,
+ * Tumblin, Hodgins and Guenter 1999, Reinhard and Devlin 2005 and Hable 2010. All but SIMPLE, GAMMA
  * and FILMIC read statistics of the whole image (its peak or log-average luminance),
  * so a pixel's result depends on every other pixel: map an image in one call, not
  * in tiles. alwan_tonemap_params_{T} is declared with the other parameter structs.
@@ -7489,7 +7489,8 @@ typedef enum {
     ALWAN_TONEMAP_SCHLICK1994 = 7,            /* pL / (pL - L + L_max) */
     ALWAN_TONEMAP_TUMBLIN1999 = 8,            /* Tumblin, Hodgins and Guenter 1999 */
     ALWAN_TONEMAP_REINHARD2004 = 9,           /* Reinhard and Devlin 2005, photoreceptor model */
-    ALWAN_TONEMAP_FILMIC = 10                 /* Hable 2010, per channel */
+    ALWAN_TONEMAP_FILMIC = 10,                /* Hable 2010, per channel */
+    ALWAN_TONEMAP_DRAGO2003 = 11              /* Drago 2003, adaptive logarithmic mapping */
 } alwan_tonemap_operator;
 
 /* Tone maps count pixels, rows stride bytes apart; out may be in. params NULL is every
@@ -7503,7 +7504,36 @@ typedef enum {
  * unknown operator, a luminance or channel out of range as above, and a parameter out
  * of range: a negative p, q, k, gamma, contrast or display value, q or k below 1 for
  * LOGARITHMIC and EXPONENTIAL (colour-hdri raises them to 1), an adaptation outside
- * [0, 1], or automatic_contrast together with a contrast. */
+ * [0, 1], or automatic_contrast together with a contrast.
+ *
+ * DRAGO2003 is the adaptive logarithmic mapping of Drago, Myszkowski, Annen and
+ * Chiba, "Adaptive Logarithmic Mapping For Displaying High Contrast Scenes",
+ * Eurographics 2003. Luminance is divided by its own log average, and
+ *
+ *     L_d = (L_dmax / 100) / log10(L_wmax + 1)
+ *           * log(L_w + 1) / log(2 + 8 (L_w / L_wmax)^(log b / log 0.5))
+ *
+ * so the base of the logarithm slides with the luminance: near black it is 2,
+ * at the peak it is 10, and drago_bias sets how it moves between them. The
+ * paper's recommended range is 0.7 to 0.9 and the default is 0.85. L_dmax is
+ * display_peak, in cd/m2, which Tumblin 1999 also reads. drago_bias outside
+ * (0, 1] is ALWAN_E_INVALID.
+ *
+ * Because the log average divides out, this operator is invariant to a uniform
+ * scale of its input: doubling every pixel gives the same picture. That is the
+ * operator behaving as published, not a normalisation applied on top.
+ *
+ * OpenCV's TonemapDrago wraps the same formula in two steps of its own, an
+ * affine rescale of the input to [0, 1] and a min-max rescale of the output,
+ * and drops the 1 / log10(L_wmax + 1) term that the rescale makes redundant.
+ * Suite 169 applies those two steps around alwan's result and matches OpenCV
+ * to 4e-07 in float32, so what differs is the framing rather than the operator.
+ *
+ * OpenCV's gamma and saturation, which alwan does not have here (ALWAN_TONEMAP_GAMMA
+ * is its own operator), raise an intermediate to a fractional power without
+ * guarding a negative one, so they return NaN on some images and not others.
+ * Suite 169 records which, since a defect that depends on the data is worth
+ * pinning rather than describing. */
 alwan_status alwan_tonemap_global_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_tonemap_operator op, alwan_tonemap_params_f64 const *params);
 alwan_status alwan_tonemap_global_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_tonemap_operator op, alwan_tonemap_params_f32 const *params);
 
