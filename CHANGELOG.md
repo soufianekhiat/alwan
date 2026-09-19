@@ -92,6 +92,25 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **The Michaelis-Menten relation, made callable.** `alwan_michaelis_menten_rate_{T}` and
+  `..._substrate_{T}`, plus the `_abebe2017_` pair that carries the extra `b_m` term. The
+  saturating two-parameter curve was already inside the library twice, as
+  `ALWAN_LIGHTNESS_ABEBE2017_MICHAELIS_MENTEN` and as the JP2499 tonescale, each reaching it
+  through its own code. A caller fitting a receptor response or building a tonescale can now
+  reach the relation itself.
+
+  A denominator that vanishes is `ALWAN_E_DIVZERO`, which for the inverse means the rate the
+  curve approaches and never reaches: a saturating curve has no answer for an input above its
+  own maximum, and saying so beats returning an infinity. A non-finite argument is
+  `ALWAN_E_INVALID`.
+
+  Suite 166 pins all four forms against colour-science, exactly, and checks three things that
+  need no reference because they are properties of the relation rather than of anyone's code:
+  `b_m` of one reproduces Michaelis's form bit for bit, the rate at `S = K_m` is half of
+  `V_max`, and the inverse undoes the forward direction over four decades. The suite also
+  found a null dereference in the first draft of the implementation, where the guard was on
+  the internal scratch pointer rather than on the caller's.
+
 - **Machado 2009 as a continuous model, so CVD can be simulated for the actual display.**
   `alwan_cvd_matrix_machado2009_shift_{T}` derives the colour vision deficiency matrix from the
   Stockman and Sharpe cone fundamentals rather than interpolating between the eleven matrices

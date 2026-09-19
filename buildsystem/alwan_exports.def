@@ -1075,6 +1075,14 @@ EXPORTS
     alwan_mesopic_luminance_f64
     alwan_metamerism_index_f32
     alwan_metamerism_index_f64
+    alwan_michaelis_menten_rate_abebe2017_f32
+    alwan_michaelis_menten_rate_abebe2017_f64
+    alwan_michaelis_menten_rate_f32
+    alwan_michaelis_menten_rate_f64
+    alwan_michaelis_menten_substrate_abebe2017_f32
+    alwan_michaelis_menten_substrate_abebe2017_f64
+    alwan_michaelis_menten_substrate_f32
+    alwan_michaelis_menten_substrate_f64
     alwan_michelson_contrast_f32
     alwan_michelson_contrast_f64
     alwan_mired_to_cct_f32
