@@ -92,6 +92,69 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **A measured display, as a model, and the LUT that calibrates it.**
+  `alwan_display_model_fit_{T}` turns a meter run into a model of what a display does with
+  any signal. Give it one drive axis and three ramps of measured XYZ, one per channel, and
+  it returns `alwan_display_model_{T}`:
+
+      XYZ = M [ t_r(d_r), t_g(d_g), t_b(d_b) ]^T + XYZ_black
+
+  `t_c` is that channel's tone curve normalised to run 0 to 1, `M`'s columns are the
+  primaries at full drive with the black taken off, and the black is the reading at zero
+  drive. `alwan_display_model_forward_{T}` applies it and `alwan_display_model_invert_{T}`
+  runs it backwards. `alwan_display_calibration_lut_{T}` bakes the whole chain, source
+  EOTF, source primaries, a chromatic adaptation onto the display's measured white, and
+  the model inverse, into a 3D LUT that takes source signal to drive, in the R-fastest
+  order `alwan_cube_export_3d_{T}` and `alwan_lut3d_sample_{T}` already use.
+
+  Each channel is fitted as a GOGO on the RAW luminance ramp, not on a black-subtracted
+  one, and the order is the whole problem. Subtracting the shared black first looks right
+  and destroys the offset: a channel whose curve has one is still emitting at zero drive,
+  that emission goes into the black along with the room, and the remainder is
+  `(a d + b)^g - b^g`, which is not a power law and which no GOG can be. Fitted raw, a
+  measured ramp IS a GOGO exactly, so the offset survives and the flare comes back as that
+  channel's own reading of the black. The stored curve is then normalised, and stays a
+  GOGO with a negative flare, so `alwan_display_gog_eval_{T}` evaluates it directly.
+
+  Two consequences worth knowing before reading the numbers back. A column of `M` is the
+  channel's SWING, full drive minus zero drive, not its absolute peak, because the light a
+  channel emits at zero drive cannot be told apart from the room by any meter. And the
+  black the model reports is the zero-drive READING, which is the ambient plus whatever the
+  channels leak, for the same reason.
+
+  `excursion_out` on the inverse, and `worst_excursion` on the bake, are how far outside
+  the display's gamut a request fell, 0 when inside. The drive comes back clamped to what
+  the display can send, and the excursion says what was asked for beyond it: a reported
+  clamp rather than a silent one. On a display with a real black it is the number a
+  calibrator reports as the black level, since a source space asking for absolute zero at
+  signal zero is asking for something no panel does.
+
+  THE MODEL ASSUMES CHANNEL INDEPENDENCE AND ADDITIVITY, and real displays deviate, LCDs
+  most of all. Ramps cannot fit that deviation, so alwan does not pretend to: the fit
+  reports its residual, and a caller with measurements off the ramps can push them through
+  the forward model and see for themselves.
+
+  NOT TESTABLE AGAINST A REFERENCE, and the header says so: colour-science has no display
+  model and no calibration bake. Suite 168 closes the loop instead. It builds a display it
+  chose, generates the measurements that display would give, and requires the fit to
+  return it, to 2.8e-17 on the primaries, 5.8e-15 on the gammas and 3.6e-16 on the tone
+  curves; six colours off the ramps, which the fit never saw, come back to 3.1e-16. Then
+  Rec.709 baked onto a P3 display lands eight source colours to 6.7e-16 of XYZ.
+
+  The case that needs no tolerance argument is the one worth having: calibrating a display
+  that ALREADY IS the source space must give the IDENTITY LUT, and it does, to 7.3e-15.
+  That check fails on a transposed matrix, a wrong adaptation, an off-by-one in the cube
+  order, a mismatched transfer function or a tone curve fitted to the wrong thing, none of
+  which have to be anticipated for it to catch them.
+
+  One number in that suite is 5.6e-08 rather than 1e-15, and it is arithmetic rather than
+  a defect. Inverting to DRIVE is ill-conditioned at black: a power law has zero slope at
+  zero, so its inverse has infinite slope there, and recovering a channel sitting at black
+  beside two bright ones costs about `eps^(1/gamma)`, which is 5e-08 for gamma 2.2. A
+  10-bit display steps drive by 9.8e-04, five orders of magnitude coarser. The statement
+  that is exact is the one in luminance, where the conditioning runs the other way, and
+  the suite pins that at 6.7e-16.
+
 - **A display's tone response, fitted from measured patches.**
   `alwan_display_gog_fit_{T}` takes pairs of normalised drive and normalised luminance off a
   meter and returns the curve that joins them, as `alwan_display_gog_{T}`:

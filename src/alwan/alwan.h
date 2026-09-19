@@ -5548,6 +5548,79 @@ alwan_status alwan_display_gog_invert_f64(alwan_f64 *digital_out, alwan_display_
 alwan_status alwan_display_gog_invert_f32(alwan_f32 *digital_out, alwan_display_gog_f32 const *model, alwan_f32 luminance);
 
 /* ----------------------------------------------------------------
+ * A measured display, and the LUT that calibrates it
+ *
+ * Run a ramp up each channel of a display with a meter on it, and these turn
+ * the readings into a model of what that display does with any signal:
+ *
+ *     XYZ = M [ t_r(d_r), t_g(d_g), t_b(d_b) ]^T + XYZ_black
+ *
+ * t_c is that channel's tone curve, normalised to run 0 to 1 over the drive
+ * range; M's columns are the primaries at full drive with the black taken off;
+ * and the black is the reading at zero drive, carried once.
+ *
+ * Each channel is fitted as a GOGO on the RAW luminance ramp, not on a
+ * black-subtracted one, and the order matters. Subtract the shared black first
+ * and a channel whose own curve has a positive offset stops being a power law:
+ * its emission at zero drive has gone into the black, and what is left is
+ * (a d + b)^g - b^g, which no GOG can be. Fitted raw, the offset survives and
+ * the flare comes back as that channel's reading of the display's black. The
+ * stored curve is the normalised one, which is still a GOGO with a negative
+ * flare, so alwan_display_gog_eval_{T} evaluates it directly.
+ *
+ * THE MODEL ASSUMES CHANNEL INDEPENDENCE AND ADDITIVITY, that each channel
+ * depends only on its own drive and that the three add. Real displays deviate,
+ * LCDs most of all, and ramps cannot fit that deviation. What alwan does
+ * instead is let you measure it: the fit reports its residual, and a caller
+ * with measurements OFF the ramps can push them through
+ * alwan_display_model_forward_{T} and compare. A model that says how wrong it
+ * is beats one that does not.
+ *
+ * alwan_display_model_fit_{T} takes one drive axis shared by three ramps of
+ * measured XYZ. The ramps must start at drive 0, since the black reading is
+ * what everything else is measured against, and the three readings there are
+ * averaged as three measurements of one quantity. At least five points, since
+ * each channel is fitted as a GOGO. rms_out, which may be NULL, is the worst of the three tone
+ * residuals.
+ *
+ * alwan_display_model_invert_{T} gives the drive that produces an XYZ. The
+ * drive comes back CLAMPED to what the display can reach, and excursion_out,
+ * which may be NULL, is how far outside its gamut the request was, 0 when
+ * inside. That is a reported clamp rather than a silent one: a display cannot
+ * emit what it cannot emit, and the caller is told what was asked for.
+ *
+ * alwan_display_calibration_lut_{T} bakes the whole chain into a 3D LUT: the
+ * source EOTF, the source primaries, a chromatic adaptation from the source
+ * white onto the display's MEASURED white, and the model inverse. Feed it
+ * source-encoded signal and it gives you drive. size is the cube edge, 2 to
+ * 256, and the output is size^3 * 3 values R-fastest, which is what
+ * alwan_cube_export_3d_{T} and alwan_lut3d_sample_{T} expect.
+ * worst_excursion, which may be NULL, is the largest excursion over the whole
+ * cube, and it is the number that says whether the display can show the space
+ * you asked it to show.
+ *
+ * NOT TESTABLE AGAINST A REFERENCE: colour-science has no display model and no
+ * calibration bake. Suite 168 closes the loop instead, generating measurements
+ * from a display it chose and requiring the fit to return it, then requiring
+ * source colour to survive the LUT and the model together. The case that needs
+ * no tolerance argument: calibrating a display that ALREADY IS the source
+ * space must give the identity LUT. Published in Berns (1996), "Methods for
+ * characterizing CRT displays", Displays 16(4).
+ * ---------------------------------------------------------------- */
+
+alwan_status alwan_display_model_fit_f64(alwan_display_model_f64 *out, alwan_f64 *rms_out, alwan_f64 const *drives, alwan_xyz_f64 const *ramp_red, alwan_xyz_f64 const *ramp_green, alwan_xyz_f64 const *ramp_blue, size_t count);
+alwan_status alwan_display_model_fit_f32(alwan_display_model_f32 *out, alwan_f32 *rms_out, alwan_f32 const *drives, alwan_xyz_f32 const *ramp_red, alwan_xyz_f32 const *ramp_green, alwan_xyz_f32 const *ramp_blue, size_t count);
+
+alwan_status alwan_display_model_forward_f64(alwan_xyz_f64 *xyz_out, alwan_display_model_f64 const *model, alwan_rgb_f64 const *drive);
+alwan_status alwan_display_model_forward_f32(alwan_xyz_f32 *xyz_out, alwan_display_model_f32 const *model, alwan_rgb_f32 const *drive);
+
+alwan_status alwan_display_model_invert_f64(alwan_rgb_f64 *drive_out, alwan_f64 *excursion_out, alwan_display_model_f64 const *model, alwan_xyz_f64 const *xyz);
+alwan_status alwan_display_model_invert_f32(alwan_rgb_f32 *drive_out, alwan_f32 *excursion_out, alwan_display_model_f32 const *model, alwan_xyz_f32 const *xyz);
+
+alwan_status alwan_display_calibration_lut_f64(alwan_f64 *lut_out, int size, alwan_display_model_f64 const *model, alwan_rgb_space_desc_f64 const *source, alwan_transfer_function source_eotf, alwan_cat_method cat, alwan_f64 *worst_excursion);
+alwan_status alwan_display_calibration_lut_f32(alwan_f32 *lut_out, int size, alwan_display_model_f32 const *model, alwan_rgb_space_desc_f32 const *source, alwan_transfer_function source_eotf, alwan_cat_method cat, alwan_f32 *worst_excursion);
+
+/* ----------------------------------------------------------------
  * Michaelis-Menten
  *
  * The saturating two-parameter curve, which arrived in colour science through

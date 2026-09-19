@@ -231,6 +231,16 @@ typedef struct {
     ALWAN_T flare;
 } ALWAN_TN(alwan_display_gog);
 
+/* A measured display: three tone curves, the primaries at full drive as the
+ * columns of rgb_to_xyz, and the black the panel and the room read together.
+ * The tone curves are fitted on BLACK-SUBTRACTED luminance and normalised so
+ * each reaches 1 at full drive, so the scale lives in the matrix. */
+typedef struct {
+    ALWAN_TN(alwan_display_gog) tone[3];
+    ALWAN_TN(alwan_mat3x3) rgb_to_xyz;
+    ALWAN_TN(alwan_xyz) black;
+} ALWAN_TN(alwan_display_model);
+
 /* ----------------------------------------------------------------
  * Measured Chart
  * ---------------------------------------------------------------- */
