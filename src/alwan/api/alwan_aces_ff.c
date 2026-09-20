@@ -445,11 +445,6 @@ void alwan_aces_gamut_comp13_params_default_f64(alwan_aces_gamut_comp13_params_f
     params->power = 1.2;
 }
 
-/* Compression function (forward direction) */
-static alwan_f64 compress_dist(alwan_f64 dist, alwan_f64 thr, alwan_f64 scale, alwan_f64 power) {
-    return aces_compress_dist_f64_v(dist, thr, scale, power);
-}
-
 /* Per-channel gamut compression */
 static alwan_f64 gamut_comp_channel(alwan_f64 val, alwan_f64 ach,
                                         alwan_f64 thr, alwan_f64 scale, alwan_f64 power) {
@@ -504,12 +499,6 @@ void alwan_aces_gamut_comp13_f32(alwan_rgb_f32 *rgb_out,
     rgb_out->r = aces_gamut_comp_channel_f32_v(red, ach, params->thr_cyan, scale_cyan, params->power);
     rgb_out->g = aces_gamut_comp_channel_f32_v(grn, ach, params->thr_magenta, scale_magenta, params->power);
     rgb_out->b = aces_gamut_comp_channel_f32_v(blu, ach, params->thr_yellow, scale_yellow, params->power);
-}
-
-/* Decompression function (inverse direction)
- * Given compressed distance, recover original distance */
-static alwan_f64 uncompress_dist(alwan_f64 compressed_dist, alwan_f64 thr, alwan_f64 scale, alwan_f64 power) {
-    return aces_uncompress_dist_f64_v(compressed_dist, thr, scale, power);
 }
 
 /* Per-channel gamut decompression (inverse) */
@@ -588,20 +577,6 @@ static alwan_f64 aces1_saturation(alwan_f64 r, alwan_f64 g, alwan_f64 b) {
     return aces1_saturation_f64_v(r, g, b);
 }
 
-/* Convert RGB to hue in degrees [0, 360) */
-static alwan_f64 aces1_rgb_to_hue(alwan_f64 r, alwan_f64 g, alwan_f64 b) {
-    return aces1_rgb_to_hue_f64_v(r, g, b);
-}
-
-/* Center hue around a target hue */
-static alwan_f64 aces1_center_hue(alwan_f64 hue, alwan_f64 center) {
-    return aces1_center_hue_f64_v(hue, center);
-}
-
-/* Cubic basis shaper - smooth falloff from center */
-static alwan_f64 aces1_cubic_basis_shaper(alwan_f64 x, alwan_f64 width) {
-    return aces1_cubic_basis_shaper_f64_v(x, width);
-}
 #endif /* ALWAN_WITH_F64_FACADE */
 
 /* AP0 to AP1 matrix */
@@ -2093,11 +2068,6 @@ static alwan_f64 toe_fwd(alwan_f64 x, alwan_f64 limit,
     return aces_toe_fwd_f64_v(x, limit, k1_in, k2_in);
 }
 
-static alwan_f64 toe_inv(alwan_f64 x, alwan_f64 limit,
-                            alwan_f64 k1_in, alwan_f64 k2_in) {
-    return aces_toe_inv_f64_v(x, limit, k1_in, k2_in);
-}
-
 /* ----------------------------------------------------------------
  * ACES 2.0: Chroma compression normalization (Fourier series)
  * Computes hue-dependent normalization factor using harmonic terms
@@ -2272,17 +2242,6 @@ static void Aab_to_JMh_f64(alwan_f64 const aab[3], aces2_JMhParams_f64 const *p,
     alwan_vec3_f64 in = {{aab[0], aab[1], aab[2]}};
     alwan_vec3_f64 out = aces2_aab_to_jmh_f64_v(in, p);
     jmh[0] = out.v[0]; jmh[1] = out.v[1]; jmh[2] = out.v[2];
-}
-
-/* ----------------------------------------------------------------
- * ACES 2.0: Inverse cone response compression
- * Ra_lim = min(Ra, 0.99)
- * F_L_Y = cam_nl_offset * Ra_lim / (1 - Ra_lim)
- * Rc = F_L_Y^(1/0.42)
- * ---------------------------------------------------------------- */
-
-static alwan_f64 post_adaptation_cone_response_compression_inv(alwan_f64 Ra) {
-    return aces_cone_response_inv_f64_v(Ra);
 }
 
 /* ----------------------------------------------------------------
@@ -2896,41 +2855,6 @@ static alwan_f64 const GAMUT_FOCUS_ADJUST_GAIN_INV = ALWAN_LITERAL(1.0) / ALWAN_
 
 /* Lower hull gamma (constant across all hues) */
 static alwan_f64 const GAMUT_LOWER_HULL_GAMMA = ALWAN_LITERAL(1.14);
-
-/* ----------------------------------------------------------------
- * ACES 2.0: Gamut Compression Parameter Structures
- * ---------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------
- * ACES 2.0: Smooth minimum function (smin)
- * Creates smooth transition between two boundaries
- * ---------------------------------------------------------------- */
-
-static alwan_f64 smin_scaled(alwan_f64 a, alwan_f64 b, alwan_f64 cusp_M) {
-    return aces2_smin_scaled_f64_v(a, b, cusp_M);
-}
-
-/* ----------------------------------------------------------------
- * ACES 2.0: Reinhard remapping for M compression
- * ---------------------------------------------------------------- */
-
-static alwan_f64 reinhard_fwd(alwan_f64 x) {
-    return aces2_reinhard_fwd_f64_v(x);
-}
-
-static alwan_f64 reinhard_inv(alwan_f64 x) {
-    return aces2_reinhard_inv_f64_v(x);
-}
-
-static alwan_f64 remap_M_fwd(alwan_f64 M, alwan_f64 gamut_boundary_M,
-                                 alwan_f64 reach_boundary_M) {
-    return aces2_remap_m_fwd_f64_v(M, gamut_boundary_M, reach_boundary_M);
-}
-
-static alwan_f64 remap_M_inv(alwan_f64 M, alwan_f64 gamut_boundary_M,
-                                 alwan_f64 reach_boundary_M) {
-    return aces2_remap_m_inv_f64_v(M, gamut_boundary_M, reach_boundary_M);
-}
 
 /* ----------------------------------------------------------------
  * ACES 2.0: Focus geometry computations

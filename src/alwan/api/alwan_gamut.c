@@ -19,25 +19,6 @@
 #include <math.h>
 
 /* ----------------------------------------------------------------
- * Random number generation (simple LCG for reproducibility)
- * ---------------------------------------------------------------- */
-
-typedef struct {
-    unsigned int state;
-} alwan_rng;
-
-static void alwan_rng_init(alwan_rng *rng, unsigned int seed) {
-    rng->state = seed;
-}
-
-/* Generate random number in [0, 1] */
-static alwan_f64 alwan_rng_uniform(alwan_rng *rng) {
-    /* Simple LCG: Numerical Recipes parameters */
-    rng->state = rng->state * 1664525u + 1013904223u;
-    return (alwan_f64)rng->state / (alwan_f64)0xFFFFFFFFu;
-}
-
-/* ----------------------------------------------------------------
  * M11: Gamut Volume Estimation (exact |det(M)| of the RGB->XYZ matrix)
  * ---------------------------------------------------------------- */
 
@@ -74,11 +55,6 @@ alwan_status alwan_gamut_volume_f64(alwan_f64 *volume,
 /* ----------------------------------------------------------------
  * M11: Gamut Mapping
  * ---------------------------------------------------------------- */
-
-/* Clip RGB to [0,1] range */
-static void gamut_map_clip_single(alwan_vec3_f64 const *rgb_in, alwan_vec3_f64 *rgb_out) {
-    *rgb_out = gamut_clip_f64_v(*rgb_in);
-}
 
 /* Hue-preserving gamut mapping: scale towards neutral until in gamut */
 static void gamut_map_hue_preserving_single(alwan_vec3_f64 const *rgb_in, alwan_vec3_f64 *rgb_out) {
@@ -737,11 +713,6 @@ static void alwan_linear_srgb_to_oklab(alwan_vec3_f64 const *rgb, alwan_vec3_f64
 /* Oklab -> Linear sRGB */
 static void alwan_oklab_to_linear_srgb(alwan_vec3_f64 const *oklab, alwan_vec3_f64 *rgb) {
     *rgb = gamut_oklab_to_linear_srgb_f64_v(*oklab);
-}
-
-/* Compute maximum saturation for a given hue */
-static alwan_f64 alwan_compute_max_saturation(alwan_f64 a, alwan_f64 b) {
-    return gamut_compute_max_saturation_f64_v(a, b);
 }
 
 /* Find gamut cusp */

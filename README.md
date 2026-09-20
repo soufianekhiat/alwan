@@ -644,7 +644,7 @@ Re-run it against any checkout to reproduce the table.
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 440 |
 | Embedded data tables | 950 |
 | Exported symbols | 1,979 |
-| Internal symbols reached by a test or a public entry point | 241 of 265 (91%) |
+| Internal symbols reached by a test or a public entry point | 241 of 249 (97%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL under dxc | 40 of 43 |
