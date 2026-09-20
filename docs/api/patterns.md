@@ -160,6 +160,84 @@ them with the RGB conversion functions ([color-spaces.md](color-spaces.md)); to 
 integer or half-float buffers, the `_ex` pixel formats of the map API take the rendered
 floats ([map.md](map.md)).
 
+## Getting a pattern to Y'CbCr codes
+
+A rendered pattern is already R'G'B', so it goes to Y'CbCr without a transfer function in
+between. Three calls do it, and the whole picture is one `count` because the map API is
+told a stride rather than a shape:
+
+```c
+size_t const count = width * height;
+alwan_f64 *rgb    = malloc(count * 3 * sizeof *rgb);
+alwan_f64 *ycbcr  = malloc(count * 3 * sizeof *ycbcr);
+uint16_t  *codes  = malloc(count * 3 * sizeof *codes);
+size_t const stride = 3 * sizeof(alwan_f64);   /* bytes, always explicit */
+
+alwan_pattern_render_f64(rgb, width * stride, width, height,
+                         ALWAN_PATTERN_ARIB_STD_B28, NULL);
+alwan_rgb_to_ycbcr_f64_map_interleave(ycbcr, stride, rgb, stride, count,
+                                      ALWAN_YCBCR_BT709);
+alwan_ycbcr_full_to_legal_f64_map_interleave(ycbcr, stride, ycbcr, stride, count, 10);
+```
+
+`row_stride` is in bytes and so is every `_map_interleave` stride. Pass them explicitly:
+most of alwan takes a stride of 0 literally and writes one value rather than treating it
+as "packed".
+
+### What the numbers mean at each step
+
+`alwan_rgb_to_ycbcr_{T}` gives `Y` in `[0, 1]` and `Cb` / `Cr` **centred on 0.5 in
+`[0, 1]`**, not on zero: 100 % white is `Y 1.0, Cb 0.5, Cr 0.5`. That is the convention
+throughout alwan, and it is why normalising a YCbCr value is a no-op
+([../ranges.md](../ranges.md)).
+
+`alwan_ycbcr_full_to_legal_{T}` returns a fraction of the peak code rather than the code
+itself, so a value multiplied by `(1 << bit_depth) - 1` is the code the standard names:
+
+| `bit_depth` | black | white | neutral chroma |
+|---|---|---|---|
+| 8 | 16 | 235 | 128 |
+| 10 | 64 | 940 | 512 |
+| 12 | 256 | 3760 | 2048 |
+| 16 | 4096 | 60160 | 32768 |
+
+A pattern that goes below black keeps its sign through both calls, which is the point of
+rendering it: ARIB's -2 % PLUGE step reaches `Y` below 64 at 10 bits, and clipping it
+anywhere in this chain removes the step being measured.
+
+### Reaching an integer buffer
+
+`alwan_scatter3_{T}` writes float triplets into a typed buffer, scaling `[0, 1]` onto the
+format's full range: `ALWAN_PIXEL_U8` onto `[0, 255]` and `ALWAN_PIXEL_U16` onto
+`[0, 65535]`. That scale is the format's, not the bit depth you asked legal range for, so
+the two compose exactly only when they agree:
+
+```c
+/* 8-bit legal codes: full_to_legal(8) scales by 255, U8 scales by 255. Exact. */
+alwan_ycbcr_full_to_legal_f64_map_interleave(ycbcr, stride, ycbcr, stride, count, 8);
+alwan_scatter3_f64(bytes, 3, ycbcr, stride, count, ALWAN_PIXEL_U8);
+
+/* 16-bit legal codes: likewise, both scale by 65535. Exact. */
+alwan_ycbcr_full_to_legal_f64_map_interleave(ycbcr, stride, ycbcr, stride, count, 16);
+alwan_scatter3_f64(codes, 3 * sizeof(uint16_t), ycbcr, stride, count, ALWAN_PIXEL_U16);
+```
+
+**10-bit and 12-bit have no matching pixel format**, so scattering them to `U16` would
+scale by 65535 and give 16-bit codes, not 10-bit ones in a 16-bit word. Those two depths
+are the caller's multiply:
+
+```c
+alwan_ycbcr_full_to_legal_f64_map_interleave(ycbcr, stride, ycbcr, stride, count, 10);
+for (size_t i = 0; i < count * 3; i++) {
+    double const code = ycbcr[i] * 1023.0;         /* (1 << 10) - 1 */
+    codes[i] = (uint16_t)(code < 0.0 ? 0.0 : code > 1023.0 ? 1023.0 : code + 0.5);
+}
+```
+
+The clamp is the caller's decision and belongs here rather than earlier: a PLUGE step
+below black is a negative code that no unsigned buffer can hold, and the place to decide
+what happens to it is the place that chose the container.
+
 ## Sources
 
 ITU-R BT.471-1 is a free download from itu.int. The English translation of ARIB STD-B28
