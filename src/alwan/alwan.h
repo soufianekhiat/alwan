@@ -782,8 +782,14 @@ typedef struct {
     int has_matrices;               /* non-zero if rgb_to_xyz/xyz_to_rgb are valid */
 } alwan_rgb_space_desc_f64;
 
-/* Derive RGB<->XYZ conversion matrices from primaries and white point
- * Returns ALWAN_OK on success, ALWAN_E_RANGE if primaries/white form singular matrix */
+/* Derive RGB<->XYZ conversion matrices from primaries and white point.
+ *
+ * ALWAN_E_INVALID for a NULL argument. ALWAN_E_RANGE when the primaries or the
+ * white point make a singular matrix: three primaries on a line, three the same,
+ * or a white with y = 0. NOTHING IS WRITTEN on either refusal, so a caller who
+ * ignores the status does not get a plausible-looking matrix by accident. The
+ * core this delegates to fills a singular inverse with the IDENTITY, branchlessly,
+ * because a shader cannot return a status; these entry points can, and do. */
 alwan_status alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
                                alwan_mat3x3_f64 *xyz_to_rgb,
                                alwan_rgb_space_desc_f64 const *desc);

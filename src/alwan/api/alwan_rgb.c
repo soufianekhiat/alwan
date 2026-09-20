@@ -41,18 +41,73 @@ ALWAN_DIAG_POP
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE
  * (gamut volume/coverage f32 facades derive matrices in f64). */
 #if ALWAN_WITH_F64_FACADE
+/* Singular primaries are reported rather than absorbed.
+ *
+ * alwan_mat3_inv_v returns the IDENTITY when |det| < ALWAN_EPSILON, branchlessly,
+ * because a core that has to compile as a shader cannot return a status. That is
+ * the right answer there and the wrong one to hand a caller: three primaries on a
+ * line, or a white with y = 0, came back ALWAN_OK with an identity matrix, and the
+ * colour that followed was silently wrong.
+ *
+ * The header has always documented ALWAN_E_RANGE for exactly this, so these two
+ * functions now return it. The test is |det| < ALWAN_EPSILON_{F32,F64}, which is
+ * AT LEAST AS STRICT as the core's: the core compares against ALWAN_EPSILON,
+ * 1e-12 on the C backend for both precisions, while the f32 path here uses 1e-6f.
+ * That direction is the safe one. A matrix this accepts is never one the core
+ * would quietly fill with an identity; the reverse would have left the silent
+ * case in place for f32. Between the two thresholds sits a matrix too
+ * ill-conditioned to be a colour space anyway: sRGB's primaries determinant is
+ * about 0.1, ten thousand times the looser bound.
+ *
+ * Both matrices that get inverted are checked: the primaries matrix, and the
+ * scaled RGB->XYZ derived from it, since a white point can drive the second
+ * singular on its own.
+ *
+ * Nothing is written on refusal. There is no nearest usable answer to give: an
+ * identity is what the caller would have got by accident, and returning it beside
+ * an error would invite it to be used. */
+static int alwan_mat3_is_singular_f64(alwan_mat3x3_f64 const *m) {
+    return ALWAN_ABS_F64(alwan_mat3_det_f64(m)) < ALWAN_EPSILON_F64;
+}
+
+static int alwan_mat3_is_singular_f32(alwan_mat3x3_f32 const *m) {
+    return ALWAN_ABS_F32(alwan_mat3_det_f32(m)) < ALWAN_EPSILON_F32;
+}
+
 alwan_status alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
                                alwan_mat3x3_f64 *xyz_to_rgb,
                                alwan_rgb_space_desc_f64 const *desc) {
+    alwan_mat3x3_f64 primaries;
+    alwan_rgb_matrices_f64 m;
     if (!desc || !rgb_to_xyz || !xyz_to_rgb) {
         return ALWAN_E_INVALID;
     }
 
-    alwan_rgb_matrices_f64 m = alwan_rgb_derive_matrices_f64_v(
+    /* The same matrix alwan_rgb_derive_matrices_f64_v builds before inverting it. */
+    primaries.m[0] = desc->primaries_xy[0];
+    primaries.m[1] = desc->primaries_xy[2];
+    primaries.m[2] = desc->primaries_xy[4];
+    primaries.m[3] = desc->primaries_xy[1];
+    primaries.m[4] = desc->primaries_xy[3];
+    primaries.m[5] = desc->primaries_xy[5];
+    primaries.m[6] = (alwan_f64)1.0 - desc->primaries_xy[0] - desc->primaries_xy[1];
+    primaries.m[7] = (alwan_f64)1.0 - desc->primaries_xy[2] - desc->primaries_xy[3];
+    primaries.m[8] = (alwan_f64)1.0 - desc->primaries_xy[4] - desc->primaries_xy[5];
+    if (alwan_mat3_is_singular_f64(&primaries)) {
+        return ALWAN_E_RANGE;
+    }
+
+    m = alwan_rgb_derive_matrices_f64_v(
         desc->primaries_xy[0], desc->primaries_xy[1],
         desc->primaries_xy[2], desc->primaries_xy[3],
         desc->primaries_xy[4], desc->primaries_xy[5],
         desc->white_xy[0], desc->white_xy[1]);
+
+    /* A white point can flatten the scaled matrix even when the primaries are
+     * fine, so the derived one is tested too rather than assumed. */
+    if (alwan_mat3_is_singular_f64(&m.rgb_to_xyz)) {
+        return ALWAN_E_RANGE;
+    }
 
     *rgb_to_xyz = m.rgb_to_xyz;
     *xyz_to_rgb = m.xyz_to_rgb;
@@ -65,16 +120,41 @@ alwan_status alwan_rgb_derive_matrices_f64(alwan_mat3x3_f64 *rgb_to_xyz,
 alwan_status alwan_rgb_derive_matrices_f32(alwan_mat3x3_f32 *rgb_to_xyz,
                                alwan_mat3x3_f32 *xyz_to_rgb,
                                alwan_rgb_space_desc_f32 const *desc) {
-    if (!desc || !rgb_to_xyz || !xyz_to_rgb) return ALWAN_E_INVALID;
+    alwan_mat3x3_f32 primaries;
+    alwan_rgb_matrices_f32 m;
+    if (!desc || !rgb_to_xyz || !xyz_to_rgb) {
+        return ALWAN_E_INVALID;
+    }
 
-    alwan_rgb_matrices_f32 m = alwan_rgb_derive_matrices_f32_v(
+    /* The same matrix alwan_rgb_derive_matrices_f32_v builds before inverting it. */
+    primaries.m[0] = desc->primaries_xy[0];
+    primaries.m[1] = desc->primaries_xy[2];
+    primaries.m[2] = desc->primaries_xy[4];
+    primaries.m[3] = desc->primaries_xy[1];
+    primaries.m[4] = desc->primaries_xy[3];
+    primaries.m[5] = desc->primaries_xy[5];
+    primaries.m[6] = (alwan_f32)1.0 - desc->primaries_xy[0] - desc->primaries_xy[1];
+    primaries.m[7] = (alwan_f32)1.0 - desc->primaries_xy[2] - desc->primaries_xy[3];
+    primaries.m[8] = (alwan_f32)1.0 - desc->primaries_xy[4] - desc->primaries_xy[5];
+    if (alwan_mat3_is_singular_f32(&primaries)) {
+        return ALWAN_E_RANGE;
+    }
+
+    m = alwan_rgb_derive_matrices_f32_v(
         desc->primaries_xy[0], desc->primaries_xy[1],
         desc->primaries_xy[2], desc->primaries_xy[3],
         desc->primaries_xy[4], desc->primaries_xy[5],
         desc->white_xy[0], desc->white_xy[1]);
 
+    /* A white point can flatten the scaled matrix even when the primaries are
+     * fine, so the derived one is tested too rather than assumed. */
+    if (alwan_mat3_is_singular_f32(&m.rgb_to_xyz)) {
+        return ALWAN_E_RANGE;
+    }
+
     *rgb_to_xyz = m.rgb_to_xyz;
     *xyz_to_rgb = m.xyz_to_rgb;
+
     return ALWAN_OK;
 }
 #endif /* ALWAN_WITH_F32 */

@@ -136,11 +136,28 @@ entries are contract/doc/naming nits that should be cleaned up before the
 
 ### Error-contract violations
 
-- **Unreachable documented error.** `alwan_rgb_derive_matrices_{f32,f64}` (doc +
-  `color-spaces.md`) promise `ALWAN_E_RANGE` on singular primaries, but the impl
-  unconditionally returns `ALWAN_OK` (the core returns matrices by value with no
-  singularity signal), so degenerate primaries silently yield NaN/inf. Add a
-  determinant check or fix the doc.
+- ~~**Unreachable documented error.**~~ **FIXED 2026-09-20**, by adding the
+  determinant check rather than weakening the doc: the header promised
+  `ALWAN_E_RANGE` on singular primaries, so the honest move was to return it.
+
+  One correction to this entry, measured. Degenerate primaries did not yield
+  NaN/inf; they yielded the **IDENTITY**, which is worse, because NaN propagates
+  and announces itself while an identity looks like a usable matrix and quietly
+  makes every colour after it wrong. `alwan_mat3_inv_v` fills a singular inverse
+  with the identity branchlessly, which is correct for a core that has to compile
+  as a shader and cannot return a status.
+
+  Both entry points now test the determinant of the primaries matrix AND of the
+  scaled RGB->XYZ derived from it, since a white point can flatten the second on
+  its own, and write NOTHING when they refuse: there is no nearest usable answer,
+  and returning the identity beside an error invites its use. The threshold is
+  `ALWAN_EPSILON_{F32,F64}`, at least as strict as the core's `ALWAN_EPSILON`, so
+  a matrix the API accepts is never one the core would quietly fill.
+
+  Suite 03 covers it in both precisions, and proves the ordinary cases still
+  pass first: a refusal test that only tested refusals would be satisfied by a
+  function that refuses everything. ACES AP0 is among them on purpose, since one
+  of its primaries is negative.
 
 - **Sentinel collision on whiteness/yellowness.**
   `alwan_yellowness_astm_e313` / `whiteness_astm_e313` / `whiteness_cie2004`
