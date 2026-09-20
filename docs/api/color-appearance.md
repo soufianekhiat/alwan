@@ -79,13 +79,13 @@ typedef struct {
 ### alwan_ciecam02_forward_{T} / alwan_ciecam02_inverse_{T}
 
 ```c
-int alwan_ciecam02_forward_{T}(alwan_ciecam02_correlates_{T} *out,
-                                alwan_xyz_{T} const *xyz,
-                                alwan_ciecam02_viewing_conditions_{T} const *vc);
+alwan_status alwan_ciecam02_forward_{T}(alwan_ciecam02_correlates_{T} *out,
+                                         alwan_xyz_{T} const *xyz,
+                                         alwan_ciecam02_viewing_conditions_{T} const *vc);
 
-int alwan_ciecam02_inverse_{T}(alwan_xyz_{T} *xyz_out,
-                                alwan_ciecam02_correlates_{T} const *correlates,
-                                alwan_ciecam02_viewing_conditions_{T} const *vc);
+alwan_status alwan_ciecam02_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                         alwan_ciecam02_correlates_{T} const *correlates,
+                                         alwan_ciecam02_viewing_conditions_{T} const *vc);
 ```
 
 Output struct fields (correlates): `J` (lightness), `C` (chroma), `h` (hue angle), `s` (saturation),
@@ -118,13 +118,13 @@ printf("J=%.2f C=%.2f h=%.2f\n", corr.J, corr.C, corr.h);
 ### alwan_cam16_forward_{T} / alwan_cam16_inverse_{T}
 
 ```c
-int alwan_cam16_forward_{T}(alwan_cam16_correlates_{T} *out,
-                             alwan_xyz_{T} const *xyz,
-                             alwan_cam16_viewing_conditions_{T} const *vc);
+alwan_status alwan_cam16_forward_{T}(alwan_cam16_correlates_{T} *out,
+                                      alwan_xyz_{T} const *xyz,
+                                      alwan_cam16_viewing_conditions_{T} const *vc);
 
-int alwan_cam16_inverse_{T}(alwan_xyz_{T} *xyz_out,
-                             alwan_cam16_correlates_{T} const *correlates,
-                             alwan_cam16_viewing_conditions_{T} const *vc);
+alwan_status alwan_cam16_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                      alwan_cam16_correlates_{T} const *correlates,
+                                      alwan_cam16_viewing_conditions_{T} const *vc);
 ```
 
 Improved CIECAM02 with better chromatic adaptation and numerical stability.
@@ -132,11 +132,11 @@ Improved CIECAM02 with better chromatic adaptation and numerical stability.
 ### alwan_cam16_to_ucs_{T} / alwan_cam16_from_ucs_{T}
 
 ```c
-int alwan_cam16_to_ucs_{T}(alwan_cam_jab_{T} *jab_out,
-                            alwan_cam16_correlates_{T} const *correlates);
+alwan_status alwan_cam16_to_ucs_{T}(alwan_cam_jab_{T} *jab_out,
+                                     alwan_cam16_correlates_{T} const *correlates);
 
-int alwan_cam16_from_ucs_{T}(alwan_cam16_correlates_{T} *out,
-                              alwan_cam_jab_{T} const *jab);
+alwan_status alwan_cam16_from_ucs_{T}(alwan_cam16_correlates_{T} *out,
+                                       alwan_cam_jab_{T} const *jab);
 ```
 
 Convert CAM16 JMh to uniform color space J'a'b' for color difference calculations.
@@ -234,30 +234,30 @@ the input is a packed array of correlates structs.
 
 ```c
 /* Forward: interleaved XYZ -> packed correlates */
-int alwan_ciecam02_forward_{T}_map_interleave(
-    alwan_ciecam02_correlates_{T} *correlates_out,
-    alwan_{T} const *xyz_in, size_t in_stride,
-    alwan_ciecam02_viewing_conditions_{T} const *vc,
-    size_t count);
+alwan_status alwan_ciecam02_forward_{T}_map_interleave(
+             alwan_ciecam02_correlates_{T} *correlates_out,
+             alwan_{T} const *xyz_in, size_t in_stride,
+             alwan_ciecam02_viewing_conditions_{T} const *vc,
+             size_t count);
 
-int alwan_cam16_forward_{T}_map_interleave(
-    alwan_cam16_correlates_{T} *correlates_out,
-    alwan_{T} const *xyz_in, size_t in_stride,
-    alwan_cam16_viewing_conditions_{T} const *vc,
-    size_t count);
+alwan_status alwan_cam16_forward_{T}_map_interleave(
+             alwan_cam16_correlates_{T} *correlates_out,
+             alwan_{T} const *xyz_in, size_t in_stride,
+             alwan_cam16_viewing_conditions_{T} const *vc,
+             size_t count);
 
 /* Inverse: packed correlates -> interleaved XYZ */
-int alwan_ciecam02_inverse_{T}_map_interleave(
-    alwan_{T} *xyz_out, size_t out_stride,
-    alwan_ciecam02_correlates_{T} const *correlates_in,
-    alwan_ciecam02_viewing_conditions_{T} const *vc,
-    size_t count);
+alwan_status alwan_ciecam02_inverse_{T}_map_interleave(
+             alwan_{T} *xyz_out, size_t out_stride,
+             alwan_ciecam02_correlates_{T} const *correlates_in,
+             alwan_ciecam02_viewing_conditions_{T} const *vc,
+             size_t count);
 
-int alwan_cam16_inverse_{T}_map_interleave(
-    alwan_{T} *xyz_out, size_t out_stride,
-    alwan_cam16_correlates_{T} const *correlates_in,
-    alwan_cam16_viewing_conditions_{T} const *vc,
-    size_t count);
+alwan_status alwan_cam16_inverse_{T}_map_interleave(
+             alwan_{T} *xyz_out, size_t out_stride,
+             alwan_cam16_correlates_{T} const *correlates_in,
+             alwan_cam16_viewing_conditions_{T} const *vc,
+             size_t count);
 ```
 
 Typed `_map_interleave_ex` variants accept a `void*` interleaved buffer plus an
@@ -265,17 +265,17 @@ Typed `_map_interleave_ex` variants accept a `void*` interleaved buffer plus an
 correlates struct. The pixel-format argument tails the signature:
 
 ```c
-int alwan_ciecam02_forward_map_interleave_ex(
-    alwan_ciecam02_correlates_f64 *correlates_out,
-    void const *xyz_in, size_t in_stride,
-    alwan_ciecam02_viewing_conditions_f64 const *vc,
-    size_t count, alwan_pixel_format in_fmt);
+alwan_status alwan_ciecam02_forward_map_interleave_ex(
+             alwan_ciecam02_correlates_f64 *correlates_out,
+             void const *xyz_in, size_t in_stride,
+             alwan_ciecam02_viewing_conditions_f64 const *vc,
+             size_t count, alwan_pixel_format in_fmt);
 
-int alwan_ciecam02_inverse_map_interleave_ex(
-    void *xyz_out, size_t out_stride,
-    alwan_ciecam02_correlates_f64 const *correlates_in,
-    alwan_ciecam02_viewing_conditions_f64 const *vc,
-    size_t count, alwan_pixel_format out_fmt);
+alwan_status alwan_ciecam02_inverse_map_interleave_ex(
+             void *xyz_out, size_t out_stride,
+             alwan_ciecam02_correlates_f64 const *correlates_in,
+             alwan_ciecam02_viewing_conditions_f64 const *vc,
+             size_t count, alwan_pixel_format out_fmt);
 /* alwan_cam16_forward_map_interleave_ex / _inverse_map_interleave_ex mirror these. */
 ```
 
@@ -286,13 +286,13 @@ int alwan_ciecam02_inverse_map_interleave_ex(
 ### alwan_zcam_forward_{T} / alwan_zcam_inverse_{T}
 
 ```c
-int alwan_zcam_forward_{T}(alwan_zcam_correlates_{T} *out,
-                            alwan_xyz_{T} const *xyz,
-                            alwan_zcam_viewing_conditions_{T} const *vc);
+alwan_status alwan_zcam_forward_{T}(alwan_zcam_correlates_{T} *out,
+                                     alwan_xyz_{T} const *xyz,
+                                     alwan_zcam_viewing_conditions_{T} const *vc);
 
-int alwan_zcam_inverse_{T}(alwan_xyz_{T} *xyz,
-                            alwan_zcam_correlates_{T} const *correlates,
-                            alwan_zcam_viewing_conditions_{T} const *vc);
+alwan_status alwan_zcam_inverse_{T}(alwan_xyz_{T} *xyz,
+                                     alwan_zcam_correlates_{T} const *correlates,
+                                     alwan_zcam_viewing_conditions_{T} const *vc);
 ```
 
 Latest CIE color appearance model with improved HDR support. Built on Jzazbz color space.
@@ -300,11 +300,11 @@ Latest CIE color appearance model with improved HDR support. Built on Jzazbz col
 ### alwan_zcam_to_ucs_{T} / alwan_zcam_from_ucs_{T}
 
 ```c
-int alwan_zcam_to_ucs_{T}(alwan_jzazbz_{T} *Jab_out,
-                            alwan_zcam_correlates_{T} const *correlates);
+alwan_status alwan_zcam_to_ucs_{T}(alwan_jzazbz_{T} *Jab_out,
+                                     alwan_zcam_correlates_{T} const *correlates);
 
-int alwan_zcam_from_ucs_{T}(alwan_zcam_correlates_{T} *out,
-                              alwan_jzazbz_{T} const *Jab);
+alwan_status alwan_zcam_from_ucs_{T}(alwan_zcam_correlates_{T} *out,
+                                       alwan_jzazbz_{T} const *Jab);
 ```
 
 The UCS is Jz with Mz and hz in Cartesian form, so the pair round-trips Jz, Mz
@@ -317,13 +317,13 @@ and hz exactly; `from_ucs` sets the other correlates to 0, as CAM16's does.
 No viewing conditions struct -- takes scalar parameters directly.
 
 ```c
-int alwan_cam18sl_forward_{T}(alwan_cam18sl_correlates_{T} *out,
-                               alwan_xyz_{T} const *xyz,
-                               alwan_{T} Y_b);   /* background luminance in cd/m^2 */
+alwan_status alwan_cam18sl_forward_{T}(alwan_cam18sl_correlates_{T} *out,
+                                        alwan_xyz_{T} const *xyz,
+                                        alwan_{T} Y_b);   /* background luminance in cd/m^2 */
 
-int alwan_cam18sl_inverse_{T}(alwan_xyz_{T} *xyz_out,
-                               alwan_cam18sl_correlates_{T} const *correlates,
-                               alwan_{T} Y_b);
+alwan_status alwan_cam18sl_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                        alwan_cam18sl_correlates_{T} const *correlates,
+                                        alwan_{T} Y_b);
 ```
 
 Color appearance model for self-luminous stimuli (displays, LEDs). Designed for emissive sources.
@@ -335,15 +335,15 @@ Color appearance model for self-luminous stimuli (displays, LEDs). Designed for 
 No viewing conditions struct -- takes scalar parameters directly.
 
 ```c
-int alwan_cam20u_forward_{T}(alwan_cam20u_correlates_{T} *out,
-                              alwan_xyz_{T} const *xyz,
-                              alwan_{T} Y_b,   /* background luminance in cd/m^2 */
-                              alwan_{T} L_a);  /* adapting luminance in cd/m^2 */
+alwan_status alwan_cam20u_forward_{T}(alwan_cam20u_correlates_{T} *out,
+                                       alwan_xyz_{T} const *xyz,
+                                       alwan_{T} Y_b,   /* background luminance in cd/m^2 */
+                                       alwan_{T} L_a);  /* adapting luminance in cd/m^2 */
 
-int alwan_cam20u_inverse_{T}(alwan_xyz_{T} *xyz_out,
-                              alwan_cam20u_correlates_{T} const *correlates,
-                              alwan_{T} Y_b,
-                              alwan_{T} L_a);
+alwan_status alwan_cam20u_inverse_{T}(alwan_xyz_{T} *xyz_out,
+                                       alwan_cam20u_correlates_{T} const *correlates,
+                                       alwan_{T} Y_b,
+                                       alwan_{T} L_a);
 ```
 
 ---

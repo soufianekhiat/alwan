@@ -141,11 +141,11 @@ typedef struct {
 /* `depth` is optional (NULL => single global envelope). One scalar per pixel
    (z or object id); used to gate edge coupling + spread across occlusion
    boundaries (see 2.3). */
-int alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in,
-                                alwan_f32 const *depth /* or NULL */,
-                                int width, int height,
-                                alwan_gamut_spatial_params_f32 const *params,
-                                alwan_ctx *ctx);
+alwan_status alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in,
+                                         alwan_f32 const *depth /* or NULL */,
+                                         int width, int height,
+                                         alwan_gamut_spatial_params_f32 const *params,
+                                         alwan_ctx *ctx);
 /* + _f64. Needs w,h (neighbours) => distinct from the pixel-independent
    alwan_gamut_map_method enum. See alwan.h for the per-method meaning
    of `s` and the full alwan_gamut_formation_method list. */

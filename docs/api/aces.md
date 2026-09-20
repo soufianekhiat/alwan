@@ -73,13 +73,13 @@ typedef enum {
 ### alwan_aces1_output_transform_{T} / alwan_aces1_output_transform_inv_{T}
 
 ```c
-int alwan_aces1_output_transform_{T}(alwan_rgb_{T} *rgb_out,
-                                      alwan_rgb_{T} const *rgb_in,
-                                      alwan_aces1_output output);
+alwan_status alwan_aces1_output_transform_{T}(alwan_rgb_{T} *rgb_out,
+                                               alwan_rgb_{T} const *rgb_in,
+                                               alwan_aces1_output output);
 
-int alwan_aces1_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
-                                          alwan_rgb_{T} const *rgb_in,
-                                          alwan_aces1_output output);
+alwan_status alwan_aces1_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
+                                                   alwan_rgb_{T} const *rgb_in,
+                                                   alwan_aces1_output output);
 ```
 
 Complete ACES 1.3 rendering pipeline (RRT + ODT). Input: ACES2065-1 (AP0 linear). Output: display-encoded RGB.
@@ -128,13 +128,13 @@ typedef enum {
 ### alwan_aces2_output_transform_{T} / alwan_aces2_output_transform_inv_{T}
 
 ```c
-int alwan_aces2_output_transform_{T}(alwan_rgb_{T} *rgb_out,
-                                      alwan_rgb_{T} const *rgb_in,
-                                      alwan_aces2_output output);
+alwan_status alwan_aces2_output_transform_{T}(alwan_rgb_{T} *rgb_out,
+                                               alwan_rgb_{T} const *rgb_in,
+                                               alwan_aces2_output output);
 
-int alwan_aces2_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
-                                          alwan_rgb_{T} const *rgb_in,
-                                          alwan_aces2_output output);
+alwan_status alwan_aces2_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
+                                                   alwan_rgb_{T} const *rgb_in,
+                                                   alwan_aces2_output output);
 ```
 
 Complete ACES 2.0 rendering pipeline. Input: ACEScg (AP1 linear). Output: display-encoded RGB.
@@ -144,11 +144,11 @@ Pipeline stages: AP1 -> JMh -> Tonescale + Chroma compress -> Gamut compress -> 
 ### alwan_aces2_output_transform_custom_{T}
 
 ```c
-int alwan_aces2_output_transform_custom_{T}(alwan_rgb_{T} *rgb_out,
-                                             alwan_rgb_{T} const *rgb_in,
-                                             alwan_{T} peak_luminance,
-                                             alwan_aces_primaries_{T} const *limit_primaries,
-                                             alwan_transfer_function eotf);
+alwan_status alwan_aces2_output_transform_custom_{T}(alwan_rgb_{T} *rgb_out,
+                                                      alwan_rgb_{T} const *rgb_in,
+                                                      alwan_{T} peak_luminance,
+                                                      alwan_aces_primaries_{T} const *limit_primaries,
+                                                      alwan_transfer_function eotf);
 ```
 
 Custom output transform with user-specified peak luminance, limiting primaries, and display EOTF.
@@ -156,10 +156,10 @@ Custom output transform with user-specified peak luminance, limiting primaries, 
 ### alwan_aces2_output_transform_{T}_map_interleave
 
 ```c
-int alwan_aces2_output_transform_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
-                                                    alwan_{T} const *in, size_t in_stride,
-                                                    size_t count,
-                                                    alwan_aces2_output output);
+alwan_status alwan_aces2_output_transform_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                             alwan_{T} const *in, size_t in_stride,
+                                                             size_t count,
+                                                             alwan_aces2_output output);
 ```
 
 Batch (map) form over interleaved RGB triplets. The preset's parameters

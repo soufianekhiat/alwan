@@ -63,17 +63,17 @@ alwan_lgg_apply_f64(&result, &pixel, &lift, &gamma, &gain);
 
 **Batch variants:**
 ```c
-int alwan_lgg_apply_{T}_map_interleave(
-        alwan_{T} *rgb_out, size_t out_stride,
-        alwan_{T} const *rgb_in, size_t in_stride, size_t count,
-        alwan_rgb_{T} const *lift, alwan_rgb_{T} const *gamma,
-        alwan_rgb_{T} const *gain);
+alwan_status alwan_lgg_apply_{T}_map_interleave(
+                 alwan_{T} *rgb_out, size_t out_stride,
+                 alwan_{T} const *rgb_in, size_t in_stride, size_t count,
+                 alwan_rgb_{T} const *lift, alwan_rgb_{T} const *gamma,
+                 alwan_rgb_{T} const *gain);
 
-int alwan_lgg_apply_map_interleave_ex(
-        void *out, size_t out_stride, void const *in, size_t in_stride,
-        size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-        alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma,
-        alwan_rgb_f64 const *gain);
+alwan_status alwan_lgg_apply_map_interleave_ex(
+                 void *out, size_t out_stride, void const *in, size_t in_stride,
+                 size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+                 alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma,
+                 alwan_rgb_f64 const *gain);
 ```
 
 Also available: `alwan_lgg_apply_{T}_map_planar`, `alwan_lgg_apply_map_planar_ex`.
@@ -142,8 +142,8 @@ Apply a 3x3 color transformation matrix to RGB values.
 ### alwan_color_matrix_get_preset_{T}
 
 ```c
-int alwan_color_matrix_get_preset_{T}(alwan_mat3x3_{T} *matrix_3x3,
-                                      alwan_color_matrix_preset_{T} preset);
+alwan_status alwan_color_matrix_get_preset_{T}(alwan_mat3x3_{T} *matrix_3x3,
+                                               alwan_color_matrix_preset_{T} preset);
 ```
 
 Get a preset creative color-grading matrix. Returns `ALWAN_OK`, or
@@ -177,15 +177,15 @@ alwan_color_matrix_apply_f64_map_interleave(
 
 **Batch variants:**
 ```c
-int alwan_color_matrix_apply_{T}_map_interleave(
-        alwan_{T} *rgb_out, size_t out_stride,
-        alwan_{T} const *rgb_in, size_t in_stride, size_t count,
-        alwan_mat3x3_{T} const *matrix);
+alwan_status alwan_color_matrix_apply_{T}_map_interleave(
+                 alwan_{T} *rgb_out, size_t out_stride,
+                 alwan_{T} const *rgb_in, size_t in_stride, size_t count,
+                 alwan_mat3x3_{T} const *matrix);
 
-int alwan_color_matrix_apply_map_interleave_ex(
-        void *out, size_t out_stride, void const *in, size_t in_stride,
-        size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-        alwan_mat3x3_f64 const *matrix);
+alwan_status alwan_color_matrix_apply_map_interleave_ex(
+                 void *out, size_t out_stride, void const *in, size_t in_stride,
+                 size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+                 alwan_mat3x3_f64 const *matrix);
 ```
 
 Also available: `alwan_color_matrix_apply_{T}_map_planar`, `alwan_color_matrix_apply_map_planar_ex`.
@@ -216,15 +216,15 @@ alwan_printer_lights_apply_f64(&result, &pixel, 27.0, 25.0, 23.0);
 
 **Batch variants:**
 ```c
-int alwan_printer_lights_apply_{T}_map_interleave(
-        alwan_{T} *rgb_out, size_t out_stride,
-        alwan_{T} const *rgb_in, size_t in_stride, size_t count,
-        alwan_{T} red_lights, alwan_{T} green_lights, alwan_{T} blue_lights);
+alwan_status alwan_printer_lights_apply_{T}_map_interleave(
+                 alwan_{T} *rgb_out, size_t out_stride,
+                 alwan_{T} const *rgb_in, size_t in_stride, size_t count,
+                 alwan_{T} red_lights, alwan_{T} green_lights, alwan_{T} blue_lights);
 
-int alwan_printer_lights_apply_map_interleave_ex(
-        void *out, size_t out_stride, void const *in, size_t in_stride,
-        size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-        alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights);
+alwan_status alwan_printer_lights_apply_map_interleave_ex(
+                 void *out, size_t out_stride, void const *in, size_t in_stride,
+                 size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+                 alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights);
 ```
 
 Also available: `alwan_printer_lights_apply_{T}_map_planar`, `alwan_printer_lights_apply_map_planar_ex`.
@@ -232,7 +232,7 @@ Also available: `alwan_printer_lights_apply_{T}_map_planar`, `alwan_printer_ligh
 ### alwan_exposure_tonemap_{T}
 
 ```c
-int alwan_exposure_tonemap_{T}(alwan_{T} *out, alwan_{T} L, alwan_{T} exposure);
+alwan_status alwan_exposure_tonemap_{T}(alwan_{T} *out, alwan_{T} L, alwan_{T} exposure);
 ```
 
 Exposure-based tone mapping on a luminance value: `out = 1 - exp(-2^exposure * L)`.
@@ -279,15 +279,15 @@ alwan_white_balance_apply_f64_map_interleave(
 
 **Batch variants:**
 ```c
-int alwan_white_balance_apply_{T}_map_interleave(
-        alwan_{T} *rgb_out, size_t out_stride,
-        alwan_{T} const *rgb_in, size_t in_stride, size_t count,
-        alwan_rgb_{T} const *multipliers);
+alwan_status alwan_white_balance_apply_{T}_map_interleave(
+                 alwan_{T} *rgb_out, size_t out_stride,
+                 alwan_{T} const *rgb_in, size_t in_stride, size_t count,
+                 alwan_rgb_{T} const *multipliers);
 
-int alwan_white_balance_apply_map_interleave_ex(
-        void *out, size_t out_stride, void const *in, size_t in_stride,
-        size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-        alwan_rgb_f64 const *multipliers);
+alwan_status alwan_white_balance_apply_map_interleave_ex(
+                 void *out, size_t out_stride, void const *in, size_t in_stride,
+                 size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+                 alwan_rgb_f64 const *multipliers);
 ```
 
 Also available: `alwan_white_balance_apply_{T}_map_planar`, `alwan_white_balance_apply_map_planar_ex`.
@@ -332,12 +332,12 @@ typedef enum {
 #### alwan_colour_correction_matrix_cheung2004_{T}
 
 ```c
-int alwan_colour_correction_matrix_cheung2004_{T}(
-        alwan_{T} *matrix_out,        /* Output correction matrix (terms x 3) */
-        alwan_{T} const *M_T,         /* Test (camera) RGB, Nx3 row-major */
-        alwan_{T} const *M_R,         /* Reference RGB, Nx3 row-major */
-        int num_samples,              /* Number of color samples (N) */
-        alwan_poly_cheung_terms terms);
+alwan_status alwan_colour_correction_matrix_cheung2004_{T}(
+                 alwan_{T} *matrix_out,        /* Output correction matrix (terms x 3) */
+                 alwan_{T} const *M_T,         /* Test (camera) RGB, Nx3 row-major */
+                 alwan_{T} const *M_R,         /* Reference RGB, Nx3 row-major */
+                 int num_samples,              /* Number of color samples (N) */
+                 alwan_poly_cheung_terms terms);
 ```
 
 #### alwan_colour_correct_cheung2004_{T}
@@ -354,10 +354,10 @@ void alwan_colour_correct_cheung2004_{T}(
 Root-polynomial color correction with improved exposure invariance.
 
 ```c
-int alwan_colour_correction_matrix_finlayson2015_{T}(
-        alwan_{T} *matrix_out, int *matrix_size,
-        alwan_{T} const *M_T, alwan_{T} const *M_R,
-        int num_samples, int degree, int root_poly);
+alwan_status alwan_colour_correction_matrix_finlayson2015_{T}(
+                 alwan_{T} *matrix_out, int *matrix_size,
+                 alwan_{T} const *M_T, alwan_{T} const *M_R,
+                 int num_samples, int degree, int root_poly);
 
 void alwan_colour_correct_finlayson2015_{T}(
         alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb,
@@ -598,17 +598,17 @@ alwan_colour_correct_cheung2004_f64(&corrected, &camera_pixel, matrix,
 
 ```c
 /* Expand RGB to polynomial terms (Cheung) */
-int alwan_poly_expand_cheung2004_{T}(alwan_{T} *out, alwan_rgb_{T} const *rgb,
-                                     alwan_poly_cheung_terms terms);
+alwan_status alwan_poly_expand_cheung2004_{T}(alwan_{T} *out, alwan_rgb_{T} const *rgb,
+                                              alwan_poly_cheung_terms terms);
 
 /* Expand RGB to polynomial terms (Finlayson) */
-int alwan_poly_expand_finlayson2015_{T}(alwan_{T} *out, int *out_size,
-                                        alwan_rgb_{T} const *rgb,
-                                        int degree, int root_poly);
+alwan_status alwan_poly_expand_finlayson2015_{T}(alwan_{T} *out, int *out_size,
+                                                 alwan_rgb_{T} const *rgb,
+                                                 int degree, int root_poly);
 
 /* Generic Vandermonde expansion */
-int alwan_poly_expand_vandermonde_{T}(alwan_{T} *out, int *out_size,
-                                      alwan_{T} const *a, int a_size, int degree);
+alwan_status alwan_poly_expand_vandermonde_{T}(alwan_{T} *out, int *out_size,
+                                               alwan_{T} const *a, int a_size, int degree);
 ```
 
 ---

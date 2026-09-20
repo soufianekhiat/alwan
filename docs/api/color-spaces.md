@@ -35,18 +35,18 @@ void alwan_xyz_to_lab_{T}(alwan_lab_{T} *lab,
                            alwan_xyz_{T} const *white_xyz);
 
 // Bulk interleaved (strides in bytes, immediately after each buffer)
-int alwan_xyz_to_lab_{T}_map_interleave(alwan_{T} *lab_out, size_t out_stride,
-                                         alwan_{T} const *xyz_in, size_t in_stride,
-                                         size_t count,
-                                         alwan_xyz_{T} const *white_xyz);
+alwan_status alwan_xyz_to_lab_{T}_map_interleave(alwan_{T} *lab_out, size_t out_stride,
+                                                  alwan_{T} const *xyz_in, size_t in_stride,
+                                                  size_t count,
+                                                  alwan_xyz_{T} const *white_xyz);
 
 // Bulk planar
-int alwan_xyz_to_lab_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride,
-                                     alwan_{T} *out_ch1, alwan_{T} *out_ch2,
-                                     alwan_{T} const *in_ch0, size_t in_stride,
-                                     alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
-                                     size_t count,
-                                     alwan_xyz_{T} const *white_xyz);
+alwan_status alwan_xyz_to_lab_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride,
+                                              alwan_{T} *out_ch1, alwan_{T} *out_ch2,
+                                              alwan_{T} const *in_ch0, size_t in_stride,
+                                              alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
+                                              size_t count,
+                                              alwan_xyz_{T} const *white_xyz);
 ```
 
 Inverse: `alwan_lab_to_xyz_{T}` / `alwan_lab_to_xyz_{T}_map_interleave` / `alwan_lab_to_xyz_{T}_map_planar`: same pattern.
@@ -275,21 +275,21 @@ printed in greyscale, which is what it was designed for.
 ### alwan_rgb_to_xyz_{T} / alwan_xyz_to_rgb_{T}
 
 ```c
-int alwan_rgb_to_xyz_{T}(alwan_xyz_{T} *xyz,
-                          alwan_rgb_space_desc_{T} const *space,
-                          alwan_rgb_{T} const *rgb);
-int alwan_xyz_to_rgb_{T}(alwan_rgb_{T} *rgb,
-                          alwan_rgb_space_desc_{T} const *space,
-                          alwan_xyz_{T} const *xyz);
+alwan_status alwan_rgb_to_xyz_{T}(alwan_xyz_{T} *xyz,
+                                   alwan_rgb_space_desc_{T} const *space,
+                                   alwan_rgb_{T} const *rgb);
+alwan_status alwan_xyz_to_rgb_{T}(alwan_rgb_{T} *rgb,
+                                   alwan_rgb_space_desc_{T} const *space,
+                                   alwan_xyz_{T} const *xyz);
 ```
 
 To obtain the linear RGB<->XYZ (NPM) matrices for a space directly from its
 primaries and white point, use `alwan_rgb_derive_matrices_{T}`:
 
 ```c
-int alwan_rgb_derive_matrices_{T}(alwan_mat3x3_{T} *rgb_to_xyz,
-                                   alwan_mat3x3_{T} *xyz_to_rgb,
-                                   alwan_rgb_space_desc_{T} const *desc);
+alwan_status alwan_rgb_derive_matrices_{T}(alwan_mat3x3_{T} *rgb_to_xyz,
+                                            alwan_mat3x3_{T} *xyz_to_rgb,
+                                            alwan_rgb_space_desc_{T} const *desc);
 ```
 
 Returns `ALWAN_OK` on success, `ALWAN_E_RANGE` if the primaries/white point form
@@ -300,11 +300,11 @@ a singular matrix.
 ### alwan_rgb_convert_{T}
 
 ```c
-int alwan_rgb_convert_{T}(alwan_rgb_{T} *dst_rgb,
-                           alwan_rgb_space_desc_{T} const *src_space,
-                           alwan_rgb_space_desc_{T} const *dst_space,
-                           alwan_rgb_{T} const *src_rgb,
-                           alwan_ctx *ctx);
+alwan_status alwan_rgb_convert_{T}(alwan_rgb_{T} *dst_rgb,
+                                    alwan_rgb_space_desc_{T} const *src_space,
+                                    alwan_rgb_space_desc_{T} const *dst_space,
+                                    alwan_rgb_{T} const *src_rgb,
+                                    alwan_ctx *ctx);
 ```
 
 Converts a single RGB color between two spaces. When the source and destination
@@ -314,12 +314,12 @@ white points differ, chromatic adaptation is applied automatically using the
 A strided bulk variant is available:
 
 ```c
-int alwan_rgb_convert_map_interleave_{T}(alwan_rgb_{T} *dst_rgb,
-                                          alwan_rgb_space_desc_{T} const *src_space,
-                                          alwan_rgb_space_desc_{T} const *dst_space,
-                                          alwan_rgb_{T} const *src_rgb,
-                                          size_t count,
-                                          alwan_ctx *ctx);
+alwan_status alwan_rgb_convert_map_interleave_{T}(alwan_rgb_{T} *dst_rgb,
+                                                   alwan_rgb_space_desc_{T} const *src_space,
+                                                   alwan_rgb_space_desc_{T} const *dst_space,
+                                                   alwan_rgb_{T} const *src_rgb,
+                                                   size_t count,
+                                                   alwan_ctx *ctx);
 ```
 
 **Example:**
@@ -340,12 +340,12 @@ alwan_rgb_convert_{T}(&rgb_out, &srgb_desc, &bt2020_desc, &rgb_in, ctx);
 Direct conversions assuming sRGB primaries and D65 white point:
 
 ```c
-int alwan_srgb_to_xyz_{T}(alwan_xyz_{T} *xyz, alwan_rgb_{T} const *rgb);
-int alwan_xyz_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_xyz_{T} const *xyz);
-int alwan_srgb_to_lab_{T}(alwan_lab_{T} *lab, alwan_rgb_{T} const *rgb);
-int alwan_lab_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_lab_{T} const *lab);
-int alwan_srgb_to_oklab_{T}(alwan_oklab_{T} *oklab, alwan_rgb_{T} const *rgb);
-int alwan_oklab_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_oklab_{T} const *oklab);
+alwan_status alwan_srgb_to_xyz_{T}(alwan_xyz_{T} *xyz, alwan_rgb_{T} const *rgb);
+alwan_status alwan_xyz_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_xyz_{T} const *xyz);
+alwan_status alwan_srgb_to_lab_{T}(alwan_lab_{T} *lab, alwan_rgb_{T} const *rgb);
+alwan_status alwan_lab_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_lab_{T} const *lab);
+alwan_status alwan_srgb_to_oklab_{T}(alwan_oklab_{T} *oklab, alwan_rgb_{T} const *rgb);
+alwan_status alwan_oklab_to_srgb_{T}(alwan_rgb_{T} *rgb, alwan_oklab_{T} const *oklab);
 ```
 
 Bulk interleaved variants (`_map_interleave`) available for all of the above.
@@ -357,8 +357,8 @@ Bulk interleaved variants (`_map_interleave`) available for all of the above.
 ### alwan_rgb_to_hsv_{T} / alwan_hsv_to_rgb_{T}
 
 ```c
-int alwan_rgb_to_hsv_{T}(alwan_hsv_{T} *hsv_out, alwan_rgb_{T} const *rgb);
-int alwan_hsv_to_rgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsv_{T} const *hsv);
+alwan_status alwan_rgb_to_hsv_{T}(alwan_hsv_{T} *hsv_out, alwan_rgb_{T} const *rgb);
+alwan_status alwan_hsv_to_rgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsv_{T} const *hsv);
 ```
 
 Operates on encoded (display-referred) sRGB values in [0, 1].
@@ -370,8 +370,8 @@ Operates on encoded (display-referred) sRGB values in [0, 1].
 ### alwan_rgb_to_hsl_{T} / alwan_hsl_to_rgb_{T}
 
 ```c
-int alwan_rgb_to_hsl_{T}(alwan_hsl_{T} *hsl_out, alwan_rgb_{T} const *rgb);
-int alwan_hsl_to_rgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsl_{T} const *hsl);
+alwan_status alwan_rgb_to_hsl_{T}(alwan_hsl_{T} *hsl_out, alwan_rgb_{T} const *rgb);
+alwan_status alwan_hsl_to_rgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsl_{T} const *hsl);
 ```
 
 **Output:** H: [0, 1] (normalized), S: [0, 1], L: [0, 1]
@@ -381,8 +381,8 @@ int alwan_hsl_to_rgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsl_{T} const *hsl);
 ### alwan_rgb_to_hsp_{T} / alwan_hsp_to_rgb_{T}
 
 ```c
-int alwan_rgb_to_hsp_{T}(alwan_hsp_{T} *hsp_out, alwan_rgb_{T} const *rgb);
-int alwan_hsp_to_rgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsp_{T} const *hsp);
+alwan_status alwan_rgb_to_hsp_{T}(alwan_hsp_{T} *hsp_out, alwan_rgb_{T} const *rgb);
+alwan_status alwan_hsp_to_rgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsp_{T} const *hsp);
 ```
 
 HSP: Hue, Saturation, Perceived brightness. P = sqrt(Pr*R^2 + Pg*G^2 + Pb*B^2) with BT.601 weights. H and S are identical to HSV.
@@ -396,8 +396,8 @@ HSP: Hue, Saturation, Perceived brightness. P = sqrt(Pr*R^2 + Pg*G^2 + Pb*B^2) w
 ### alwan_linear_srgb_to_hsv_{T} / alwan_hsv_to_linear_srgb_{T}
 
 ```c
-int alwan_linear_srgb_to_hsv_{T}(alwan_hsv_{T} *hsv_out, alwan_rgb_{T} const *rgb);
-int alwan_hsv_to_linear_srgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsv_{T} const *hsv);
+alwan_status alwan_linear_srgb_to_hsv_{T}(alwan_hsv_{T} *hsv_out, alwan_rgb_{T} const *rgb);
+alwan_status alwan_hsv_to_linear_srgb_{T}(alwan_rgb_{T} *rgb_out, alwan_hsv_{T} const *hsv);
 ```
 
 Applies sRGB OETF/EOTF internally so the caller works in linear light.

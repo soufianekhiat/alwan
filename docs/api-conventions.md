@@ -141,19 +141,19 @@ int alwan_<...>_f64_map_interleave(
 Examples:
 
 ```c
-int alwan_xyz_to_lab_f64_map_interleave(
-    alwan_f64 *lab_out, size_t out_stride,
-    alwan_f64 const *xyz_in, size_t in_stride,
-    size_t count,
-    alwan_xyz_f64 const *white_xyz
+alwan_status alwan_xyz_to_lab_f64_map_interleave(
+             alwan_f64 *lab_out, size_t out_stride,
+             alwan_f64 const *xyz_in, size_t in_stride,
+             size_t count,
+             alwan_xyz_f64 const *white_xyz
 );
 
-int alwan_view_transform_apply_f64(
-    alwan_f64 *rgb_out, size_t out_stride,
-    alwan_f64 const *rgb_in, size_t in_stride,
-    size_t count,
-    alwan_view_transform vt,
-    alwan_ctx *ctx
+alwan_status alwan_view_transform_apply_f64(
+             alwan_f64 *rgb_out, size_t out_stride,
+             alwan_f64 const *rgb_in, size_t in_stride,
+             size_t count,
+             alwan_view_transform vt,
+             alwan_ctx *ctx
 );
 ```
 
@@ -179,13 +179,13 @@ int alwan_<...>_map_interleave_ex(
 Example:
 
 ```c
-int alwan_xyz_to_lab_map_interleave_ex(
-    void *out, size_t out_stride,
-    void const *in, size_t in_stride,
-    size_t count,
-    alwan_pixel_format out_fmt,
-    alwan_pixel_format in_fmt,
-    alwan_xyz_f64 const *white_xyz
+alwan_status alwan_xyz_to_lab_map_interleave_ex(
+             void *out, size_t out_stride,
+             void const *in, size_t in_stride,
+             size_t count,
+             alwan_pixel_format out_fmt,
+             alwan_pixel_format in_fmt,
+             alwan_xyz_f64 const *white_xyz
 );
 ```
 
@@ -195,15 +195,15 @@ Planar functions group outputs first, then inputs, then `count`, then extra
 parameters.
 
 ```c
-int alwan_xyz_to_lab_f64_map_planar(
-    alwan_f64 *out0, size_t out_stride,
-    alwan_f64 *out1,
-    alwan_f64 *out2,
-    alwan_f64 const *in0, size_t in_stride,
-    alwan_f64 const *in1,
-    alwan_f64 const *in2,
-    size_t count,
-    alwan_xyz_f64 const *white_xyz
+alwan_status alwan_xyz_to_lab_f64_map_planar(
+             alwan_f64 *out0, size_t out_stride,
+             alwan_f64 *out1,
+             alwan_f64 *out2,
+             alwan_f64 const *in0, size_t in_stride,
+             alwan_f64 const *in1,
+             alwan_f64 const *in2,
+             size_t count,
+             alwan_xyz_f64 const *white_xyz
 );
 ```
 
@@ -217,15 +217,15 @@ arguments. Most use `(out_fmt, in_fmt)` after `count`, but a few older planar
 Image helpers operate on rows rather than per-pixel strides:
 
 ```c
-int alwan_image_convert_f64(
-    void *dst, size_t dst_row_stride,
-    void const *src, size_t src_row_stride,
-    size_t width, size_t height,
-    alwan_pixel_format dst_fmt,
-    alwan_pixel_format src_fmt,
-    alwan_rgb_space_desc_f64 const *src_space,
-    alwan_rgb_space_desc_f64 const *dst_space,
-    alwan_ctx *ctx
+alwan_status alwan_image_convert_f64(
+             void *dst, size_t dst_row_stride,
+             void const *src, size_t src_row_stride,
+             size_t width, size_t height,
+             alwan_pixel_format dst_fmt,
+             alwan_pixel_format src_fmt,
+             alwan_rgb_space_desc_f64 const *src_space,
+             alwan_rgb_space_desc_f64 const *dst_space,
+             alwan_ctx *ctx
 );
 ```
 
@@ -236,7 +236,7 @@ RGBA image helpers add `alwan_alpha_mode` before `ctx`.
 Registry and utility helpers use the smallest signature that fits the job:
 
 ```c
-int         alwan_interop_parse_f64(alwan_rgb_space *space, char const *id);
+alwan_status alwan_interop_parse_f64(alwan_rgb_space *space, char const *id);
 char const *alwan_interop_format(alwan_rgb_space space);
 size_t      alwan_interop_count(void);
 ```

@@ -26,10 +26,10 @@ under different light sources (e.g., daylight vs tungsten), the perceived color 
 ### alwan_cat_matrix_{T}
 
 ```c
-int alwan_cat_matrix_{T}(alwan_mat3x3_{T} *out,
-                         alwan_xyz_{T} const *src_white_xyz,
-                         alwan_xyz_{T} const *dst_white_xyz,
-                         alwan_cat_method method);
+alwan_status alwan_cat_matrix_{T}(alwan_mat3x3_{T} *out,
+                                  alwan_xyz_{T} const *src_white_xyz,
+                                  alwan_xyz_{T} const *dst_white_xyz,
+                                  alwan_cat_method method);
 ```
 
 Computes the 3x3 chromatic adaptation matrix from source to destination white point.
@@ -42,12 +42,12 @@ White points are XYZ normalized to Y=1.
 ### alwan_xyz_adapt_{T}
 
 ```c
-int alwan_xyz_adapt_{T}(alwan_{T} *xyz_out, size_t out_stride,
-                        alwan_{T} const *xyz_in, size_t in_stride,
-                        size_t count,
-                        alwan_xyz_{T} const *src_white_xyz,
-                        alwan_xyz_{T} const *dst_white_xyz,
-                        alwan_cat_method method);
+alwan_status alwan_xyz_adapt_{T}(alwan_{T} *xyz_out, size_t out_stride,
+                                 alwan_{T} const *xyz_in, size_t in_stride,
+                                 size_t count,
+                                 alwan_xyz_{T} const *src_white_xyz,
+                                 alwan_xyz_{T} const *dst_white_xyz,
+                                 alwan_cat_method method);
 ```
 
 Applies chromatic adaptation to a batch of XYZ colors (interleaved/AoS). Each `*_stride`
@@ -74,14 +74,14 @@ alwan_xyz_adapt_{T}((alwan_{T}*)&xyz_out, sizeof(alwan_xyz_{T}),
 ### alwan_cat_zhai2018_{T}
 
 ```c
-int alwan_cat_zhai2018_{T}(alwan_xyz_{T} *xyz_out,
-                           alwan_xyz_{T} const *xyz_in,
-                           alwan_xyz_{T} const *xyz_src,
-                           alwan_xyz_{T} const *xyz_dst,
-                           alwan_{T} D_src,
-                           alwan_{T} D_dst,
-                           alwan_xyz_{T} const *xyz_baseline,
-                           alwan_cat_method transform);
+alwan_status alwan_cat_zhai2018_{T}(alwan_xyz_{T} *xyz_out,
+                                    alwan_xyz_{T} const *xyz_in,
+                                    alwan_xyz_{T} const *xyz_src,
+                                    alwan_xyz_{T} const *xyz_dst,
+                                    alwan_{T} D_src,
+                                    alwan_{T} D_dst,
+                                    alwan_xyz_{T} const *xyz_baseline,
+                                    alwan_cat_method transform);
 ```
 
 Zhai & Luo (2018) two-step chromatic adaptation. Adapts XYZ from the source illuminant to the

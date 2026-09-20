@@ -98,10 +98,10 @@ Forward transform: convert CCT to xy chromaticity (Kang et al. 2002). Valid rang
 ### alwan_cct_duv_optimize
 
 ```c
-int alwan_cct_duv_optimize_f32(alwan_f32 *cct_out, alwan_f32 *duv_out,
-                               alwan_vec2_f32 const *xy);
-int alwan_cct_duv_optimize_f64(alwan_f64 *cct_out, alwan_f64 *duv_out,
-                               alwan_vec2_f64 const *xy);
+alwan_status alwan_cct_duv_optimize_f32(alwan_f32 *cct_out, alwan_f32 *duv_out,
+                                        alwan_vec2_f32 const *xy);
+alwan_status alwan_cct_duv_optimize_f64(alwan_f64 *cct_out, alwan_f64 *duv_out,
+                                        alwan_vec2_f64 const *xy);
 ```
 
 Compute CCT and Duv (distance from the Planckian locus) using iterative least-squares

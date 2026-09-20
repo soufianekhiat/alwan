@@ -25,10 +25,10 @@ before inputs, each `*_stride` (in bytes) immediately after its buffer, then
 ### alwan_oetf_apply_{T}
 
 ```c
-int alwan_oetf_apply_{T}(alwan_{T} *encoded_out, size_t out_stride,
-                          alwan_{T} const *linear_in, size_t in_stride,
-                          size_t count,
-                          alwan_transfer_function tf);
+alwan_status alwan_oetf_apply_{T}(alwan_{T} *encoded_out, size_t out_stride,
+                                   alwan_{T} const *linear_in, size_t in_stride,
+                                   size_t count,
+                                   alwan_transfer_function tf);
 ```
 
 Applies OETF (linear -> encoded). Returns `ALWAN_OK` on success.
@@ -45,10 +45,10 @@ alwan_oetf_apply_{T}(encoded, sizeof(double), linear, sizeof(double),
 ### alwan_eotf_apply_{T}
 
 ```c
-int alwan_eotf_apply_{T}(alwan_{T} *linear_out, size_t out_stride,
-                          alwan_{T} const *encoded_in, size_t in_stride,
-                          size_t count,
-                          alwan_transfer_function tf);
+alwan_status alwan_eotf_apply_{T}(alwan_{T} *linear_out, size_t out_stride,
+                                   alwan_{T} const *encoded_in, size_t in_stride,
+                                   size_t count,
+                                   alwan_transfer_function tf);
 ```
 
 Applies EOTF (encoded -> linear). Returns `ALWAN_OK` on success.
@@ -58,11 +58,11 @@ Applies EOTF (encoded -> linear). Returns `ALWAN_OK` on success.
 ### alwan_view_transform_apply_{T}
 
 ```c
-int alwan_view_transform_apply_{T}(alwan_{T} *rgb_out, size_t out_stride,
-                                    alwan_{T} const *rgb_in, size_t in_stride,
-                                    size_t count,
-                                    alwan_view_transform vt,
-                                    alwan_ctx *ctx);
+alwan_status alwan_view_transform_apply_{T}(alwan_{T} *rgb_out, size_t out_stride,
+                                             alwan_{T} const *rgb_in, size_t in_stride,
+                                             size_t count,
+                                             alwan_view_transform vt,
+                                             alwan_ctx *ctx);
 ```
 
 Applies view transforms (scene -> display). Returns `ALWAN_OK` on success.
@@ -166,13 +166,13 @@ interpolates a sampled table.
 ## Arbitrary Gamma
 
 ```c
-int alwan_gamma_oetf_{T}(alwan_{T} *out, size_t out_stride,
-                          alwan_{T} const *in, size_t in_stride,
-                          size_t count, alwan_{T} gamma);
+alwan_status alwan_gamma_oetf_{T}(alwan_{T} *out, size_t out_stride,
+                                   alwan_{T} const *in, size_t in_stride,
+                                   size_t count, alwan_{T} gamma);
 
-int alwan_gamma_eotf_{T}(alwan_{T} *out, size_t out_stride,
-                          alwan_{T} const *in, size_t in_stride,
-                          size_t count, alwan_{T} gamma);
+alwan_status alwan_gamma_eotf_{T}(alwan_{T} *out, size_t out_stride,
+                                   alwan_{T} const *in, size_t in_stride,
+                                   size_t count, alwan_{T} gamma);
 ```
 
 Apply arbitrary gamma values not covered by the enum. OETF: `pow(in, 1/gamma)`, EOTF: `pow(in, gamma)`.
@@ -182,10 +182,10 @@ Apply arbitrary gamma values not covered by the enum. OETF: `pow(in, 1/gamma)`, 
 ## Bit Depth Conversion
 
 ```c
-int alwan_uint_to_float_{T}(alwan_{T} *out, alwan_uint16 const *in,
-                             int bit_depth, size_t count);
-int alwan_float_to_uint_{T}(alwan_uint16 *out, alwan_{T} const *in,
-                             int bit_depth, size_t count);
+alwan_status alwan_uint_to_float_{T}(alwan_{T} *out, alwan_uint16 const *in,
+                                      int bit_depth, size_t count);
+alwan_status alwan_float_to_uint_{T}(alwan_uint16 *out, alwan_{T} const *in,
+                                      int bit_depth, size_t count);
 ```
 
 Convert between integer code values and floating-point [0, 1] range. Supports arbitrary bit depths.

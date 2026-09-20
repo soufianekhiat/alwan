@@ -108,7 +108,7 @@ typedef void  (*alwan_free_fn)(void *ptr);
 typedef struct {
     alwan_alloc_fn alloc_cb;          /* Optional custom allocator (NULL = default); set both callbacks or neither */
     alwan_free_fn  free_cb;           /* Optional custom deallocator (NULL = default) */
-    char const *runtime_data_root;    /* Reserved: runtime data loading is not implemented (planned for alwan 3.0.0). Field is ignored. */
+    char const *runtime_data_root;    /* Reserved: runtime data loading is not implemented and is not scheduled. Field is ignored. */
     uint32_t flags;                   /* Reserved for future use (must be 0) */
 } alwan_config;
 
@@ -165,9 +165,9 @@ alwan_aces_interp alwan_get_aces_interp(void);
  * Data Loading
  *
  * NOTE: Only embedded mode (ALWAN_EMBED_DATA=1, the default) is supported.
- * Runtime mode (ALWAN_EMBED_DATA=0) is NOT implemented. It is planned for
- * alwan 3.0.0. Attempting to build with ALWAN_EMBED_DATA=0 will produce
- * a compile-time error in alwan_data.c.
+ * Runtime mode (ALWAN_EMBED_DATA=0) is NOT implemented and is not scheduled.
+ * Attempting to build with ALWAN_EMBED_DATA=0 will produce a compile-time
+ * error in alwan_data.c.
  * ---------------------------------------------------------------- */
 
  /* Standard illuminant xy chromaticity data getters
@@ -215,7 +215,7 @@ alwan_status alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, 
 alwan_status alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx);
 
 /* NOTE: alwan_data_free_f64/f32 are declared only when ALWAN_EMBED_DATA=0.
- * Runtime mode is not implemented; this block exists for future use (alwan 3.0.0). */
+ * Runtime mode is not implemented; this block exists for future use. */
 #if !ALWAN_EMBED_DATA
 void alwan_data_free_f64(alwan_f64 *data, alwan_ctx *ctx);
 void alwan_data_free_f32(alwan_f32 *data, alwan_ctx *ctx);

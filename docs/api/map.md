@@ -121,17 +121,17 @@ alwan_srgb_to_lab_map_interleave_ex(lab_f32, 3 * sizeof(float),
 ### Matrix Transform
 
 ```c
-int alwan_mat3_transform_{T}_map_interleave(alwan_{T} *vec_out, size_t out_stride,
-                                            alwan_{T} const *vec_in, size_t in_stride,
-                                            size_t count,
-                                            alwan_mat3x3_{T} const *matrix);
+alwan_status alwan_mat3_transform_{T}_map_interleave(alwan_{T} *vec_out, size_t out_stride,
+                                                     alwan_{T} const *vec_in, size_t in_stride,
+                                                     size_t count,
+                                                     alwan_mat3x3_{T} const *matrix);
 
-int alwan_mat3_transform_map_interleave_ex(void *vec_out, size_t out_stride,
-                                           void const *vec_in, size_t in_stride,
-                                           size_t count,
-                                           alwan_pixel_format out_fmt,
-                                           alwan_mat3x3_f64 const *matrix,
-                                           alwan_pixel_format in_fmt);
+alwan_status alwan_mat3_transform_map_interleave_ex(void *vec_out, size_t out_stride,
+                                                    void const *vec_in, size_t in_stride,
+                                                    size_t count,
+                                                    alwan_pixel_format out_fmt,
+                                                    alwan_mat3x3_f64 const *matrix,
+                                                    alwan_pixel_format in_fmt);
 ```
 
 Applies a 3x3 matrix to each input triplet. SIMD-accelerated. Note the `_ex`
@@ -159,10 +159,10 @@ Functions that take a **white point** pass `alwan_xyz_{T} const *white_xyz` as
 the trailing extra parameter:
 
 ```c
-int alwan_xyz_to_lab_{T}_map_interleave(alwan_{T} *lab_out, size_t out_stride,
-                                        alwan_{T} const *xyz_in, size_t in_stride,
-                                        size_t count,
-                                        alwan_xyz_{T} const *white_xyz);
+alwan_status alwan_xyz_to_lab_{T}_map_interleave(alwan_{T} *lab_out, size_t out_stride,
+                                                 alwan_{T} const *xyz_in, size_t in_stride,
+                                                 size_t count,
+                                                 alwan_xyz_{T} const *white_xyz);
 ```
 
 | Function | Direction | White point |
@@ -196,10 +196,10 @@ All have `_map_interleave_ex` variants.
 ### ICtCp
 
 ```c
-int alwan_rgb_to_ictcp_{T}_map_interleave(alwan_{T} *ictcp_out, size_t out_stride,
-                                          alwan_{T} const *rgb_in, size_t in_stride,
-                                          size_t count,
-                                          int use_pq /* 1 = PQ (ST 2084), 0 = HLG */);
+alwan_status alwan_rgb_to_ictcp_{T}_map_interleave(alwan_{T} *ictcp_out, size_t out_stride,
+                                                   alwan_{T} const *rgb_in, size_t in_stride,
+                                                   size_t count,
+                                                   int use_pq /* 1 = PQ (ST 2084), 0 = HLG */);
 ```
 
 | Function | Direction | Extra param |
@@ -281,10 +281,10 @@ RGB-based (no extra parameters):
 DIN99 (with `int variant` trailing):
 
 ```c
-int alwan_lab_to_din99_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
-                                          alwan_{T} const *in, size_t in_stride,
-                                          size_t count,
-                                          int variant);
+alwan_status alwan_lab_to_din99_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                   alwan_{T} const *in, size_t in_stride,
+                                                   size_t count,
+                                                   int variant);
 ```
 
 | Function | Direction | Extra param |
@@ -326,10 +326,10 @@ No extra parameters:
 With `alwan_luma_standard standard` (3-channel input, 1-channel output):
 
 ```c
-int alwan_relative_luminance_{T}_map_interleave(alwan_{T} *Y_out, size_t out_stride,
-                                                alwan_{T} const *rgb_in, size_t in_stride,
-                                                size_t count,
-                                                alwan_luma_standard standard);
+alwan_status alwan_relative_luminance_{T}_map_interleave(alwan_{T} *Y_out, size_t out_stride,
+                                                         alwan_{T} const *rgb_in, size_t in_stride,
+                                                         size_t count,
+                                                         alwan_luma_standard standard);
 ```
 
 | Function | Direction | Extra param |
@@ -340,10 +340,10 @@ int alwan_relative_luminance_{T}_map_interleave(alwan_{T} *Y_out, size_t out_str
 With `alwan_ycbcr_standard standard`:
 
 ```c
-int alwan_rgb_to_ycbcr_{T}_map_interleave(alwan_{T} *ycbcr_out, size_t out_stride,
-                                          alwan_{T} const *rgb_in, size_t in_stride,
-                                          size_t count,
-                                          alwan_ycbcr_standard standard);
+alwan_status alwan_rgb_to_ycbcr_{T}_map_interleave(alwan_{T} *ycbcr_out, size_t out_stride,
+                                                   alwan_{T} const *rgb_in, size_t in_stride,
+                                                   size_t count,
+                                                   alwan_ycbcr_standard standard);
 ```
 
 | Function | Direction | Extra param |
@@ -372,14 +372,14 @@ All convenience functions have `_map_interleave_ex` variants.
 ### Gamut Mapping
 
 ```c
-int alwan_gamut_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
-                                   alwan_{T} const *rgb_in, size_t in_stride,
-                                   size_t count,
-                                   alwan_gamut_map_method method);
+alwan_status alwan_gamut_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+                                            alwan_{T} const *rgb_in, size_t in_stride,
+                                            size_t count,
+                                            alwan_gamut_map_method method);
 
-int alwan_css_gamut_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
-                                       alwan_{T} const *rgb_in, size_t in_stride,
-                                       size_t count);
+alwan_status alwan_css_gamut_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+                                                alwan_{T} const *rgb_in, size_t in_stride,
+                                                size_t count);
 ```
 
 `alwan_gamut_{T}_map_interleave` supports the methods in
@@ -394,17 +394,17 @@ only an `in_stride`; inverse maps emit XYZ scalars and take only an
 `out_stride`:
 
 ```c
-int alwan_ciecam02_forward_{T}_map_interleave(
-    alwan_ciecam02_correlates_{T} *correlates_out,
-    alwan_{T} const *xyz_in, size_t in_stride,
-    alwan_ciecam02_viewing_conditions_{T} const *vc,
-    size_t count);
+alwan_status alwan_ciecam02_forward_{T}_map_interleave(
+             alwan_ciecam02_correlates_{T} *correlates_out,
+             alwan_{T} const *xyz_in, size_t in_stride,
+             alwan_ciecam02_viewing_conditions_{T} const *vc,
+             size_t count);
 
-int alwan_ciecam02_inverse_{T}_map_interleave(
-    alwan_{T} *xyz_out, size_t out_stride,
-    alwan_ciecam02_correlates_{T} const *correlates_in,
-    alwan_ciecam02_viewing_conditions_{T} const *vc,
-    size_t count);
+alwan_status alwan_ciecam02_inverse_{T}_map_interleave(
+             alwan_{T} *xyz_out, size_t out_stride,
+             alwan_ciecam02_correlates_{T} const *correlates_in,
+             alwan_ciecam02_viewing_conditions_{T} const *vc,
+             size_t count);
 ```
 
 | Model | Forward | Inverse |
@@ -415,10 +415,10 @@ int alwan_ciecam02_inverse_{T}_map_interleave(
 ### Color Vision Deficiency (CVD)
 
 ```c
-int alwan_simulate_cvd_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
-                                          alwan_{T} const *rgb_in, size_t in_stride,
-                                          size_t count,
-                                          alwan_cvd_type cvd_type, alwan_{T} severity);
+alwan_status alwan_simulate_cvd_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+                                                   alwan_{T} const *rgb_in, size_t in_stride,
+                                                   size_t count,
+                                                   alwan_cvd_type cvd_type, alwan_{T} severity);
 ```
 
 | Function | Extra params |
@@ -433,29 +433,29 @@ All have `_map_interleave_ex` variants. Input/output is linear RGB.
 ### Color Correction
 
 ```c
-int alwan_lgg_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
-                                       alwan_{T} const *rgb_in, size_t in_stride,
-                                       size_t count,
-                                       alwan_rgb_{T} const *lift,
-                                       alwan_rgb_{T} const *gamma,
-                                       alwan_rgb_{T} const *gain);
-
-int alwan_color_matrix_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+alwan_status alwan_lgg_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
                                                 alwan_{T} const *rgb_in, size_t in_stride,
                                                 size_t count,
-                                                alwan_mat3x3_{T} const *matrix);
+                                                alwan_rgb_{T} const *lift,
+                                                alwan_rgb_{T} const *gamma,
+                                                alwan_rgb_{T} const *gain);
 
-int alwan_printer_lights_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
-                                                  alwan_{T} const *rgb_in, size_t in_stride,
-                                                  size_t count,
-                                                  alwan_{T} red_lights,
-                                                  alwan_{T} green_lights,
-                                                  alwan_{T} blue_lights);
+alwan_status alwan_color_matrix_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+                                                         alwan_{T} const *rgb_in, size_t in_stride,
+                                                         size_t count,
+                                                         alwan_mat3x3_{T} const *matrix);
 
-int alwan_white_balance_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
-                                                 alwan_{T} const *rgb_in, size_t in_stride,
-                                                 size_t count,
-                                                 alwan_rgb_{T} const *multipliers);
+alwan_status alwan_printer_lights_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+                                                           alwan_{T} const *rgb_in, size_t in_stride,
+                                                           size_t count,
+                                                           alwan_{T} red_lights,
+                                                           alwan_{T} green_lights,
+                                                           alwan_{T} blue_lights);
+
+alwan_status alwan_white_balance_apply_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+                                                          alwan_{T} const *rgb_in, size_t in_stride,
+                                                          size_t count,
+                                                          alwan_rgb_{T} const *multipliers);
 ```
 
 All have `_map_interleave_ex` variants.
@@ -468,27 +468,27 @@ Planar maps expose one pointer per channel; `out_stride` / `in_stride` are the
 byte distance between adjacent samples *within* a plane:
 
 ```c
-int alwan_xyz_to_lab_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride,
-                                    alwan_{T} *out_ch1,
-                                    alwan_{T} *out_ch2,
-                                    alwan_{T} const *in_ch0, size_t in_stride,
-                                    alwan_{T} const *in_ch1,
-                                    alwan_{T} const *in_ch2,
-                                    size_t count,
-                                    alwan_xyz_{T} const *white_xyz);
+alwan_status alwan_xyz_to_lab_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride,
+                                             alwan_{T} *out_ch1,
+                                             alwan_{T} *out_ch2,
+                                             alwan_{T} const *in_ch0, size_t in_stride,
+                                             alwan_{T} const *in_ch1,
+                                             alwan_{T} const *in_ch2,
+                                             size_t count,
+                                             alwan_xyz_{T} const *white_xyz);
 ```
 
 The typed planar form keeps the canonical `(out_fmt, in_fmt)` order:
 
 ```c
-int alwan_xyz_to_lab_map_planar_ex(void *out0, size_t out_stride,
-                                   void *out1, void *out2,
-                                   void const *in0, size_t in_stride,
-                                   void const *in1, void const *in2,
-                                   size_t count,
-                                   alwan_pixel_format out_fmt,
-                                   alwan_pixel_format in_fmt,
-                                   alwan_xyz_f64 const *white_xyz);
+alwan_status alwan_xyz_to_lab_map_planar_ex(void *out0, size_t out_stride,
+                                            void *out1, void *out2,
+                                            void const *in0, size_t in_stride,
+                                            void const *in1, void const *in2,
+                                            size_t count,
+                                            alwan_pixel_format out_fmt,
+                                            alwan_pixel_format in_fmt,
+                                            alwan_xyz_f64 const *white_xyz);
 ```
 
 > **Legacy ordering caveat.** A small block of `_map_planar_ex` helpers near the
@@ -509,29 +509,29 @@ EOTF -> matrix (with Bradford CAT across whitepoints) -> OETF, with pixel-format
 conversion, driven by RGB space descriptors and row strides:
 
 ```c
-int alwan_image_convert_{T}(void *dst, size_t dst_row_stride,
-                            void const *src, size_t src_row_stride,
-                            size_t width, size_t height,
-                            alwan_pixel_format dst_fmt,
-                            alwan_pixel_format src_fmt,
-                            alwan_rgb_space_desc_{T} const *src_space,
-                            alwan_rgb_space_desc_{T} const *dst_space,
-                            alwan_ctx *ctx);
+alwan_status alwan_image_convert_{T}(void *dst, size_t dst_row_stride,
+                                     void const *src, size_t src_row_stride,
+                                     size_t width, size_t height,
+                                     alwan_pixel_format dst_fmt,
+                                     alwan_pixel_format src_fmt,
+                                     alwan_rgb_space_desc_{T} const *src_space,
+                                     alwan_rgb_space_desc_{T} const *dst_space,
+                                     alwan_ctx *ctx);
 ```
 
 The `_rgba` variant runs the same pipeline on 4-channel pixels, preserving the
 alpha channel per the `alwan_alpha_mode` argument:
 
 ```c
-int alwan_image_convert_rgba_{T}(void *dst, size_t dst_row_stride,
-                                 void const *src, size_t src_row_stride,
-                                 size_t width, size_t height,
-                                 alwan_pixel_format dst_fmt,
-                                 alwan_pixel_format src_fmt,
-                                 alwan_rgb_space_desc_{T} const *src_space,
-                                 alwan_rgb_space_desc_{T} const *dst_space,
-                                 alwan_alpha_mode alpha_mode,
-                                 alwan_ctx *ctx);
+alwan_status alwan_image_convert_rgba_{T}(void *dst, size_t dst_row_stride,
+                                          void const *src, size_t src_row_stride,
+                                          size_t width, size_t height,
+                                          alwan_pixel_format dst_fmt,
+                                          alwan_pixel_format src_fmt,
+                                          alwan_rgb_space_desc_{T} const *src_space,
+                                          alwan_rgb_space_desc_{T} const *dst_space,
+                                          alwan_alpha_mode alpha_mode,
+                                          alwan_ctx *ctx);
 ```
 
 Both exist as native `_f32` and `_f64`.
@@ -545,15 +545,15 @@ your own pipeline (collect once, run several `_map_interleave` passes, scatter
 once):
 
 ```c
-int alwan_collect3_{T}(alwan_{T} *out, size_t out_stride,
-                       void const *in, size_t in_stride,
-                       size_t count,
-                       alwan_pixel_format in_fmt);
+alwan_status alwan_collect3_{T}(alwan_{T} *out, size_t out_stride,
+                                void const *in, size_t in_stride,
+                                size_t count,
+                                alwan_pixel_format in_fmt);
 
-int alwan_scatter3_{T}(void *out, size_t out_stride,
-                       alwan_{T} const *in, size_t in_stride,
-                       size_t count,
-                       alwan_pixel_format out_fmt);
+alwan_status alwan_scatter3_{T}(void *out, size_t out_stride,
+                                alwan_{T} const *in, size_t in_stride,
+                                size_t count,
+                                alwan_pixel_format out_fmt);
 ```
 
 ---

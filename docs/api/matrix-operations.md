@@ -78,8 +78,8 @@ Multiplies matrix by vector: `out = m * v`.
 ### alwan_mat3_inv
 
 ```c
-int alwan_mat3_inv_f32(alwan_mat3x3_f32 *out, alwan_mat3x3_f32 const *m);
-int alwan_mat3_inv_f64(alwan_mat3x3_f64 *out, alwan_mat3x3_f64 const *m);
+alwan_status alwan_mat3_inv_f32(alwan_mat3x3_f32 *out, alwan_mat3x3_f32 const *m);
+alwan_status alwan_mat3_inv_f64(alwan_mat3x3_f64 *out, alwan_mat3x3_f64 const *m);
 ```
 
 Inverts a 3x3 matrix using partial-pivot Gaussian elimination.
@@ -117,17 +117,17 @@ Returns the determinant of a 3x3 matrix.
 ### alwan_mat3_transform (map / interleaved)
 
 ```c
-int alwan_mat3_transform_f32_map_interleave(
-    alwan_f32 *vec_out, size_t out_stride,    // output buffer + its byte stride
-    alwan_f32 const *vec_in, size_t in_stride, // input buffer + its byte stride
-    size_t count,
-    alwan_mat3x3_f32 const *matrix
+alwan_status alwan_mat3_transform_f32_map_interleave(
+             alwan_f32 *vec_out, size_t out_stride,    // output buffer + its byte stride
+             alwan_f32 const *vec_in, size_t in_stride, // input buffer + its byte stride
+             size_t count,
+             alwan_mat3x3_f32 const *matrix
 );
-int alwan_mat3_transform_f64_map_interleave(
-    alwan_f64 *vec_out, size_t out_stride,
-    alwan_f64 const *vec_in, size_t in_stride,
-    size_t count,
-    alwan_mat3x3_f64 const *matrix
+alwan_status alwan_mat3_transform_f64_map_interleave(
+             alwan_f64 *vec_out, size_t out_stride,
+             alwan_f64 const *vec_in, size_t in_stride,
+             size_t count,
+             alwan_mat3x3_f64 const *matrix
 );
 ```
 
@@ -145,13 +145,13 @@ Returns `ALWAN_OK` on success.
 ### alwan_mat3_transform_map_interleave_ex (typed)
 
 ```c
-int alwan_mat3_transform_map_interleave_ex(
-    void *vec_out, size_t out_stride,
-    void const *vec_in, size_t in_stride,
-    size_t count,
-    alwan_pixel_format out_fmt,
-    alwan_mat3x3_f64 const *matrix,
-    alwan_pixel_format in_fmt
+alwan_status alwan_mat3_transform_map_interleave_ex(
+             void *vec_out, size_t out_stride,
+             void const *vec_in, size_t in_stride,
+             size_t count,
+             alwan_pixel_format out_fmt,
+             alwan_mat3x3_f64 const *matrix,
+             alwan_pixel_format in_fmt
 );
 ```
 
@@ -172,12 +172,12 @@ pixel formats.
 
 ```c
 /* Collect: load typed 3-channel pixels into triplets */
-int alwan_collect3_f64(alwan_f64 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt);
-int alwan_collect3_f32(alwan_f32 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt);
+alwan_status alwan_collect3_f64(alwan_f64 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt);
+alwan_status alwan_collect3_f32(alwan_f32 *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format in_fmt);
 
 /* Scatter: store triplets into typed 3-channel pixels */
-int alwan_scatter3_f64(void *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt);
-int alwan_scatter3_f32(void *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt);
+alwan_status alwan_scatter3_f64(void *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt);
+alwan_status alwan_scatter3_f32(void *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt);
 ```
 
 `in_fmt` / `out_fmt` is the format of the **typed** (`void*`) side; the other

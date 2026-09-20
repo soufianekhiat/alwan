@@ -67,12 +67,12 @@ Examples below use `_f64`; replace with `_f32` for single precision.
 ### alwan_munsell_to_xyz_{T}
 
 ```c
-int alwan_munsell_to_xyz_f64(alwan_xyz_f64 *xyz,
-                             alwan_f64 hue, alwan_f64 value, alwan_f64 chroma,
-                             alwan_illuminant illuminant);
-int alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz,
-                             alwan_f32 hue, alwan_f32 value, alwan_f32 chroma,
-                             alwan_illuminant illuminant);
+alwan_status alwan_munsell_to_xyz_f64(alwan_xyz_f64 *xyz,
+                                      alwan_f64 hue, alwan_f64 value, alwan_f64 chroma,
+                                      alwan_illuminant illuminant);
+alwan_status alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz,
+                                      alwan_f32 hue, alwan_f32 value, alwan_f32 chroma,
+                                      alwan_illuminant illuminant);
 ```
 
 Convert Munsell notation (Hue, Value, Chroma) to XYZ using the Munsell Renotation Data (1943).
@@ -86,10 +86,10 @@ Convert Munsell notation (Hue, Value, Chroma) to XYZ using the Munsell Renotatio
 ### alwan_xyz_to_munsell_{T}
 
 ```c
-int alwan_xyz_to_munsell_f64(alwan_f64 *hue, alwan_f64 *value, alwan_f64 *chroma,
-                             alwan_xyz_f64 const *xyz, alwan_illuminant illuminant);
-int alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f32 *chroma,
-                             alwan_xyz_f32 const *xyz, alwan_illuminant illuminant);
+alwan_status alwan_xyz_to_munsell_f64(alwan_f64 *hue, alwan_f64 *value, alwan_f64 *chroma,
+                                      alwan_xyz_f64 const *xyz, alwan_illuminant illuminant);
+alwan_status alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f32 *chroma,
+                                      alwan_xyz_f32 const *xyz, alwan_illuminant illuminant);
 ```
 
 Convert XYZ to Munsell notation (inverse lookup).
@@ -101,14 +101,14 @@ Convert XYZ to Munsell notation (inverse lookup).
 ### alwan_color_checker_data_{T}
 
 ```c
-int alwan_color_checker_data_f64(alwan_xyz_f64 *xyz,
-                                 alwan_colorchecker_type type,
-                                 alwan_illuminant illuminant,
-                                 size_t patch_index);
-int alwan_color_checker_data_f32(alwan_xyz_f32 *xyz,
-                                 alwan_colorchecker_type type,
-                                 alwan_illuminant illuminant,
-                                 size_t patch_index);
+alwan_status alwan_color_checker_data_f64(alwan_xyz_f64 *xyz,
+                                          alwan_colorchecker_type type,
+                                          alwan_illuminant illuminant,
+                                          size_t patch_index);
+alwan_status alwan_color_checker_data_f32(alwan_xyz_f32 *xyz,
+                                          alwan_colorchecker_type type,
+                                          alwan_illuminant illuminant,
+                                          size_t patch_index);
 ```
 
 Get XYZ tristimulus values for a specific Color Checker patch.
@@ -152,8 +152,8 @@ for (size_t i = 0; i < n; i++) {
 ### alwan_ncs_to_xyz_{T}
 
 ```c
-int alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation);
-int alwan_ncs_to_xyz_f32(alwan_xyz_f32 *xyz, char const *ncs_notation);
+alwan_status alwan_ncs_to_xyz_f64(alwan_xyz_f64 *xyz, char const *ncs_notation);
+alwan_status alwan_ncs_to_xyz_f32(alwan_xyz_f32 *xyz, char const *ncs_notation);
 ```
 
 Convert an NCS notation string to XYZ. Example notation: `"S 1050-Y90R"`.
@@ -165,10 +165,10 @@ Output XYZ is on the Y = 0-100 scale, D65.
 ### alwan_xyz_to_ncs_{T}
 
 ```c
-int alwan_xyz_to_ncs_f64(char *ncs_notation, size_t notation_size,
-                         alwan_xyz_f64 const *xyz);
-int alwan_xyz_to_ncs_f32(char *ncs_notation, size_t notation_size,
-                         alwan_xyz_f32 const *xyz);
+alwan_status alwan_xyz_to_ncs_f64(char *ncs_notation, size_t notation_size,
+                                  alwan_xyz_f64 const *xyz);
+alwan_status alwan_xyz_to_ncs_f32(char *ncs_notation, size_t notation_size,
+                                  alwan_xyz_f32 const *xyz);
 ```
 
 > **Inverse unsupported.** These always return `ALWAN_E_INVALID`: recovering NCS
@@ -182,12 +182,12 @@ int alwan_xyz_to_ncs_f32(char *ncs_notation, size_t notation_size,
 ### alwan_rgb_space_by_enum_{T}
 
 ```c
-int alwan_rgb_space_by_enum_f64(alwan_f64 primaries[6],
-                                alwan_vec2_f64 *white_point,
-                                alwan_rgb_space space);
-int alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6],
-                                alwan_vec2_f32 *white_point,
-                                alwan_rgb_space space);
+alwan_status alwan_rgb_space_by_enum_f64(alwan_f64 primaries[6],
+                                         alwan_vec2_f64 *white_point,
+                                         alwan_rgb_space space);
+alwan_status alwan_rgb_space_by_enum_f32(alwan_f32 primaries[6],
+                                         alwan_vec2_f32 *white_point,
+                                         alwan_rgb_space space);
 ```
 
 Get RGB primaries (rx, ry, gx, gy, bx, by) and white-point xy by enum.
@@ -196,12 +196,12 @@ Does not require a context. Returns `ALWAN_E_INVALID` if `space` is invalid.
 ### alwan_rgb_space_get_tfs_{T}
 
 ```c
-int alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf,
-                                alwan_transfer_function *eotf,
-                                alwan_rgb_space space);
-int alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf,
-                                alwan_transfer_function *eotf,
-                                alwan_rgb_space space);
+alwan_status alwan_rgb_space_get_tfs_f64(alwan_transfer_function *oetf,
+                                         alwan_transfer_function *eotf,
+                                         alwan_rgb_space space);
+alwan_status alwan_rgb_space_get_tfs_f32(alwan_transfer_function *oetf,
+                                         alwan_transfer_function *eotf,
+                                         alwan_rgb_space space);
 ```
 
 Get the OETF and EOTF associated with an RGB color space enum. The `oetf`/`eotf`
@@ -228,12 +228,12 @@ printf("OETF: %d, EOTF: %d\n", oetf, eotf);
 ### alwan_illuminant_white_point_{T}
 
 ```c
-int alwan_illuminant_white_point_f64(alwan_xyz_f64 *out_xyz,
-                                     alwan_illuminant illuminant,
-                                     alwan_observer_type observer);
-int alwan_illuminant_white_point_f32(alwan_xyz_f32 *out_xyz,
-                                     alwan_illuminant illuminant,
-                                     alwan_observer_type observer);
+alwan_status alwan_illuminant_white_point_f64(alwan_xyz_f64 *out_xyz,
+                                              alwan_illuminant illuminant,
+                                              alwan_observer_type observer);
+alwan_status alwan_illuminant_white_point_f32(alwan_xyz_f32 *out_xyz,
+                                              alwan_illuminant illuminant,
+                                              alwan_observer_type observer);
 ```
 
 Get the XYZ white point for a standard illuminant, normalized to Y = 1.0.
@@ -259,10 +259,10 @@ reserved for a future release.)
 ### alwan_data_get_illuminant_xy_{T}
 
 ```c
-int alwan_data_get_illuminant_xy_f64(alwan_f64 **data, size_t *count,
-                                     alwan_illuminant illuminant, alwan_ctx *ctx);
-int alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count,
-                                     alwan_illuminant illuminant, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_xy_f64(alwan_f64 **data, size_t *count,
+                                              alwan_illuminant illuminant, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count,
+                                              alwan_illuminant illuminant, alwan_ctx *ctx);
 ```
 
 Enum-based illuminant xy chromaticity accessor. Returns 2 values (x, y).
@@ -271,8 +271,8 @@ Returns `ALWAN_E_INVALID` if the illuminant is not supported or has no xy data.
 ### alwan_data_get_srgb_primaries_{T}
 
 ```c
-int alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx);
-int alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx);
 ```
 
 Get the sRGB primaries as 6 values: rx, ry, gx, gy, bx, by.
@@ -702,12 +702,12 @@ underlying signedness.
 ### alwan_interpolate_{T}
 
 ```c
-int alwan_interpolate_f64(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
-                          alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
-                          alwan_interp_method method);
-int alwan_interpolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t count_in,
-                          alwan_f32 const *x_out, alwan_f32 *y_out, size_t count_out,
-                          alwan_interp_method method);
+alwan_status alwan_interpolate_f64(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
+                                   alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
+                                   alwan_interp_method method);
+alwan_status alwan_interpolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t count_in,
+                                   alwan_f32 const *x_out, alwan_f32 *y_out, size_t count_out,
+                                   alwan_interp_method method);
 ```
 
 Interpolate data points using the specified method (`x_in` must be sorted ascending).
@@ -790,12 +790,12 @@ solver, because a small pivot here always comes with the small interval that cau
 ### alwan_extrapolate_{T}
 
 ```c
-int alwan_extrapolate_f64(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
-                          alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
-                          alwan_extrap_method method);
-int alwan_extrapolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t count_in,
-                          alwan_f32 const *x_out, alwan_f32 *y_out, size_t count_out,
-                          alwan_extrap_method method);
+alwan_status alwan_extrapolate_f64(alwan_f64 const *x_in, alwan_f64 const *y_in, size_t count_in,
+                                   alwan_f64 const *x_out, alwan_f64 *y_out, size_t count_out,
+                                   alwan_extrap_method method);
+alwan_status alwan_extrapolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in, size_t count_in,
+                                   alwan_f32 const *x_out, alwan_f32 *y_out, size_t count_out,
+                                   alwan_extrap_method method);
 ```
 
 **Methods:**
@@ -818,14 +818,14 @@ alwan_f64 alwan_table_interp_1d_f64(alwan_f64 const *table, size_t size,
                                     alwan_f64 x, alwan_interp_method method);
 
 /* 3D trilinear interpolation */
-int alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
-                                        alwan_f64 const *table, size_t const sizes[3],
-                                        alwan_rgb_f64 const *rgb_in);
+alwan_status alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
+                                                 alwan_f64 const *table, size_t const sizes[3],
+                                                 alwan_rgb_f64 const *rgb_in);
 
 /* 3D tetrahedral interpolation (more accurate for color transforms) */
-int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
-                                          alwan_f64 const *table, size_t const sizes[3],
-                                          alwan_rgb_f64 const *rgb_in);
+alwan_status alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
+                                                   alwan_f64 const *table, size_t const sizes[3],
+                                                   alwan_rgb_f64 const *rgb_in);
 ```
 
 (`_f32` twins exist for all three.)
@@ -842,14 +842,14 @@ int alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
 ### alwan_optimize_spectrum_for_xyz_{T}
 
 ```c
-int alwan_optimize_spectrum_for_xyz_f64(alwan_spd_f64 *spd_out,
-                                        alwan_xyz_f64 const *target_xyz,
-                                        alwan_observer_type observer,
-                                        alwan_ctx *ctx);
-int alwan_optimize_spectrum_for_xyz_f32(alwan_spd_f32 *spd_out,
-                                        alwan_xyz_f32 const *target_xyz,
-                                        alwan_observer_type observer,
-                                        alwan_ctx *ctx);
+alwan_status alwan_optimize_spectrum_for_xyz_f64(alwan_spd_f64 *spd_out,
+                                                 alwan_xyz_f64 const *target_xyz,
+                                                 alwan_observer_type observer,
+                                                 alwan_ctx *ctx);
+alwan_status alwan_optimize_spectrum_for_xyz_f32(alwan_spd_f32 *spd_out,
+                                                 alwan_xyz_f32 const *target_xyz,
+                                                 alwan_observer_type observer,
+                                                 alwan_ctx *ctx);
 ```
 
 Find a spectral power distribution that matches target XYZ tristimulus values
@@ -863,8 +863,8 @@ Due to metamerism, multiple SPDs can match the same XYZ; this finds one valid so
 ### alwan_hero_wavelength_sample_{T}
 
 ```c
-int alwan_hero_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 u);
-int alwan_hero_wavelength_sample_f32(alwan_f32 *lambda_out, alwan_f32 u);
+alwan_status alwan_hero_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 u);
+alwan_status alwan_hero_wavelength_sample_f32(alwan_f32 *lambda_out, alwan_f32 u);
 ```
 
 Sample a hero wavelength from uniform variable `u` in [0,1], mapped to [380, 780] nm.
@@ -881,10 +881,10 @@ Convert a single wavelength to XYZ via the Wyman 2013 analytic CMF fit. Returns 
 ### alwan_hero_wavelength_batch_{T}
 
 ```c
-int alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out, alwan_xyz_f64 *xyz_weights,
-                                    size_t count, alwan_f64 seed);
-int alwan_hero_wavelength_batch_f32(alwan_f32 *lambda_out, alwan_xyz_f32 *xyz_weights,
-                                    size_t count, alwan_f32 seed);
+alwan_status alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out, alwan_xyz_f64 *xyz_weights,
+                                             size_t count, alwan_f64 seed);
+alwan_status alwan_hero_wavelength_batch_f32(alwan_f32 *lambda_out, alwan_xyz_f32 *xyz_weights,
+                                             size_t count, alwan_f32 seed);
 ```
 
 Stratified batch sampling: generates `count` wavelengths from `seed`. `xyz_weights`

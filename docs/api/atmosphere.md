@@ -85,10 +85,10 @@ has no `alwan_status` channel and no error path; supply physically valid argumen
 ### alwan_rayleigh_spd_{T}
 
 ```c
-int alwan_rayleigh_spd_{T}(alwan_{T} wavelength_start, alwan_{T} wavelength_end,
-                           alwan_{T} wavelength_step,
-                           alwan_atmosphere_params_{T} const *params,
-                           alwan_{T} *out, int *out_count);
+alwan_status alwan_rayleigh_spd_{T}(alwan_{T} wavelength_start, alwan_{T} wavelength_end,
+                                    alwan_{T} wavelength_step,
+                                    alwan_atmosphere_params_{T} const *params,
+                                    alwan_{T} *out, int *out_count);
 ```
 
 Generate Rayleigh optical depth values across a wavelength range.

@@ -4,7 +4,7 @@ Context objects (`alwan_ctx`) manage library state and memory allocation.
 
 Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor_{T}`, `alwan_rgb_convert_{T}`) accept it as the handle through which the **allocator** and (in a future runtime mode) disk-loaded data are reached. In the current **embedded** build the RGB color-space registry (primaries/whitepoint/transfer-function descriptors) is compiled into the binary from `src/alwan/data/**`, so descriptor lookups index static tables and ignore `ctx` (it may even be `NULL`). The context does **not** load anything from disk at runtime. Where `ctx` matters today: it supplies the allocator for functions that allocate (e.g. SPD/LUT routines) and gates optional work such as the chromatic-adaptation step inside `alwan_rgb_convert_{T}` (passing `NULL` skips adaptation rather than erroring). Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
 
-> **Note:** Runtime data loading (`runtime_data_root`) is NOT implemented. Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported. Runtime mode is planned for alwan 3.0.0.
+> **Note:** Runtime data loading (`runtime_data_root`) is NOT implemented and is not scheduled. Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported.
 
 ---
 
@@ -92,7 +92,7 @@ Opaque context structure. Internal details are not exposed.
 typedef struct {
     alwan_alloc_fn alloc_cb;          // Optional custom allocator (NULL = default); set both or neither
     alwan_free_fn  free_cb;           // Optional custom deallocator (NULL = default)
-    char const *runtime_data_root;    // Reserved (runtime data loading is planned); currently ignored
+    char const *runtime_data_root;    // Reserved; runtime data loading is not implemented and not scheduled. Ignored
     uint32_t flags;                   // Reserved for future use (must be 0)
 } alwan_config;
 ```
@@ -156,14 +156,14 @@ void free_cb(void *ptr);
 **Default:** `alwan_default_free` (matches `alwan_default_alloc`; uses `_aligned_free` on MSVC, `free` elsewhere)
 
 #### `runtime_data_root`
-Reserved. Runtime data loading is NOT implemented (planned for alwan 3.0.0).
+Reserved. Runtime data loading is NOT implemented and is not scheduled.
 
 **Type:** `const char*`
 
 **Default:** `NULL`
 
 This field is currently ignored. Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
-Set to `NULL` until runtime loading is implemented in alwan 3.0.0.
+Set to `NULL`; runtime loading is not implemented.
 ---
 
 ## Library Version
@@ -598,7 +598,7 @@ alwan_destroy(ctx);
 
 ### Pattern 3: Runtime Data Loading (NOT IMPLEMENTED)
 
-> **NOT IMPLEMENTED.** Runtime mode is planned for alwan 3.0.0.
+> **NOT IMPLEMENTED.** Runtime mode is not scheduled.
 > Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
 > Always use `ALWAN_EMBED_DATA=1` (the default) and pass `runtime_data_root = NULL`.
 
@@ -673,7 +673,7 @@ alwan_destroy(shared_ctx);
 
 ### Runtime Mode (ALWAN_EMBED_DATA=0): NOT IMPLEMENTED
 
-> Runtime data loading is not implemented. Planned for alwan 3.0.0.
+> Runtime data loading is not implemented, and is not scheduled.
 
 ---
 

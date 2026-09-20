@@ -71,15 +71,15 @@ For Machado, `cvd_type` is folded onto its dimension: `PROTANOPIA`/`PROTANOMALY`
 ### alwan_simulate_cvd_{T} (Brettel 1997)
 
 ```c
-int alwan_simulate_cvd_f32(alwan_rgb_f32 *rgb_out,
-                           alwan_rgb_f32 const *rgb_in,
-                           alwan_cvd_type cvd_type,
-                           alwan_f32 severity);
+alwan_status alwan_simulate_cvd_f32(alwan_rgb_f32 *rgb_out,
+                                    alwan_rgb_f32 const *rgb_in,
+                                    alwan_cvd_type cvd_type,
+                                    alwan_f32 severity);
 
-int alwan_simulate_cvd_f64(alwan_rgb_f64 *rgb_out,
-                           alwan_rgb_f64 const *rgb_in,
-                           alwan_cvd_type cvd_type,
-                           alwan_f64 severity);
+alwan_status alwan_simulate_cvd_f64(alwan_rgb_f64 *rgb_out,
+                                    alwan_rgb_f64 const *rgb_in,
+                                    alwan_cvd_type cvd_type,
+                                    alwan_f64 severity);
 ```
 
 Simulate color vision deficiency for a single linear-RGB color using the Brettel/Vienot/Mollon
@@ -98,15 +98,15 @@ confusion-line model.
 ### alwan_simulate_cvd_machado_{T} (Machado 2009)
 
 ```c
-int alwan_simulate_cvd_machado_f32(alwan_rgb_f32 *rgb_out,
-                                   alwan_rgb_f32 const *rgb_in,
-                                   alwan_cvd_type cvd_type,
-                                   alwan_f32 severity);
+alwan_status alwan_simulate_cvd_machado_f32(alwan_rgb_f32 *rgb_out,
+                                            alwan_rgb_f32 const *rgb_in,
+                                            alwan_cvd_type cvd_type,
+                                            alwan_f32 severity);
 
-int alwan_simulate_cvd_machado_f64(alwan_rgb_f64 *rgb_out,
-                                   alwan_rgb_f64 const *rgb_in,
-                                   alwan_cvd_type cvd_type,
-                                   alwan_f64 severity);
+alwan_status alwan_simulate_cvd_machado_f64(alwan_rgb_f64 *rgb_out,
+                                            alwan_rgb_f64 const *rgb_in,
+                                            alwan_cvd_type cvd_type,
+                                            alwan_f64 severity);
 ```
 
 Cone-shift model. `severity` in [0, 1] indexes/interpolates the 11 precomputed sRGB->sRGB
@@ -115,17 +115,17 @@ matrices, where 0 = normal vision and 1 = full dichromacy.
 ### alwan_simulate_cvd_ex_{T} (model-selectable)
 
 ```c
-int alwan_simulate_cvd_ex_f32(alwan_rgb_f32 *rgb_out,
-                              alwan_rgb_f32 const *rgb_in,
-                              alwan_cvd_type cvd_type,
-                              alwan_f32 severity,
-                              alwan_cvd_model model);
+alwan_status alwan_simulate_cvd_ex_f32(alwan_rgb_f32 *rgb_out,
+                                       alwan_rgb_f32 const *rgb_in,
+                                       alwan_cvd_type cvd_type,
+                                       alwan_f32 severity,
+                                       alwan_cvd_model model);
 
-int alwan_simulate_cvd_ex_f64(alwan_rgb_f64 *rgb_out,
-                              alwan_rgb_f64 const *rgb_in,
-                              alwan_cvd_type cvd_type,
-                              alwan_f64 severity,
-                              alwan_cvd_model model);
+alwan_status alwan_simulate_cvd_ex_f64(alwan_rgb_f64 *rgb_out,
+                                       alwan_rgb_f64 const *rgb_in,
+                                       alwan_cvd_type cvd_type,
+                                       alwan_f64 severity,
+                                       alwan_cvd_model model);
 ```
 
 Dispatches to Brettel or Machado according to `model`.
@@ -156,48 +156,48 @@ immediately follows its buffer** (memcpy order), then `count`, then the knobs.
 ### alwan_simulate_cvd_{T}_map_interleave (Brettel)
 
 ```c
-int alwan_simulate_cvd_f32_map_interleave(
-    alwan_f32 *rgb_out, size_t out_stride,
-    alwan_f32 const *rgb_in, size_t in_stride,
-    size_t count, alwan_cvd_type cvd_type, alwan_f32 severity);
+alwan_status alwan_simulate_cvd_f32_map_interleave(
+             alwan_f32 *rgb_out, size_t out_stride,
+             alwan_f32 const *rgb_in, size_t in_stride,
+             size_t count, alwan_cvd_type cvd_type, alwan_f32 severity);
 
-int alwan_simulate_cvd_f64_map_interleave(
-    alwan_f64 *rgb_out, size_t out_stride,
-    alwan_f64 const *rgb_in, size_t in_stride,
-    size_t count, alwan_cvd_type cvd_type, alwan_f64 severity);
+alwan_status alwan_simulate_cvd_f64_map_interleave(
+             alwan_f64 *rgb_out, size_t out_stride,
+             alwan_f64 const *rgb_in, size_t in_stride,
+             size_t count, alwan_cvd_type cvd_type, alwan_f64 severity);
 ```
 
 ### Type-specific Brettel batch functions
 
 ```c
-int alwan_simulate_protanopia_{T}_map_interleave(
-    alwan_{T} *rgb_out, size_t out_stride,
-    alwan_{T} const *rgb_in, size_t in_stride,
-    size_t count, alwan_{T} severity);
+alwan_status alwan_simulate_protanopia_{T}_map_interleave(
+             alwan_{T} *rgb_out, size_t out_stride,
+             alwan_{T} const *rgb_in, size_t in_stride,
+             size_t count, alwan_{T} severity);
 
-int alwan_simulate_deuteranopia_{T}_map_interleave(
-    alwan_{T} *rgb_out, size_t out_stride,
-    alwan_{T} const *rgb_in, size_t in_stride,
-    size_t count, alwan_{T} severity);
+alwan_status alwan_simulate_deuteranopia_{T}_map_interleave(
+             alwan_{T} *rgb_out, size_t out_stride,
+             alwan_{T} const *rgb_in, size_t in_stride,
+             size_t count, alwan_{T} severity);
 
-int alwan_simulate_tritanopia_{T}_map_interleave(
-    alwan_{T} *rgb_out, size_t out_stride,
-    alwan_{T} const *rgb_in, size_t in_stride,
-    size_t count, alwan_{T} severity);
+alwan_status alwan_simulate_tritanopia_{T}_map_interleave(
+             alwan_{T} *rgb_out, size_t out_stride,
+             alwan_{T} const *rgb_in, size_t in_stride,
+             size_t count, alwan_{T} severity);
 ```
 
 ### alwan_simulate_cvd_machado_{T}_map_interleave (Machado)
 
 ```c
-int alwan_simulate_cvd_machado_f32_map_interleave(
-    alwan_f32 *rgb_out, size_t out_stride,
-    alwan_f32 const *rgb_in, size_t in_stride,
-    size_t count, alwan_cvd_type cvd_type, alwan_f32 severity);
+alwan_status alwan_simulate_cvd_machado_f32_map_interleave(
+             alwan_f32 *rgb_out, size_t out_stride,
+             alwan_f32 const *rgb_in, size_t in_stride,
+             size_t count, alwan_cvd_type cvd_type, alwan_f32 severity);
 
-int alwan_simulate_cvd_machado_f64_map_interleave(
-    alwan_f64 *rgb_out, size_t out_stride,
-    alwan_f64 const *rgb_in, size_t in_stride,
-    size_t count, alwan_cvd_type cvd_type, alwan_f64 severity);
+alwan_status alwan_simulate_cvd_machado_f64_map_interleave(
+             alwan_f64 *rgb_out, size_t out_stride,
+             alwan_f64 const *rgb_in, size_t in_stride,
+             size_t count, alwan_cvd_type cvd_type, alwan_f64 severity);
 ```
 
 ---
@@ -210,23 +210,23 @@ come **after** `count` (extras tail order), while `severity` is `alwan_f64` in e
 entry point.
 
 ```c
-int alwan_simulate_cvd_map_interleave_ex(
-    void *out, size_t out_stride,
-    void const *in, size_t in_stride,
-    size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-    alwan_cvd_type cvd_type, alwan_f64 severity);
+alwan_status alwan_simulate_cvd_map_interleave_ex(
+             void *out, size_t out_stride,
+             void const *in, size_t in_stride,
+             size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+             alwan_cvd_type cvd_type, alwan_f64 severity);
 
-int alwan_simulate_protanopia_map_interleave_ex(
-    void *out, size_t out_stride, void const *in, size_t in_stride,
-    size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-    alwan_f64 severity);
+alwan_status alwan_simulate_protanopia_map_interleave_ex(
+             void *out, size_t out_stride, void const *in, size_t in_stride,
+             size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+             alwan_f64 severity);
 /* deuteranopia / tritanopia _ex variants follow the same signature */
 
-int alwan_simulate_cvd_machado_map_interleave_ex(
-    void *rgb_out, size_t out_stride,
-    void const *rgb_in, size_t in_stride,
-    size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-    alwan_cvd_type cvd_type, alwan_f64 severity);
+alwan_status alwan_simulate_cvd_machado_map_interleave_ex(
+             void *rgb_out, size_t out_stride,
+             void const *rgb_in, size_t in_stride,
+             size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+             alwan_cvd_type cvd_type, alwan_f64 severity);
 ```
 
 ---
@@ -237,31 +237,31 @@ For image data stored as separate R, G, B channel buffers. A single `out_stride`
 `in_stride` applies to all three channels of that side.
 
 ```c
-int alwan_simulate_cvd_{T}_map_planar(
-    alwan_{T} *o0, size_t out_stride, alwan_{T} *o1, alwan_{T} *o2,
-    alwan_{T} const *i0, size_t in_stride, alwan_{T} const *i1, alwan_{T} const *i2,
-    size_t count, alwan_cvd_type cvd_type, alwan_{T} severity);
+alwan_status alwan_simulate_cvd_{T}_map_planar(
+             alwan_{T} *o0, size_t out_stride, alwan_{T} *o1, alwan_{T} *o2,
+             alwan_{T} const *i0, size_t in_stride, alwan_{T} const *i1, alwan_{T} const *i2,
+             size_t count, alwan_cvd_type cvd_type, alwan_{T} severity);
 
-int alwan_simulate_cvd_machado_{T}_map_planar(
-    alwan_{T} *out_r, size_t out_stride, alwan_{T} *out_g, alwan_{T} *out_b,
-    alwan_{T} const *in_r, size_t in_stride, alwan_{T} const *in_g, alwan_{T} const *in_b,
-    size_t count, alwan_cvd_type cvd_type, alwan_{T} severity);
+alwan_status alwan_simulate_cvd_machado_{T}_map_planar(
+             alwan_{T} *out_r, size_t out_stride, alwan_{T} *out_g, alwan_{T} *out_b,
+             alwan_{T} const *in_r, size_t in_stride, alwan_{T} const *in_g, alwan_{T} const *in_b,
+             size_t count, alwan_cvd_type cvd_type, alwan_{T} severity);
 ```
 
 Typed planar `_ex` variants (`void*` + formats) are also available:
 
 ```c
-int alwan_simulate_cvd_map_planar_ex(
-    void *out0, size_t out_stride, void *out1, void *out2,
-    void const *in0, size_t in_stride, void const *in1, void const *in2,
-    size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-    alwan_cvd_type cvd_type, alwan_f64 severity);
+alwan_status alwan_simulate_cvd_map_planar_ex(
+             void *out0, size_t out_stride, void *out1, void *out2,
+             void const *in0, size_t in_stride, void const *in1, void const *in2,
+             size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+             alwan_cvd_type cvd_type, alwan_f64 severity);
 
-int alwan_simulate_cvd_machado_map_planar_ex(
-    void *out0, size_t out_stride, void *out1, void *out2,
-    void const *in0, size_t in_stride, void const *in1, void const *in2,
-    size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
-    alwan_cvd_type cvd_type, alwan_f64 severity);
+alwan_status alwan_simulate_cvd_machado_map_planar_ex(
+             void *out0, size_t out_stride, void *out1, void *out2,
+             void const *in0, size_t in_stride, void const *in1, void const *in2,
+             size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt,
+             alwan_cvd_type cvd_type, alwan_f64 severity);
 ```
 
 ---

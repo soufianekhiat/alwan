@@ -52,11 +52,11 @@ typedef enum {
 ### alwan_gamut_{T}_map_interleave
 
 ```c
-int alwan_gamut_{T}_map_interleave(
-    alwan_{T} *rgb_out, size_t out_stride,
-    alwan_{T} const *rgb_in, size_t in_stride,
-    size_t count,
-    alwan_gamut_map_method method);
+alwan_status alwan_gamut_{T}_map_interleave(
+             alwan_{T} *rgb_out, size_t out_stride,
+             alwan_{T} const *rgb_in, size_t in_stride,
+             size_t count,
+             alwan_gamut_map_method method);
 ```
 
 Maps interleaved (AoS) RGB triplets to the `[0,1]` gamut using the specified method.
@@ -78,13 +78,13 @@ alwan_gamut_{T}_map_interleave(
 ### alwan_gamut_{T}_map_planar
 
 ```c
-int alwan_gamut_{T}_map_planar(
-    alwan_{T} *out_ch0, size_t out_stride,
-    alwan_{T} *out_ch1, alwan_{T} *out_ch2,
-    alwan_{T} const *in_ch0, size_t in_stride,
-    alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
-    size_t count,
-    alwan_gamut_map_method method);
+alwan_status alwan_gamut_{T}_map_planar(
+             alwan_{T} *out_ch0, size_t out_stride,
+             alwan_{T} *out_ch1, alwan_{T} *out_ch2,
+             alwan_{T} const *in_ch0, size_t in_stride,
+             alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
+             size_t count,
+             alwan_gamut_map_method method);
 ```
 
 Planar (SoA) variant: separate per-channel pointers. `out_stride` / `in_stride` are the
@@ -95,21 +95,21 @@ per-sample strides (in bytes) within each channel plane.
 ### alwan_gamut_map_interleave_ex / alwan_gamut_map_planar_ex
 
 ```c
-int alwan_gamut_map_interleave_ex(
-    void *rgb_out, size_t out_stride,
-    void const *rgb_in, size_t in_stride,
-    size_t count,
-    alwan_pixel_format out_fmt,
-    alwan_gamut_map_method method,
-    alwan_pixel_format in_fmt);
+alwan_status alwan_gamut_map_interleave_ex(
+             void *rgb_out, size_t out_stride,
+             void const *rgb_in, size_t in_stride,
+             size_t count,
+             alwan_pixel_format out_fmt,
+             alwan_gamut_map_method method,
+             alwan_pixel_format in_fmt);
 
-int alwan_gamut_map_planar_ex(
-    void *out0, size_t out_stride, void *out1, void *out2,
-    void const *in0, size_t in_stride, void const *in1, void const *in2,
-    size_t count,
-    alwan_pixel_format out_fmt,
-    alwan_gamut_map_method method,
-    alwan_pixel_format in_fmt);
+alwan_status alwan_gamut_map_planar_ex(
+             void *out0, size_t out_stride, void *out1, void *out2,
+             void const *in0, size_t in_stride, void const *in1, void const *in2,
+             size_t count,
+             alwan_pixel_format out_fmt,
+             alwan_gamut_map_method method,
+             alwan_pixel_format in_fmt);
 ```
 
 Typed variants accepting any `alwan_pixel_format` for input and output
@@ -120,10 +120,10 @@ Typed variants accepting any `alwan_pixel_format` for input and output
 ### alwan_gamut_map_advanced_{T}
 
 ```c
-int alwan_gamut_map_advanced_{T}(alwan_rgb_{T} *rgb_out,
-                                  alwan_gamut_map_method method,
-                                  alwan_rgb_space_desc_{T} const *space,
-                                  alwan_rgb_{T} const *rgb_linear);
+alwan_status alwan_gamut_map_advanced_{T}(alwan_rgb_{T} *rgb_out,
+                                           alwan_gamut_map_method method,
+                                           alwan_rgb_space_desc_{T} const *space,
+                                           alwan_rgb_{T} const *rgb_linear);
 ```
 
 Single-color advanced gamut mapping with awareness of the target RGB space's gamut boundary.
@@ -134,10 +134,10 @@ Single-color advanced gamut mapping with awareness of the target RGB space's gam
 ### alwan_gamut_map_xyz_to_rgb_{T}
 
 ```c
-int alwan_gamut_map_xyz_to_rgb_{T}(alwan_rgb_{T} *rgb_out,
-                                   alwan_rgb_space_desc_{T} const *space,
-                                   alwan_xyz_{T} const *xyz_in,
-                                   alwan_ctx *ctx);
+alwan_status alwan_gamut_map_xyz_to_rgb_{T}(alwan_rgb_{T} *rgb_out,
+                                            alwan_rgb_space_desc_{T} const *space,
+                                            alwan_xyz_{T} const *xyz_in,
+                                            alwan_ctx *ctx);
 ```
 
 Map an XYZ color into the target RGB gamut with hue preservation (in JCh). `ctx` may be `NULL`.
@@ -147,29 +147,29 @@ Map an XYZ color into the target RGB gamut with hue preservation (in JCh). `ctx`
 ### CSS Color Level 4 section 13.2 (OKLCh binary search)
 
 ```c
-int alwan_css_gamut_{T}_map_interleave(
-    alwan_{T} *rgb_out, size_t out_stride,
-    alwan_{T} const *rgb_in, size_t in_stride,
-    size_t count);
+alwan_status alwan_css_gamut_{T}_map_interleave(
+             alwan_{T} *rgb_out, size_t out_stride,
+             alwan_{T} const *rgb_in, size_t in_stride,
+             size_t count);
 
-int alwan_css_gamut_{T}_map_planar(
-    alwan_{T} *out_ch0, size_t out_stride,
-    alwan_{T} *out_ch1, alwan_{T} *out_ch2,
-    alwan_{T} const *in_ch0, size_t in_stride,
-    alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
-    size_t count);
+alwan_status alwan_css_gamut_{T}_map_planar(
+             alwan_{T} *out_ch0, size_t out_stride,
+             alwan_{T} *out_ch1, alwan_{T} *out_ch2,
+             alwan_{T} const *in_ch0, size_t in_stride,
+             alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
+             size_t count);
 
-int alwan_css_gamut_map_interleave_ex(
-    void *rgb_out, size_t out_stride,
-    void const *rgb_in, size_t in_stride,
-    size_t count,
-    alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_css_gamut_map_interleave_ex(
+             void *rgb_out, size_t out_stride,
+             void const *rgb_in, size_t in_stride,
+             size_t count,
+             alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 
-int alwan_css_gamut_map_planar_ex(
-    void *out0, size_t out_stride, void *out1, void *out2,
-    void const *in0, size_t in_stride, void const *in1, void const *in2,
-    size_t count,
-    alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_css_gamut_map_planar_ex(
+             void *out0, size_t out_stride, void *out1, void *out2,
+             void const *in0, size_t in_stride, void const *in1, void const *in2,
+             size_t count,
+             alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 ```
 
 Implements the CSS Color Level 4 section 13.2 gamut-mapping algorithm: binary search on OKLCh
@@ -181,8 +181,8 @@ to in-gamut linear sRGB. No `method` parameter; the algorithm is fixed by the sp
 ### alwan_gamut_volume_{T}
 
 ```c
-int alwan_gamut_volume_{T}(alwan_{T} *volume,
-                           alwan_rgb_space_desc_{T} const *space);
+alwan_status alwan_gamut_volume_{T}(alwan_{T} *volume,
+                                    alwan_rgb_space_desc_{T} const *space);
 ```
 
 Returns the **exact** RGB gamut volume in linear XYZ (in XYZ units cubed). The RGB
@@ -216,9 +216,9 @@ alwan_gamut_volume_{T}(&volume, &srgb_desc);
 ### alwan_gamut_volume_ratio_{T}
 
 ```c
-int alwan_gamut_volume_ratio_{T}(alwan_{T} *ratio_out,
-                                 alwan_rgb_space_desc_{T} const *space1,
-                                 alwan_rgb_space_desc_{T} const *space2);
+alwan_status alwan_gamut_volume_ratio_{T}(alwan_{T} *ratio_out,
+                                          alwan_rgb_space_desc_{T} const *space1,
+                                          alwan_rgb_space_desc_{T} const *space2);
 ```
 
 Computes `volume(space1) / volume(space2)`.
@@ -228,11 +228,11 @@ Computes `volume(space1) / volume(space2)`.
 ### alwan_gamut_coverage_{T}
 
 ```c
-int alwan_gamut_coverage_{T}(alwan_{T} *coverage_out,
-                             alwan_rgb_space_desc_{T} const *space1,
-                             alwan_rgb_space_desc_{T} const *space2,
-                             size_t num_samples,
-                             unsigned int seed);
+alwan_status alwan_gamut_coverage_{T}(alwan_{T} *coverage_out,
+                                      alwan_rgb_space_desc_{T} const *space1,
+                                      alwan_rgb_space_desc_{T} const *space2,
+                                      size_t num_samples,
+                                      unsigned int seed);
 ```
 
 Estimates what percentage (`[0, 100]`) of `space1`'s gamut is covered by `space2` using
@@ -407,21 +407,21 @@ facet test would part company if they were going to.
 ### Dominant Wavelength and Excitation Purity
 
 ```c
-int alwan_spectral_locus_xy_{T}(alwan_vec2_{T} *xy_out, alwan_{T} wavelength);
+alwan_status alwan_spectral_locus_xy_{T}(alwan_vec2_{T} *xy_out, alwan_{T} wavelength);
 
-int alwan_dominant_wavelength_{T}(alwan_{T} *wavelength_out,
-                                  alwan_vec2_{T} *xy_wl_out, alwan_vec2_{T} *xy_cw_out,
-                                  alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
+alwan_status alwan_dominant_wavelength_{T}(alwan_{T} *wavelength_out,
+                                           alwan_vec2_{T} *xy_wl_out, alwan_vec2_{T} *xy_cw_out,
+                                           alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
 
-int alwan_excitation_purity_{T}(alwan_{T} *purity_out,
-                                alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
+alwan_status alwan_excitation_purity_{T}(alwan_{T} *purity_out,
+                                         alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
 
-int alwan_complementary_wavelength_{T}(alwan_{T} *wavelength_out,
-                                       alwan_vec2_{T} *xy_wl_out, alwan_vec2_{T} *xy_cw_out,
-                                       alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
+alwan_status alwan_complementary_wavelength_{T}(alwan_{T} *wavelength_out,
+                                                alwan_vec2_{T} *xy_wl_out, alwan_vec2_{T} *xy_cw_out,
+                                                alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
 
-int alwan_colorimetric_purity_{T}(alwan_{T} *purity_out,
-                                  alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
+alwan_status alwan_colorimetric_purity_{T}(alwan_{T} *purity_out,
+                                           alwan_vec2_{T} const *xy, alwan_vec2_{T} const *xy_white);
 ```
 
 These follow colour-science's `dominant_wavelength`, `complementary_wavelength`,

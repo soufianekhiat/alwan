@@ -94,14 +94,23 @@ entries are contract/doc/naming nits that should be cleaned up before the
   (compose `rgb->xyz->Lab/Oklab[->cyl]`, wiring NORM on forward / DENORM on
   inverse).
 
-- **`_map_planar_ex` format-arg order mismatch.** 32 of 96 `*_map_planar_ex`
-  declarations name their format args `(in_fmt, out_fmt)` (e.g.
-  `alwan_ycocg_to_rgb_map_planar_ex` / `alwan_rgb_to_hwb_map_planar_ex` at
-  lines 4298-4299) while the delegating macros
-  (`ALWAN_PLANAR_EX_DELEGATE_DUAL` / `_DUAL_WHITE`) fix the positional order as
-  `(out_fmt, in_fmt)`. Mixed-format callers who trust the header names silently
-  swap input/output pixel formats, causing data corruption with no compiler error.
-  Unify all names to `(out_fmt, in_fmt)`.
+- ~~**`_map_planar_ex` format-arg order mismatch.**~~ **VERIFIED CLOSED
+  2026-09-20.** Not true any more, and measured rather than eyeballed: of 213
+  declarations in `alwan.h` taking a pair of `alwan_pixel_format` arguments,
+  **zero** name them `(in_fmt, out_fmt)`. 209 are `(out_fmt, in_fmt)` and 4 are
+  `(dst_fmt, src_fmt)`, which is the same order under different names and is the
+  image-shaped `alwan_image_convert` family, where dst/src reads better beside
+  `width, height`. Both functions this entry named as examples,
+  `alwan_ycocg_to_rgb_map_planar_ex` and `alwan_rgb_to_hwb_map_planar_ex`, now
+  read `(out_fmt, in_fmt)`.
+
+  The danger it described was real and was realised the same day, not in the
+  header but in a CALLER: `alwan_dev/det_regression/det_run_regression.c` passed
+  the pair the other way round under a comment claiming a legacy order that no
+  `_ex` entry point has ever had, and wrote U16 into a `double` buffer while
+  reading F64 past the end of a `uint16_t` one. Fixed in alwan_dev 1774d43. The
+  lesson is that the header being uniform is what makes a wrong call a bug
+  rather than an ambiguity, so keep it uniform.
 
 - **`gamut_map_advanced` ignores its space arg.** `alwan_gamut_map_advanced_f64`/
   `_f32` NULL-checks its `alwan_rgb_space_desc*` argument and then ignores it;
@@ -191,22 +200,37 @@ entries are contract/doc/naming nits that should be cleaned up before the
   `gamut_*_map` comment lists 2 of 8 methods. Align comments with signatures +
   enum.
 
-- **Mojibake in public header.** a UTF-8 Delta and a degree sign each decoded as two Latin-1 characters, in "Hue-Preserving Minimum <?>E", "2<?>" and "<?>E*ab"
-  (lines 2691-2692, 3001), and an em dash decoded the same way in "APCA <?> WCAG 3.0 draft" (3899); plus
-  "half-alwan_f32" (line 71) and "Mapmatrix-vector multiplication" (line 220)
-  from a blanket `float`->`alwan_f32` substitution. (Lines 71, 220, and 4694
-  verified.) Restore ASCII.
+- ~~**Mojibake in public header.**~~ **VERIFIED CLOSED 2026-09-20.**
+  `alwan.h` now contains **zero** bytes above 0x7F, so there is no mojibake left
+  to restore. Every line this entry cited reads as ASCII. The docs still carry 69
+  non-ASCII bytes across seven files, and those were checked too: they are
+  correctly encoded characters that belong there, an em dash, a plus-minus, a
+  superscript two in cd/m2 and a Delta, not a character decoded twice.
 
-- **hdr.md arg-order bugs.** `maxcll`/`maxfall` are documented as
-  `(out, rgb, count, stride)` with a worked example, but the header is
-  `(out, rgb, stride, count)` (swapped). `gamma_oetf`/`eotf` documented arg
-  order differs entirely from the header. `hlg_ootf` is documented `int` vs
-  header `void`. Fix all three.
+- ~~**hdr.md arg-order bugs.**~~ **VERIFIED, AND THE REAL ONE FIXED
+  2026-09-20.** Two of the three are stale: `maxcll`/`maxfall` are documented
+  `(out, rgb, stride, count)`, matching the header, and the worked example passes
+  them in that order; `hlg_ootf` is documented `void`, matching the header.
 
-- **`config.runtime_data_root` doc rot.** `context.md:93` struct comment still
-  says "Optional data path for ALWAN_EMBED_DATA=0", contradicting the header
-  (line 107: "Reserved... ignored") and the corrected prose later in the same
-  doc.
+  The third was real and larger than this entry. `maxcll`/`maxfall` were
+  documented as returning `int` where the header returns `alwan_status`, and a
+  sweep found the same thing in **224 declarations across 19 doc files**. A doc
+  that spells the return `int` tells a caller to test against 0 and -1, which is
+  not the contract. All 224 were rewritten after checking each name against the
+  header, so the three pointer-gamut predicates that genuinely return `int` were
+  left alone, and the seventeen exported-but-undeclared illuminant getters, which
+  really are plain `int` and are documented as such on purpose, were not touched.
+
+- ~~**`config.runtime_data_root` doc rot.**~~ **VERIFIED, AND A WORSE ONE FIXED
+  2026-09-20.** The contradiction this entry names is gone: the struct comment
+  agrees with the header that the field is reserved and ignored.
+
+  What was left mattered more on the eve of a 3.0.0 release. Eight places, three
+  in `alwan.h` and five in `context.md`, said runtime data loading was "planned
+  for alwan 3.0.0". This IS 3.0.0 and it is not implemented, so every one of them
+  would have become false the moment the tag was cut. They now say it is not
+  implemented and not scheduled. Nothing was moved to a later version instead: an
+  unimplemented feature with no work behind it gets no date.
 
 ### Naming / header-layout nits
 

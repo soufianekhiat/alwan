@@ -68,13 +68,13 @@ conditions (dim vs dark viewing).
 ### alwan_maxcll_{T} / alwan_maxfall_{T}
 
 ```c
-int alwan_maxcll_{T}(alwan_{T} *maxcll_out,
-                     alwan_{T} const *rgb_in,
-                     size_t stride, size_t count);
+alwan_status alwan_maxcll_{T}(alwan_{T} *maxcll_out,
+                              alwan_{T} const *rgb_in,
+                              size_t stride, size_t count);
 
-int alwan_maxfall_{T}(alwan_{T} *maxfall_out,
-                      alwan_{T} const *rgb_in,
-                      size_t stride, size_t count);
+alwan_status alwan_maxfall_{T}(alwan_{T} *maxfall_out,
+                               alwan_{T} const *rgb_in,
+                               size_t stride, size_t count);
 ```
 
 - **MaxCLL**: Maximum Content Light Level -- max(R,G,B) across all pixels.
@@ -99,13 +99,13 @@ printf("MaxCLL: %.1f nits, MaxFALL: %.1f nits\n", maxcll, maxfall);
 ### alwan_gamma_oetf_{T} / alwan_gamma_eotf_{T}
 
 ```c
-int alwan_gamma_oetf_{T}(alwan_{T} *out, size_t out_stride,
-                          alwan_{T} const *in, size_t in_stride,
-                          size_t count, alwan_{T} gamma);
+alwan_status alwan_gamma_oetf_{T}(alwan_{T} *out, size_t out_stride,
+                                   alwan_{T} const *in, size_t in_stride,
+                                   size_t count, alwan_{T} gamma);
 
-int alwan_gamma_eotf_{T}(alwan_{T} *out, size_t out_stride,
-                          alwan_{T} const *in, size_t in_stride,
-                          size_t count, alwan_{T} gamma);
+alwan_status alwan_gamma_eotf_{T}(alwan_{T} *out, size_t out_stride,
+                                   alwan_{T} const *in, size_t in_stride,
+                                   size_t count, alwan_{T} gamma);
 ```
 
 Apply arbitrary gamma encoding/decoding:
@@ -121,11 +121,11 @@ Useful when the standard `alwan_transfer_function` enum does not cover your spec
 ### alwan_weber_contrast_{T} / alwan_michelson_contrast_{T}
 
 ```c
-int alwan_weber_contrast_{T}(alwan_{T} *result,
-                              alwan_{T} L_target, alwan_{T} L_bg);
+alwan_status alwan_weber_contrast_{T}(alwan_{T} *result,
+                                       alwan_{T} L_target, alwan_{T} L_bg);
 
-int alwan_michelson_contrast_{T}(alwan_{T} *result,
-                                  alwan_{T} L_max, alwan_{T} L_min);
+alwan_status alwan_michelson_contrast_{T}(alwan_{T} *result,
+                                           alwan_{T} L_max, alwan_{T} L_min);
 ```
 
 - **Weber**: `(L_target - L_background) / L_background` -- for small targets on uniform backgrounds.
@@ -138,7 +138,7 @@ int alwan_michelson_contrast_{T}(alwan_{T} *result,
 ### alwan_wcag_contrast_ratio_{T}
 
 ```c
-int alwan_wcag_contrast_ratio_{T}(alwan_{T} *result, alwan_{T} Y1, alwan_{T} Y2);
+alwan_status alwan_wcag_contrast_ratio_{T}(alwan_{T} *result, alwan_{T} Y1, alwan_{T} Y2);
 ```
 
 WCAG 2.x: `(L_lighter + 0.05) / (L_darker + 0.05)`. `Y1` and `Y2` are **relative
@@ -149,9 +149,9 @@ the order of the two arguments does not matter. The published thresholds are
 ### alwan_apca_contrast_{T}
 
 ```c
-int alwan_apca_contrast_{T}(alwan_{T} *Lc_out,
-                             alwan_rgb_{T} const *srgb_text,
-                             alwan_rgb_{T} const *srgb_bg);
+alwan_status alwan_apca_contrast_{T}(alwan_{T} *Lc_out,
+                                      alwan_rgb_{T} const *srgb_text,
+                                      alwan_rgb_{T} const *srgb_bg);
 ```
 
 APCA / SAPC, the algorithm drafted for WCAG 3.0 (Myndex APCA-W3). It takes
@@ -188,13 +188,13 @@ yourself before the call.
 ### alwan_bt2390_eetf_{T} / alwan_bt2390_eetf_luminance_{T}
 
 ```c
-int alwan_bt2390_eetf_{T}(alwan_{T} *E_out, alwan_{T} E_pq,
-                           alwan_{T} LB, alwan_{T} LW,
-                           alwan_{T} LB_target, alwan_{T} LW_target);
+alwan_status alwan_bt2390_eetf_{T}(alwan_{T} *E_out, alwan_{T} E_pq,
+                                    alwan_{T} LB, alwan_{T} LW,
+                                    alwan_{T} LB_target, alwan_{T} LW_target);
 
-int alwan_bt2390_eetf_luminance_{T}(alwan_{T} *E_out, alwan_{T} E_pq,
-                                     alwan_{T} L_source_peak,
-                                     alwan_{T} L_target_peak);
+alwan_status alwan_bt2390_eetf_luminance_{T}(alwan_{T} *E_out, alwan_{T} E_pq,
+                                              alwan_{T} L_source_peak,
+                                              alwan_{T} L_target_peak);
 ```
 
 The BT.2390 electro-electrical transfer function: a Hermite spline roll-off that
@@ -209,11 +209,11 @@ and encodes them, which is what most callers want.
 ### alwan_bt2446b_forward_{T} / alwan_bt2446c_forward_{T}
 
 ```c
-int alwan_bt2446b_forward_{T}(alwan_{T} *Y_hdr_out, alwan_{T} Y_sdr,
-                               alwan_{T} L_hdr, alwan_{T} L_sdr);
+alwan_status alwan_bt2446b_forward_{T}(alwan_{T} *Y_hdr_out, alwan_{T} Y_sdr,
+                                        alwan_{T} L_hdr, alwan_{T} L_sdr);
 
-int alwan_bt2446c_forward_{T}(alwan_{T} *Y_sdr_out, alwan_{T} Y_hdr,
-                               alwan_{T} L_hdr, alwan_{T} L_sdr);
+alwan_status alwan_bt2446c_forward_{T}(alwan_{T} *Y_sdr_out, alwan_{T} Y_hdr,
+                                        alwan_{T} L_hdr, alwan_{T} L_sdr);
 ```
 
 The two BT.2446 methods run in **opposite directions**, which the shared name
@@ -231,11 +231,11 @@ C's input being PQ-encoded while Method B's is linear is the second trap.
 ### alwan_exposure_tonemap_{T} / alwan_reinhard_calibrated_{T}
 
 ```c
-int alwan_exposure_tonemap_{T}(alwan_{T} *out, alwan_{T} L, alwan_{T} exposure);
+alwan_status alwan_exposure_tonemap_{T}(alwan_{T} *out, alwan_{T} L, alwan_{T} exposure);
 
-int alwan_reinhard_calibrated_{T}(alwan_{T} *out, alwan_{T} L,
-                                   alwan_{T} key, alwan_{T} L_avg,
-                                   alwan_{T} L_white);
+alwan_status alwan_reinhard_calibrated_{T}(alwan_{T} *out, alwan_{T} L,
+                                            alwan_{T} key, alwan_{T} L_avg,
+                                            alwan_{T} L_white);
 ```
 
 - **Exposure**: `1 - exp(-2^exposure * L)`. `exposure` is an EV offset, `0`
@@ -311,7 +311,7 @@ gammas, as colour-hdri does.
 ### alwan_d_series_illuminant_xy_{T}
 
 ```c
-int alwan_d_series_illuminant_xy_{T}(alwan_vec2_{T} *xy_out, alwan_{T} cct);
+alwan_status alwan_d_series_illuminant_xy_{T}(alwan_vec2_{T} *xy_out, alwan_{T} cct);
 ```
 
 Compute CIE D-series illuminant xy chromaticity from correlated color temperature (4000-25000K).

@@ -200,29 +200,29 @@ exists in two forms" rule at the top of this page holds for the scalar **and** b
 metric set.
 
 ```c
-int alwan_delta_e_76_{T}_batch(
-    alwan_{T} *delta_e_out,
-    alwan_{T} const *lab1_in, size_t in1_stride,
-    alwan_{T} const *lab2_in, size_t in2_stride,
-    size_t count);
+alwan_status alwan_delta_e_76_{T}_batch(
+             alwan_{T} *delta_e_out,
+             alwan_{T} const *lab1_in, size_t in1_stride,
+             alwan_{T} const *lab2_in, size_t in2_stride,
+             size_t count);
 
-int alwan_delta_e_2000_{T}_batch(
-    alwan_{T} *delta_e_out,
-    alwan_{T} const *lab1_in, size_t in1_stride,
-    alwan_{T} const *lab2_in, size_t in2_stride,
-    size_t count);
+alwan_status alwan_delta_e_2000_{T}_batch(
+             alwan_{T} *delta_e_out,
+             alwan_{T} const *lab1_in, size_t in1_stride,
+             alwan_{T} const *lab2_in, size_t in2_stride,
+             size_t count);
 
-int alwan_delta_e_94_{T}_batch(
-    alwan_{T} *delta_e_out,
-    alwan_{T} const *lab1_in, size_t in1_stride,
-    alwan_{T} const *lab2_in, size_t in2_stride,
-    size_t count);
+alwan_status alwan_delta_e_94_{T}_batch(
+             alwan_{T} *delta_e_out,
+             alwan_{T} const *lab1_in, size_t in1_stride,
+             alwan_{T} const *lab2_in, size_t in2_stride,
+             size_t count);
 
-int alwan_delta_e_cmc_{T}_batch(
-    alwan_{T} *delta_e_out,
-    alwan_{T} const *lab1_in, size_t in1_stride,
-    alwan_{T} const *lab2_in, size_t in2_stride,
-    size_t count, alwan_{T} l, alwan_{T} c);
+alwan_status alwan_delta_e_cmc_{T}_batch(
+             alwan_{T} *delta_e_out,
+             alwan_{T} const *lab1_in, size_t in1_stride,
+             alwan_{T} const *lab2_in, size_t in2_stride,
+             size_t count, alwan_{T} l, alwan_{T} c);
 ```
 
 All batch functions return `ALWAN_OK` on success.
@@ -233,26 +233,26 @@ All batch functions return `ALWAN_OK` on success.
 the output is always `alwan_f64`. These are precision-agnostic (no `_{T}` suffix).
 
 ```c
-int alwan_delta_e_76_batch_ex(alwan_f64 *delta_e_out,
-    void const *lab1_in, size_t in1_stride,
-    void const *lab2_in, size_t in2_stride,
-    size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt);
+alwan_status alwan_delta_e_76_batch_ex(alwan_f64 *delta_e_out,
+             void const *lab1_in, size_t in1_stride,
+             void const *lab2_in, size_t in2_stride,
+             size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt);
 
-int alwan_delta_e_2000_batch_ex(alwan_f64 *delta_e_out,
-    void const *lab1_in, size_t in1_stride,
-    void const *lab2_in, size_t in2_stride,
-    size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt);
+alwan_status alwan_delta_e_2000_batch_ex(alwan_f64 *delta_e_out,
+             void const *lab1_in, size_t in1_stride,
+             void const *lab2_in, size_t in2_stride,
+             size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt);
 
-int alwan_delta_e_94_batch_ex(alwan_f64 *delta_e_out,
-    void const *lab1_in, size_t in1_stride,
-    void const *lab2_in, size_t in2_stride,
-    size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt);
+alwan_status alwan_delta_e_94_batch_ex(alwan_f64 *delta_e_out,
+             void const *lab1_in, size_t in1_stride,
+             void const *lab2_in, size_t in2_stride,
+             size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt);
 
-int alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
-    void const *lab1_in, size_t in1_stride,
-    void const *lab2_in, size_t in2_stride,
-    size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,
-    alwan_f64 l, alwan_f64 c);
+alwan_status alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
+             void const *lab1_in, size_t in1_stride,
+             void const *lab2_in, size_t in2_stride,
+             size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,
+             alwan_f64 l, alwan_f64 c);
 ```
 
 ---

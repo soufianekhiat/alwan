@@ -77,11 +77,11 @@ int alwan_<...>_{T}_map_interleave(
 Example:
 
 ```c
-int alwan_xyz_to_lab_f64_map_interleave(
-    alwan_f64 *lab_out, size_t out_stride,
-    alwan_f64 const *xyz_in, size_t in_stride,
-    size_t count,
-    alwan_xyz_f64 const *white_xyz
+alwan_status alwan_xyz_to_lab_f64_map_interleave(
+             alwan_f64 *lab_out, size_t out_stride,
+             alwan_f64 const *xyz_in, size_t in_stride,
+             size_t count,
+             alwan_xyz_f64 const *white_xyz
 );
 ```
 
@@ -105,13 +105,13 @@ int alwan_<...>_map_interleave_ex(
 Example:
 
 ```c
-int alwan_xyz_to_lab_map_interleave_ex(
-    void *out, size_t out_stride,
-    void const *in, size_t in_stride,
-    size_t count,
-    alwan_pixel_format out_fmt,
-    alwan_pixel_format in_fmt,
-    alwan_xyz_f64 const *white_xyz
+alwan_status alwan_xyz_to_lab_map_interleave_ex(
+             void *out, size_t out_stride,
+             void const *in, size_t in_stride,
+             size_t count,
+             alwan_pixel_format out_fmt,
+             alwan_pixel_format in_fmt,
+             alwan_xyz_f64 const *white_xyz
 );
 ```
 
@@ -166,13 +166,13 @@ Most current planar `_ex` functions use `out_fmt` followed by `in_fmt` to
 match the rest of the API:
 
 ```c
-int alwan_xyz_to_lab_map_planar_ex(
-    void *out0, size_t out_stride, void *out1, void *out2,
-    void const *in0, size_t in_stride, void const *in1, void const *in2,
-    size_t count,
-    alwan_pixel_format out_fmt,
-    alwan_pixel_format in_fmt,
-    alwan_xyz_f64 const *white_xyz);
+alwan_status alwan_xyz_to_lab_map_planar_ex(
+             void *out0, size_t out_stride, void *out1, void *out2,
+             void const *in0, size_t in_stride, void const *in1, void const *in2,
+             size_t count,
+             alwan_pixel_format out_fmt,
+             alwan_pixel_format in_fmt,
+             alwan_xyz_f64 const *white_xyz);
 ```
 
 All `_ex` variants, including every `_map_planar_ex` entry, use the
@@ -185,8 +185,8 @@ These are not implemented in `src/alwan/map/`, but they belong to the same
 zero-copy data-flow story:
 
 ```c
-int alwan_image_convert_{T}(...);
-int alwan_image_convert_rgba_{T}(...);
+alwan_status alwan_image_convert_{T}(...);
+alwan_status alwan_image_convert_rgba_{T}(...);
 ```
 
 They operate on row strides and descriptor-driven RGB conversion.

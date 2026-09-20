@@ -36,11 +36,11 @@ Samples are uniformly spaced across `[wavelength_min, wavelength_max]`.
 ### alwan_spd_create
 
 ```c
-int alwan_spd_create_f64(alwan_spd_f64 *out,
-                         alwan_f64 wavelength_min,
-                         alwan_f64 wavelength_max,
-                         size_t count,
-                         alwan_ctx *ctx);
+alwan_status alwan_spd_create_f64(alwan_spd_f64 *out,
+                                  alwan_f64 wavelength_min,
+                                  alwan_f64 wavelength_max,
+                                  size_t count,
+                                  alwan_ctx *ctx);
 ```
 
 Allocate an empty SPD with `count` uniformly-spaced samples over the wavelength range. Values are zero-initialized. Returns `ALWAN_OK`, or `ALWAN_E_NOMEM` on allocation failure.
@@ -68,9 +68,9 @@ alwan_spd_destroy_f64(&spd, ctx);
 ### alwan_spd_illuminant
 
 ```c
-int alwan_spd_illuminant_f64(alwan_spd_f64 *out,
-                             alwan_illuminant ill,
-                             alwan_ctx *ctx);
+alwan_status alwan_spd_illuminant_f64(alwan_spd_f64 *out,
+                                      alwan_illuminant ill,
+                                      alwan_ctx *ctx);
 ```
 
 Load an illuminant SPD (e.g. `ALWAN_ILLUMINANT_D65`) by enum, 471 samples over
@@ -150,12 +150,12 @@ fitted temperature agrees with scipy's to 7e-8 relative.
 ### alwan_spd_blackbody
 
 ```c
-int alwan_spd_blackbody_f64(alwan_spd_f64 *out,
-                            alwan_f64 temperature_K,
-                            alwan_f64 wavelength_min,
-                            alwan_f64 wavelength_max,
-                            size_t count,
-                            alwan_ctx *ctx);
+alwan_status alwan_spd_blackbody_f64(alwan_spd_f64 *out,
+                                     alwan_f64 temperature_K,
+                                     alwan_f64 wavelength_min,
+                                     alwan_f64 wavelength_max,
+                                     size_t count,
+                                     alwan_ctx *ctx);
 ```
 
 Generate a Planckian (blackbody) radiator SPD via Planck's law. `temperature_K` is typically 1000-25000 K; out-of-range returns `ALWAN_E_INVALID`.
@@ -175,14 +175,14 @@ alwan_spd_destroy_f64(&blackbody, ctx);
 ### alwan_spd_resample
 
 ```c
-int alwan_spd_resample_f64(alwan_spd_f64 *dst,
-                           alwan_spd_f64 const *src,
-                           alwan_f64 wavelength_min,
-                           alwan_f64 wavelength_max,
-                           size_t count,
-                           alwan_resample_method method,
-                           alwan_extrapolate_mode extrapolate,
-                           alwan_ctx *ctx);
+alwan_status alwan_spd_resample_f64(alwan_spd_f64 *dst,
+                                    alwan_spd_f64 const *src,
+                                    alwan_f64 wavelength_min,
+                                    alwan_f64 wavelength_max,
+                                    size_t count,
+                                    alwan_resample_method method,
+                                    alwan_extrapolate_mode extrapolate,
+                                    alwan_ctx *ctx);
 ```
 
 Resample an SPD to a new wavelength range and sample count. `dst` is allocated internally.
@@ -211,13 +211,13 @@ typedef enum {
 ### alwan_xyz_from_spd
 
 ```c
-int alwan_xyz_from_spd_f64(alwan_xyz_f64 *xyz_out,
-                           alwan_spd_f64 const *spd,
-                           alwan_spd_f64 const *illuminant,
-                           alwan_observer_type observer,
-                           alwan_integrate_method method,
-                           alwan_f64 bandpass_nm,
-                           alwan_ctx *ctx);
+alwan_status alwan_xyz_from_spd_f64(alwan_xyz_f64 *xyz_out,
+                                    alwan_spd_f64 const *spd,
+                                    alwan_spd_f64 const *illuminant,
+                                    alwan_observer_type observer,
+                                    alwan_integrate_method method,
+                                    alwan_f64 bandpass_nm,
+                                    alwan_ctx *ctx);
 ```
 
 Integrate an SPD against an observer's CMFs to obtain XYZ tristimulus values.
@@ -392,8 +392,8 @@ The two NPL cameras give the same numbers, to the bit, through the new calls.
 ### alwan_spd_analyze_shape
 
 ```c
-int alwan_spd_analyze_shape_f64(alwan_spd_shape_f64 *shape_out,
-                                alwan_spd_f64 const *spd);
+alwan_status alwan_spd_analyze_shape_f64(alwan_spd_shape_f64 *shape_out,
+                                         alwan_spd_f64 const *spd);
 ```
 
 Compute descriptive statistics for an SPD. Pure analysis; no `ctx`.
@@ -415,10 +415,10 @@ typedef struct {
 ### alwan_optimize_spectrum_for_xyz
 
 ```c
-int alwan_optimize_spectrum_for_xyz_f64(alwan_spd_f64 *spd_out,
-                                        alwan_xyz_f64 const *target_xyz,
-                                        alwan_observer_type observer,
-                                        alwan_ctx *ctx);
+alwan_status alwan_optimize_spectrum_for_xyz_f64(alwan_spd_f64 *spd_out,
+                                                 alwan_xyz_f64 const *target_xyz,
+                                                 alwan_observer_type observer,
+                                                 alwan_ctx *ctx);
 ```
 
 Find a smooth SPD whose tristimulus integral matches `target_xyz` (least-squares). `spd_out` **must be pre-allocated** (`alwan_spd_create_f64`) with the desired wavelength range/count. Multiple spectra metamerise to the same XYZ; this returns one solution.
@@ -444,17 +444,17 @@ For Monte-Carlo spectral rendering. Maps a uniform `[0,1]` sample to a wavelengt
 
 ```c
 /* Single-sample: u in [0,1] -> lambda in [380,780] nm */
-int  alwan_hero_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 u);
+alwan_status alwan_hero_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 u);
 
 /* Wavelength -> XYZ via Wyman 2013 analytic CMF fit (no ctx) */
 void alwan_hero_wavelength_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_f64 lambda);
 
 /* Stratified batch: generate `count` wavelengths from a single seed.
  * xyz_weights receives per-sample XYZ importance weights (may be NULL). */
-int  alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out,
-                                     alwan_xyz_f64 *xyz_weights,
-                                     size_t count,
-                                     alwan_f64 seed);
+alwan_status alwan_hero_wavelength_batch_f64(alwan_f64 *lambda_out,
+                                              alwan_xyz_f64 *xyz_weights,
+                                              size_t count,
+                                              alwan_f64 seed);
 ```
 
 ---
@@ -466,9 +466,9 @@ Recover a plausible reflectance SPD from a colour. Three of these take an RGB tr
 ### alwan_rgb_to_spectrum_smits1999
 
 ```c
-int alwan_rgb_to_spectrum_smits1999_f64(alwan_spd_f64 *out_spd,
-                                        alwan_rgb_f64 const *rgb,
-                                        alwan_ctx *ctx);
+alwan_status alwan_rgb_to_spectrum_smits1999_f64(alwan_spd_f64 *out_spd,
+                                                 alwan_rgb_f64 const *rgb,
+                                                 alwan_ctx *ctx);
 ```
 
 Smits 1999 basis-spectra mixing. Input is sRGB, clamped to `[0,1]`. Output: **380-720 nm, 10 samples**. Fast; intended for spectral rendering.
@@ -476,9 +476,9 @@ Smits 1999 basis-spectra mixing. Input is sRGB, clamped to `[0,1]`. Output: **38
 ### alwan_rgb_to_spectrum_mallett2019
 
 ```c
-int alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd,
-                                          alwan_rgb_f64 const *rgb,
-                                          alwan_ctx *ctx);
+alwan_status alwan_rgb_to_spectrum_mallett2019_f64(alwan_spd_f64 *out_spd,
+                                                   alwan_rgb_f64 const *rgb,
+                                                   alwan_ctx *ctx);
 ```
 
 Mallett & Yuksel 2019 spectral primary decomposition. Input is sRGB. Output: **380-780 nm, 81 samples at 5 nm**. Higher spectral fidelity than Smits.
@@ -486,10 +486,10 @@ Mallett & Yuksel 2019 spectral primary decomposition. Input is sRGB. Output: **3
 ### alwan_rgb_to_spectrum_jakob2019
 
 ```c
-int alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd,
-                                        alwan_jakob2019_gamut gamut,
-                                        alwan_rgb_f64 const *rgb,
-                                        alwan_ctx *ctx);
+alwan_status alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd,
+                                                 alwan_jakob2019_gamut gamut,
+                                                 alwan_rgb_f64 const *rgb,
+                                                 alwan_ctx *ctx);
 ```
 
 Jakob & Hanika 2019 polynomial coefficient model. Input RGB is in the selected `gamut`, clamped to `[0,1]`. Output: **360-780 nm, 85 samples at 5 nm**.
@@ -511,9 +511,9 @@ typedef enum {
 ### alwan_xyz_to_spectrum_otsu2018
 
 ```c
-int alwan_xyz_to_spectrum_otsu2018_f64(alwan_spd_f64 *out_spd,
-                                       alwan_xyz_f64 const *xyz,
-                                       alwan_ctx *ctx);
+alwan_status alwan_xyz_to_spectrum_otsu2018_f64(alwan_spd_f64 *out_spd,
+                                                alwan_xyz_f64 const *xyz,
+                                                alwan_ctx *ctx);
 ```
 
 Otsu, Yamamoto and Hachisuka 2018. A decision tree over CIE xy selects one of eight clusters, and the reflectance is that cluster's mean plus a weighted sum of its three basis functions. Input is XYZ on the Y = 1 scale under D65, which is what the embedded cluster matrices were built for. Output: **380-730 nm, 36 samples at 10 nm**, clamped to `[0,1]`.
