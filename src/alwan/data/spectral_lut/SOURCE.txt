@@ -1,0 +1,8 @@
+NOT VENDORED THIRD-PARTY DATA.
+
+jakob2019/ holds spectral upsampling coefficient tables that alwan REGENERATES
+with its own tool, gendata/tools/datagen/gen_jakob2019_table, which implements
+the method of Jakob and Hanika (2019). The Zenodo tables published with the paper
+are not used, and their licence is not stated.
+
+Written by gendata/data/jakob2019_luts.py.

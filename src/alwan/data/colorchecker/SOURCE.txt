@@ -1,0 +1,9 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+ColorChecker references as colour-science carries them, after X-Rite's and
+BabelColor's own tables: Classic pre-2014 and post-2014 D50, the 1976 C
+rendering, BabelColor average xyY and reflectance, the Ohta reflectances, PMC,
+Digital SG, and the Image Engineering TE226 v2 D65 set.
+Written by gendata/data/reference_data.py and colorchecker_names.py.

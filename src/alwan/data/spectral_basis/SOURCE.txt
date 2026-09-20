@@ -1,0 +1,10 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+Spectral recovery bases, one directory each:
+  smits1999/    colour.recovery.smits1999, the original 10-wavelength set
+  mallett2019/  colour.recovery.MSDS_BASIS_FUNCTIONS_sRGB_MALLETT2019
+  otsu2018/     colour.recovery BASIS_FUNCTIONS_OTSU2018 with its cluster means,
+                selector tree and per-cluster inverse
+Written by gendata/data/spectral_upsampling.py and otsu2018.py.

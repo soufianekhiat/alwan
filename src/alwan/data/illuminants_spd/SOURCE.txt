@@ -1,0 +1,6 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+The small SPD set the older API reads, same upstream as ../illuminants.
+Written by gendata/data/illuminants.py.

@@ -62,6 +62,7 @@ tools/*.json
 *.txt
 !CMakeLists.txt
 !src/alwan/data/**/LICENSE.txt
+!src/alwan/data/LICENSE-*.txt
 !src/alwan/data/**/SOURCE.txt
 *.log
 *.pyc

@@ -1,0 +1,16 @@
+Two palettes, two different positions on licensing.
+
+freetone.inc
+  Stuart Semple's Freetone, 1,310 colours in device CMYK, from
+  FREETONE.ase in the published Adobe swatch bundle.
+  LICENCE: NONE STATED. The bundle carries no licence text of any kind. It is
+  vendored on the owner's decision rather than under a grant, and that is
+  recorded here rather than left to be discovered.
+
+css_color_3.inc
+  The CSS Color Module Level 3 keywords, 147 colours, via colour-science's
+  CSS_COLOR_3 after the W3C recommendation.
+  colour-science 0.4.7, BSD-3-Clause (../LICENSE-colour-science.txt).
+  The keyword list itself is W3C editorial content, not a dataset.
+
+Both written by gendata/data/palettes.py.

@@ -1,0 +1,8 @@
+aces-dev, Academy of Motion Picture Arts and Sciences
+https://github.com/ampas/aces-dev
+Licence: the aces-dev terms of use, in the repository's LICENSE.md.
+
+The ACES 2.0 gamut compression tables, per limiting primary and peak luminance.
+REGENERATED rather than copied: gendata/aces2_gamut_tables.py runs the published
+algorithm and writes the cusp tables it produces, so these follow the reference
+implementation rather than a snapshot of its output.

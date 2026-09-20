@@ -1,0 +1,11 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+Relative spectral power distributions from colour.SDS_ILLUMINANTS and
+colour.SDS_LIGHT_SOURCES, on 360-830 nm at 1 nm, one file per illuminant: the CIE
+A/B/C, D series, E, the FL and FL3.x fluorescents, the HP high-pressure lamps, the
+LED series, and the measured light-source pack; iso7589/ holds the ISO 7589
+photographic sources on 350-690 nm at 10 nm, the printer one on 350-560.
+Written by gendata/data/illuminants_extended.py, illuminants_fl3_id.py,
+light_sources.py and iso7589.py.

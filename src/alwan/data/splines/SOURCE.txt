@@ -1,0 +1,9 @@
+aces-dev v1.3, Academy of Motion Picture Arts and Sciences
+https://github.com/ampas/aces-dev
+Licence: the aces-dev terms of use, in the repository's LICENSE.md. Academy
+terms, not a standard OSI licence; the values here are transform constants read
+from the published CTL.
+
+Single Stage Tone Scale knots and the C9 spline breakpoints and coefficients for
+the ACES 1.1 to 1.3 HDR output transforms, per peak luminance.
+Written by gendata/data/aces1_ssts.py, aces1_c9_spline.py and aces1_ocio_curves.py.

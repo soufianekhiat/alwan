@@ -1,0 +1,11 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+The colour matching functions of colour.MSDS_CMFS, resampled onto alwan's grid.
+CIE 1931 2 deg, CIE 1964 10 deg, CIE 2015 2 and 10 deg, Stockman and Sharpe 2 and
+10 deg, Smith and Pokorny 1975, Stiles and Burch 1955 2 deg and 1959 10 deg, and
+Wright and Guild 1931, one file per channel on 360-830 nm at 1 nm. Zeros outside
+a set's native range rather than an extrapolation, which is why several files
+start and end in runs of 0.
+Written by gendata/data/cmf.py.

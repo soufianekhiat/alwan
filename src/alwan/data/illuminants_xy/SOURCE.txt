@@ -1,0 +1,7 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+Chromaticity coordinates of the illuminants, for the 2 and 10 degree observers,
+as colour.CCS_ILLUMINANTS gives them.
+Written by gendata/data/illuminants.py.

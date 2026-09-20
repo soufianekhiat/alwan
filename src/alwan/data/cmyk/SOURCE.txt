@@ -1,0 +1,8 @@
+Fogra, FOGRA39L characterisation data
+https://fogra.org
+Licence: Fogra's own terms. Free use and redistribution, including in software,
+provided the data is unmodified. fogra39.inc is FOGRA39.txt byte for byte, from
+FOGRA39_to_FOGRA60_v2.zip, and its own header repeats this.
+
+ISO 12647-2:2004/Amd 1 coated, an ISO 12642-2 (IT8.7/4) target.
+Read by src/alwan/api/alwan_cmyk.c.

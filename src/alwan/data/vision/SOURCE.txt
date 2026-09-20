@@ -1,0 +1,11 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+Luminous efficiency functions from colour.SDS_LEFS: photopic V-lambda and
+scotopic V'-lambda beside this file, and in lef/ the CIE 1964 10 deg, CIE 2008 2
+and 10 deg, Judd 1951 and Judd-Vos 1978 functions, each on its own native range.
+Beside them the display primaries of colour.MSDS_DISPLAY_PRIMARIES: the Brainard
+1997 CRT and an Apple Studio Display, both 360-830 nm at 1 nm. The two displays are what makes
+the Machado 2009 continuous CVD model measurable on more than one device.
+Written by gendata/data/vision_lefs.py and vision_lefs_extended.py.

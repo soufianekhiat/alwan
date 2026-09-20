@@ -1,0 +1,10 @@
+colour-science 0.4.7, Colour Developers, BSD-3-Clause
+(../LICENSE-colour-science.txt)
+https://github.com/colour-science/colour
+
+pointer_gamut_boundary_xy.csv and pointer_gamut_volume_chroma.csv are Pointer's
+1980 gamut as colour.volume carries it; spectral_locus_xy_only_360_830_1nm.csv is
+the locus derived from the CIE 1931 observer.
+Written by gendata/data/reference_data.py and extended_colorspaces.py.
+
+Pointer's gamut is a MEASURED BOUNDARY and is not a convex body: do not hull it.
