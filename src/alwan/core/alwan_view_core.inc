@@ -41,13 +41,41 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_agx_log_encode)(ALWAN_CORE_T x
 }
 
 /* ================================================================
- * AgX Base Curve - 6th-order polynomial (Blender 4.0 reference)
+ * AgX Base Curve - 6th-order polynomial
  * Input: normalized [0,1] from log encoding
  * Output: display [0,1]
  *
- * Coefficients derived from fitting the Blender 4.0 AgX sigmoid
- * using a 6th-order polynomial for improved highlight rolloff
- * and shadow detail compared to the simpler cubic approximation.
+ * PROVENANCE IS INCOMPLETE, AND THE MISSING PIECE CHANGES THE ANSWER.
+ *
+ * The comment here used to say the coefficients were fitted to "the Blender 4.0
+ * AgX sigmoid", without recording the log range the fit assumed. That range is
+ * not a detail: this curve is fed by alwan_agx_log_encode above, which takes
+ * min_ev and max_ev FROM THE CALLER, and the choice decides whether the output
+ * is AgX or something else entirely. Measured against the AgX this library
+ * actually ships, over a neutral ramp from 2^-10 to 2^4 scene linear:
+ *
+ *   log2 range used     worst |this curve - ALWAN_VIEW_AGX_BLENDER|
+ *   -12.474 .. +4.026   0.311      <- AgX's OWN documented range
+ *   -12.0   .. +4.0     0.291
+ *   -10.0   .. +6.5     0.088
+ *    -8.0   .. +5.0     0.040      <- roughly what it was fitted for
+ *   -16.0   .. +6.0     0.344
+ *
+ * So it is not a bad curve, it is an UNLABELLED one. Drive it with AgX's own
+ * range and it misses by nearly a third of the display range: 18% grey lands at
+ * 0.497 where Blender AgX puts it at 0.180 and AgX original at 0.214.
+ *
+ * NOTHING IN THIS LIBRARY CALLS IT. alwan_agx_curve_v appears exactly once in
+ * each core twin, its own definition; every shipped AgX path goes through
+ * alwan_view_transform_apply_{T} instead, and ALWAN_VIEW_AGX_BLENDER is a baked
+ * 57^3 LUT rather than any polynomial. It is reachable only by a shader author
+ * including this header, which is why the measurement above is written down
+ * rather than the function quietly left alone.
+ *
+ * NOT TESTABLE as "the Blender AgX sigmoid" until the fit is regenerated with
+ * its range recorded. If you need AgX, call the view transform. References:
+ *   https://github.com/EaryChow/AgX          (the Blender 4.0 implementation)
+ *   https://github.com/sobotka/AgX           (Troy Sobotka's original)
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_agx_curve)(ALWAN_CORE_T t) {

@@ -29,7 +29,26 @@ value of the original audit.
 The earlier audit still points to a few categories that remain useful as
 follow-up work items:
 
-- document or regenerate the AgX curve polynomial provenance
+- **AgX curve polynomial: MEASURED 2026-09-20, and the answer is worth more than
+  a citation would have been.** `alwan_agx_curve_v` said its coefficients were
+  fitted to "the Blender 4.0 AgX sigmoid" and did not record the LOG RANGE the
+  fit assumed. That range is the whole answer, because the curve is fed by
+  `alwan_agx_log_encode`, which takes `min_ev` and `max_ev` from the caller.
+  Against the AgX this library ships, over a neutral ramp from 2^-10 to 2^4:
+  0.311 worst error under AgX's own -12.474..+4.026, and 0.040 under roughly
+  -8..+5. It is not a bad curve, it is an unlabelled one, and driven with AgX's
+  documented range it puts 18% grey at 0.497 where Blender AgX puts it at 0.180.
+
+  Nothing in the library calls it: it appears exactly once in each core twin, its
+  own definition, and every shipped AgX path goes through
+  `alwan_view_transform_apply_{T}`, with `ALWAN_VIEW_AGX_BLENDER` being a baked
+  57^3 LUT rather than any polynomial. It is reachable only by a shader author
+  including the core header, which is why the numbers are now written beside it
+  instead of the function being left quietly alone.
+
+  Still a decision, and an owner's one because the core tier is surface a shader
+  can call: regenerate the fit with its range recorded, or remove it and let the
+  view transform be the only AgX.
 - **DONE 2026-09-20** for the colour-space constants, and it was not the same job
   in each case:
   - **DIN99**: the real gap. 32 numbers in a `[4][8]` table read positionally
