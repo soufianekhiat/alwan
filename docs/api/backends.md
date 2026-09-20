@@ -120,6 +120,9 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
 - No `alwan_spd` operations: spectral data structures are C-only.
 - No camera profiling or Munsell/ColorChecker lookups: these need the C-side embedded data tables.
 - `ALWAN_CBRT(x)` is a **signed** cube root, `sign(x) * pow(abs(x), 1.0f/3.0f)`, so it matches libm `cbrtf` on negatives, where a bare `pow(x, 1/3)` returns NaN. There is no native HLSL cube root.
+- **Three of the 43 cores do not compile as HLSL, and it is one cause rather than three.** `alwan_dev/tools/check_gpu_compile.py --compiler dxc` puts 40 of 43 through dxc at `cs_6_0` cleanly, in both fast and deterministic modes. The three it cannot are `alwan_table_core.h`, plus `alwan_lut_core.h` and `alwan_vision_core.h`, which fail only because they include it. The error is the same on every line dxc objects to: *pointers are unsupported in HLSL*. The table samplers take the table as `alwan_scalar const *table`, and a shader has no way to say that.
+
+  It is not a syntax fix. A GPU form would take a `StructuredBuffer` or an array sized at compile time, which changes every call site rather than the declaration, and `alwan_table1d_sample_linear_delta_v` is spelled the way it is on purpose: the AgX contrast LUT is read through it and its output is pinned by the determinism MD5s, so re-rounding the blend to suit a different parameter shape is not free. Table sampling on the GPU is a resource-binding question, not a header-portability one, and the rest of the core tier is unaffected: everything that takes values rather than tables compiles.
 
 ---
 
