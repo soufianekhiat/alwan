@@ -6425,13 +6425,30 @@ alwan_status alwan_lab_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_
 alwan_status alwan_lab_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out, alwan_lab_f64 const *lab,
                                    alwan_f64 k, alwan_cmyk_model const *model);
 
-/* Write the chart back out as OQM. The buffer form reports the length it needs when called
- * with a NULL buffer, and returns ALWAN_E_RANGE if what it was given cannot hold the result
- * and its terminator. Spectra are written when the chart has them. */
+/* Write the chart back out, as OQM or as CGATS.17. The buffer form reports the length it
+ * needs when called with a NULL buffer, and returns ALWAN_E_RANGE if what it was given
+ * cannot hold the result and its terminator. Spectra are written when the chart has them.
+ *
+ * The two dialects differ in exactly two places, which is worth stating because it is
+ * easy to assume a format change is bigger than it is: the identifier on the first line,
+ * and how a reflectance column names its wavelength, SPECTRAL_NM560 against SPEC_560.
+ * The rest, the header keys, NUMBER_OF_FIELDS, the DATA_FORMAT block, NUMBER_OF_SETS and
+ * the data, is the same text in both, because CGATS.17's structure is what the OQM
+ * writer already emitted.
+ *
+ * Neither writer invents a header. A CGATS file conventionally carries ORIGINATOR and
+ * CREATED, and these do not add them, because a key that was not in the source chart
+ * would come back from a reload as though it were and the round trip would stop being an
+ * identity. Both dialects read back through alwan_chart_load, so that round trip is the
+ * test of either. */
 alwan_status alwan_chart_write_f64(char const *path, alwan_chart_f64 const *chart);
 alwan_status alwan_chart_write_f32(char const *path, alwan_chart_f32 const *chart);
 alwan_status alwan_chart_write_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_chart_f64 const *chart);
 alwan_status alwan_chart_write_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_chart_f32 const *chart);
+alwan_status alwan_chart_write_cgats17_f64(char const *path, alwan_chart_f64 const *chart);
+alwan_status alwan_chart_write_cgats17_f32(char const *path, alwan_chart_f32 const *chart);
+alwan_status alwan_chart_write_cgats17_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_chart_f64 const *chart);
+alwan_status alwan_chart_write_cgats17_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_chart_f32 const *chart);
 
 /* NCS (Natural Color System) Data
  * Convert NCS notation to XYZ tristimulus values

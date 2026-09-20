@@ -155,6 +155,13 @@ static size_t alwan__chart_split(char const *line, size_t len, alwan__chart_tok 
     return n;
 }
 
+/* Which dialect a write emits. Precision-independent, so it lives here: the impl is
+ * included once per precision and an enum in there would be defined twice. */
+typedef enum {
+    ALWAN__CHART_DIALECT_OQM = 0,
+    ALWAN__CHART_DIALECT_CGATS17 = 1
+} alwan__chart_dialect;
+
 /* The three spellings the standard allows for a reflectance column, each
  * naming its wavelength in nm: SPEC_560, SPECTRAL_NM560, nm560. The
  * wavelength may carry a decimal point. Order matters: SPECTRAL_NM has to be

@@ -92,6 +92,29 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **A CGATS.17 writer beside the OQM one.** `alwan_chart_write_cgats17_{T}` and
+  `alwan_chart_write_cgats17_buffer_{T}`, with the same shape as the existing writers:
+  the buffer form reports the length it needs when given a NULL buffer and refuses a
+  buffer one byte short rather than truncating.
+
+  The two dialects differ in exactly two places, which is worth stating because a format
+  change sounds bigger than this one is: the identifier on the first line, and how a
+  reflectance column names its wavelength, `SPECTRAL_NM560` against `SPEC_560`. The
+  header keys, `NUMBER_OF_FIELDS`, the `DATA_FORMAT` block, `NUMBER_OF_SETS` and the data
+  are the same text in both, because CGATS.17's structure is what the OQM writer was
+  already emitting. Suite 112 asserts that by transforming one output into the other and
+  requiring the bytes to match, so a third difference appearing would fail the test
+  whether or not anyone thought to look for it.
+
+  Neither writer invents a header. A CGATS file conventionally carries ORIGINATOR and
+  CREATED, and these do not add them: a key the source chart never had would come back
+  from a reload as though it were the chart's own, and the round trip would stop being an
+  identity. What the chart carries is what gets written.
+
+  Both dialects read back through `alwan_chart_load_{T}`, which is the test of either.
+  The reflectances survive a CGATS.17 round trip exactly, 0.0 over 36 bands, since the
+  reader already accepted all three spellings the standard allows.
+
 - **Mantiuk 2006: the first LOCAL tone mapper.** `alwan_tonemap_mantiuk2006_{T}`, with
   `alwan_tonemap_local_params_{T}`. Every tone mapper alwan had until now is a curve: a
   pixel's result depends on that pixel and on statistics of the whole image. This one is

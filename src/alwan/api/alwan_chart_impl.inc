@@ -638,10 +638,42 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_lab)(ALWAN_CORE_LAB *lab_out,
  * are written when the chart carries them, since that is the measurement,
  * and the tristimulus goes alongside so a reader wanting only XYZ does not
  * have to integrate.
+ *
+ * Two dialects, one body. They differ in exactly two places, which is worth
+ * saying because it is easy to assume otherwise: the identifier on the first
+ * line, and how a reflectance column names its wavelength. CGATS.17 spells it
+ * SPECTRAL_NM560 where OQM writes SPEC_560. Everything else, the header keys,
+ * NUMBER_OF_FIELDS, the DATA_FORMAT block, NUMBER_OF_SETS and the data, is the
+ * same text; CGATS.17's structure is what the OQM writer was already emitting.
+ *
+ * No header is invented. A CGATS file conventionally carries ORIGINATOR and
+ * CREATED, but writing them when the source chart had none would put a key in
+ * the file that a reload then reports as the chart's own, and a round trip
+ * would stop being an identity. What the chart carries is what gets written.
  * ---------------------------------------------------------------- */
+
+static alwan_status ALWAN_CORE_FNLIT(alwan__chart_write_any)(char *buf, size_t *bytes_written,
+                                                             size_t buf_size,
+                                                             ALWAN_CORE_CHART const *chart,
+                                                             alwan__chart_dialect dialect);
 
 alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(char *buf, size_t *bytes_written, size_t buf_size,
                                                         ALWAN_CORE_CHART const *chart) {
+    return ALWAN_CORE_FNLIT(alwan__chart_write_any)(buf, bytes_written, buf_size, chart,
+                                                    ALWAN__CHART_DIALECT_OQM);
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_cgats17_buffer)(char *buf, size_t *bytes_written,
+                                                                size_t buf_size,
+                                                                ALWAN_CORE_CHART const *chart) {
+    return ALWAN_CORE_FNLIT(alwan__chart_write_any)(buf, bytes_written, buf_size, chart,
+                                                    ALWAN__CHART_DIALECT_CGATS17);
+}
+
+static alwan_status ALWAN_CORE_FNLIT(alwan__chart_write_any)(char *buf, size_t *bytes_written,
+                                                             size_t buf_size,
+                                                             ALWAN_CORE_CHART const *chart,
+                                                             alwan__chart_dialect dialect) {
     alwan__chart_sink s;
     size_t p, i;
     static char const *const passthrough[] = {
@@ -653,7 +685,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(char *buf, size_t *bytes
     s.cap = buf ? buf_size : 0;
     s.len = 0;
 
-    alwan__chart_puts(&s, "OQM\n");
+    alwan__chart_puts(&s, dialect == ALWAN__CHART_DIALECT_CGATS17 ? "CGATS.17\n" : "OQM\n");
     for (i = 0; i < sizeof(passthrough) / sizeof(passthrough[0]); i++) {
         char const *v = ALWAN_CORE_FNLIT(alwan_chart_header)(chart, passthrough[i]);
         if (!v || !*v) continue;
@@ -684,7 +716,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(char *buf, size_t *bytes
             : (double)chart->spectral_min_nm +
               ((double)chart->spectral_max_nm - (double)chart->spectral_min_nm) *
               (double)i / (double)(chart->bands - 1);
-        alwan__chart_puts(&s, " SPEC_");
+        alwan__chart_puts(&s, dialect == ALWAN__CHART_DIALECT_CGATS17
+                              ? " SPECTRAL_NM" : " SPEC_");
         alwan__chart_put_size(&s, (size_t)(nm + 0.5));
     }
     alwan__chart_puts(&s, "\nEND_DATA_FORMAT\nNUMBER_OF_SETS ");
@@ -725,25 +758,38 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(char *buf, size_t *bytes
     return ALWAN_OK;
 }
 
-alwan_status ALWAN_CORE_FNLIT(alwan_chart_write)(char const *path, ALWAN_CORE_CHART const *chart) {
+static alwan_status ALWAN_CORE_FNLIT(alwan__chart_write_path)(char const *path,
+                                                              ALWAN_CORE_CHART const *chart,
+                                                              alwan__chart_dialect dialect) {
     FILE *fh;
     char *buf;
     size_t need = 0;
     alwan_status st;
 
     if (!path || !chart) return ALWAN_E_INVALID;
-    st = ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(NULL, &need, 0, chart);
+    st = ALWAN_CORE_FNLIT(alwan__chart_write_any)(NULL, &need, 0, chart, dialect);
     if (st != ALWAN_OK) return st;
 
     buf = (char *)ALWAN_ALLOC(need + 1, 1);
     if (!buf) return ALWAN_E_NOMEM;
-    st = ALWAN_CORE_FNLIT(alwan_chart_write_buffer)(buf, &need, need + 1, chart);
+    st = ALWAN_CORE_FNLIT(alwan__chart_write_any)(buf, &need, need + 1, chart, dialect);
     if (st != ALWAN_OK) { ALWAN_FREE(buf); return st; }
 
+    /* "wb" so the bytes on disk are the bytes in the buffer: text mode would turn
+     * every newline into CRLF on Windows and the two would stop matching. */
     fh = fopen(path, "wb");
     if (!fh) { ALWAN_FREE(buf); return ALWAN_E_INVALID; }
     if (fwrite(buf, 1, need, fh) != need) { fclose(fh); ALWAN_FREE(buf); return ALWAN_E_INVALID; }
     fclose(fh);
     ALWAN_FREE(buf);
     return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_chart_write)(char const *path, ALWAN_CORE_CHART const *chart) {
+    return ALWAN_CORE_FNLIT(alwan__chart_write_path)(path, chart, ALWAN__CHART_DIALECT_OQM);
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_chart_write_cgats17)(char const *path,
+                                                         ALWAN_CORE_CHART const *chart) {
+    return ALWAN_CORE_FNLIT(alwan__chart_write_path)(path, chart, ALWAN__CHART_DIALECT_CGATS17);
 }

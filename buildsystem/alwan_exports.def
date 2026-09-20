@@ -233,6 +233,10 @@ EXPORTS
     alwan_chart_reflectance_f64
     alwan_chart_write_buffer_f32
     alwan_chart_write_buffer_f64
+    alwan_chart_write_cgats17_buffer_f32
+    alwan_chart_write_cgats17_buffer_f64
+    alwan_chart_write_cgats17_f32
+    alwan_chart_write_cgats17_f64
     alwan_chart_write_f32
     alwan_chart_write_f64
     alwan_chart_xyz_f32
