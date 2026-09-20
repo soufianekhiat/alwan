@@ -637,13 +637,13 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 170, all passing |
-| Test cases | 1,081 |
-| Checks executed per run | 213,181 |
-| Assertion sites in the tests | 4,879 |
+| Test suites | 171, all passing |
+| Test cases | 1,091 |
+| Checks executed per run | 213,230 |
+| Assertion sites in the tests | 4,935 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 440 |
 | Embedded data tables | 950 |
-| Exported symbols | 1,979 |
+| Exported symbols | 1,986 |
 | Internal symbols reached by a test or a public entry point | 241 of 249 (97%) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
@@ -651,9 +651,9 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**213,181 checks per run** is what actually executes, not what is written. A
+**213,230 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,879 assertion sites would undersell the suite more than
+so counting the 4,935 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -687,7 +687,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 170 test suites, single binary
+./build/tests/Release/alwan_tests   # 171 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
@@ -696,7 +696,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 146 suites, 970 cases, 108,842 checks executed per run
+  module: 171 suites, 1,091 cases, 213,230 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
@@ -734,7 +734,7 @@ alwan/                       # this repo (library only)
 \-- CMakeLists.txt           # CMake build (alternative to Sharpmake)
 
 alwan_dev/                   # sibling repo (tests, benches, tools)
-+-- tests/                   # 170 test suites + reference fixtures
++-- tests/                   # 171 test suites + reference fixtures
 +-- bench/                   # micro-benchmarks
 +-- det_regression/          # cross-platform determinism regression tool
 +-- image_gen/               # validation visuals
@@ -798,7 +798,7 @@ own. Those jobs verify a clean compile; the test suite runs from
 - [x] Dual precision (f32 + f64 in one binary)
 - [x] Data embedding with diagnostic guards
 - [x] Sharpmake + CMake build systems
-- [x] Unified test suite (143 suites, hosted in alwan_dev)
+- [x] Unified test suite (171 suites, hosted in alwan_dev)
 - [x] 109 named RGB spaces, easy to add more via space descriptors
 - [x] Colour appearance models: CIECAM02, CAM16, ZCAM,
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,
