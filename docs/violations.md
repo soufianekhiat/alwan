@@ -73,17 +73,27 @@ entries are contract/doc/naming nits that should be cleaned up before the
 
 ### Blockers (link / ABI / data-correctness)
 
-- **Undefined `_f32` entry points.** ~30 public `_f32` functions are declared
-  in `alwan.h` but have no definition anywhere, so any f32 caller hits a link
-  error. Families: `cct_mccamy`/`robertson`/`hernandez`/`cct_to_xy_kang`/
-  `cct_kang_xy`; `xyz_adapt`/`cat_zhai2018`; `hellwig2022_forward`/`inverse`,
-  `kim2009_forward`/`inverse`, `llab_forward`; `is_within_pointer_gamut`/
-  `spectral_locus_xy`/`dominant_wavelength`/`excitation_purity`/
-  `complementary_wavelength`/`gamut_map_advanced`; `rgb_to_xyz`/`xyz_to_rgb`;
-  `delta_e_76`/`2000`/`94`/`cmc_f32_batch`; `yellowness_astm_e313`/
-  `whiteness_astm_e313`/`whiteness_cie2004`. Fix: emit the entry point from the
-  module `.inc` (the ATD95/Nayatani95 pattern) or add documented f32 facades,
-  and add an f32 link/smoke test so it cannot regress silently.
+- ~~**Undefined `_f32` entry points.**~~ **VERIFIED CLOSED 2026-09-20**, by the
+  2.0.0 review this list predates. Measured rather than re-read: of 596 `_f32`
+  entry points declared across the public headers, 596 are exported by the built
+  library. Eleven of the thirteen families this entry named were spot-checked by
+  name and every one is declared and exported. The other two, `cct_mccamy` and
+  `cct_robertson`, are not missing either: they ship as `alwan_cct_mccamy_xy_{T}`
+  and `alwan_cct_robertson_xy_{T}`, and the entry was written against a name they
+  no longer have.
+
+  Two symbols are declared and not exported, and both are correct:
+  `alwan_data_free_f32` / `_f64` sit inside `#if !ALWAN_EMBED_DATA`, a block for
+  runtime data loading that is not implemented.
+
+  The stronger result is the one worth keeping: across all 1,986 exports, **zero**
+  `_f64` entry points lack an `_f32` twin. The asymmetry this entry describes is
+  gone from the whole ABI, not just from the families it listed.
+
+  `alwan_dev/tools/check_declared_exported.py` now gates both of those in the
+  tooling workflow, which is the smoke test the plan asked for. A generated .c
+  that takes 596 addresses would have needed regenerating with every header
+  change; comparing the headers against the generated `.def` needs nothing.
 
 - **Phantom Lab/Oklab convenience API.** `alwan_rgb_to_lab`/`luv`/`oklab`/
   `oklch` + the `lab`/`luv`/`oklab`/`oklch_to_rgb` inverses and
