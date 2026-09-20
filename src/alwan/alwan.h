@@ -1674,6 +1674,7 @@ alwan_status alwan_css_color_3_keyword_to_rgb_f64(alwan_rgb_f64 *rgb_out, char c
 
 /* A CMYK printing characterisation, built by alwan_cmyk_model_* in the charts section. */
 typedef struct alwan_cmyk_model_s alwan_cmyk_model;
+typedef struct alwan_cmyk_inverse_s alwan_cmyk_inverse;
 
 /* The palette colour nearest a Lab value by CIEDE2000. lab is relative to the
  * palette's white: the characterisation's (D50 for FOGRA39) for a CMYK palette, which
@@ -6424,6 +6425,53 @@ alwan_status alwan_lab_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_
                                    alwan_f32 k, alwan_cmyk_model const *model);
 alwan_status alwan_lab_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out, alwan_lab_f64 const *lab,
                                    alwan_f64 k, alwan_cmyk_model const *model);
+
+/* The same inverse, cached, so CMYK can be a per-pixel target.
+ *
+ * alwan_lab_to_cmyk_{T} scans a 729-node CMY cube and walks downhill from the best eight
+ * of its nodes. Measured on the embedded FOGRA39 that is 1.2 ms a call, which makes a
+ * 1920 x 1080 frame 42 minutes. alwan_cmyk_inverse_create runs that exact search once per
+ * node of a regular grid over the Lab the characterisation can reach at one fixed black.
+ * A query then interpolates the grid, scores the result and the eight corner inks of the
+ * cell it landed in, and takes a short walk from the best: 25 us rather than 1.2 ms, so
+ * the same frame is 53 seconds. Held to the exact search over 729 in-gamut targets, the
+ * worst it falls behind is 0.0415 dE and the worst single ink differs by 0.0010.
+ *
+ * The build is size^3 exact searches and is the price of the cache: at size 17 that is
+ * 4,913 of them, about 5 seconds. size is 4 to 64, and outside that is ALWAN_E_RANGE.
+ *
+ * A LAB OUTSIDE THE BOX THE CHARACTERISATION REACHES RUNS THE EXACT SEARCH INSTEAD, and
+ * returns bit-identical results to calling it directly. The cache holds no data out there
+ * and does not approximate where it has none. Far outside the gamut the difference has
+ * several minima far apart in ink, and which one is deepest is found by that 729-node
+ * scan; three separate attempts to substitute a small fixed set of starts for it changed
+ * the answer by nothing, which is recorded in alwan_cmyk.c. The cost is real: saturated
+ * source primaries sit well outside any print gamut, so converting them pays the exact
+ * search per pixel, and the sane thing there is to convert a palette rather than a frame.
+ *
+ * The black is fixed at build, as it is an input to the exact search: a colour can be
+ * printed with more ink and less black or the reverse, so a cache spanning k would
+ * interpolate between two different ink-sharing decisions and print neither.
+ *
+ * delta_e_out is MEASURED, not interpolated. The inks are put back through the forward
+ * model and compared to the target by CIEDE2000, so the number includes the cache's own
+ * error and cannot flatter itself. The map form reports the worst over the run.
+ *
+ * NOT TESTABLE AGAINST AN EXTERNAL REFERENCE: no library publishes an intermediate for
+ * this. Argyll and littleCMS bake a B2A table into an ICC profile, the same idea in a
+ * different container. Suite 143 holds it to alwan's own exact search, which is the
+ * function it exists to approximate and so the oracle that means something. Data is
+ * ISO 12642-2 (IT8.7/4); FOGRA39L is ISO 12647-2:2004/Amd 1 coated.
+ *   https://www.color.org/icc_specs2.xalter  (B2A, the same idea in a profile)
+ *   https://fogra.org
+ */
+alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_model const *model, alwan_f64 k, int size, alwan_ctx *ctx);
+void alwan_cmyk_inverse_destroy(alwan_cmyk_inverse *inv, alwan_ctx *ctx);
+int alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv);
+alwan_status alwan_cmyk_inverse_eval_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_out, alwan_lab_f32 const *lab, alwan_cmyk_inverse const *inv);
+alwan_status alwan_cmyk_inverse_eval_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out, alwan_lab_f64 const *lab, alwan_cmyk_inverse const *inv);
+alwan_status alwan_cmyk_inverse_map_interleave_f32(alwan_f32 *cmyk_out, size_t out_stride, alwan_f32 const *lab_in, size_t in_stride, size_t count, alwan_f32 *worst_delta_e_out, alwan_cmyk_inverse const *inv);
+alwan_status alwan_cmyk_inverse_map_interleave_f64(alwan_f64 *cmyk_out, size_t out_stride, alwan_f64 const *lab_in, size_t in_stride, size_t count, alwan_f64 *worst_delta_e_out, alwan_cmyk_inverse const *inv);
 
 /* Write the chart back out, as OQM or as CGATS.17. The buffer form reports the length it
  * needs when called with a NULL buffer, and returns ALWAN_E_RANGE if what it was given

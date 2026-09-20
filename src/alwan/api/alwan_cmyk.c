@@ -200,11 +200,11 @@ static double alwan__cmyk_miss(alwan_cmyk_model const *m, alwan_lab_f64 const *t
 /* Walk downhill from v on a step that halves, trying the whole neighbourhood rather than
  * one colorant at a time, and return the difference left. Sixteen halvings take the step
  * from an eighth to under two parts in a million, past any ink a press can hold. */
-static double alwan__cmyk_walk(double *v, alwan_cmyk_model const *m, alwan_lab_f64 const *target, double k,
-                               double miss) {
+static double alwan__cmyk_walk_from(double *v, alwan_cmyk_model const *m, alwan_lab_f64 const *target,
+                                   double k, double miss, double step0, int halvings) {
     double step;
     int it, i;
-    for (step = 0.125, it = 0; it < 16; it++, step *= 0.5) {
+    for (step = step0, it = 0; it < halvings; it++, step *= 0.5) {
         int moved = 1;
         while (moved) {
             int dc, dm, dy;
@@ -239,6 +239,11 @@ static double alwan__cmyk_walk(double *v, alwan_cmyk_model const *m, alwan_lab_f
         }
     }
     return miss;
+}
+
+static double alwan__cmyk_walk(double *v, alwan_cmyk_model const *m, alwan_lab_f64 const *target,
+                               double k, double miss) {
+    return alwan__cmyk_walk_from(v, m, target, k, miss, 0.125, 16);
 }
 
 /* The CMY nearest a Lab at a fixed black. The scan covers the target's densest cube, and
@@ -514,5 +519,407 @@ alwan_status alwan_cmyk_to_lab_f32(alwan_lab_f32 *lab_out, alwan_cmyk_f32 const 
     lab_out->L = (alwan_f32)l.L;
     lab_out->a = (alwan_f32)l.a;
     lab_out->b = (alwan_f32)l.b;
+    return ALWAN_OK;
+}
+
+
+/* ----------------------------------------------------------------
+ * A cached inverse, so CMYK can be a per-pixel target
+ *
+ * alwan_lab_to_cmyk_{T} scans the densest CMY cube, 729 nodes, and then walks downhill
+ * from the best eight of them, which is some thousands of forward evaluations with a
+ * CIEDE2000 on each. Measured on the embedded FOGRA39 it is 1.2 ms a call, so a
+ * 1920 x 1080 frame is 42 minutes. That is the whole reason this exists. With the cache
+ * an in-gamut query is 25 us, so the same frame is 53 seconds, and over 729 in-gamut
+ * targets the worst it falls behind the exact search is 0.0415 dE.
+ *
+ * The cache is a regular grid over the Lab box the characterisation can reach at one
+ * fixed black, holding at each node the CMY that the exact search returned for it. A
+ * query is then a trilinear interpolation of C, M and Y, which is arithmetic and no
+ * search.
+ *
+ * Two things about it are deliberate.
+ *
+ * The black is fixed when the cache is built, not when it is queried. That follows
+ * alwan_lab_to_cmyk_{T}, where k is an input because a colour can be printed with more
+ * ink and less black or the reverse. A cache over a fourth axis would interpolate
+ * between two different ink-sharing decisions and produce neither.
+ *
+ * delta_e_out is MEASURED, not interpolated: the CMY that comes out of the grid is put
+ * back through the forward model and compared to the target by CIEDE2000, at a cost of
+ * one evaluation. So the number reports what this path actually did, including the grid
+ * error, and cannot flatter itself. Interpolating the residual alongside the inks would
+ * have been cheaper and would have hidden exactly the cases worth knowing about: where
+ * the forward map folds, two very different ink mixes print nearly the same colour, and
+ * a blend of them prints something else. size is the one knob, and the reported
+ * difference is how you tell whether it is large enough.
+ *
+ * NOT TESTABLE AGAINST AN EXTERNAL REFERENCE. No library inverts a printing
+ * characterisation this way for comparison; Argyll and littleCMS build a B2A table
+ * inside an ICC profile, which is the same idea with a different container and no
+ * published intermediate to check against. Suite 143 uses the exact search as the
+ * reference instead, which is the stronger check here: the cache exists only to
+ * approximate that function, so the function it approximates is the right oracle. The
+ * characterisation itself is ISO 12642-2 (IT8.7/4) data, and FOGRA39L is
+ * ISO 12647-2:2004/Amd 1 coated.
+ * ---------------------------------------------------------------- */
+
+enum { ALWAN__CMYK_INV_MIN = 4, ALWAN__CMYK_INV_MAX = 64, ALWAN__CMYK_BOX_STEPS = 17,
+       ALWAN__CMYK_INV_HALVINGS = 6, ALWAN__CMYK_INV_CANDIDATES = 9 };
+
+struct alwan_cmyk_inverse_s {
+    int size;
+    double k;
+    double lo[3];
+    double hi[3];
+    double *cmy;      /* size^3 * 3, ((iL * size + ia) * size + ib) * 3 */
+    /* A COPY of the characterisation, not a pointer to it. The residual is measured
+     * through the forward model at query time, so the model has to be reachable then,
+     * and a borrowed pointer would put a lifetime rule in the caller's hands for the
+     * sake of the 105 KB this costs. */
+    alwan_cmyk_model model;
+};
+
+/* The Lab box the characterisation reaches at this black. Swept rather than assumed: a
+ * printing gamut is not symmetric about anything and its L range at k = 1 is a sliver. */
+static alwan_status alwan__cmyk_box(double *lo, double *hi, alwan_cmyk_model const *m, double k) {
+    int i, j, l, r;
+    int found = 0;
+    for (r = 0; r < 3; r++) { lo[r] = 1e30; hi[r] = -1e30; }
+    for (i = 0; i < ALWAN__CMYK_BOX_STEPS; i++) {
+        for (j = 0; j < ALWAN__CMYK_BOX_STEPS; j++) {
+            for (l = 0; l < ALWAN__CMYK_BOX_STEPS; l++) {
+                double lab[3];
+                double const d = (double)(ALWAN__CMYK_BOX_STEPS - 1);
+                if (alwan__cmyk_to_lab(lab, m, (double)i / d, (double)j / d, (double)l / d, k)
+                    != ALWAN_OK) {
+                    continue;
+                }
+                found = 1;
+                for (r = 0; r < 3; r++) {
+                    if (lab[r] < lo[r]) lo[r] = lab[r];
+                    if (lab[r] > hi[r]) hi[r] = lab[r];
+                }
+            }
+        }
+    }
+    if (!found) return ALWAN_E_INVALID;
+    for (r = 0; r < 3; r++) {
+        /* A degenerate axis would divide by zero on lookup. Widen it rather than
+         * refuse: k = 1 is a legitimate query and its a and b barely move. */
+        if (!(hi[r] - lo[r] > 1e-9)) { lo[r] -= 0.5; hi[r] += 0.5; }
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_model const *model,
+                                      alwan_f64 k, int size, alwan_ctx *ctx) {
+    alwan_cmyk_inverse *inv;
+    size_t nodes;
+    int iL;
+    alwan_status st;
+    double lo[3], hi[3];
+    (void)ctx;
+    if (out) *out = NULL;
+    if (!out || !model) return ALWAN_E_INVALID;
+    if (!((double)k >= 0.0 && (double)k <= 1.0)) return ALWAN_E_INVALID;
+    if (size < ALWAN__CMYK_INV_MIN || size > ALWAN__CMYK_INV_MAX) return ALWAN_E_RANGE;
+    st = alwan__cmyk_box(lo, hi, model, (double)k);
+    if (st != ALWAN_OK) return st;
+
+    nodes = (size_t)size * (size_t)size * (size_t)size;
+    inv = (alwan_cmyk_inverse *)ALWAN_ALLOC(sizeof(*inv), sizeof(double));
+    if (!inv) return ALWAN_E_NOMEM;
+    inv->cmy = (double *)ALWAN_ALLOC(alwan_safe_array_size(nodes * 3, sizeof(double)),
+                                     sizeof(double));
+    if (!inv->cmy) { ALWAN_FREE(inv); return ALWAN_E_NOMEM; }
+    inv->size = size;
+    inv->k = (double)k;
+    inv->model = *model;
+    for (iL = 0; iL < 3; iL++) { inv->lo[iL] = lo[iL]; inv->hi[iL] = hi[iL]; }
+
+    for (iL = 0; iL < size; iL++) {
+        int ia;
+        for (ia = 0; ia < size; ia++) {
+            int ib;
+            for (ib = 0; ib < size; ib++) {
+                alwan_lab_f64 target;
+                double cmy[3];
+                size_t const at = (size_t)((iL * size + ia) * size + ib) * 3;
+                double const d = (double)(size - 1);
+                target.L = lo[0] + (hi[0] - lo[0]) * (double)iL / d;
+                target.a = lo[1] + (hi[1] - lo[1]) * (double)ia / d;
+                target.b = lo[2] + (hi[2] - lo[2]) * (double)ib / d;
+                st = alwan__lab_to_cmyk(cmy, NULL, model, &target, (double)k);
+                if (st != ALWAN_OK) {
+                    ALWAN_FREE(inv->cmy);
+                    ALWAN_FREE(inv);
+                    return st;
+                }
+                inv->cmy[at + 0] = cmy[0];
+                inv->cmy[at + 1] = cmy[1];
+                inv->cmy[at + 2] = cmy[2];
+            }
+        }
+    }
+    *out = inv;
+    return ALWAN_OK;
+}
+
+void alwan_cmyk_inverse_destroy(alwan_cmyk_inverse *inv, alwan_ctx *ctx) {
+    (void)ctx;
+    if (!inv) return;
+    ALWAN_FREE(inv->cmy);
+    ALWAN_FREE(inv);
+}
+
+int alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv) {
+    return inv ? inv->size : 0;
+}
+
+
+/* Trilinear over the grid, with the query clamped into the box. Clamping is the right
+ * answer rather than a convenience: a Lab outside the box is outside what this
+ * characterisation can print, the edge node already holds the closest ink it has, and
+ * the measured difference that goes back to the caller says how far short it fell. */
+static void alwan__cmyk_inv_lookup(double *cmy, double *corners,
+                                   alwan_cmyk_inverse const *inv, double const *lab) {
+    double t[3];
+    int i0[3], i1[3];
+    int r, a, b, c;
+    int const n = inv->size;
+    for (r = 0; r < 3; r++) {
+        double u = (lab[r] - inv->lo[r]) / (inv->hi[r] - inv->lo[r]);
+        double f;
+        if (u < 0.0) u = 0.0;
+        if (u > 1.0) u = 1.0;
+        u *= (double)(n - 1);
+        i0[r] = (int)u;
+        if (i0[r] > n - 2) i0[r] = n - 2;
+        if (i0[r] < 0) i0[r] = 0;
+        i1[r] = i0[r] + 1;
+        f = u - (double)i0[r];
+        if (f < 0.0) f = 0.0;
+        if (f > 1.0) f = 1.0;
+        t[r] = f;
+    }
+    cmy[0] = cmy[1] = cmy[2] = 0.0;
+    for (a = 0; a < 2; a++) {
+        double const wa = a ? t[0] : 1.0 - t[0];
+        int const la = a ? i1[0] : i0[0];
+        for (b = 0; b < 2; b++) {
+            double const wb = b ? t[1] : 1.0 - t[1];
+            int const lb = b ? i1[1] : i0[1];
+            for (c = 0; c < 2; c++) {
+                double const wc = c ? t[2] : 1.0 - t[2];
+                int const lc = c ? i1[2] : i0[2];
+                size_t const at = (size_t)((la * n + lb) * n + lc) * 3;
+                double const w = wa * wb * wc;
+                cmy[0] += w * inv->cmy[at + 0];
+                cmy[1] += w * inv->cmy[at + 1];
+                cmy[2] += w * inv->cmy[at + 2];
+                if (corners) {
+                    int const slot = ((a * 2) + b) * 2 + c;
+                    corners[slot * 3 + 0] = inv->cmy[at + 0];
+                    corners[slot * 3 + 1] = inv->cmy[at + 1];
+                    corners[slot * 3 + 2] = inv->cmy[at + 2];
+                }
+            }
+        }
+    }
+    for (r = 0; r < 3; r++) {
+        if (cmy[r] < 0.0) cmy[r] = 0.0;
+        if (cmy[r] > 1.0) cmy[r] = 1.0;
+    }
+}
+
+/* The grid gives the starting points; a short walk from the best gives the answer.
+ *
+ * Interpolation alone is not good enough to ship, and measuring said so. On the
+ * embedded FOGRA39 at k = 0.2, against the exact search over 343 in-gamut targets and
+ * 27 well outside it, the raw lookup left up to 3.58 dE at size 9 and still 0.91 at
+ * size 33, and OUTSIDE the gamut about 10.8 dE at every size. That the out-of-gamut
+ * error did not move with size is what identified it: a query beyond the box is clamped
+ * onto a boundary face, and the ink stored at that face is the answer for the face, not
+ * for the point. No grid density fixes that, because it is not a resolution problem.
+ *
+ * So the same downhill walk the exact search uses runs from the grid's answer, with the
+ * step starting at one thirty-second of the ink range rather than an eighth and taking
+ * six halvings rather than sixteen, since it begins near the answer instead of at a cube
+ * node. Both paths therefore minimise the same quantity, CIEDE2000 through the forward
+ * model, which is what lets suite 143 compare them directly: a difference between them
+ * is grid error, not two operators disagreeing about the objective.
+ *
+ * That alone fixed the inside of the gamut, 3.58 dE down to 0.039, and left the outside
+ * at 10.25, which is where the second measurement earned its keep. Adding the walk had
+ * barely moved that number, so the cause was not the starting point's accuracy but which
+ * minimum it was near. The exact search already says why, and the cache had thrown it
+ * away: it walks from the best EIGHT cube nodes because well outside the gamut the
+ * difference has more than one dip and the deepest is not under the best node. A single
+ * start reproduces exactly the failure those eight exist to avoid.
+ *
+ * So the candidates are the interpolated inks plus the eight corner inks of the cell the
+ * query landed in. Those corners are not guesses: each is what the exact search returned
+ * for its own node, so they already sit in whichever dips the search found near here.
+ * Nine forward evaluations and a CIEDE2000 each cost about a microsecond against the
+ * walk's forty, so this is close to free.
+ *
+ * That fixed the inside and left the outside of the Lab box wrong by about 10 dE, and
+ * three attempts to fix it in the cache all failed in the same informative way.
+ *
+ * The case that explains it: for L 50, a 90, b -90, a vivid purple 14.7 dE outside this
+ * gamut, the exact search returns ink printing a near NEUTRAL grey, (50.0, -4.9, -7.1),
+ * and the cache returned ink printing an actual purple, (44.9, 25.3, -20.8), at 21.5 dE.
+ * The grey wins on the metric because CIEDE2000 divides chroma error by a term that grows
+ * with chroma, so far out it prefers dropping the chroma to missing the hue. Both are
+ * genuine minima of the same objective and they are 0.35 apart in ink. Adding the cell's
+ * eight corner inks as starts changed the answer by nothing. Adding nine more spanning the
+ * ink cube changed it by nothing. Widening the first step to the eighth the exact search
+ * uses changed it by nothing either: all three runs returned the same ink to three
+ * decimals. What actually finds that minimum is the exact search's scan of all 729 cube
+ * nodes, one of which lands inside the far basin, and no small fixed set of starts stands
+ * in for it.
+ *
+ * So the cache does not approximate outside its own domain. A query outside the Lab box
+ * runs the exact search, which is not a slow path bolted on but the same rule the rest of
+ * this file follows: the box is the region the cache holds data for, and beyond it the
+ * honest answer is the one function that does. The cost is real and callers should know
+ * it, so alwan.h says so: converting saturated source primaries, which sit well outside
+ * any print gamut, pays the exact search per pixel, and the sane thing there is to convert
+ * a palette rather than a frame.
+ *
+ * ALWAN_DENORM_LAB is already applied by the callers, so target is native Lab. */
+static alwan_status alwan__cmyk_inv_eval(double *cmy, double *miss,
+                                         alwan_cmyk_inverse const *inv,
+                                         alwan_lab_f64 const *target) {
+    double lab[3];
+    double cand[ALWAN__CMYK_INV_CANDIDATES * 3];
+    double best[3], best_d = 1e30;
+    double left;
+    int i;
+    lab[0] = target->L;
+    lab[1] = target->a;
+    lab[2] = target->b;
+    for (i = 0; i < 3; i++) {
+        if (lab[i] < inv->lo[i] || lab[i] > inv->hi[i]) {
+            return alwan__lab_to_cmyk(cmy, miss, &inv->model, target, inv->k);
+        }
+    }
+    alwan__cmyk_inv_lookup(cand, cand + 3, inv, lab);
+    for (i = 0; i < ALWAN__CMYK_INV_CANDIDATES; i++) {
+        double const d = alwan__cmyk_miss(&inv->model, target, cand[i * 3 + 0],
+                                          cand[i * 3 + 1], cand[i * 3 + 2], inv->k);
+        if (d < best_d) {
+            best_d = d;
+            best[0] = cand[i * 3 + 0];
+            best[1] = cand[i * 3 + 1];
+            best[2] = cand[i * 3 + 2];
+        }
+    }
+    if (best_d >= 1e30) return ALWAN_E_INVALID;
+    left = alwan__cmyk_walk_from(best, &inv->model, target, inv->k, best_d,
+                                 1.0 / 32.0, ALWAN__CMYK_INV_HALVINGS);
+    cmy[0] = best[0];
+    cmy[1] = best[1];
+    cmy[2] = best[2];
+    if (miss) *miss = left;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_cmyk_inverse_eval_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out,
+                                        alwan_lab_f64 const *lab, alwan_cmyk_inverse const *inv) {
+    alwan_lab_f64 target;
+    double cmy[3], miss = 0.0;
+    alwan_status st;
+    if (!cmyk_out || !lab || !inv) return ALWAN_E_INVALID;
+    target = *lab;
+    ALWAN_DENORM_LAB(&target);
+    st = alwan__cmyk_inv_eval(cmy, &miss, inv, &target);
+    if (st != ALWAN_OK) return st;
+    cmyk_out->c = cmy[0];
+    cmyk_out->m = cmy[1];
+    cmyk_out->y = cmy[2];
+    cmyk_out->k = (alwan_f64)inv->k;
+    if (delta_e_out) *delta_e_out = miss;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_cmyk_inverse_eval_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_out,
+                                        alwan_lab_f32 const *lab, alwan_cmyk_inverse const *inv) {
+    alwan_lab_f64 target;
+    double cmy[3], miss = 0.0;
+    alwan_status st;
+    if (!cmyk_out || !lab || !inv) return ALWAN_E_INVALID;
+    target.L = (double)lab->L;
+    target.a = (double)lab->a;
+    target.b = (double)lab->b;
+    ALWAN_DENORM_LAB(&target);
+    st = alwan__cmyk_inv_eval(cmy, &miss, inv, &target);
+    if (st != ALWAN_OK) return st;
+    cmyk_out->c = (alwan_f32)cmy[0];
+    cmyk_out->m = (alwan_f32)cmy[1];
+    cmyk_out->y = (alwan_f32)cmy[2];
+    cmyk_out->k = (alwan_f32)inv->k;
+    if (delta_e_out) *delta_e_out = (alwan_f32)miss;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_cmyk_inverse_map_interleave_f64(alwan_f64 *cmyk_out, size_t out_stride,
+                                                  alwan_f64 const *lab_in, size_t in_stride,
+                                                  size_t count, alwan_f64 *worst_delta_e_out,
+                                                  alwan_cmyk_inverse const *inv) {
+    size_t i;
+    double worst = 0.0;
+    if (!cmyk_out || !lab_in || !inv) return ALWAN_E_INVALID;
+    if (out_stride == 0 || in_stride == 0) return ALWAN_E_INVALID;
+    for (i = 0; i < count; i++) {
+        alwan_f64 const *src = (alwan_f64 const *)((char const *)lab_in + i * in_stride);
+        alwan_f64 *dst = (alwan_f64 *)((char *)cmyk_out + i * out_stride);
+        alwan_lab_f64 target;
+        double cmy[3], miss = 0.0;
+        alwan_status st;
+        target.L = src[0];
+        target.a = src[1];
+        target.b = src[2];
+        ALWAN_DENORM_LAB(&target);
+        st = alwan__cmyk_inv_eval(cmy, &miss, inv, &target);
+        if (st != ALWAN_OK) return st;
+        dst[0] = cmy[0];
+        dst[1] = cmy[1];
+        dst[2] = cmy[2];
+        dst[3] = (alwan_f64)inv->k;
+        if (miss > worst) worst = miss;
+    }
+    if (worst_delta_e_out) *worst_delta_e_out = (alwan_f64)worst;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_cmyk_inverse_map_interleave_f32(alwan_f32 *cmyk_out, size_t out_stride,
+                                                  alwan_f32 const *lab_in, size_t in_stride,
+                                                  size_t count, alwan_f32 *worst_delta_e_out,
+                                                  alwan_cmyk_inverse const *inv) {
+    size_t i;
+    double worst = 0.0;
+    if (!cmyk_out || !lab_in || !inv) return ALWAN_E_INVALID;
+    if (out_stride == 0 || in_stride == 0) return ALWAN_E_INVALID;
+    for (i = 0; i < count; i++) {
+        alwan_f32 const *src = (alwan_f32 const *)((char const *)lab_in + i * in_stride);
+        alwan_f32 *dst = (alwan_f32 *)((char *)cmyk_out + i * out_stride);
+        alwan_lab_f64 target;
+        double cmy[3], miss = 0.0;
+        alwan_status st;
+        target.L = (double)src[0];
+        target.a = (double)src[1];
+        target.b = (double)src[2];
+        ALWAN_DENORM_LAB(&target);
+        st = alwan__cmyk_inv_eval(cmy, &miss, inv, &target);
+        if (st != ALWAN_OK) return st;
+        dst[0] = (alwan_f32)cmy[0];
+        dst[1] = (alwan_f32)cmy[1];
+        dst[2] = (alwan_f32)cmy[2];
+        dst[3] = (alwan_f32)inv->k;
+        if (miss > worst) worst = miss;
+    }
+    if (worst_delta_e_out) *worst_delta_e_out = (alwan_f32)worst;
     return ALWAN_OK;
 }
