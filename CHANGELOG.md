@@ -1,10 +1,215 @@
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
----
-
 ## [Unreleased]
+
+### Fixed: output differs
+
+- **Dominant wavelength and excitation purity were wrong for purples.** The locus was
+  not closed by the line of purples, so `alwan_dominant_wavelength_{T}` returned
+  `ALWAN_E_INVALID` for every purple, and `alwan_excitation_purity_{T}` measured a
+  purple against the opposite side of the locus: 0.333 where the CIE definition and
+  colour-science give 0.640. A purple now has the negated complementary wavelength,
+  `xy_wl_out` on the line of purples and `xy_cw_out` on the spectrum locus, as
+  colour-science's `dominant_wavelength`, and `alwan_complementary_wavelength_{T}`
+  returns the negated dominant wavelength when its own ray meets the line of purples.
+  Excitation purity is no longer clamped to [0, 1]: a chromaticity outside the locus
+  reads above 1. Segments were skipped as parallel below a 1e-10 determinant, which the
+  locus's 1 nm steps near 830 nm fall under; only exact parallels are skipped now.
+  Checked against colour-science on 216 chromaticities in suite 134.
+
+- **V(lambda) and V'(lambda) were 10 nm tables.** gendata resampled colour-science's
+  1 nm CIE data to 10 nm over 380-780 nm, and alwan interpolated linearly between the
+  samples, so `alwan_luminous_efficiency_{T}` was off between every tenth nanometre
+  and the photopic, scotopic and mesopic luminance integrals of a narrow band were off
+  by up to 1.5e-2. The tables are colour-science's own now, 1 nm over 360-830 nm and
+  380-780 nm, and suite 41 checks them to 1e-12 where it allowed 0.01.
+
+- **The deterministic BT.709 and BT.2020 curves split at the wrong side of 0.018.**
+  They shared sRGB's helper, which puts the break itself on the linear segment; the
+  fast build and colour-science put it on the power segment. At exactly 0.018 the
+  deterministic OETF returned 0.081 instead of 0.081248, and the EOTF likewise at
+  0.081. Only those two inputs change, to the fast build's values.
+
+- **An unknown integration method ran Simpson's rule.** `alwan_xyz_from_spd_{T}` and
+  `alwan_xyz_from_spd_camera_{T}` treated every value other than
+  `ALWAN_INTEGRATE_TRAPEZOID` as Simpson, so an out-of-range method integrated
+  instead of failing. It is `ALWAN_E_INVALID` now.
+
+- **The f32 Finlayson 2015 fit wrote past its buffers.** It solved into a stack
+  array of 22 x 3 values, where the plain degree-4 basis has 34 terms, and then
+  copied `matrix_size` x 3 values, although `matrix_size` is already the element
+  count. Every basis of 8 or more terms wrote past the caller's matrix. It now
+  copies exactly `matrix_size` values from a buffer of the widest basis. Suite 124
+  guards the caller's buffer at every degree.
+
+- **TM-30 Rf and the CQS colour differences were wrong at the shipped**
+  **default.** Both computed appearance differences through the public API and
+  then did arithmetic on the result in native units.
+
+  `alwan_tm30_rf_{T}` calls `alwan_ciecam02_forward` and then forms CAM02-UCS
+  by hand, with the literal `100.0` in `J'` and `PI / 180` on the hue. At
+  `ALWAN_NORMALIZE_RANGES=1` the wrapper hands back `J` scaled by `0.01` and
+  `h` by `1/360`, so both went into formulas written for the other scale. The
+  measured residual against colour-science over 35 illuminants was a mean of
+  0.82 where it should be 0.0010, and no test saw it because every build in
+  both repos compiled the other branch.
+
+  CQS has the same shape: it takes two `alwan_xyz_to_lab` results and computes
+  `sqrt(dL^2 + da^2 + db^2)` itself. Only `L` is a bounded channel, so `dL`
+  arrived a hundred times smaller than `da` and `db` and the root mixed two
+  scales.
+
+  Both denormalise before the arithmetic now. A default build is unchanged and
+  the two configurations agree to every digit printed.
+
+  The neighbouring CRI path was checked and is correct: it hands its Lab
+  straight to `alwan_delta_e_76`, which denormalises its own inputs, so the
+  two cancel.
+
+- **The .cube reader accepted infinities and NaN.** `sscanf("%lf")` turns
+  `1e999` into `HUGE_VAL` and `nan` into a quiet NaN without failing, so a row
+  that parsed was not yet a row worth storing, and nothing checked. One
+  infinity in a 3D LUT is worse than one bad entry: every sample that
+  interpolates through that corner comes back non-finite, so a single
+  character in a downloaded `.cube` poisoned a whole cell of the table.
+
+  All six readers now reject a non-finite entry with `ALWAN_E_RANGE`: 3D and
+  1D, path and buffer, `f32` and `f64`. The declared-size and row-count
+  guards were already sound and are unchanged.
+
+  Also worth knowing, and now covered by a test rather than left implicit: the
+  size query (passing a `NULL` lut) returns as soon as it reads
+  `LUT_3D_SIZE` and never looks at the body. A successful size query says the
+  header is sane and nothing more, so it is not validation of the file.
+
+- **The CCM fits solved through the normal equations and lost most of their
+  precision doing it.** `alwan_colour_correction_matrix_cheung2004_{T}` and
+  `..._finlayson2015_{T}` formed `AtA` and ran Gaussian elimination on it,
+  which squares the condition number. They now factor `A` itself with a
+  Householder QR. Same call, same arguments, same results on well-conditioned
+  input; the difference is how much of the answer survives when the basis is
+  not.
+
+  Measured by recovering a known matrix from samples generated through it,
+  which is exact in the linear case, so every digit lost belongs to the
+  solver. Cheung at 35 terms goes from 2.9e-10 to 1.1e-13. The Finlayson
+  root-polynomial at degree 4, 22 terms, goes from **1.3e-03 to 4.9e-11**.
+
+  That last one was the case worth fixing. Its terms are `sqrt(RG)`,
+  `cbrt(R2G)`, `(R3G)^(1/4)`: the same shape with slowly separating exponents,
+  so the columns crowd together and the fit was losing about thirteen digits.
+  It is the exposure-invariant model, which is what a caller reaches for when
+  the lighting is uncertain, so it was least trustworthy exactly where it was
+  most wanted.
+
+  The fixed 35-term stack arrays went with the old body. The solver allocates
+  to the problem now, so nothing structural caps the term count.
+
+- **The bulk paths ignored `ALWAN_NORMALIZE_RANGES` for some spaces and
+  honoured it for others.** At the shipped default,
+  `alwan_xyz_to_hunter_lab_f64` and `alwan_xyz_to_hunter_lab_f64_map_interleave`
+  are the same public conversion and disagreed in `L` by 99.0, the whole
+  normalisation factor: the scalar wrapper applied `ALWAN_NORM_HUNTER_LAB` and
+  the bulk path did not, while `alwan_xyz_to_lab_f64` and its bulk twin agreed
+  to 3e-16 in the same build. A caller mixing the two got lightness a hundred
+  times out on one of them, and hue three hundred and sixty times out for the
+  cylindrical spaces.
+
+  Every bulk entry point for a space with an `ALWAN_NORM_*` macro now applies
+  it: the interleave wrappers for Hunter Lab, ProLab, DIN99 and UVW, the planar
+  wrappers for those plus HCL and IHLS, the YCoCg planar pair, and both
+  directions of the sRGB/Lab convenience pair. The planar generators take
+  explicit channel hooks so each generated function states its scaling at the
+  call site; they expand to nothing when the setting is off, so a default build
+  is untouched.
+
+  `alwan_srgb_to_lab_{T}` and `alwan_lab_to_srgb_{T}` were wrong on the scalar
+  side as well. They call the `_v` core directly and so skipped the
+  `ALWAN_NORM_LAB` that every other scalar wrapper applies.
+
+- **The deterministic sRGB and BT.2020 OETF returned garbage above 1.0.**
+  The high-side polynomial is fitted on `[split, 1]`, and the evaluator
+  extrapolated it for any larger input instead of falling back: a
+  degree-14 polynomial outside its domain diverges, so linear `4.0`
+  encoded to `-9.2e+10` rather than `1.82`. Scene-linear values above 1
+  are ordinary, so this was reachable by any HDR or ACES caller of a
+  deterministic build. Both OETFs and both EOTFs now hand the
+  out-of-domain case to `alwan_det_pow_pos`, which is unbounded. Values
+  inside the fitted domain are untouched, so no already-correct output
+  moves.
+
+- **`ALWAN_FIT_LOCK_SCALE` and `ALWAN_FIT_LOCK_TF` did not hold their
+  value.** The fit stores scale and exponent as logarithms, and the
+  result was decoded back with `exp` even when locked. libm returns
+  exactly `1.0` for `exp(log(1.0))`, which hid it; the deterministic
+  polynomials do not, and a locked scale of 1.0 came back
+  `1.0000000000026`. A locked parameter is now written back as the caller
+  gave it rather than round-tripped.
+
+- **YcCbcCrc double-offset its chroma in a default build.**
+  `alwan_rgb_to_yccbccrc_{T}` already centres `Cbc` and `Crc` on the
+  legal-range midpoint, `0.500489` at 10 bit, and `ALWAN_NORM_YCCBCCRC`
+  then added a further `+0.5`. With `ALWAN_NORMALIZE_RANGES` at its
+  shipped default of `1`, achromatic grey encoded to `1.000489` instead
+  of `0.500489`, in-gamut chroma spanned roughly `[0.5626, 1.4384]`
+  rather than `[0, 1]`, and a standards-conformant Y'cCbcCrc signal could
+  not be decoded. The macro is a no-op now, as `ALWAN_NORM_YCBCR` has
+  been since the identical defect was fixed there on 2026-08-27; this is
+  the constant-luminance twin that was missed then.
+
+  The scalar path had been disagreeing with the bulk kernels, which never
+  added the offset, and with the committed reference CSV, which holds the
+  un-offset value. No test caught it because every build in both repos
+  compiles the library at `ALWAN_NORMALIZE_RANGES=0`, where the macro was
+  already inert. YCoCg is not affected: its kernel emits `Co` and `Cg`
+  centred on 0, so the `+0.5` there is the correct mapping.
+
+
+- **The ACES 1.x HDR outputs are the ACES 1.1 to 1.3 transforms.**
+  `ALWAN_ACES1_OUT_REC2020_{1000,2000,4000}NIT_PQ` evaluated the 1.0.3
+  `ODT.Academy.Rec2020_ST2084_*nits` C9 spline, 0.18 at 10 cd/m2, under the
+  default setting, and OCIO's fit of the 1.1 curve, 0.18 at 15 cd/m2, under
+  `ALWAN_ACES_INTERP_OCIO`: one enum value, two transforms half a stop
+  apart. The Single Stage Tone Scale of `ACESlib.SSTS.ctl` is implemented
+  now, knots built from Y_MIN, Y_MID and Y_MAX as the CTL builds them,
+  forward and inverse, with the RRTODT's clip to the Rec.2020 primaries
+  before the adaptation to D65 and its stretched black. Those three values
+  are the `RRTODT.Academy.Rec2020_*nits_15nits_ST2084` transforms in every
+  setting, so mid-grey moves from 10 to 15 cd/m2 on the default path, 34 PQ
+  codes of 1023. Against OCIO's ACES 1.1 view the default path now sits
+  within 0.05 of a code away from black, and the evaluator matches the CTL
+  transcription to 1.3e-13. The 1.0.3 ODTs remain under
+  `ALWAN_ACES1_OUT_REC2020_*NIT_PQ_V103`; all fifteen outputs round-trip
+  through the inverse at 1.3e-11.
+
+- **RGB-space transfer functions audited against colour-science.** Neither of
+  the two tables naming each space's curve had ever been compared with
+  anything. 19 spaces were wrong: CIE RGB, Adobe Wide Gamut, Best, Beta,
+  Don 4, Ekta Space PS5, Max, Russell and Xtreme were linear and are gamma
+  2.2; SMPTE-C and NTSC 1987 were BT.709 and are gamma 2.2; NTSC 1953,
+  PAL/SECAM and BT.470 were BT.709 and are gamma 2.8; P3-D65 was sRGB and
+  is gamma 2.6; EBU Tech. 3213-E defines primaries only and is linear;
+  GAMMA18_REC709 and DaVinci Intermediate were linear and now carry their
+  curves. `gendata/gen_rgb_space_tf_reference.py` emits the reference for
+  79 of the 104 spaces and suite 43 holds every one to 1e-6.
+
+- **Eight transfer functions the library did not have**, appended to the
+  enum so nothing renumbers: `ALWAN_TF_GAMMA18` (Apple RGB, ColorMatch),
+  `ALWAN_TF_ROMM` (ProPhoto and ROMM, gamma 1.8 with a linear toe below
+  1/512), `ALWAN_TF_RIMM`, `ALWAN_TF_ERIMM`, `ALWAN_TF_LSTAR` (ECI RGB v2),
+  `ALWAN_TF_SMPTE240M`, `ALWAN_TF_ADOBE_RGB` (563/256 = 2.19921875, which
+  Adobe RGB and Adobe Wide Gamut carried as 2.2, wrong by 4.2e-4) and
+  `ALWAN_TF_DAVINCI_INTERMEDIATE`.
+
+- **`alwan_rgb_space_get_tfs` answers for every space.** It named 20 of the
+  104 spaces in a hand-written switch and refused the rest, ACEScct and every
+  camera log space among them. It reads the descriptor table now.
+
+- **TM-30 Rf took the CCT on the wrong observer.** The reference illuminant
+  was chosen from a CCT computed with the 10 degree white against the 2
+  degree Robertson locus, which put Illuminant A at 2789 K rather than
+  2856 K and pulled every Planckian reference off. The CCT is read on the 2
+  degree observer, as CRI and CQS already did. The sweep against
+  colour-science over 35 illuminants goes from 0.530 mean and 1.990 max to
+  0.0010 and 0.0058, which closes the item listed as known in 2.0.0.
 
 ### Breaking
 
@@ -1729,7 +1934,6 @@ All notable changes to this project will be documented in this file.
   See [determinism.md](docs/determinism.md) for what the resulting claim
   does and does not rest on.
 
-### Changed
 
 - **Const placement is a rule now, and gated in CI.** The project is east
   const. The GPU-portable tier is the exception and stays west, because it has
@@ -1757,216 +1961,38 @@ All notable changes to this project will be documented in this file.
   alwan_dev, and reformatting them would cost the ability to diff against the
   version they came from.
 
-### Fixed: output differs
+### Datasets
 
-- **Dominant wavelength and excitation purity were wrong for purples.** The locus was
-  not closed by the line of purples, so `alwan_dominant_wavelength_{T}` returned
-  `ALWAN_E_INVALID` for every purple, and `alwan_excitation_purity_{T}` measured a
-  purple against the opposite side of the locus: 0.333 where the CIE definition and
-  colour-science give 0.640. A purple now has the negated complementary wavelength,
-  `xy_wl_out` on the line of purples and `xy_cw_out` on the spectrum locus, as
-  colour-science's `dominant_wavelength`, and `alwan_complementary_wavelength_{T}`
-  returns the negated dominant wavelength when its own ray meets the line of purples.
-  Excitation purity is no longer clamped to [0, 1]: a chromaticity outside the locus
-  reads above 1. Segments were skipped as parallel below a 1e-10 determinant, which the
-  locus's 1 nm steps near 830 nm fall under; only exact parallels are skipped now.
-  Checked against colour-science on 216 chromaticities in suite 134.
+Every dataset ingested for this release, with the licence it came under. The rule
+is in the plan and it is the reason some of these are absent: a set is vendored
+only under Apache-2.0, BSD-3-Clause, CC-BY-4.0 or an explicit grant, and anything
+else is fetched at generation time into an untracked cache and used to validate
+against, never shipped.
 
-- **V(lambda) and V'(lambda) were 10 nm tables.** gendata resampled colour-science's
-  1 nm CIE data to 10 nm over 380-780 nm, and alwan interpolated linearly between the
-  samples, so `alwan_luminous_efficiency_{T}` was off between every tenth nanometre
-  and the photopic, scotopic and mesopic luminance integrals of a narrow band were off
-  by up to 1.5e-2. The tables are colour-science's own now, 1 nm over 360-830 nm and
-  380-780 nm, and suite 41 checks them to 1e-12 where it allowed 0.01.
+| Ingested | Source | Licence |
+|---|---|---|
+| 87 film stock profiles | spectral_film_lut | MIT |
+| 52 camera spectral sensitivities, the 190-patch IDT training set, the ISO 7589 studio tungsten SPD | rawtoaces-data (ASWF) | Apache-2.0 |
+| A 6-component PCA sensitivity basis for Jiang 2013 recovery | derived here from the rawtoaces-data cameras above | Apache-2.0, inherited |
+| 59 illuminant SPDs and 56 measured light sources | colour-science `SDS_ILLUMINANTS`, `SDS_LIGHT_SOURCES` | BSD-3-Clause |
+| Smith-Pokorny 1975 and Stiles-Burch 1955/1959 CMFs, the extended LEFs, CRT and Apple Studio display primaries | colour-science `MSDS_CMFS`, `SDS_LEFS`, `MSDS_DISPLAY_PRIMARIES` | BSD-3-Clause |
+| Mallett 2019 and Otsu 2018 spectral bases | colour-science `MSDS_BASIS_FUNCTIONS_sRGB_MALLETT2019`, `BASIS_FUNCTIONS_OTSU2018` | BSD-3-Clause |
+| ColorChecker Classic pre/post-2014, SG, BabelColor average, PMC and TE226 references | colour-science, after X-Rite's and Image Engineering's tables | BSD-3-Clause |
+| ACES RICD, and the ACES 1.1-1.3 SSTS knots | colour-science `MSDS_ACES_RICD`; ACES-dev | BSD-3-Clause; AMPAS |
+| Pointer's gamut volume chroma | colour-science | BSD-3-Clause |
+| CSS Color Module Level 3 keywords | colour-science, after the W3C recommendation | BSD-3-Clause |
+| FOGRA39L characterisation (ISO 12647-2:2004/Amd 1 coated) | Fogra | Fogra's terms: free use and redistribution, including in software, unmodified |
+| Freetone, 1,310 colours in device CMYK | Stuart Semple | **none stated.** Vendored on the owner's decision, and recorded here rather than left implicit |
 
-- **The deterministic BT.709 and BT.2020 curves split at the wrong side of 0.018.**
-  They shared sRGB's helper, which puts the break itself on the linear segment; the
-  fast build and colour-science put it on the power segment. At exactly 0.018 the
-  deterministic OETF returned 0.081 instead of 0.081248, and the EOTF likewise at
-  0.081. Only those two inputs change, to the fast build's values.
+Matrices added this release are published constants from their papers rather
+than datasets, so they carry no licence of their own: Huang 2015, Jzazbz 2021,
+Kirk 2019, Ragoo 2021, SUCS, and the F-Gamut and E-Gamut primaries.
 
-- **An unknown integration method ran Simpson's rule.** `alwan_xyz_from_spd_{T}` and
-  `alwan_xyz_from_spd_camera_{T}` treated every value other than
-  `ALWAN_INTEGRATE_TRAPEZOID` as Simpson, so an out-of-range method integrated
-  instead of failing. It is `ALWAN_E_INVALID` now.
-
-- **The f32 Finlayson 2015 fit wrote past its buffers.** It solved into a stack
-  array of 22 x 3 values, where the plain degree-4 basis has 34 terms, and then
-  copied `matrix_size` x 3 values, although `matrix_size` is already the element
-  count. Every basis of 8 or more terms wrote past the caller's matrix. It now
-  copies exactly `matrix_size` values from a buffer of the widest basis. Suite 124
-  guards the caller's buffer at every degree.
-
-- **TM-30 Rf and the CQS colour differences were wrong at the shipped**
-  **default.** Both computed appearance differences through the public API and
-  then did arithmetic on the result in native units.
-
-  `alwan_tm30_rf_{T}` calls `alwan_ciecam02_forward` and then forms CAM02-UCS
-  by hand, with the literal `100.0` in `J'` and `PI / 180` on the hue. At
-  `ALWAN_NORMALIZE_RANGES=1` the wrapper hands back `J` scaled by `0.01` and
-  `h` by `1/360`, so both went into formulas written for the other scale. The
-  measured residual against colour-science over 35 illuminants was a mean of
-  0.82 where it should be 0.0010, and no test saw it because every build in
-  both repos compiled the other branch.
-
-  CQS has the same shape: it takes two `alwan_xyz_to_lab` results and computes
-  `sqrt(dL^2 + da^2 + db^2)` itself. Only `L` is a bounded channel, so `dL`
-  arrived a hundred times smaller than `da` and `db` and the root mixed two
-  scales.
-
-  Both denormalise before the arithmetic now. A default build is unchanged and
-  the two configurations agree to every digit printed.
-
-  The neighbouring CRI path was checked and is correct: it hands its Lab
-  straight to `alwan_delta_e_76`, which denormalises its own inputs, so the
-  two cancel.
-
-- **The .cube reader accepted infinities and NaN.** `sscanf("%lf")` turns
-  `1e999` into `HUGE_VAL` and `nan` into a quiet NaN without failing, so a row
-  that parsed was not yet a row worth storing, and nothing checked. One
-  infinity in a 3D LUT is worse than one bad entry: every sample that
-  interpolates through that corner comes back non-finite, so a single
-  character in a downloaded `.cube` poisoned a whole cell of the table.
-
-  All six readers now reject a non-finite entry with `ALWAN_E_RANGE`: 3D and
-  1D, path and buffer, `f32` and `f64`. The declared-size and row-count
-  guards were already sound and are unchanged.
-
-  Also worth knowing, and now covered by a test rather than left implicit: the
-  size query (passing a `NULL` lut) returns as soon as it reads
-  `LUT_3D_SIZE` and never looks at the body. A successful size query says the
-  header is sane and nothing more, so it is not validation of the file.
-
-- **The CCM fits solved through the normal equations and lost most of their
-  precision doing it.** `alwan_colour_correction_matrix_cheung2004_{T}` and
-  `..._finlayson2015_{T}` formed `AtA` and ran Gaussian elimination on it,
-  which squares the condition number. They now factor `A` itself with a
-  Householder QR. Same call, same arguments, same results on well-conditioned
-  input; the difference is how much of the answer survives when the basis is
-  not.
-
-  Measured by recovering a known matrix from samples generated through it,
-  which is exact in the linear case, so every digit lost belongs to the
-  solver. Cheung at 35 terms goes from 2.9e-10 to 1.1e-13. The Finlayson
-  root-polynomial at degree 4, 22 terms, goes from **1.3e-03 to 4.9e-11**.
-
-  That last one was the case worth fixing. Its terms are `sqrt(RG)`,
-  `cbrt(R2G)`, `(R3G)^(1/4)`: the same shape with slowly separating exponents,
-  so the columns crowd together and the fit was losing about thirteen digits.
-  It is the exposure-invariant model, which is what a caller reaches for when
-  the lighting is uncertain, so it was least trustworthy exactly where it was
-  most wanted.
-
-  The fixed 35-term stack arrays went with the old body. The solver allocates
-  to the problem now, so nothing structural caps the term count.
-
-- **The bulk paths ignored `ALWAN_NORMALIZE_RANGES` for some spaces and
-  honoured it for others.** At the shipped default,
-  `alwan_xyz_to_hunter_lab_f64` and `alwan_xyz_to_hunter_lab_f64_map_interleave`
-  are the same public conversion and disagreed in `L` by 99.0, the whole
-  normalisation factor: the scalar wrapper applied `ALWAN_NORM_HUNTER_LAB` and
-  the bulk path did not, while `alwan_xyz_to_lab_f64` and its bulk twin agreed
-  to 3e-16 in the same build. A caller mixing the two got lightness a hundred
-  times out on one of them, and hue three hundred and sixty times out for the
-  cylindrical spaces.
-
-  Every bulk entry point for a space with an `ALWAN_NORM_*` macro now applies
-  it: the interleave wrappers for Hunter Lab, ProLab, DIN99 and UVW, the planar
-  wrappers for those plus HCL and IHLS, the YCoCg planar pair, and both
-  directions of the sRGB/Lab convenience pair. The planar generators take
-  explicit channel hooks so each generated function states its scaling at the
-  call site; they expand to nothing when the setting is off, so a default build
-  is untouched.
-
-  `alwan_srgb_to_lab_{T}` and `alwan_lab_to_srgb_{T}` were wrong on the scalar
-  side as well. They call the `_v` core directly and so skipped the
-  `ALWAN_NORM_LAB` that every other scalar wrapper applies.
-
-- **The deterministic sRGB and BT.2020 OETF returned garbage above 1.0.**
-  The high-side polynomial is fitted on `[split, 1]`, and the evaluator
-  extrapolated it for any larger input instead of falling back: a
-  degree-14 polynomial outside its domain diverges, so linear `4.0`
-  encoded to `-9.2e+10` rather than `1.82`. Scene-linear values above 1
-  are ordinary, so this was reachable by any HDR or ACES caller of a
-  deterministic build. Both OETFs and both EOTFs now hand the
-  out-of-domain case to `alwan_det_pow_pos`, which is unbounded. Values
-  inside the fitted domain are untouched, so no already-correct output
-  moves.
-
-- **`ALWAN_FIT_LOCK_SCALE` and `ALWAN_FIT_LOCK_TF` did not hold their
-  value.** The fit stores scale and exponent as logarithms, and the
-  result was decoded back with `exp` even when locked. libm returns
-  exactly `1.0` for `exp(log(1.0))`, which hid it; the deterministic
-  polynomials do not, and a locked scale of 1.0 came back
-  `1.0000000000026`. A locked parameter is now written back as the caller
-  gave it rather than round-tripped.
-
-- **YcCbcCrc double-offset its chroma in a default build.**
-  `alwan_rgb_to_yccbccrc_{T}` already centres `Cbc` and `Crc` on the
-  legal-range midpoint, `0.500489` at 10 bit, and `ALWAN_NORM_YCCBCCRC`
-  then added a further `+0.5`. With `ALWAN_NORMALIZE_RANGES` at its
-  shipped default of `1`, achromatic grey encoded to `1.000489` instead
-  of `0.500489`, in-gamut chroma spanned roughly `[0.5626, 1.4384]`
-  rather than `[0, 1]`, and a standards-conformant Y'cCbcCrc signal could
-  not be decoded. The macro is a no-op now, as `ALWAN_NORM_YCBCR` has
-  been since the identical defect was fixed there on 2026-08-27; this is
-  the constant-luminance twin that was missed then.
-
-  The scalar path had been disagreeing with the bulk kernels, which never
-  added the offset, and with the committed reference CSV, which holds the
-  un-offset value. No test caught it because every build in both repos
-  compiles the library at `ALWAN_NORMALIZE_RANGES=0`, where the macro was
-  already inert. YCoCg is not affected: its kernel emits `Co` and `Cg`
-  centred on 0, so the `+0.5` there is the correct mapping.
-
-
-- **The ACES 1.x HDR outputs are the ACES 1.1 to 1.3 transforms.**
-  `ALWAN_ACES1_OUT_REC2020_{1000,2000,4000}NIT_PQ` evaluated the 1.0.3
-  `ODT.Academy.Rec2020_ST2084_*nits` C9 spline, 0.18 at 10 cd/m2, under the
-  default setting, and OCIO's fit of the 1.1 curve, 0.18 at 15 cd/m2, under
-  `ALWAN_ACES_INTERP_OCIO`: one enum value, two transforms half a stop
-  apart. The Single Stage Tone Scale of `ACESlib.SSTS.ctl` is implemented
-  now, knots built from Y_MIN, Y_MID and Y_MAX as the CTL builds them,
-  forward and inverse, with the RRTODT's clip to the Rec.2020 primaries
-  before the adaptation to D65 and its stretched black. Those three values
-  are the `RRTODT.Academy.Rec2020_*nits_15nits_ST2084` transforms in every
-  setting, so mid-grey moves from 10 to 15 cd/m2 on the default path, 34 PQ
-  codes of 1023. Against OCIO's ACES 1.1 view the default path now sits
-  within 0.05 of a code away from black, and the evaluator matches the CTL
-  transcription to 1.3e-13. The 1.0.3 ODTs remain under
-  `ALWAN_ACES1_OUT_REC2020_*NIT_PQ_V103`; all fifteen outputs round-trip
-  through the inverse at 1.3e-11.
-
-- **RGB-space transfer functions audited against colour-science.** Neither of
-  the two tables naming each space's curve had ever been compared with
-  anything. 19 spaces were wrong: CIE RGB, Adobe Wide Gamut, Best, Beta,
-  Don 4, Ekta Space PS5, Max, Russell and Xtreme were linear and are gamma
-  2.2; SMPTE-C and NTSC 1987 were BT.709 and are gamma 2.2; NTSC 1953,
-  PAL/SECAM and BT.470 were BT.709 and are gamma 2.8; P3-D65 was sRGB and
-  is gamma 2.6; EBU Tech. 3213-E defines primaries only and is linear;
-  GAMMA18_REC709 and DaVinci Intermediate were linear and now carry their
-  curves. `gendata/gen_rgb_space_tf_reference.py` emits the reference for
-  79 of the 104 spaces and suite 43 holds every one to 1e-6.
-
-- **Eight transfer functions the library did not have**, appended to the
-  enum so nothing renumbers: `ALWAN_TF_GAMMA18` (Apple RGB, ColorMatch),
-  `ALWAN_TF_ROMM` (ProPhoto and ROMM, gamma 1.8 with a linear toe below
-  1/512), `ALWAN_TF_RIMM`, `ALWAN_TF_ERIMM`, `ALWAN_TF_LSTAR` (ECI RGB v2),
-  `ALWAN_TF_SMPTE240M`, `ALWAN_TF_ADOBE_RGB` (563/256 = 2.19921875, which
-  Adobe RGB and Adobe Wide Gamut carried as 2.2, wrong by 4.2e-4) and
-  `ALWAN_TF_DAVINCI_INTERMEDIATE`.
-
-- **`alwan_rgb_space_get_tfs` answers for every space.** It named 20 of the
-  104 spaces in a hand-written switch and refused the rest, ACEScct and every
-  camera log space among them. It reads the descriptor table now.
-
-- **TM-30 Rf took the CCT on the wrong observer.** The reference illuminant
-  was chosen from a CCT computed with the 10 degree white against the 2
-  degree Robertson locus, which put Illuminant A at 2789 K rather than
-  2856 K and pulled every Planckian reference off. The CCT is read on the 2
-  degree observer, as CRI and CQS already did. The sweep against
-  colour-science over 35 illuminants goes from 0.530 mean and 1.990 max to
-  0.0010 and 0.0058, which closes the item listed as known in 2.0.0.
+Fetched and used for validation only, never vendored, because the licence does
+not allow it or does not exist: Jiang 2013 (CC-BY-NC-SA-4.0, non-commercial),
+Zhao 2009, Solomatov and Akkaynak 2023, the Munsell, forest, paper and lumber
+reflectance sets, Karge 2015 and Brendel 2020 light sources, Asano 2015
+observers, Luo and Rhodes 1999, LUTCHI, and Hung and Berns 1995.
 
 ## [2.0.0]
 
