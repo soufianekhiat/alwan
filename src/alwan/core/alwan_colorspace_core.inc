@@ -67,7 +67,17 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_lab_to_xyz)(ALWAN_CORE_LAB l
  * XYZ <-> CIE Luv
  * ================================================================ */
 
-/* XYZ -> CIE Luv (using reference white point) */
+/* XYZ -> CIE Luv (using reference white point).
+ *
+ * CIE 15:2004, section 8.2. Every constant here is exact and definitional rather
+ * than fitted, which is why none of them is named:
+ *
+ *   u' = 4X / (X + 15Y + 3Z)      v' = 9Y / (X + 15Y + 3Z)
+ *   L* = 116 f(Y/Yn) - 16         u* = 13 L* (u' - u'n)
+ *                                 v* = 13 L* (v' - v'n)
+ *
+ * f() is the same cube-root-with-linear-toe the Lab transform above uses, so the
+ * 116 and 16 are shared with it by definition and not by coincidence. */
 ALWAN_INLINE ALWAN_CORE_LUV ALWAN_CORE_FNVLIT(alwan_xyz_to_luv)(ALWAN_CORE_XYZ xyz, ALWAN_CORE_XYZ white) {
     ALWAN_CORE_LUV result;
 

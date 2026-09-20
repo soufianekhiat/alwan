@@ -10,14 +10,46 @@
  */
 
 /* ----------------------------------------------------------------
- * DIN99 Variant Coefficients [c1, c2, c3, c4, c5, c6, c7, c8]
+ * DIN99 Variant Coefficients [c1 .. c8]
+ *
+ * WHAT EACH SLOT IS, so a value can be checked against the standard without
+ * reading the transform first. Taken from the forward transform below, which is
+ * the only thing that reads this table:
+ *
+ *   L99 = c1 * ln(1 + c2 * L*) * k_E
+ *   e   =      a* cos(c3) + b* sin(c3)          c3 in DEGREES
+ *   f   = c4 * (-a* sin(c3) + b* cos(c3))
+ *   G   = sqrt(e^2 + f^2)
+ *   C99 = c5 * ln(1 + c6 * G) / (c8 * k_CH * k_E)
+ *   h99 = atan2(f, e) + c7                      c7 in DEGREES
+ *   a99 = C99 cos(h99),  b99 = C99 sin(h99)
+ *
+ *   c1  lightness scale          c2  lightness log compression
+ *   c3  rotation before chroma   c4  compression of the rotated b axis
+ *   c5  chroma scale             c6  chroma log compression
+ *   c7  hue rotation added back  c8  chroma denominator
+ *
+ * The two spellings of the same thing are why c5 and c8 look redundant: DIN99
+ * writes the chroma as ln(1 + 0.045 G) / 0.045, so c5 = 1 and c8 = 0.045, while
+ * the later variants write it as 23 ln(1 + 0.075 G), so c5 = 23 and c8 = 1. One
+ * table covers both forms rather than a branch per variant.
+ *
+ * c3 = c7 in every variant that rotates at all: the transform turns the axes by
+ * c3 before measuring chroma and turns the hue back by c7 afterwards. DIN99c
+ * rotates by neither, which is what makes its row read 0.0 twice rather than
+ * looking like a gap.
+ *
+ * Sources: DIN 6176:2001-03 for DIN99; ASTM D2244-07 reproduces it. The b, c and
+ * d variants are Cui, Luo, Rigg, Roesler and Witt (2002), "Uniform colour spaces
+ * based on the DIN99 colour-difference formula", Color Research & Application
+ * 27(4), 282-290.
  * ---------------------------------------------------------------- */
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
 ALWAN_CONSTEXPR ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[4][8] = {
-    /* DIN99 / ASTM D2244-07 */
+    /* DIN99, DIN 6176:2001-03. c5/c8 carry the 1/0.045 spelling. */
     {
         ALWAN_CORE_LITERAL(105.509),
         ALWAN_CORE_LITERAL(0.0158),
@@ -28,7 +60,7 @@ ALWAN_CONSTEXPR ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[4][8] = {
         ALWAN_CORE_LITERAL(0.0),
         ALWAN_CORE_LITERAL(0.045)       /* 9/200 */
     },
-    /* DIN99b */
+    /* DIN99b, Cui 2002. Rotates 26 degrees, chroma as 23 ln(1 + 0.075 G). */
     {
         ALWAN_CORE_LITERAL(303.67),
         ALWAN_CORE_LITERAL(0.0039),
@@ -39,7 +71,7 @@ ALWAN_CONSTEXPR ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[4][8] = {
         ALWAN_CORE_LITERAL(26.0),
         ALWAN_CORE_LITERAL(1.0)
     },
-    /* DIN99c */
+    /* DIN99c, Cui 2002. No rotation, so c3 and c7 are both 0. */
     {
         ALWAN_CORE_LITERAL(317.65),
         ALWAN_CORE_LITERAL(0.0037),
@@ -50,7 +82,7 @@ ALWAN_CONSTEXPR ALWAN_CORE_T ALWAN_CORE_FNLIT(ALWAN_DIN99_COEFFS)[4][8] = {
         ALWAN_CORE_LITERAL(0.0),
         ALWAN_CORE_LITERAL(1.0)
     },
-    /* DIN99d */
+    /* DIN99d, Cui 2002. Rotates 50 degrees; c4 above 1 stretches rather than compresses. */
     {
         ALWAN_CORE_LITERAL(325.22),
         ALWAN_CORE_LITERAL(0.0036),

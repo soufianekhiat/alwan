@@ -30,12 +30,29 @@ The earlier audit still points to a few categories that remain useful as
 follow-up work items:
 
 - document or regenerate the AgX curve polynomial provenance
-- add missing literature/spec citations for:
-  - CIE Luv constants
-  - DIN99 constants
-  - Hunter Lab constants
-  - ProLab constants
-  - OSA-UCS constants
+- **DONE 2026-09-20** for the colour-space constants, and it was not the same job
+  in each case:
+  - **DIN99**: the real gap. 32 numbers in a `[4][8]` table read positionally
+    under a comment saying `[c1 .. c8]` and nothing else, so checking 105.509
+    against DIN 6176 meant reverse-engineering the transform first. The table now
+    carries the six equations, what each slot does in them, and why `c5` and `c8`
+    look redundant (DIN99 spells the chroma `ln(1+0.045G)/0.045`, the later
+    variants spell it `23 ln(1+0.075G)`, and one table covers both). Cited to
+    DIN 6176:2001-03, with the b/c/d variants to Cui et al. (2002).
+  - **OSA-UCS**: a precise citation already existed in
+    `gendata/data/osa_ucs_matrices.py`, MacAdam (1978), and had never crossed
+    into the code holding the numbers. It has now, beside the Y0 quadratic and
+    the Lambda expression, with the note that suite 24 holds the transform to
+    `colour.XYZ_to_OSA_UCS`, so these are checked and not merely cited.
+  - **CIE Luv**: nothing to trace. Every constant is exact and definitional,
+    4, 9, 15, 3, 116, 16, 13, so the fix is a citation to CIE 15:2004 section 8.2
+    and the equations beside them, not a name per number.
+  - **Hunter Lab**: already self-documenting. The constants are named macros
+    (`ALWAN_HUNTER_KA_XN_REF_`, `ALWAN_HUNTER_KA_D65_` and so on) rather than
+    literals in the formula.
+  - **ProLab**: nothing matching the description. Its literals are guards
+    (`1e-10`) and the projective matrix comes from gendata, so there was no
+    uncited constant to cite.
 - document the source/provenance of the ACES 2.0 Fourier chroma normalization
   arrays
 - clean up remaining hardcoded-reference TODOs in Python `gendata` scripts if

@@ -6,7 +6,15 @@
  * Header-only OSA-UCS Color Space (Optical Society of America Uniform Color Scales)
  * Value-returning variants for cross-platform (C/HLSL/Halide) use.
  *
- * Reference: OSA Uniform Color Scales Committee (1977)
+ * Reference: MacAdam, D. L. (1978), "Uniform color scales", Journal of the
+ * Optical Society of America 68(1), 121-130, which defines the Y0 quadratic and
+ * the Lambda expression used below, for the scales the OSA Uniform Color Scales
+ * Committee published in 1977.
+ *
+ * The XYZ -> RGB_OSA matrix is not hand-entered: gendata/data/osa_ucs_matrices.py
+ * takes it from colour-science's MATRIX_XYZ_TO_RGB_OSA_UCS. Suite 24 holds the
+ * whole forward transform to colour.XYZ_to_OSA_UCS, so these constants are
+ * checked against an implementation of the paper rather than only cited.
  */
 
 #ifndef ALWAN_OSA_UCS_CORE_H
@@ -70,7 +78,16 @@ ALWAN_INLINE alwan_osa_ucs alwan_xyz_to_osa_ucs_v(alwan_xyz xyz) {
     /* Guard: black point */
     alwan_scalar is_black = ALWAN_SELECT(sum < ALWAN_LITERAL(1e-10), ALWAN_ONE, ALWAN_ZERO);
 
-    /* Step 2: Calculate Y0 (luminance factor) */
+    /* Step 2: Y0, the luminance factor.
+     *
+     * K is the published quadratic in the chromaticity coordinates from MacAdam
+     * (1978), and the six coefficients below are reproduced from it rather than
+     * fitted here:
+     *
+     *   K = 4.4934 x^2 + 4.3034 y^2 - 4.276 xy - 1.3744 x - 2.5643 y + 1.8103
+     *
+     * and Y0 = Y * K. The negative middle terms are the paper's, not a sign slip.
+     */
     alwan_scalar k = ALWAN_LITERAL(4.4934) * cx * cx +
                      ALWAN_LITERAL(4.3034) * cy * cy -
                      ALWAN_LITERAL(4.276) * cx * cy -
@@ -80,7 +97,14 @@ ALWAN_INLINE alwan_osa_ucs alwan_xyz_to_osa_ucs_v(alwan_xyz xyz) {
     alwan_scalar Y0 = Y * k;
     Y0 = ALWAN_SELECT(Y0 < ALWAN_ZERO, ALWAN_ZERO, Y0);
 
-    /* Step 3: Calculate Lambda */
+    /* Step 3: Lambda, also MacAdam (1978):
+     *
+     *   Lambda = 5.9 [ Y0^(1/3) - 2/3 + 0.042 (Y0 - 30)^(1/3) ]
+     *
+     * The second cube root takes a NEGATIVE argument for any Y0 below 30, which
+     * is most of the range, so it goes through the sign-preserving cube root
+     * rather than a bare pow: pow(x, 1/3) is NaN there.
+     */
     alwan_scalar Y0_cbrt = ALWAN_CBRT(Y0);
     alwan_scalar Y0_minus_30 = Y0 - ALWAN_LITERAL(30.0);
     alwan_scalar Y0_minus_30_cbrt = alwan_spow_cbrt_v(Y0_minus_30);

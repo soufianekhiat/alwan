@@ -81,6 +81,17 @@ ALWAN_INLINE alwan_xyz alwan_lab_to_xyz_v(alwan_lab lab, alwan_xyz white) {
     return result;
 }
 
+/* XYZ -> CIE Luv (using reference white point).
+ *
+ * CIE 15:2004, section 8.2. Every constant here is exact and definitional rather
+ * than fitted, which is why none of them is named:
+ *
+ *   u' = 4X / (X + 15Y + 3Z)      v' = 9Y / (X + 15Y + 3Z)
+ *   L* = 116 f(Y/Yn) - 16         u* = 13 L* (u' - u'n)
+ *                                 v* = 13 L* (v' - v'n)
+ *
+ * f() is the same cube-root-with-linear-toe the Lab transform above uses, so the
+ * 116 and 16 are shared with it by definition and not by coincidence. */
 ALWAN_INLINE alwan_luv alwan_xyz_to_luv_v(alwan_xyz xyz, alwan_xyz white) {
     alwan_luv result;
     alwan_scalar denom = xyz.x + ALWAN_LITERAL(15.0) * xyz.y + ALWAN_LITERAL(3.0) * xyz.z;

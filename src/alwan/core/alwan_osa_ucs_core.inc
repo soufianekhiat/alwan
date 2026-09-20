@@ -6,7 +6,15 @@
  * Header-only OSA-UCS Color Space (parameterized)
  * No include guard - included twice via setup/teardown.
  *
- * Reference: OSA Uniform Color Scales Committee (1977)
+ * Reference: MacAdam, D. L. (1978), "Uniform color scales", Journal of the
+ * Optical Society of America 68(1), 121-130, which defines the Y0 quadratic and
+ * the Lambda expression used below, for the scales the OSA Uniform Color Scales
+ * Committee published in 1977.
+ *
+ * The XYZ -> RGB_OSA matrix is not hand-entered: gendata/data/osa_ucs_matrices.py
+ * takes it from colour-science's MATRIX_XYZ_TO_RGB_OSA_UCS. Suite 24 holds the
+ * whole forward transform to colour.XYZ_to_OSA_UCS, so these constants are
+ * checked against an implementation of the paper rather than only cited.
  */
 
 /* ----------------------------------------------------------------
@@ -50,7 +58,16 @@ ALWAN_INLINE ALWAN_CORE_OSA_UCS ALWAN_CORE_FNVLIT(alwan_xyz_to_osa_ucs)(ALWAN_CO
     /* Guard: black point */
     ALWAN_CORE_T is_black = ALWAN_CORE_SELECT(sum < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_ONE, ALWAN_CORE_ZERO);
 
-    /* Step 2: Calculate Y0 (luminance factor) */
+    /* Step 2: Y0, the luminance factor.
+     *
+     * K is the published quadratic in the chromaticity coordinates from MacAdam
+     * (1978), and the six coefficients below are reproduced from it rather than
+     * fitted here:
+     *
+     *   K = 4.4934 x^2 + 4.3034 y^2 - 4.276 xy - 1.3744 x - 2.5643 y + 1.8103
+     *
+     * and Y0 = Y * K. The negative middle terms are the paper's, not a sign slip.
+     */
     ALWAN_CORE_T k = ALWAN_CORE_LITERAL(4.4934) * cx * cx +
                      ALWAN_CORE_LITERAL(4.3034) * cy * cy -
                      ALWAN_CORE_LITERAL(4.276) * cx * cy -
@@ -60,7 +77,14 @@ ALWAN_INLINE ALWAN_CORE_OSA_UCS ALWAN_CORE_FNVLIT(alwan_xyz_to_osa_ucs)(ALWAN_CO
     ALWAN_CORE_T Y0 = Y * k;
     Y0 = ALWAN_CORE_SELECT(Y0 < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, Y0);
 
-    /* Step 3: Calculate Lambda */
+    /* Step 3: Lambda, also MacAdam (1978):
+     *
+     *   Lambda = 5.9 [ Y0^(1/3) - 2/3 + 0.042 (Y0 - 30)^(1/3) ]
+     *
+     * The second cube root takes a NEGATIVE argument for any Y0 below 30, which
+     * is most of the range, so it goes through the sign-preserving cube root
+     * rather than a bare pow: pow(x, 1/3) is NaN there.
+     */
     ALWAN_CORE_T Y0_cbrt = ALWAN_CORE_CBRT(Y0);
     ALWAN_CORE_T Y0_minus_30 = Y0 - ALWAN_CORE_LITERAL(30.0);
     ALWAN_CORE_T Y0_minus_30_cbrt = ALWAN_CORE_FNVLIT(alwan_spow_cbrt)(Y0_minus_30);
