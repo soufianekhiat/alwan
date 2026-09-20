@@ -102,6 +102,16 @@ static interop_entry const g_interop_aliases[] = {
     { ALWAN_RGB_SPACE_SRGB,                  "srgb_rec709_display" },
     { ALWAN_RGB_SPACE_GAMMA24_REC709,        "g24_rec709_display" },
     { ALWAN_RGB_SPACE_DISPLAY_P3,            "srgb_p3d65_display" },
+    /* The Forum's "Display P3 HDR": the same primaries, white and piecewise sRGB curve
+     * as srgb_p3d65_display, differing only in that values above 1.0 are allowed, so
+     * that a UI's SDR white sits at 1.0 while highlights go past it. alwan_rgb_space
+     * describes primaries, a white point and a transfer function, and carries no notion
+     * of the range a value may occupy, so the two IDs land on the same space here. That
+     * is lossy in one direction and it is the honest mapping: inventing a second space
+     * identical in every field would convert identically and only make the enum longer.
+     * alwan_interop_format therefore returns the scene-referred ID for this space, as
+     * it does for the others in this block. */
+    { ALWAN_RGB_SPACE_DISPLAY_P3,            "srgbe_p3d65_display" },
     { ALWAN_RGB_SPACE_GAMMA22_REC709,        "g22_rec709_display" },
     { ALWAN_RGB_SPACE_GAMMA22_ADOBE_RGB,     "g22_adobergb_display" },
     { ALWAN_RGB_SPACE_LINEAR_REC709,         "lin_rec709_display" },

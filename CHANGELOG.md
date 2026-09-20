@@ -92,6 +92,27 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **`srgbe_p3d65_display` parses.** The Color Interop Forum's "Display P3 HDR" ID now
+  resolves to `ALWAN_RGB_SPACE_DISPLAY_P3`, where it was `ALWAN_E_NODATA`. It is the same
+  primaries, white point and piecewise sRGB curve as `srgb_p3d65_display`; what differs
+  is that values above 1.0 are allowed, so a UI's SDR white can sit at 1.0 while
+  highlights extend past it. `alwan_rgb_space` describes primaries, a white point and a
+  transfer function and carries no notion of the range a value may occupy, so both IDs
+  land on one space. A second space identical in every field would convert identically
+  and only make the enum longer.
+
+  The Forum's other two unparsed IDs, `g26_xyzd65_display` and `pq_xyzd65_display`, stay
+  `ALWAN_E_NODATA`. Neither needs a new transfer function, since `alwan_dcdm_oetf`
+  already carries the 48 / 52.37 headroom they call for, but both need an XYZ-primaries
+  space at D65 and that turned out to rest on an unsettled question about the space alwan
+  already has. Suite 59 now measures it: `ALWAN_RGB_SPACE_LINEAR_CIE_XYZ_D65` stores the
+  identity matrix and is documented as D65-relative, but declares illuminant E as its
+  white, so D65's own tristimulus taken through it to linear Rec.709 comes out
+  (0.801, 1.053, 1.099) when a ctx is passed and exactly (1, 1, 1) when it is not. The
+  same conversion has two answers depending on the context argument, and the correct one
+  is the one where no adaptation runs. Nothing is changed here; roadmap 3.6 carries the
+  decision with both numbers attached.
+
 - **A CGATS.17 writer beside the OQM one.** `alwan_chart_write_cgats17_{T}` and
   `alwan_chart_write_cgats17_buffer_{T}`, with the same shape as the existing writers:
   the buffer form reports the length it needs when given a NULL buffer and refuses a
