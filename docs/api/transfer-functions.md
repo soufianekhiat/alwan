@@ -153,8 +153,9 @@ colour-science's `eotf_DICOMGSDF` to 8e-14 relative and its inverse to 2e-16.
 publishes the forward and the inverse as two independent fits, a rational
 polynomial in ln(j) one way and a ninth-order polynomial in log10(L) the other.
 They are not algebraic inverses of each other: encoding 0.05 cd/m2 and decoding
-it gives 0.05014, 0.29 per cent high, and the two disagree by 2.4 cd/m2 at the top
-of the range. alwan implements the pair as published rather than inverting one of
+it gives 0.05014, 0.29 per cent high, the miss peaks at 0.52 per cent just above
+that, stays within about a tenth of a per cent through the middle, and is 2.4 cd/m2
+at the top of the range. alwan implements the pair as published rather than inverting one of
 them, so that both directions match the standard and any other conforming
 implementation. If you need an exact inverse, invert the one you are using
 numerically; do not expect the other direction to be it.
