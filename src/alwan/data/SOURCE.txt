@@ -1,0 +1,54 @@
+The 35 CSV files beside this one, which are not in a subdirectory because they
+are single tables rather than datasets.
+
+Almost all of them are PUBLISHED FORMULA CONSTANTS, matrices and exponents read
+out of the paper or standard that defines them, so they carry no licence of
+their own. Each is written by a script in alwan_dev/gendata/data/, and that
+script names the source it took the numbers from:
+
+  ictcp_*        ITU-R BT.2100 ICtCp, the LMS and PQ/HLG matrices
+  ipt_*          Ebner and Fairchild (1998) IPT
+  igpgtg_*       Hellwig and Fairchild IgPgTg scale
+  ihls_*         Hanbury (2003) improved HLS
+  prolab_*       Konovalenko et al. (2021) ProLab projective matrices
+  munsell_*      the Munsell renotation, via colour-science
+  planckian_*    Krystek (1985) Planckian locus rational polynomial, via
+                 colour.temperature.CCT_to_uv_Krystek1985
+  ssi_*          Spectral Similarity Index weights, via
+                 colour.quality.ssi.spectral_similarity_index
+  srgb_*, rgb_*  sRGB and RGB working-space matrices
+  white_*, hdr_* reference white points
+  aces2_chroma_norm_{cos,sin}
+                 ACES 2.0 chroma compression normalisation, four Fourier terms
+                 each, approximating the AP1 gamut cusp M against hue angle.
+                 From the Academy's ACES 2.0 Output Transform (aces-aswf/
+                 aces-core), CTL lib/Lib.Academy.OutputTransform.ctl,
+                 chroma_compress_norm(), cross-checked against OpenColorIO's
+                 src/OpenColorIO/ops/fixedfunction/ACES2/Transform.cpp.
+                 Written by gendata/data/aces2_fourier.py. The gamut cusp tables
+                 those feed are in aces2/, which has its own SOURCE.txt.
+
+THE THREE agx_* FILES ARE DIFFERENT, AND THEIR LICENCE IS NOT RECORDED ANYWHERE
+IN THIS TREE.
+
+  agx_blender_lut3d.csv          14 MB, Blender's AgX (EaryChow) baked from
+                                 AgX_Base_sRGB.cube, a 57^3 3D LUT that carries
+                                 gamut compression not decomposable into a matrix
+                                 and a curve, which is why it ships as a cube
+  agx_default_contrast_lut.csv   Troy Sobotka's AgX, LUTs/AgX_Default_Contrast.spi1d
+  agx_sb2383_contrast_lut.csv    Troy Sobotka's SB2383 experiment
+
+Each is baked from files vendored at alwan_dev/extern/agx/{blender,sobotka,
+sb2383}, twelve tracked files in all, and NONE of those upstreams has a licence
+file vendored beside it. The generators (gendata/data/agx_blender.py,
+agx_contrast_lut.py, agx_sb2383.py) name where each came from and say nothing
+about terms.
+
+That is a gap, not a finding: it means nobody has written the terms down here,
+not that the terms are bad. The project's own rule, section 4.1 of the release
+plan, is to vendor only under a licence it has recorded, so these three want an
+answer before the tag. Recorded here rather than left for someone to discover
+from a 14 MB CSV with no provenance.
+  https://github.com/EaryChow/AgX
+  https://github.com/sobotka/AgX
+  https://github.com/sobotka/SB2383-Configuration-Generation

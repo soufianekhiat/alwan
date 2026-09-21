@@ -72,8 +72,31 @@ follow-up work items:
   - **ProLab**: nothing matching the description. Its literals are guards
     (`1e-10`) and the projective matrix comes from gendata, so there was no
     uncited constant to cite.
-- document the source/provenance of the ACES 2.0 Fourier chroma normalization
-  arrays
+- **DONE 2026-09-21** for the ACES 2.0 Fourier chroma normalisation arrays, and
+  it was the OSA-UCS pattern again: the citation already existed in
+  `gendata/data/aces2_fourier.py` and had never crossed into the file holding the
+  numbers. The two four-term arrays now carry it beside them, with what they
+  approximate (the AP1 gamut cusp M against hue angle, which
+  `chroma_compress_norm()` divides by, so a wrong term reads as a hue-dependent
+  chroma error rather than as anything obviously broken) and the note that four
+  terms is the reference implementation's own truncation. Source: the Academy's
+  ACES 2.0 Output Transform, `lib/Lib.Academy.OutputTransform.ctl`, cross-checked
+  against OpenColorIO's `ACES2/Transform.cpp`.
+
+- **FOUND WHILE DOING IT, and it is an owner question, not a documentation one.**
+  `src/alwan/data/` had 35 CSVs at its root with no SOURCE.txt, the earlier
+  provenance pass having covered subdirectories only. Almost all are published
+  formula constants and are now listed by family. Three are not:
+  `agx_blender_lut3d.csv` (14 MB, Blender's AgX baked from a 57^3 cube),
+  `agx_default_contrast_lut.csv` and `agx_sb2383_contrast_lut.csv`.
+
+  They are baked from twelve tracked files vendored at
+  `alwan_dev/extern/agx/{blender,sobotka,sb2383}`, and **none of those three
+  upstreams has a licence file vendored beside it**. The generators name where
+  each came from and say nothing about terms. That is a gap rather than a
+  finding: it means nobody wrote the terms down, not that the terms are bad. But
+  section 4.1 of the release plan is to vendor only under a licence that has been
+  recorded, so these three want an answer before the tag.
 - clean up remaining hardcoded-reference TODOs in Python `gendata` scripts if
   those scripts return to active use
 

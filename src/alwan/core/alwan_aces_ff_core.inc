@@ -26,6 +26,20 @@
 
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
+/* ACES 2.0 chroma compression normalisation, four cosine and four sine terms.
+ *
+ * They approximate the AP1 gamut cusp M as a function of hue angle, which is
+ * what chroma_compress_norm() divides by, so a wrong term shows up as a
+ * hue-dependent chroma error rather than as anything obviously broken.
+ *
+ * Source: the Academy's ACES 2.0 Output Transform, aces-aswf/aces-core:
+ *   CTL  lib/Lib.Academy.OutputTransform.ctl, chroma_compress_norm()
+ *   C++  OpenColorIO, src/OpenColorIO/ops/fixedfunction/ACES2/Transform.cpp
+ * Written by gendata/data/aces2_fourier.py, which is where that citation has
+ * lived; it is repeated here because this is the file holding the numbers.
+ *
+ * Four terms is the reference implementation's own truncation, not a choice
+ * made here. */
 ALWAN_CONSTEXPR ALWAN_CORE_T ALWAN_CORE_FNLIT(ACES2_CHROMA_NORM_COS_V)[4] = {
 #include "../data/aces2_chroma_norm_cos.csv"
 };
