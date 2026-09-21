@@ -566,7 +566,10 @@ typedef enum {
     ALWAN_TF_MILOG = 61,         /* Xiaomi Mi-Log, Apple Log's form with Xiaomi's constants */
     ALWAN_TF_LOG2 = 62,          /* log2 over -6.5 to +6.5 stops around 0.18 */
 
-    ALWAN_TF_COUNT = 63,         /* Sentinel: number of curves */
+    /* Medical display */
+    ALWAN_TF_DICOM_GSDF = 63,    /* DICOM PS3.14 Grayscale Standard Display Function: signal x 1023 is the JND index, luminance is ABSOLUTE cd/m2 (0.05 to about 3993), as PQ's is nits */
+
+    ALWAN_TF_COUNT = 64,         /* Sentinel: number of curves */
 
     /* Game Engine Interop */
     ALWAN_TF_UNITY_LINEAR = ALWAN_TF_LINEAR  /* Unity linear (alias for ALWAN_TF_LINEAR) */

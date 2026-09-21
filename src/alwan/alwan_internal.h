@@ -311,7 +311,8 @@ static inline void alwan__get_luma_coeffs(alwan_luma_standard standard,
     X(PLOG,          plog,          plog)                 \
     X(FILMIC_PRO6,   filmic_pro6,   filmic_pro6)          \
     X(MILOG,         milog,         milog)                \
-    X(LOG2,          log2_shaper,   log2_shaper)
+    X(LOG2,          log2_shaper,   log2_shaper)          \
+    X(DICOM_GSDF,    dicom_gsdf,    dicom_gsdf)
 
 #define TF_SIMD_TABLE_BODY(X)                             \
     X(SRGB, srgb_oetf_simd, srgb_eotf_simd)               \

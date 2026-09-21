@@ -133,6 +133,8 @@ typedef enum {
     ALWAN_TF_MILOG,                /* Xiaomi Mi-Log */
     ALWAN_TF_LOG2,                 /* log2 over -6.5 to +6.5 stops around 0.18 */
 
+    ALWAN_TF_DICOM_GSDF,           /* DICOM PS3.14 Grayscale Standard Display Function */
+
     ALWAN_TF_COUNT                 /* sentinel: the number of curves */
 } alwan_transfer_function;
 ```
@@ -140,6 +142,22 @@ typedef enum {
 `ALWAN_TF_PQ` takes and returns cd/m2: linear 100.0 encodes to the PQ code for
 100 nits. `ALWAN_TF_HLG` takes scene light normalised so that 1.0 is the
 nominal peak, with the 12x of the standard applied inside.
+
+`ALWAN_TF_DICOM_GSDF` is the medical display curve, and it keeps absolute
+luminance the way PQ does. The signal times 1023 is the standard's JND index, and
+the linear side is cd/m2, from 0.05 at index 1 to about 3993 at index 1023. A
+signal below 1/1023 is index 1, the darkest level the standard defines. It follows
+colour-science's `eotf_DICOMGSDF` to 8e-14 relative and its inverse to 2e-16.
+
+**It does not round-trip, and that is the standard's doing.** DICOM PS3.14
+publishes the forward and the inverse as two independent fits, a rational
+polynomial in ln(j) one way and a ninth-order polynomial in log10(L) the other.
+They are not algebraic inverses of each other: encoding 0.05 cd/m2 and decoding
+it gives 0.05014, 0.29 per cent high, and the two disagree by 2.4 cd/m2 at the top
+of the range. alwan implements the pair as published rather than inverting one of
+them, so that both directions match the standard and any other conforming
+implementation. If you need an exact inverse, invert the one you are using
+numerically; do not expect the other direction to be it.
 
 The H.273 curves are the transfer characteristics video streams signal that alwan
 had no curve for; [interchange.md](interchange.md#itu-t-h273-code-points) maps every

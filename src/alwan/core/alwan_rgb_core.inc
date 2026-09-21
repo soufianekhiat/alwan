@@ -1386,3 +1386,24 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_dicom_gsdf_oetf)(ALWAN_CORE_T 
 
     return ALWAN_CORE_SELECT(jnd < ALWAN_CORE_LITERAL(1.0), ALWAN_CORE_LITERAL(1.0), jnd);
 }
+
+/* The same curve in the transfer-function enum's convention, which is what
+ * ALWAN_TF_DICOM_GSDF dispatches to.
+ *
+ * The two functions above work in the standard's own units: a JND index from 1
+ * to 1023 against a luminance in cd/m2. The enum's curves take a SIGNAL in
+ * [0, 1], so the index is the signal times 1023, and the luminance stays
+ * ABSOLUTE, in cd/m2, exactly as ALWAN_TF_PQ returns nits rather than a fraction
+ * of 10000: a display curve defined against absolute luminance keeps it. That is
+ * also colour-science's convention for eotf_DICOMGSDF and its inverse, which is
+ * what makes it a direct oracle (suite 103).
+ *
+ * The range is the standard's: 0.05 cd/m2 at index 1 to about 3993 at 1023. A
+ * signal below 1/1023 is index 1, the darkest level the standard defines. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_dicom_gsdf_eotf)(ALWAN_CORE_T encoded) {
+    return ALWAN_CORE_FNVLIT(alwan_dicom_gsdf_eotf)(encoded * ALWAN_CORE_LITERAL(1023.0));
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_dicom_gsdf_oetf)(ALWAN_CORE_T lin) {
+    return ALWAN_CORE_FNVLIT(alwan_dicom_gsdf_oetf)(lin) / ALWAN_CORE_LITERAL(1023.0);
+}

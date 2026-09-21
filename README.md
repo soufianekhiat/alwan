@@ -638,22 +638,22 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 171, all passing |
-| Test cases | 1,091 |
-| Checks executed per run | 213,230 |
-| Assertion sites in the tests | 4,935 |
-| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 440 |
+| Test cases | 1,092 |
+| Checks executed per run | 213,231 |
+| Assertion sites in the tests | 4,936 |
+| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 441 |
 | Embedded data tables | 950 |
 | Exported symbols | 1,986 |
-| Internal symbols reached by a test or a public entry point | 241 of 249 (97%), [the other 8 listed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
+| Internal symbols reached by a test or a public entry point | 243 of 251 (97%), [the other 8 listed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL under dxc | 40 of 43 |
 
 Two of these deserve the emphasis:
 
-**213,230 checks per run** is what actually executes, not what is written. A
+**213,231 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,935 assertion sites would undersell the suite more than
+so counting the 4,936 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -696,7 +696,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 171 suites, 1,091 cases, 213,230 checks executed per run
+  module: 171 suites, 1,092 cases, 213,231 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
