@@ -848,9 +848,12 @@ alwan_status alwan_rgb_convert_map_interleave_f64(alwan_rgb_f64 *dst_rgb, alwan_
 alwan_status alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, size_t count, alwan_ctx *ctx);
 
 /* Convert a 2D image between RGB color spaces with format conversion.
- * Handles EOTF/OETF, chromatic adaptation (Bradford), and U8/U16/F32/F64.
+ * Handles EOTF/OETF, chromatic adaptation (Bradford), and every pixel format:
+ * U8, U16, F16, F32 and F64, in any pairing of source and destination.
  * dst/src: pixel buffers (3-channel, tightly packed per pixel)
- * dst_fmt/src_fmt: pixel format (ALWAN_PIXEL_U8, _U16, _F32, _F64)
+ * dst_fmt/src_fmt: pixel format (ALWAN_PIXEL_U8, _U16, _F16, _F32, _F64).
+ *   F16 is IEEE 754 binary16 in a uint16_t. It has been supported for as long as
+ *   the others and this comment used to leave it out.
  * dst_row_stride/src_row_stride: bytes between consecutive rows
  * width/height: image dimensions in pixels
  * ctx: context (required when src and dst white points differ)
