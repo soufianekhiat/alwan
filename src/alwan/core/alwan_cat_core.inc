@@ -120,14 +120,23 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
     ALWAN_CORE_VEC3 rgb_o = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M, v_o);
 
     /* D_RGB factors for source and destination (unrolled 3 channels)
-     * D_RGB = D * (RGB_o / RGB_w) + 1 - D */
-    ALWAN_CORE_T D_rgb_src_0 = D_src * (rgb_o.v[0] / rgb_src.v[0]) + (ALWAN_CORE_ONE - D_src);
-    ALWAN_CORE_T D_rgb_src_1 = D_src * (rgb_o.v[1] / rgb_src.v[1]) + (ALWAN_CORE_ONE - D_src);
-    ALWAN_CORE_T D_rgb_src_2 = D_src * (rgb_o.v[2] / rgb_src.v[2]) + (ALWAN_CORE_ONE - D_src);
+     * D_RGB = D * (Y_w / Y_o) * (RGB_o / RGB_w) + 1 - D */
+    /* The luminance of each white against the baseline's. With every white on
+     * one scale, which is what this function was documented for, both ratios
+     * are exactly 1 and nothing moves. Without them the adaptation depended on
+     * the scale of xyz_dst alone: a D65 given as (0.9505, 1, 1.0891) beside a
+     * source white at Y = 100 came out a hundred times too dim at D = 1.
+     * Y_w / RGB_w is scale-free, so with the ratio the result is too. */
+    ALWAN_CORE_T y_src = xyz_src.y / xyz_baseline.y;
+    ALWAN_CORE_T y_dst = xyz_dst.y / xyz_baseline.y;
 
-    ALWAN_CORE_T D_rgb_dst_0 = D_dst * (rgb_o.v[0] / rgb_dst.v[0]) + (ALWAN_CORE_ONE - D_dst);
-    ALWAN_CORE_T D_rgb_dst_1 = D_dst * (rgb_o.v[1] / rgb_dst.v[1]) + (ALWAN_CORE_ONE - D_dst);
-    ALWAN_CORE_T D_rgb_dst_2 = D_dst * (rgb_o.v[2] / rgb_dst.v[2]) + (ALWAN_CORE_ONE - D_dst);
+    ALWAN_CORE_T D_rgb_src_0 = D_src * y_src * (rgb_o.v[0] / rgb_src.v[0]) + (ALWAN_CORE_ONE - D_src);
+    ALWAN_CORE_T D_rgb_src_1 = D_src * y_src * (rgb_o.v[1] / rgb_src.v[1]) + (ALWAN_CORE_ONE - D_src);
+    ALWAN_CORE_T D_rgb_src_2 = D_src * y_src * (rgb_o.v[2] / rgb_src.v[2]) + (ALWAN_CORE_ONE - D_src);
+
+    ALWAN_CORE_T D_rgb_dst_0 = D_dst * y_dst * (rgb_o.v[0] / rgb_dst.v[0]) + (ALWAN_CORE_ONE - D_dst);
+    ALWAN_CORE_T D_rgb_dst_1 = D_dst * y_dst * (rgb_o.v[1] / rgb_dst.v[1]) + (ALWAN_CORE_ONE - D_dst);
+    ALWAN_CORE_T D_rgb_dst_2 = D_dst * y_dst * (rgb_o.v[2] / rgb_dst.v[2]) + (ALWAN_CORE_ONE - D_dst);
 
     /* Two-step adaptation: RGB_d = (D_RGB_src / D_RGB_dst) * RGB_in */
     ALWAN_CORE_VEC3 rgb_adapted;

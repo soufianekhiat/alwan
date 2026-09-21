@@ -19,7 +19,7 @@ Color appearance models (CAMs) predict how colors appear under varying viewing c
 **Implemented models:**
 - **CIECAM02** -- CIE Color Appearance Model 2002 (forward + inverse, Map, `_ex`)
 - **CAM16** -- Color Appearance Model 2016 (forward + inverse, +CAM16-UCS Jab, Map, `_ex`)
-- **ZCAM** -- HDR CAM on Jzazbz, Safdar et al. 2021 (forward + inverse, +ZCAM-UCS)
+- **ZCAM** -- HDR CAM on Izazbz (Safdar 2021 form), Safdar et al. 2021 (forward + inverse, +ZCAM-UCS)
 - **RLAB** -- Fairchild cross-media model (forward + inverse)
 - **Hellwig & Fairchild 2022** -- HK-effect CAM (forward + inverse)
 - **Kim 2009** -- forward + inverse
@@ -295,7 +295,34 @@ alwan_status alwan_zcam_inverse_{T}(alwan_xyz_{T} *xyz,
                                      alwan_zcam_viewing_conditions_{T} const *vc);
 ```
 
-Latest CIE color appearance model with improved HDR support. Built on Jzazbz color space.
+Safdar, Hardeberg and Luo (2021), as colour-science's `XYZ_to_ZCAM` and `ZCAM_to_XYZ`,
+checked against both in suite 28 under three surrounds, a white that is not D65, a white that
+is not at Y = 100, and a discounted illuminant: 5e-11 relative on the correlates, 1e-13 of the
+white's luminance on the inverse.
+
+`xyz` and `vc->xyz_w` are absolute, in cd/m^2, under the viewing illuminant. `vc->La` is the
+adapting luminance and `vc->Yb` the luminance factor of the background on the scale of
+`xyz_w.y`. The model first adapts the stimulus to D65 with the Zhai 2018 two-step CAT over
+CAT02, at the degree of adaptation D(F, L_A), or 1 when `discount_illuminant` is set. The white
+is not adapted. It is built on Izazbz in its Safdar 2021 form, whose achromatic response is
+I_z = M' - epsilon, and not on Jzazbz.
+
+| Surround | F_s | F |
+|---|---|---|
+| `ALWAN_ZCAM_SURROUND_AVERAGE` | 0.69 | 1.0 |
+| `ALWAN_ZCAM_SURROUND_DIM` | 0.59 | 0.9 |
+| `ALWAN_ZCAM_SURROUND_DARK` | 0.525 | 0.8 |
+
+The inverse reads `Jz`, `Mz` and `hz` and ignores the other correlates, which is what
+`alwan_zcam_from_ucs` fills. It is closed form and exact: forward then inverse returns the
+stimulus to 2e-13 of the white's luminance in f64, and to 4e-8 through the f32 API, whose
+correlates carry seven digits.
+
+**Output changed on 2026-09-21.** Until then ZCAM had never been compared with a reference:
+its suite printed each mismatch and returned success. F_s was read from the F column, the
+achromatic response was Jzazbz's, the adaptation to D65 was missing, and the inverse ignored
+the viewing conditions. Lightness was off by up to 18 of 100. Anything that stored ZCAM
+correlates from an earlier build has to recompute them.
 
 ### alwan_zcam_to_ucs_{T} / alwan_zcam_from_ucs_{T}
 

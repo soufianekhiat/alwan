@@ -2312,9 +2312,12 @@ alwan_status alwan_xyz_adapt_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_f6
 
 /* Zhai & Luo 2018 two-step chromatic adaptation
  * Adapts XYZ from input illuminant to output illuminant via baseline illuminant
- * xyz_in: input XYZ color under source illuminant (Y=100 scale)
- * xyz_src: source illuminant XYZ (Y=100 scale)
- * xyz_dst: destination illuminant XYZ (Y=100 scale)
+ * xyz_in: input XYZ color under source illuminant
+ * xyz_src: source illuminant XYZ, on the scale of xyz_in
+ * xyz_dst: destination illuminant XYZ, on ANY scale: each white enters as
+ *          Y_w / RGB_w, which is scale-free, so (0.9505, 1, 1.0891) and
+ *          (95.05, 100, 108.91) adapt identically. Until 2026-09-21 the three
+ *          whites had to share one scale, or the result was scaled with them
  * D_src: degree of adaptation for source illuminant [0,1] (1=full adaptation)
  * D_dst: degree of adaptation for destination illuminant [0,1] (1=full adaptation)
  * xyz_baseline: baseline illuminant XYZ (NULL for equal-energy white [100,100,100])
@@ -4671,8 +4674,23 @@ alwan_status alwan_cam16_from_ucs_f64(alwan_cam16_correlates_f64 *correlates_out
 
 /* ----------------------------------------------------------------
  * ZCAM - HDR Color Appearance Model
- * Based on Safdar et al. (2021), uses Jzazbz color space
+ * Safdar, Hardeberg and Luo (2021), Optics Express 29(4), 6036, as
+ * colour-science's XYZ_to_ZCAM and ZCAM_to_XYZ. Built on Izazbz in its Safdar
+ * 2021 form, NOT on Jzazbz: I_z = M' - epsilon.
  * Supports HDR luminance range 0.001-10,000 cd/m^2
+ *
+ * Viewing conditions: xyz_w is the absolute white under the viewing illuminant,
+ * La the adapting luminance in cd/m^2, Yb the luminance factor of the
+ * background on the scale of xyz_w.y. The surround selects F_s and F together:
+ * average 0.69 and 1.0, dim 0.59 and 0.9, dark 0.525 and 0.8. The stimulus is
+ * adapted to D65 first, by the Zhai 2018 two-step CAT over CAT02 with the
+ * model's degree of adaptation D(F, La), or D = 1 when discount_illuminant is
+ * set. The white itself is not adapted.
+ *
+ * OUTPUT CHANGED on 2026-09-21. Before that the forward model had never been
+ * compared with a reference, and was wrong in three places: F_s was read from
+ * the F column, I_z was Jzazbz's, and the adaptation to D65 was missing.
+ * Lightness was off by up to 18 of 100. See alwan_zcam_core.inc.
  * ---------------------------------------------------------------- */
 
 /* ZCAM forward transform: XYZ -> appearance correlates
@@ -4687,12 +4705,16 @@ alwan_status alwan_zcam_forward_f64(alwan_zcam_correlates_f64 *out,
                             alwan_xyz_f64 const *xyz,
                             alwan_zcam_viewing_conditions_f64 const *vc);
 
-/* ZCAM inverse transform: appearance correlates -> XYZ (approximate)
- * correlates: appearance correlates
- * vc: viewing conditions
+/* ZCAM inverse transform: appearance correlates -> XYZ
+ * correlates: appearance correlates. Jz, Mz and hz are read, the rest ignored,
+ *             which is what alwan_zcam_from_ucs fills
+ * vc: viewing conditions, the same ones the correlates were computed under
  * xyz: output XYZ tristimulus values (cd/m^2)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on null arguments
- * Note: Inverse is approximate due to complexity */
+ * Exact and closed form: in f64 it returns the stimulus to 2e-13 of the white's
+ * luminance, and in f32, whose correlates carry seven digits, to 4e-8 of it.
+ * It was labelled approximate until 2026-09-21
+ * because it was not the model's inverse at all. */
 alwan_status alwan_zcam_inverse_f32(alwan_xyz_f32 *xyz,
                             alwan_zcam_correlates_f32 const *correlates,
                             alwan_zcam_viewing_conditions_f32 const *vc);

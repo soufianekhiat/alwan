@@ -108,8 +108,8 @@ compiled in every build. See the size table below for what that costs.
 
 | Area | `_f32` entry points | Why it stays f64 internally |
 |---|---|---|
-| ZCAM forward and inverse | `alwan_zcam_*_f32`, `alwan_delta_e_zcam_f32` | iterative inverse whose convergence threshold is below f32 epsilon |
-| ACES 1.x iterative inverses | `alwan_aces1_output_transform_inv_f32` | same: convergence tighter than f32 can represent |
+| ZCAM forward and inverse | `alwan_zcam_*_f32`, `alwan_delta_e_zcam_f32` | closed form, no iteration. It stays f64 internally because the achromatic response goes through a 134th-power curve and back through its root, and a native f32 kernel has not been measured |
+| ACES 1.x iterative inverses | `alwan_aces1_output_transform_inv_f32` | iterative inverse whose convergence threshold is below f32 epsilon |
 | CCM least-squares fits | `alwan_colour_correction_matrix_cheung2004_f32`, `..._finlayson2015_f32` | the normal-equations solve squares the condition number |
 | Gamut volume, ratio, coverage | `alwan_gamut_volume_f32`, `alwan_gamut_volume_ratio_f32`, `alwan_gamut_coverage_f32` | computed in f64 for stability; volume is an exact `\|det(M)\|`, the others reduce over it |
 | Spectral quality metrics | `alwan_cri_ra_f32`, `alwan_cqs_calculate_f32`, `alwan_tm30_rf_f32`, `alwan_cie224_rf_f32`, `alwan_ssi_calculate_f32`, `alwan_metamerism_index_f32` | integrate f64 CMF tables with an f64 integrator |

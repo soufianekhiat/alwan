@@ -52,9 +52,13 @@ f64 core; they should **not** be re-implemented in native f32. These stay
 machinery (and the f64 data it reads) is gated by `ALWAN_WITH_F64_FACADE`
 (always `1`) rather than `ALWAN_WITH_F64`. They are:
 
-- **ZCAM** (forward + inverse, incl. `alwan_delta_e_zcam_f32`) and **ACES 1.x
-  inverse**: iterative inverses whose convergence thresholds fall below f32
-  epsilon.
+- **ACES 1.x inverse**: an iterative inverse whose convergence threshold falls
+  below f32 epsilon.
+- **ZCAM** (forward + inverse, incl. `alwan_delta_e_zcam_f32`): closed form, no
+  iteration, which earlier versions of this page said otherwise. It is f64
+  inside because the achromatic response goes through a 134th-power curve and
+  back through its root. Through the f32 API the round trip measures 4e-8 of
+  the white's luminance; a native f32 kernel has not been measured.
 - **Cheung 2004 / Finlayson 2015 CCM fits**: least-squares solves whose normal
   equations square the condition number.
 - **Gamut volume / ratio / coverage** (`alwan_gamut_volume_f32`,

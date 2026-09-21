@@ -44,35 +44,37 @@ ALWAN_DIAG_POP
  * Surround Enum Resolution (kept in the .c wrapper)
  * ---------------------------------------------------------------- */
 
+/* Safdar 2021, table of surround conditions. F_s and F are DIFFERENT columns:
+ * F_s is the exponent term of the brightness, F drives the degree of adaptation.
+ * Until 2026-09-21 this passed F where the model wants F_s, which is what put
+ * ZCAM's lightness out by up to 18. The table's other two columns, c and N_c,
+ * appear in no equation of the model and are not carried. */
 static void get_zcam_surround_params(alwan_zcam_surround surround,
-                                     alwan_f64 *Fs, alwan_f64 *c,
-                                     alwan_f64 *Nc, alwan_f64 *F) {
+                                     alwan_f64 *Fs, alwan_f64 *F) {
     switch (surround) {
-        case ALWAN_ZCAM_SURROUND_AVERAGE:
-            *Fs = ALWAN_LITERAL(1.0);
-            *c = ALWAN_LITERAL(0.69);
-            *Nc = ALWAN_LITERAL(1.0);
-            *F = ALWAN_LITERAL(1.0);
-            break;
         case ALWAN_ZCAM_SURROUND_DIM:
-            *Fs = ALWAN_LITERAL(0.9);
-            *c = ALWAN_LITERAL(0.59);
-            *Nc = ALWAN_LITERAL(0.9);
+            *Fs = ALWAN_LITERAL(0.59);
             *F = ALWAN_LITERAL(0.9);
             break;
         case ALWAN_ZCAM_SURROUND_DARK:
-            *Fs = ALWAN_LITERAL(0.8);
-            *c = ALWAN_LITERAL(0.525);
-            *Nc = ALWAN_LITERAL(0.8);
+            *Fs = ALWAN_LITERAL(0.525);
             *F = ALWAN_LITERAL(0.8);
             break;
+        case ALWAN_ZCAM_SURROUND_AVERAGE:
         default:
-            *Fs = ALWAN_LITERAL(1.0);
-            *c = ALWAN_LITERAL(0.69);
-            *Nc = ALWAN_LITERAL(1.0);
+            *Fs = ALWAN_LITERAL(0.69);
             *F = ALWAN_LITERAL(1.0);
             break;
     }
+}
+
+/* Degree of adaptation for a set of viewing conditions: 1 when the illuminant
+ * is discounted, the model's D(F, L_A) otherwise. */
+static alwan_f64 get_zcam_adaptation(alwan_zcam_viewing_conditions_f64 const *vc, alwan_f64 F) {
+    if (vc->discount_illuminant) {
+        return ALWAN_LITERAL(1.0);
+    }
+    return alwan_zcam_degree_of_adaptation_f64_v(F, vc->La);
 }
 
 /* ----------------------------------------------------------------
@@ -87,14 +89,12 @@ alwan_status alwan_zcam_forward_f64(alwan_zcam_correlates_f64 *out,
     }
 
     /* Resolve surround enum to scalar parameters */
-    alwan_f64 Fs, c, Nc, F;
-    get_zcam_surround_params(vc->surround, &Fs, &c, &Nc, &F);
+    alwan_f64 Fs, F;
+    get_zcam_surround_params(vc->surround, &Fs, &F);
 
     /* Delegate to value-returning core */
     alwan_zcam_v_correlates_f64 v = alwan_zcam_forward_f64_v(
-        *xyz, vc->xyz_w,
-        Fs, c, Nc, F,
-        vc->La, vc->Yb, vc->xyz_w.y);
+        *xyz, vc->xyz_w, Fs, get_zcam_adaptation(vc, F), vc->La, vc->Yb);
 
     /* Copy correlates to public struct */
     out->Jz = v.Jz;
@@ -127,8 +127,8 @@ alwan_status alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
     ALWAN_DENORM_ZCAM(&tmp);
 
     /* Resolve surround enum to scalar parameters */
-    alwan_f64 Fs, c, Nc, F;
-    get_zcam_surround_params(vc->surround, &Fs, &c, &Nc, &F);
+    alwan_f64 Fs, F;
+    get_zcam_surround_params(vc->surround, &Fs, &F);
 
     /* Build value-type correlates from public struct */
     alwan_zcam_v_correlates_f64 v;
@@ -144,9 +144,7 @@ alwan_status alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
 
     /* Delegate to value-returning core */
     *xyz = alwan_zcam_inverse_f64_v(
-        v, vc->xyz_w,
-        Fs, c, Nc, F,
-        vc->La, vc->Yb, vc->xyz_w.y);
+        v, vc->xyz_w, Fs, get_zcam_adaptation(vc, F), vc->La, vc->Yb);
 
     return ALWAN_OK;
 }

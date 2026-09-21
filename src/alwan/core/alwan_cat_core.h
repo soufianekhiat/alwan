@@ -125,13 +125,22 @@ ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_v(
     v_o.v[0] = xyz_baseline.x; v_o.v[1] = xyz_baseline.y; v_o.v[2] = xyz_baseline.z;
     alwan_vec3 rgb_o = alwan_mat3_mulv_v(M, v_o);
 
-    alwan_scalar D_rgb_src_0 = D_src * (rgb_o.v[0] / rgb_src.v[0]) + (ALWAN_ONE - D_src);
-    alwan_scalar D_rgb_src_1 = D_src * (rgb_o.v[1] / rgb_src.v[1]) + (ALWAN_ONE - D_src);
-    alwan_scalar D_rgb_src_2 = D_src * (rgb_o.v[2] / rgb_src.v[2]) + (ALWAN_ONE - D_src);
+    /* The luminance of each white against the baseline's. With every white on
+     * one scale, which is what this function was documented for, both ratios
+     * are exactly 1 and nothing moves. Without them the adaptation depended on
+     * the scale of xyz_dst alone: a D65 given as (0.9505, 1, 1.0891) beside a
+     * source white at Y = 100 came out a hundred times too dim at D = 1.
+     * Y_w / RGB_w is scale-free, so with the ratio the result is too. */
+    alwan_scalar y_src = xyz_src.y / xyz_baseline.y;
+    alwan_scalar y_dst = xyz_dst.y / xyz_baseline.y;
 
-    alwan_scalar D_rgb_dst_0 = D_dst * (rgb_o.v[0] / rgb_dst.v[0]) + (ALWAN_ONE - D_dst);
-    alwan_scalar D_rgb_dst_1 = D_dst * (rgb_o.v[1] / rgb_dst.v[1]) + (ALWAN_ONE - D_dst);
-    alwan_scalar D_rgb_dst_2 = D_dst * (rgb_o.v[2] / rgb_dst.v[2]) + (ALWAN_ONE - D_dst);
+    alwan_scalar D_rgb_src_0 = D_src * y_src * (rgb_o.v[0] / rgb_src.v[0]) + (ALWAN_ONE - D_src);
+    alwan_scalar D_rgb_src_1 = D_src * y_src * (rgb_o.v[1] / rgb_src.v[1]) + (ALWAN_ONE - D_src);
+    alwan_scalar D_rgb_src_2 = D_src * y_src * (rgb_o.v[2] / rgb_src.v[2]) + (ALWAN_ONE - D_src);
+
+    alwan_scalar D_rgb_dst_0 = D_dst * y_dst * (rgb_o.v[0] / rgb_dst.v[0]) + (ALWAN_ONE - D_dst);
+    alwan_scalar D_rgb_dst_1 = D_dst * y_dst * (rgb_o.v[1] / rgb_dst.v[1]) + (ALWAN_ONE - D_dst);
+    alwan_scalar D_rgb_dst_2 = D_dst * y_dst * (rgb_o.v[2] / rgb_dst.v[2]) + (ALWAN_ONE - D_dst);
 
     alwan_vec3 rgb_adapted;
     rgb_adapted.v[0] = (D_rgb_src_0 / D_rgb_dst_0) * rgb_in.v[0];

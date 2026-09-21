@@ -2,6 +2,38 @@
 
 ### Fixed: output differs
 
+- **ZCAM was wrong, forward and inverse, and had never been tested.** Suite 28 loaded a
+  colour-science reference, printed each mismatch and returned success, so it printed nine of
+  twelve on every run. Against the reference, lightness was off by up to 18 of 100. Four
+  causes. The surround factor F_s was read from the F column, 1.0 / 0.9 / 0.8 where the model
+  has 0.69 / 0.59 / 0.525, and F_s is an exponent, so this alone moved a dark grey's J_z from
+  34.4 to 21.3. The achromatic response was Jzazbz's (L' + M') / 2 where ZCAM defines
+  I_z = M' - epsilon, which put a saturated red out by 6.7. The model's first step,
+  adaptation of the stimulus to D65 by the Zhai 2018 CAT over CAT02, was missing, and
+  `discount_illuminant` was ignored with it. And the inverse read J_z through Jzazbz's curve
+  and ignored every viewing condition, so it could not round-trip; a note in suite 93 put that
+  down to f32 conditioning and omitted the test.
+
+  ZCAM now follows Safdar, Hardeberg and Luo (2021) as colour-science implements it, on the
+  Safdar 2021 Izazbz matrices alwan already vendors. Suite 28 asserts all nine correlates and
+  the inverse over 66 cases, under three surrounds, illuminant A, a white at Y = 500 and a
+  discounted illuminant: 5e-11 relative, 1e-13 of the white's luminance on the inverse, and
+  4e-8 for the round trip through the f32 API. Every ZCAM correlate changes, and with it
+  `alwan_zcam_to_ucs_{T}`. `alwan_delta_e_zcam_{T}` is a distance between two UCS points and
+  is itself unchanged. The core signatures changed arity on purpose, from nine arguments to
+  six, `(xyz, xyz_w, Fs, D, La, Y_b)`, so a shader calling the old form stops compiling rather
+  than silently taking F_s where F used to go. `alwan_zcam_degree_of_adaptation_v` is new.
+  Several documents described the inverse as iterative. It never was.
+
+- **Zhai 2018 scaled with its destination white.** `alwan_cat_zhai2018_{T}` computed
+  D * (RGB_o / RGB_w) + 1 - D, where Zhai and Luo, and colour-science, carry the luminance
+  ratio: D * (Y_w / Y_o) * (RGB_o / RGB_w) + 1 - D. With every white at Y = 100, which is what
+  the header asked for, the ratio is 1 and nothing changes. With a destination white written
+  at Y = 1 beside a source at Y = 100, which is how ZCAM calls it, the result came out a
+  hundred times too dim at D = 1. The scale of each white is now free. `zhai2018.csv` had
+  been generated from colour-science since the function was written and no suite read it;
+  suite 144 does now, with 27 more cases on two scales.
+
 - **Dominant wavelength and excitation purity were wrong for purples.** The locus was
   not closed by the line of purples, so `alwan_dominant_wavelength_{T}` returned
   `ALWAN_E_INVALID` for every purple, and `alwan_excitation_purity_{T}` measured a

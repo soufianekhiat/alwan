@@ -23,10 +23,10 @@ Alwan provides a complete ACES implementation covering:
 - **AP1 (ACEScg)** -- Working space for VFX compositing
 - **JMh** -- ACES 2.0 perceptual color coordinates
 
-> **f64-internal facades.** The **ACES 1.x inverse** output transform and the
-> **ZCAM inverse** ([color-appearance](color-appearance.md)) are iterative
-> inverses whose convergence thresholds sit below `float` epsilon. Their `_f32`
-> entry points run the algorithm in `double` internally and narrow the result,
+> **f64-internal facades.** The **ACES 1.x inverse** output transform is an
+> iterative inverse whose convergence threshold sits below `float` epsilon. Its
+> `_f32` entry points, like ZCAM's ([color-appearance](color-appearance.md)),
+> run the algorithm in `double` internally and narrow the result,
 > so they stay available and numerically stable even in an `f32`-only build
 > (`ALWAN_BUILD_ONLY_F32`). This machinery is gated by `ALWAN_WITH_F64_FACADE`
 > (always `1`) rather than `ALWAN_WITH_F64`. See

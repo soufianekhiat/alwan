@@ -407,7 +407,7 @@ gates in `alwan_build_config.h`):
 Defining both is a compile `#error`. In a single-precision build the
 declarations for the other precision still exist, so calling an
 excluded-precision symbol fails at **link** time, not compile time. A few
-`_f32` entry points (ZCAM/ACES 1.x iterative inverses, Cheung2004 /
+`_f32` entry points (ZCAM, the ACES 1.x iterative inverse, Cheung2004 /
 Finlayson2015 CCM fits, the gamut volume/coverage helpers) run f64
 internally via `ALWAN_WITH_F64_FACADE` and stay available even in an
 f32-only build.
@@ -638,22 +638,22 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 171, all passing |
-| Test cases | 1,093 |
-| Checks executed per run | 213,277 |
-| Assertion sites in the tests | 4,946 |
-| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 441 |
+| Test cases | 1,097 |
+| Checks executed per run | 213,715 |
+| Assertion sites in the tests | 4,977 |
+| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 442 |
 | Embedded data tables | 950 |
 | Exported symbols | 1,986 |
-| Internal symbols reached by a test or a public entry point | 243 of 251 (97%), [the other 8 listed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
+| Internal symbols reached by a test or a public entry point | 244 of 252 (97%), [the other 8 listed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL, under dxc and under fxc | 43 of 43 |
 
 Two of these deserve the emphasis:
 
-**213,277 checks per run** is what actually executes, not what is written. A
+**213,715 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,946 assertion sites would undersell the suite more than
+so counting the 4,977 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -696,7 +696,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 171 suites, 1,093 cases, 213,277 checks executed per run
+  module: 171 suites, 1,097 cases, 213,715 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
