@@ -39,25 +39,36 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_lut1d_index_to_val)(size_t ind
  * 2D LUT layout (flattened 3D LUT into 2D texture)
  * ================================================================ */
 
-ALWAN_INLINE void ALWAN_CORE_FNVLIT(alwan_lut2d_dimensions)(int size, int *width, int *height) {
-    *width  = size * size;
-    *height = size;
+ALWAN_INLINE void ALWAN_CORE_FNVLIT(alwan_lut2d_dimensions)(int size, ALWAN_PARAM_INT_OUT width, ALWAN_PARAM_INT_OUT height) {
+    ALWAN_REF(width)  = size * size;
+    ALWAN_REF(height) = size;
 }
 
 /* Convert a 3D index (r, g, b each in [0, size-1]) to a 2D pixel coordinate */
 ALWAN_INLINE void ALWAN_CORE_FNVLIT(alwan_lut3d_to_2d)(int r, int g, int b, int size,
-                                        int *px, int *py) {
-    *px = b * size + r;
-    *py = g;
+                                        ALWAN_PARAM_INT_OUT px, ALWAN_PARAM_INT_OUT py) {
+    ALWAN_REF(px) = b * size + r;
+    ALWAN_REF(py) = g;
 }
 
 /* Convert a 2D pixel coordinate back to 3D index */
 ALWAN_INLINE void ALWAN_CORE_FNVLIT(alwan_lut2d_to_3d)(int px, int py, int size,
-                                        int *r, int *g, int *b) {
-    *b = px / size;
-    *r = px % size;
-    *g = py;
+                                        ALWAN_PARAM_INT_OUT r, ALWAN_PARAM_INT_OUT g, ALWAN_PARAM_INT_OUT b) {
+    ALWAN_REF(b) = px / size;
+    ALWAN_REF(r) = px % size;
+    ALWAN_REF(g) = py;
 }
+
+/* ================================================================
+ * LUT sampling through a pointer
+ *
+ * Thin names over the table readers, kept for callers. HLSL and GLSL have no
+ * pointer to pass, so these are compiled out there: a shader binds its LUT
+ * with alwan_table_reader.inc and calls alwan_table1d_sample_linear_<name>,
+ * alwan_table2d_sample_trilinear_<name> or alwan_table3d_sample_trilinear_<name>,
+ * which are the same three readers.
+ * ================================================================ */
+#if ALWAN_HAS_POINTERS
 
 /* ================================================================
  * 1D LUT linear interpolation
@@ -71,7 +82,7 @@ ALWAN_INLINE void ALWAN_CORE_FNVLIT(alwan_lut2d_to_3d)(int px, int py, int size,
  * behaviour, lives in alwan_table_core. Signature kept for callers.
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_lut1d_sample)(ALWAN_CORE_T const *lut,
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_lut1d_sample)(const ALWAN_CORE_T *lut,
                                                  ALWAN_CORE_T t,
                                                  int size) {
     return ALWAN_CORE_FNVLIT(alwan_table1d_sample_linear)(lut, size, t);
@@ -84,7 +95,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_lut1d_sample)(ALWAN_CORE_T con
  * b, not a bilinear one. Addressing lives in alwan_table_core.
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lut2d_sample)(ALWAN_CORE_T const *lut2d,
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lut2d_sample)(const ALWAN_CORE_T *lut2d,
                                                ALWAN_CORE_VEC3 rgb,
                                                int size) {
     return ALWAN_CORE_FNVLIT(alwan_table2d_sample_trilinear)(lut2d, size, rgb);
@@ -96,8 +107,10 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lut2d_sample)(ALWAN_CORE_T 
  * Addressing lives in alwan_table_core.
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(ALWAN_CORE_T const *lut,
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(const ALWAN_CORE_T *lut,
                                                ALWAN_CORE_VEC3 rgb,
                                                int size) {
     return ALWAN_CORE_FNVLIT(alwan_table3d_sample_trilinear)(lut, size, rgb);
 }
+
+#endif /* ALWAN_HAS_POINTERS */

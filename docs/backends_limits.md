@@ -152,21 +152,24 @@ terms rather than on include order.
 > analytic render** (fast ULP / det bit-exact) and the **deterministic sRGB +
 > BT.2020 transfer set** (bit-exact 64/64).
 >
+> Also run-verified, under both compilers: **every table reader**, bit-exact
+> against the C f32 path in an ordinary build
+> (`alwan_dev/hlsl_regression/run_table_parity.py`).
+>
 > Compile-verified under **both** shader compilers, fast and
 > `ALWAN_DETERMINISTIC=1`, one translation unit per core through
-> `alwan_hlsl.h`: **40 of 43 `*_core.h`** under dxc (Shader Model 6, DXIL) and
-> the **same 40 of 43** under fxc (Shader Model 5, DXBC). Measured with
+> `alwan_hlsl.h`: **all 43 `*_core.h`** under dxc (Shader Model 6, DXIL) and
+> **all 43** under fxc (Shader Model 5, DXBC). Measured with
 > dxc 1.8.2502 and fxc 10.1 from Windows SDK 10.0.26100. The lists are
 > `alwan_dev/hlsl_regression/cores_dxc_clean.txt` and `cores_fxc_clean.txt`,
 > both gated by `alwan_dev/tools/check_gpu_compile.py`.
 >
-> The three that do not compile are the same on both, and they share one cause:
-> `table`, `lut` and `vision`. Their readers take the table by pointer
-> (`const alwan_scalar *table`), and a shading language has no pointer type. The
-> addressing gate itself is pure integer and float maths and would compile; the
-> fetch is what does not. Serving these on GPU needs a resource abstraction
-> (`Buffer` / `StructuredBuffer`, or a texture), which is a design change rather
-> than a syntax fix, so they stay CPU-only for now.
+> The last three were `table`, `lut` and `vision`, and they shared one cause:
+> their readers took the table by pointer, and a shading language has no pointer
+> type. The readers now read through an accessor, `ALWAN_TABLE_READ(i)`, that C
+> binds to a pointer and a shader binds to a `StructuredBuffer`, a static array
+> or a texture load. See "Reading a table from a shader" in
+> `docs/api/backends.md`.
 >
 > Eight cores were fixed during the fxc pass and are new to the list. `atd95`,
 > `hunt`, `quality` and `view` were missing a struct, an enum, a constant block or a

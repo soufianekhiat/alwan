@@ -181,13 +181,14 @@ ALWAN_DIAG_POP
 
 /* See the .inc twin for why the old (int)(severity*10) was a crash on NaN. */
 ALWAN_INLINE alwan_mat3x3 alwan_machado_interpolate_v(
-    alwan_mat3x3 const *lut, alwan_scalar severity) {
-    return alwan_table1d_mat3_sample_linear_v(
-        lut, ALWAN_MACHADO_SEVERITY_STEPS, severity);
+    ALWAN_PARAM_ARRAY_IN(alwan_mat3x3, lut, ALWAN_MACHADO_SEVERITY_STEPS), alwan_scalar severity) {
+    const alwan_table_cell c = alwan_table_cell_v(
+        severity, ALWAN_MACHADO_SEVERITY_STEPS);
+    return alwan_table_blend_mat3_v(lut[c.i0], lut[c.i1], c.frac);
 }
 
 ALWAN_INLINE alwan_rgb alwan_simulate_cvd_machado_v(
-    alwan_rgb rgb, alwan_mat3x3 const *lut, alwan_scalar severity) {
+    alwan_rgb rgb, ALWAN_PARAM_ARRAY_IN(alwan_mat3x3, lut, ALWAN_MACHADO_SEVERITY_STEPS), alwan_scalar severity) {
     alwan_mat3x3 mat = alwan_machado_interpolate_v(lut, severity);
     alwan_vec3 v = {{rgb.r, rgb.g, rgb.b}};
     alwan_vec3 mapped = alwan_mat3_mulv_v(mat, v);

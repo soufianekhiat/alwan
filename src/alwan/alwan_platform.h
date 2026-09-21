@@ -328,8 +328,18 @@
  * only reach the caller through `out`; C takes the same spelling and decays it
  * to a pointer, so one signature serves every backend. */
 # define ALWAN_PARAM_ARRAY_OUT(type, name, n) out type name[n]
+# define ALWAN_PARAM_INT_OUT    out int
+/* A fixed-extent INPUT array, the read-only counterpart of the one above. A
+ * shading language copies it in by value; C decays it to a pointer. It serves
+ * a table whose length is a compile-time constant. A table of run-time length
+ * has no spelling a shader accepts as a parameter at all, and goes through
+ * core/alwan_table_reader.inc instead. */
+# define ALWAN_PARAM_ARRAY_IN(type, name, n) type name[n]
 # define ALWAN_REF(p)           (p)
 # define ALWAN_ADDR(x)          (x)
+/* No pointers in HLSL or GLSL. Anything that reads a caller's buffer through
+ * one is compiled out there, and core/alwan_table_reader.inc is the way in. */
+# define ALWAN_HAS_POINTERS     0
 #else
   /* C/Halide: pointer parameters, dereference access */
 # define ALWAN_PARAM_MAT3_IN    alwan_mat3x3 const *
@@ -337,8 +347,16 @@
 # define ALWAN_PARAM_VEC3_OUT   alwan_vec3 *
 # define ALWAN_PARAM_SCALAR_OUT alwan_scalar *
 # define ALWAN_PARAM_ARRAY_OUT(type, name, n) type name[n]
+# define ALWAN_PARAM_INT_OUT    int *
+/* A POINTER here, not `const type name[n]`, although C would decay that to the
+ * same thing. OpenCL C does not: an array-typed parameter decays to a pointer
+ * into the PRIVATE address space, and the embedded tables live in __global, so
+ * the array spelling stops every core that passes one from building there. A
+ * plain pointer takes the generic address space under OpenCL 2.0. */
+# define ALWAN_PARAM_ARRAY_IN(type, name, n) const type *name
 # define ALWAN_REF(p)           (*(p))
 # define ALWAN_ADDR(x)          (&(x))
+# define ALWAN_HAS_POINTERS     1
 #endif
 
 /* ================================================================

@@ -297,6 +297,34 @@
 
 ### Added
 
+- **Table readers compile as shaders, and all 43 cores now do.** `alwan_table_core.h`
+  and the two cores that include it, `alwan_lut_core.h` and `alwan_vision_core.h`, were
+  the three that did not build as HLSL, for one reason: the readers took the table as a
+  pointer. They are now in `core/alwan_table_reader.inc`, written against an accessor.
+  A shader defines `ALWAN_TABLE_NAME` and `ALWAN_TABLE_READ(i)`, to a `StructuredBuffer`,
+  a static array, a texture load or an offset into a shared buffer, includes the file,
+  and gets `alwan_table3d_sample_tetrahedral_<name>(size, rgb)` and the rest.
+  `ALWAN_TABLE_READ_MAT3` and `ALWAN_TABLE_READ_P0` / `_P1` / `_P2` enable the matrix
+  ramp and the three-plane cube. C binds the same bodies to a pointer, so every existing
+  reader keeps its name and signature and there is no GPU twin of a reader left to drift.
+
+  The arithmetic is exposed on its own for a caller that fetches its own texels:
+  `alwan_table_blend_v`, `_delta_v`, `_catmull_rom_v`, `_mat3_v`, `_trilinear_v`,
+  `_tetrahedral_v`, `alwan_table_cell_nearest_v`, and the flat node address of each
+  layout, `alwan_table3d_index_v`, `alwan_table2d_strip_index_v`,
+  `alwan_table3d_planar_index_v`. New platform macros: `ALWAN_HAS_POINTERS`,
+  `ALWAN_PARAM_INT_OUT`, `ALWAN_PARAM_ARRAY_IN`. `alwan_lut2d_dimensions_v`,
+  `alwan_lut3d_to_2d_v` and `alwan_lut2d_to_3d_v` take their integer outputs through
+  `ALWAN_PARAM_INT_OUT`, which is `int *` in C as before. The three
+  `alwan_lut*_sample_v` pointer wrappers are compiled out on HLSL and GLSL.
+
+  A table read is bit-exact between the GPU and C in an ordinary build. That was
+  measured on D3D12 WARP under dxc and fxc, and it did not hold at first: dxc
+  reassociated the Catmull-Rom and tetrahedral sums, and every blend through
+  `alwan_lerp` became the `lerp` intrinsic, each one ULP off. The blends are `precise`
+  now and none uses `alwan_lerp`. No C output changes: the determinism dump is
+  byte-identical, 413,041 lines.
+
 - **`srgbe_p3d65_display` parses.** The Color Interop Forum's "Display P3 HDR" ID now
   resolves to `ALWAN_RGB_SPACE_DISPLAY_P3`, where it was `ALWAN_E_NODATA`. It is the same
   primaries, white point and piecewise sRGB curve as `srgb_p3d65_display`; what differs

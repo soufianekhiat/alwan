@@ -208,14 +208,15 @@ ALWAN_DIAG_POP
  * index where this clamped the segment, and the two agree everywhere including
  * severity exactly 1.0, where both evaluate to lut[10]. */
 ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_CORE_FNVLIT(alwan_machado_interpolate)(
-    ALWAN_CORE_MAT3X3 const *lut, ALWAN_CORE_T severity)
+    ALWAN_PARAM_ARRAY_IN(ALWAN_CORE_MAT3X3, lut, ALWAN_MACHADO_SEVERITY_STEPS), ALWAN_CORE_T severity)
 {
-    return ALWAN_CORE_FNVLIT(alwan_table1d_mat3_sample_linear)(
-        lut, ALWAN_MACHADO_SEVERITY_STEPS, severity);
+    const ALWAN_CORE_TABLE_CELL c = ALWAN_CORE_FNVLIT(alwan_table_cell)(
+        severity, ALWAN_MACHADO_SEVERITY_STEPS);
+    return ALWAN_CORE_FNVLIT(alwan_table_blend_mat3)(lut[c.i0], lut[c.i1], c.frac);
 }
 
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_machado)(
-    ALWAN_CORE_RGB rgb, ALWAN_CORE_MAT3X3 const *lut, ALWAN_CORE_T severity)
+    ALWAN_CORE_RGB rgb, ALWAN_PARAM_ARRAY_IN(ALWAN_CORE_MAT3X3, lut, ALWAN_MACHADO_SEVERITY_STEPS), ALWAN_CORE_T severity)
 {
     ALWAN_CORE_MAT3X3 mat = ALWAN_CORE_FNVLIT(alwan_machado_interpolate)(lut, severity);
     ALWAN_CORE_VEC3 v = {{rgb.r, rgb.g, rgb.b}};

@@ -120,9 +120,45 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
 - No `alwan_spd` operations: spectral data structures are C-only.
 - No camera profiling or Munsell/ColorChecker lookups: these need the C-side embedded data tables.
 - `ALWAN_CBRT(x)` is a **signed** cube root, `sign(x) * pow(abs(x), 1.0f/3.0f)`, so it matches libm `cbrtf` on negatives, where a bare `pow(x, 1/3)` returns NaN. There is no native HLSL cube root.
-- **Three of the 43 cores do not compile as HLSL, and it is one cause rather than three.** `alwan_dev/tools/check_gpu_compile.py --compiler dxc` puts 40 of 43 through dxc at `cs_6_0` cleanly, in both fast and deterministic modes. The three it cannot are `alwan_table_core.h`, plus `alwan_lut_core.h` and `alwan_vision_core.h`, which fail only because they include it. The error is the same on every line dxc objects to: *pointers are unsupported in HLSL*. The table samplers take the table as `alwan_scalar const *table`, and a shader has no way to say that.
+- **All 43 cores compile as HLSL**, under dxc at `cs_6_0` and fxc at `cs_5_0`, in both fast and deterministic modes (`alwan_dev/tools/check_gpu_compile.py`). The last three were `alwan_table_core.h` and the two that include it, `alwan_lut_core.h` and `alwan_vision_core.h`, and they were one cause: the table readers took the table as a pointer, and a shading language has no pointer type.
 
-  It is not a syntax fix. A GPU form would take a `StructuredBuffer` or an array sized at compile time, which changes every call site rather than the declaration, and `alwan_table1d_sample_linear_delta_v` is spelled the way it is on purpose: the AgX contrast LUT is read through it and its output is pinned by the determinism MD5s, so re-rounding the blend to suit a different parameter shape is not free. Table sampling on the GPU is a resource-binding question, not a header-portability one, and the rest of the core tier is unaffected: everything that takes values rather than tables compiles.
+### Reading a table from a shader
+
+The readers are in `core/alwan_table_reader.inc`, written against an accessor, `ALWAN_TABLE_READ(i)`, instead of a pointer. C binds the accessor to `table[i]` and keeps every reader it had, with the same names and signatures. A shader says what its table is, then includes the file, once per table:
+
+```hlsl
+#include "alwan_hlsl.h"
+#include "core/alwan_table_core.h"
+
+StructuredBuffer<float> GradeLut : register(t1);
+
+#define ALWAN_TABLE_NAME     grade
+#define ALWAN_TABLE_READ(i)  GradeLut[i]
+#include "core/alwan_table_reader.inc"
+
+alwan_vec3 graded = alwan_table3d_sample_tetrahedral_grade(33, rgb);
+```
+
+The name is appended to each reader and the table parameter is gone, since the accessor already says which table. The file undefines everything it was given, so a second table is another three lines. The accessor is any expression in `i`: a `StructuredBuffer`, a `static const` array, a `Load` on a texture, or an offset into a buffer several tables share, which is the case no parameter type could have expressed. It is evaluated with an index the gate has already clamped, so it needs no bounds check, and it may be evaluated more than once.
+
+Three accessors, each enabling its own family:
+
+| Define | Element | Readers |
+|---|---|---|
+| `ALWAN_TABLE_READ(i)` | scalar | `alwan_table1d_*`, `alwan_table2d_grid_*`, `alwan_table3d_*`, `alwan_table2d_sample_*` (the cube as a strip) |
+| `ALWAN_TABLE_READ_MAT3(i)` | `alwan_mat3x3` | `alwan_table1d_mat3_*` |
+| `ALWAN_TABLE_READ_P0(i)`, `_P1`, `_P2` | scalar, three planes | `alwan_table3d_planar3_*` |
+
+`alwan_lut1d_sample_v`, `alwan_lut2d_sample_v` and `alwan_lut3d_sample_v` take a pointer and are compiled out on HLSL and GLSL. They were always thin names over `alwan_table1d_sample_linear`, `alwan_table2d_sample_trilinear` and `alwan_table3d_sample_trilinear`, which is what a shader calls instead. A table whose length is a compile-time constant can also be passed by value, as `ALWAN_PARAM_ARRAY_IN(type, name, n)`; the Machado severity ramps in `alwan_vision_core.h` go that way, so `alwan_simulate_machado_protan_v` needs no binding at all.
+
+A caller that fetches its own elements can skip the readers and use what they are built from, all plain value functions in `alwan_table_core.h`: `alwan_table_cell_v` for the two indices and the fraction, `alwan_table3d_index_v`, `alwan_table2d_strip_index_v` and `alwan_table3d_planar_index_v` for the flat address of a node in each layout, and `alwan_table_blend_v`, `_delta_v`, `_catmull_rom_v`, `_mat3_v`, `_trilinear_v` and `_tetrahedral_v` for the arithmetic.
+
+**A table read gives the same bits on the GPU as in C, in an ordinary build and not only a deterministic one.** `alwan_dev/hlsl_regression/run_table_parity.py` binds a `StructuredBuffer`, a static array, three planes in one buffer and the embedded Machado ramp, runs the shader on the D3D12 WARP device under both compilers, and holds every reader to bit equality with the C f32 path, over a coordinate sweep that includes values outside [0, 1], both infinities and NaN. Its first run did not pass, and what it found is why the claim can be made:
+
+- dxc was one ULP off on Catmull-Rom and on tetrahedral, on about a third of the samples. It reassociates a long sum unless the result is `precise`. fxc did not, and the shorter blends happened to agree under both. Every blend now computes into an `ALWAN_DET_PRECISE` local.
+- Every blend that went through `alwan_lerp` was one ULP off under both compilers. On HLSL that is the `lerp` intrinsic, `a + t*(b-a)`, where C spells `(1-t)*a + t*b`. No table blend uses `alwan_lerp` now. In C the replacement is the same two products in the same order, so nothing moved: the determinism dump is byte-identical before and after, 413,041 lines.
+
+One thing the run measures and does not fix. The Machado simulation samples its matrix exactly and then multiplies a colour by it in `alwan_mat3_mulv_v`. Both shader compilers lower that three-term sum to a dot product, which associates differently from C, so in an ordinary build about a fifth of the outputs are one ULP off. That is the matrix product, which every colour conversion goes through, and whether an ordinary build should pay for `precise` there is a wider decision than this one.
 
 ---
 

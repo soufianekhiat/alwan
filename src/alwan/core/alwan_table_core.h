@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Header-only table addressing gate and readers
+ * Header-only table addressing gate, blends and readers
  * Value-returning variants for cross-platform (C/HLSL/Halide) use.
  *
  * The rationale (why an ADDRESS may be clamped when a COLOUR VALUE may not,
@@ -149,457 +149,156 @@ ALWAN_INLINE alwan_table_cell alwan_table_cell_unit_v(alwan_scalar pos, int size
 }
 
 /* ================================================================
- * Rank 1, scalar element
+ * BLENDS AND ADDRESSES: the part of a reader that touches no table
+ *
+ * A reader is three steps: the gate above turns a coordinate into indices, the
+ * table is READ at those indices, and the values are blended. Only the middle
+ * step needs to know what a table is, and that is the one step a shading
+ * language cannot share with C, because it has no pointer to pass. So the two
+ * outer steps live here as plain value functions, and the readers in
+ * alwan_table_reader.inc are built from them around an accessor.
+ *
+ * A caller that fetches its own elements, from a texture or a texel fetch,
+ * uses these directly and gets the library's bits.
+ *
+ * THE BITS ARE THE SAME ON A GPU, in every build and not only a deterministic
+ * one. A table read is data, and its value is pinned by the determinism MD5s,
+ * so each blend computes into an ALWAN_DET_PRECISE local. That is `precise` in
+ * HLSL and GLSL and nothing in C. It was measured rather than assumed: without
+ * it dxc reassociates the Catmull-Rom and tetrahedral sums and lands one ULP
+ * off on a third of the samples, while fxc and the two shorter blends happen to
+ * agree. alwan_dev/hlsl_regression/run_table_parity.py holds every reader to
+ * bit equality with C, on both compilers.
+ *
+ * For the same reason no blend here goes through alwan_lerp. On a shading
+ * language that is the lerp or mix intrinsic, a + t*(b-a), which is one
+ * rounding away from the weighted form C spells out.
  * ================================================================ */
 
-/* Element read at an INTEGER index -- the rank-1 counterpart of the float
- * readers below. Same gate, same policy, no interpolation and no arithmetic:
- * for an index the caller has already proved in range this is the identity on
- * the address, so folding an existing raw subscript onto it cannot move a
- * value. It exists so a table addressed by a loop counter or a validated enum
- * is governed by ALWAN_READ_DATA_NO_BOUND_CHECK exactly like a table addressed
- * by a coordinate, instead of by whatever bound the call site happened to
- * spell. Header-only for the same reason as everything else here: with no /GL
- * and no /LTCG a reader in a .c is a real call per element. */
-ALWAN_INLINE alwan_scalar alwan_table1d_row_v(
-        alwan_scalar const *table, int size, int index) {
-    return table[alwan_table_row_v(index, size)];
+/* Nearest index of a cell. Ties go UP, as they always have: frac < 0.5 picks
+ * i0, anything else i1. An index rather than a value, so one spelling serves a
+ * scalar, a matrix and a colour, and a shading language is never asked to run
+ * a ternary over a struct, which legacy HLSL refuses. */
+ALWAN_INLINE int alwan_table_cell_nearest_v(alwan_table_cell c) {
+    return (c.frac < ALWAN_LITERAL(0.5)) ? c.i0 : c.i1;
 }
 
-/* Weighted form, a*(1-f) + b*f. Matches alwan_lerp and the shipped
- * alwan_lut1d_sample bit for bit. This is ALWAN_SAMPLE_LINEAR. */
-ALWAN_INLINE alwan_scalar alwan_table1d_sample_linear_v(
-        alwan_scalar const *table, int size, alwan_scalar coord) {
-    const alwan_table_cell c = alwan_table_cell_v(coord, size);
-    return table[c.i0] * (ALWAN_LITERAL(1.0) - c.frac) + table[c.i1] * c.frac;
+/* Weighted form, a*(1-f) + b*f. Matches alwan_lerp bit for bit. */
+ALWAN_INLINE alwan_scalar alwan_table_blend_v(
+        alwan_scalar v0, alwan_scalar v1, alwan_scalar frac) {
+    ALWAN_DET_PRECISE alwan_scalar r = v0 * (ALWAN_LITERAL(1.0) - frac) + v1 * frac;
+    return r;
 }
 
-/* Delta form, a + f*(b-a). Algebraically the same line, not the same bits: one
- * rounding lands differently. The AgX contrast LUT has always been read this
- * way and its output is pinned by the determinism MD5s, so the spelling is
- * preserved rather than silently re-rounded. Same gate, same bounds
- * guarantee -- only the blend differs. */
-ALWAN_INLINE alwan_scalar alwan_table1d_sample_linear_delta_v(
-        alwan_scalar const *table, int size, alwan_scalar coord) {
-    const alwan_table_cell c = alwan_table_cell_v(coord, size);
-    return table[c.i0] + c.frac * (table[c.i1] - table[c.i0]);
+/* Delta form, a + f*(b-a). Not the same bits as the weighted form. See
+ * alwan_table1d_sample_linear_delta for why both are kept. */
+ALWAN_INLINE alwan_scalar alwan_table_blend_delta_v(
+        alwan_scalar v0, alwan_scalar v1, alwan_scalar frac) {
+    ALWAN_DET_PRECISE alwan_scalar r = v0 + frac * (v1 - v0);
+    return r;
 }
 
-ALWAN_INLINE alwan_scalar alwan_table1d_sample_nearest_v(
-        alwan_scalar const *table, int size, alwan_scalar coord) {
-    const alwan_table_cell c = alwan_table_cell_v(coord, size);
-    return (c.frac < ALWAN_LITERAL(0.5)) ? table[c.i0] : table[c.i1];
-}
-
-/* Catmull-Rom: the four-tap cubic through table[i-1 .. i+2], which is C1 and
- * interpolating, so it passes through every sample rather than smoothing them.
- * Worth having for LUT sampling, where linear leaves visible facets on a coarse
- * grid.
+/* Catmull-Rom: the four-tap cubic through p0..p3, evaluated between p1 and p2.
+ * C1 and interpolating, so it passes through every sample rather than
+ * smoothing them. Worth having for LUT sampling, where linear leaves visible
+ * facets on a coarse grid.
  *
- * The two outer taps are clamped by alwan_table_row, so the end intervals see a
- * doubled endpoint. That is the standard clamped-edge form: the curve stays
- * interpolating at the ends and its slope there is one-sided.
- *
- * Unlike the linear reader this can OVERSHOOT: a 4-tap cubic through a step
+ * Unlike the linear blend this can OVERSHOOT: a 4-tap cubic through a step
  * leaves the convex hull of its taps by up to about 1/8 of the step. Callers
  * sampling a table whose values must stay in a range have to clamp the result,
  * which is why this is not the default for any rank. */
-ALWAN_INLINE alwan_scalar alwan_table1d_sample_catmull_rom_v(
-        alwan_scalar const *table, int size, alwan_scalar coord) {
-    const alwan_table_cell c = alwan_table_cell_v(coord, size);
-    const int im1 = alwan_table_row_v(c.i0 - 1, size);
-    const int ip2 = alwan_table_row_v(c.i1 + 1, size);
-
-    const alwan_scalar p0 = table[im1];
-    const alwan_scalar p1 = table[c.i0];
-    const alwan_scalar p2 = table[c.i1];
-    const alwan_scalar p3 = table[ip2];
-
-    const alwan_scalar t  = c.frac;
+ALWAN_INLINE alwan_scalar alwan_table_blend_catmull_rom_v(
+        alwan_scalar p0, alwan_scalar p1, alwan_scalar p2, alwan_scalar p3,
+        alwan_scalar t) {
     const alwan_scalar t2 = t * t;
     const alwan_scalar t3 = t2 * t;
 
-    return ALWAN_LITERAL(0.5) * (
+    ALWAN_DET_PRECISE alwan_scalar r = ALWAN_LITERAL(0.5) * (
         (ALWAN_LITERAL(2.0) * p1) +
         (p2 - p0) * t +
         (ALWAN_LITERAL(2.0) * p0 - ALWAN_LITERAL(5.0) * p1 +
          ALWAN_LITERAL(4.0) * p2 - p3) * t2 +
         (ALWAN_LITERAL(3.0) * (p1 - p2) + p3 - p0) * t3);
+    return r;
 }
 
-/* Dispatch. The fallback returns the default mode for the rank: a core reader
- * has no status channel and must never leave the dispatch without a value, and
- * must stay free of error paths for the GPU backends. A mode the rank cannot
- * honour is rejected once, at the API tier, before any loop. */
-ALWAN_INLINE alwan_scalar alwan_table1d_sample_v(
-        alwan_scalar const *table, int size, alwan_scalar coord, alwan_sample_mode mode) {
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return alwan_table1d_sample_nearest_v(table, size, coord);
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_CATMULL_ROM)
-        return alwan_table1d_sample_catmull_rom_v(table, size, coord);
-    return alwan_table1d_sample_linear_v(table, size, coord);
-}
-
-/* ================================================================
- * Rank 1, mat3x3 element (CVD severity ramps)
- * ================================================================ */
-
-ALWAN_INLINE alwan_mat3x3 alwan_table1d_mat3_sample_linear_v(
-        alwan_mat3x3 const *table, int size, alwan_scalar coord) {
-    const alwan_table_cell c = alwan_table_cell_v(coord, size);
+/* Element-wise weighted blend of two matrices (CVD severity ramps). The
+ * weighted form, which in C is alwan_lerp bit for bit. */
+ALWAN_INLINE alwan_mat3x3 alwan_table_blend_mat3_v(
+        alwan_mat3x3 m0, alwan_mat3x3 m1, alwan_scalar frac) {
     alwan_mat3x3 result;
     int i;
     for (i = 0; i < 9; i++) {
-        result.m[i] = alwan_lerp(table[c.i0].m[i], table[c.i1].m[i], c.frac);
+        result.m[i] = alwan_table_blend_v(m0.m[i], m1.m[i], frac);
     }
     return result;
 }
 
-ALWAN_INLINE alwan_mat3x3 alwan_table1d_mat3_sample_nearest_v(
-        alwan_mat3x3 const *table, int size, alwan_scalar coord) {
-    const alwan_table_cell c = alwan_table_cell_v(coord, size);
-    return (c.frac < ALWAN_LITERAL(0.5)) ? table[c.i0] : table[c.i1];
+/* Trilinear over the eight corners of a cell. The corner names are vABC with A
+ * the FIRST axis blended, by f1, then B by f2, then C by f3. The order is part
+ * of the result: blending the axes in another order rounds differently, and
+ * each layout has always blended its fastest axis first. */
+ALWAN_INLINE alwan_scalar alwan_table_blend_trilinear_v(
+        alwan_scalar v000, alwan_scalar v100, alwan_scalar v010, alwan_scalar v110,
+        alwan_scalar v001, alwan_scalar v101, alwan_scalar v011, alwan_scalar v111,
+        alwan_scalar f1, alwan_scalar f2, alwan_scalar f3) {
+    const alwan_scalar c00 = v000 * (ALWAN_LITERAL(1.0) - f1) + v100 * f1;
+    const alwan_scalar c01 = v001 * (ALWAN_LITERAL(1.0) - f1) + v101 * f1;
+    const alwan_scalar c10 = v010 * (ALWAN_LITERAL(1.0) - f1) + v110 * f1;
+    const alwan_scalar c11 = v011 * (ALWAN_LITERAL(1.0) - f1) + v111 * f1;
+    const alwan_scalar c0 = c00 * (ALWAN_LITERAL(1.0) - f2) + c10 * f2;
+    const alwan_scalar c1 = c01 * (ALWAN_LITERAL(1.0) - f2) + c11 * f2;
+    ALWAN_DET_PRECISE alwan_scalar r = c0 * (ALWAN_LITERAL(1.0) - f3) + c1 * f3;
+    return r;
 }
 
-/* Not CATMULL_ROM: the reference CVD model defines linear severity
- * interpolation and a 4-tap kernel would change published output. */
-ALWAN_INLINE alwan_mat3x3 alwan_table1d_mat3_sample_v(
-        alwan_mat3x3 const *table, int size, alwan_scalar coord, alwan_sample_mode mode) {
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return alwan_table1d_mat3_sample_nearest_v(table, size, coord);
-    return alwan_table1d_mat3_sample_linear_v(table, size, coord);
+/* Tetrahedral: the walk 000 -> P -> Q -> 111 along three edges of the
+ * tetrahedron, weighted by the sorted fractions w1 >= w2 >= w3. */
+ALWAN_INLINE alwan_scalar alwan_table_blend_tetrahedral_v(
+        alwan_scalar v000, alwan_scalar vP, alwan_scalar vQ, alwan_scalar v111,
+        alwan_scalar w1, alwan_scalar w2, alwan_scalar w3) {
+    ALWAN_DET_PRECISE alwan_scalar r = v000
+         + w1 * (vP   - v000)
+         + w2 * (vQ   - vP)
+         + w3 * (v111 - vQ);
+    return r;
+}
+
+/* Flat index of channel 0 of one node, per layout. The three layouts differ in
+ * which axis is fastest and in whether the channels are interleaved, and a
+ * mismatch between them compiles and returns plausible colours, so each has
+ * one spelling, here, and no reader computes an address any other way. */
+
+/* Interleaved RGB cube, R-fastest: ((b*size + g)*size + r)*3 */
+ALWAN_INLINE size_t alwan_table3d_index_v(int size, int r, int g, int b) {
+    return ((size_t)b * (size_t)size * (size_t)size +
+            (size_t)g * (size_t)size + (size_t)r) * 3;
+}
+
+/* The same cube as a (size*size) x size strip: (g*size*size + b*size + r)*3 */
+ALWAN_INLINE size_t alwan_table2d_strip_index_v(int size, int r, int g, int b) {
+    return ((size_t)g * (size_t)size * (size_t)size +
+            (size_t)b * (size_t)size + (size_t)r) * 3;
+}
+
+/* One plane of three, B-fastest: (r*size + g)*size + b */
+ALWAN_INLINE size_t alwan_table3d_planar_index_v(int size, int r, int g, int b) {
+    return (size_t)r * (size_t)size * (size_t)size +
+           (size_t)g * (size_t)size + (size_t)b;
 }
 
 /* ================================================================
- * Rank 2, row-major with a fixed stride, INTEGER row and column
- * index = row*stride + col
+ * THE READERS
  *
- * Both coordinates go through the row gate, not just the row. A stride table
- * is exactly where a correct row bound and a wrong column bound read into the
- * NEXT ROW rather than off the end: silent wrong data, no crash, no warning.
- * That is the shape the 109 reflectance sample sets had while they were 109
- * separate arrays behind an array of pointers.
+ * One body for every backend, in alwan_table_reader.inc, bound here to a
+ * pointer. A shading language has no pointer and binds its own accessor
+ * instead. See that file.
  * ================================================================ */
+#if ALWAN_HAS_POINTERS
+#define ALWAN_TABLE_READER_POINTER 1
+#include "alwan_table_reader.inc"
+#endif
 
-ALWAN_INLINE alwan_scalar alwan_table2d_row_at_v(
-        alwan_scalar const *table, int rows, int cols, int row, int col) {
-    const int r = alwan_table_row_v(row, rows);
-    const int c = alwan_table_row_v(col, cols);
-    return table[(size_t)r * (size_t)cols + (size_t)c];
-}
-
-/* Bilinear over the same rows x cols grid, both axes in [0,1].
- *
- * This is what ALWAN_SAMPLE_BILINEAR means in alwan: a genuine 2-d grid, not
- * the flattened cube in the strip readers below, which is sampled trilinearly
- * and still rejects BILINEAR.
- *
- * Row and column are separate axes with separate extents, so each gets its own
- * cell and both go through the same gate as the integer reader above. */
-ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_bilinear_v(
-        alwan_scalar const *table, int rows, int cols,
-        alwan_scalar row_coord, alwan_scalar col_coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(row_coord, rows);
-    const alwan_table_cell cc = alwan_table_cell_v(col_coord, cols);
-
-    const alwan_scalar v00 = alwan_table2d_row_at_v(table, rows, cols, cr.i0, cc.i0);
-    const alwan_scalar v01 = alwan_table2d_row_at_v(table, rows, cols, cr.i0, cc.i1);
-    const alwan_scalar v10 = alwan_table2d_row_at_v(table, rows, cols, cr.i1, cc.i0);
-    const alwan_scalar v11 = alwan_table2d_row_at_v(table, rows, cols, cr.i1, cc.i1);
-
-    const alwan_scalar top = alwan_lerp(v00, v01, cc.frac);
-    const alwan_scalar bot = alwan_lerp(v10, v11, cc.frac);
-    return alwan_lerp(top, bot, cr.frac);
-}
-
-ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_nearest_v(
-        alwan_scalar const *table, int rows, int cols,
-        alwan_scalar row_coord, alwan_scalar col_coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(row_coord, rows);
-    const alwan_table_cell cc = alwan_table_cell_v(col_coord, cols);
-    const int r = (cr.frac < ALWAN_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    const int c = (cc.frac < ALWAN_LITERAL(0.5)) ? cc.i0 : cc.i1;
-    return alwan_table2d_row_at_v(table, rows, cols, r, c);
-}
-
-/* LINEAR resolves to bilinear here, the same way it resolves to trilinear at
- * rank 3: it is the zero value, so a zero-initialised mode must interpolate. */
-ALWAN_INLINE alwan_scalar alwan_table2d_grid_sample_v(
-        alwan_scalar const *table, int rows, int cols,
-        alwan_scalar row_coord, alwan_scalar col_coord, alwan_sample_mode mode) {
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return alwan_table2d_grid_sample_nearest_v(table, rows, cols, row_coord, col_coord);
-    return alwan_table2d_grid_sample_bilinear_v(table, rows, cols, row_coord, col_coord);
-}
-
-/* ================================================================
- * Rank 3, interleaved RGB cube, R-fastest
- * index = ((b*size + g)*size + r)*3 + channel
- * ================================================================ */
-
-#define ALWAN_TABLE3D_AT_(cube, size, rr, gg, bb) \
-    ((cube) + ((size_t)(bb) * (size_t)(size) * (size_t)(size) + \
-               (size_t)(gg) * (size_t)(size) + (size_t)(rr)) * 3)
-
-ALWAN_INLINE alwan_vec3 alwan_table3d_sample_trilinear_v(
-        alwan_scalar const *cube, int size, alwan_vec3 coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(coord.v[0], size);
-    const alwan_table_cell cg = alwan_table_cell_v(coord.v[1], size);
-    const alwan_table_cell cb = alwan_table_cell_v(coord.v[2], size);
-
-    const alwan_scalar fr = cr.frac;
-    const alwan_scalar fg = cg.frac;
-    const alwan_scalar fb = cb.frac;
-
-    alwan_scalar const *c000 = ALWAN_TABLE3D_AT_(cube, size, cr.i0, cg.i0, cb.i0);
-    alwan_scalar const *c100 = ALWAN_TABLE3D_AT_(cube, size, cr.i1, cg.i0, cb.i0);
-    alwan_scalar const *c010 = ALWAN_TABLE3D_AT_(cube, size, cr.i0, cg.i1, cb.i0);
-    alwan_scalar const *c110 = ALWAN_TABLE3D_AT_(cube, size, cr.i1, cg.i1, cb.i0);
-    alwan_scalar const *c001 = ALWAN_TABLE3D_AT_(cube, size, cr.i0, cg.i0, cb.i1);
-    alwan_scalar const *c101 = ALWAN_TABLE3D_AT_(cube, size, cr.i1, cg.i0, cb.i1);
-    alwan_scalar const *c011 = ALWAN_TABLE3D_AT_(cube, size, cr.i0, cg.i1, cb.i1);
-    alwan_scalar const *c111 = ALWAN_TABLE3D_AT_(cube, size, cr.i1, cg.i1, cb.i1);
-
-    alwan_vec3 result;
-    for (int ch = 0; ch < 3; ch++) {
-        alwan_scalar c00 = c000[ch] * (ALWAN_LITERAL(1.0) - fr) + c100[ch] * fr;
-        alwan_scalar c01 = c001[ch] * (ALWAN_LITERAL(1.0) - fr) + c101[ch] * fr;
-        alwan_scalar c10 = c010[ch] * (ALWAN_LITERAL(1.0) - fr) + c110[ch] * fr;
-        alwan_scalar c11 = c011[ch] * (ALWAN_LITERAL(1.0) - fr) + c111[ch] * fr;
-
-        alwan_scalar c0 = c00 * (ALWAN_LITERAL(1.0) - fg) + c10 * fg;
-        alwan_scalar c1 = c01 * (ALWAN_LITERAL(1.0) - fg) + c11 * fg;
-
-        result.v[ch] = c0 * (ALWAN_LITERAL(1.0) - fb) + c1 * fb;
-    }
-    return result;
-}
-
-/* Tetrahedral: the ordering of (fr,fg,fb) picks the tetrahedron, giving two
- * intermediate corners and sorted weights w1 >= w2 >= w3. Matches OCIO, and
- * keeps the neutral axis symmetric, which trilinear does not. */
-ALWAN_INLINE alwan_vec3 alwan_table3d_sample_tetrahedral_v(
-        alwan_scalar const *cube, int size, alwan_vec3 coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(coord.v[0], size);
-    const alwan_table_cell cg = alwan_table_cell_v(coord.v[1], size);
-    const alwan_table_cell cb = alwan_table_cell_v(coord.v[2], size);
-
-    const int r0 = cr.i0, g0 = cg.i0, b0 = cb.i0;
-    const int r1 = cr.i1, g1 = cg.i1, b1 = cb.i1;
-    const alwan_scalar fr = cr.frac;
-    const alwan_scalar fg = cg.frac;
-    const alwan_scalar fb = cb.frac;
-
-    alwan_scalar const *c000 = ALWAN_TABLE3D_AT_(cube, size, r0, g0, b0);
-    alwan_scalar const *c111 = ALWAN_TABLE3D_AT_(cube, size, r1, g1, b1);
-    alwan_scalar const *cP;
-    alwan_scalar const *cQ;
-    alwan_scalar w1, w2, w3;
-    if (fr >= fg) {
-        if (fg >= fb)      { cP = ALWAN_TABLE3D_AT_(cube, size, r1, g0, b0); cQ = ALWAN_TABLE3D_AT_(cube, size, r1, g1, b0); w1 = fr; w2 = fg; w3 = fb; }
-        else if (fr >= fb) { cP = ALWAN_TABLE3D_AT_(cube, size, r1, g0, b0); cQ = ALWAN_TABLE3D_AT_(cube, size, r1, g0, b1); w1 = fr; w2 = fb; w3 = fg; }
-        else               { cP = ALWAN_TABLE3D_AT_(cube, size, r0, g0, b1); cQ = ALWAN_TABLE3D_AT_(cube, size, r1, g0, b1); w1 = fb; w2 = fr; w3 = fg; }
-    } else {
-        if (fb >= fg)      { cP = ALWAN_TABLE3D_AT_(cube, size, r0, g0, b1); cQ = ALWAN_TABLE3D_AT_(cube, size, r0, g1, b1); w1 = fb; w2 = fg; w3 = fr; }
-        else if (fb >= fr) { cP = ALWAN_TABLE3D_AT_(cube, size, r0, g1, b0); cQ = ALWAN_TABLE3D_AT_(cube, size, r0, g1, b1); w1 = fg; w2 = fb; w3 = fr; }
-        else               { cP = ALWAN_TABLE3D_AT_(cube, size, r0, g1, b0); cQ = ALWAN_TABLE3D_AT_(cube, size, r1, g1, b0); w1 = fg; w2 = fr; w3 = fb; }
-    }
-
-    alwan_vec3 result;
-    for (int ch = 0; ch < 3; ch++) {
-        alwan_scalar v0 = c000[ch];
-        result.v[ch] = v0
-                     + w1 * (cP[ch]   - v0)
-                     + w2 * (cQ[ch]   - cP[ch])
-                     + w3 * (c111[ch] - cQ[ch]);
-    }
-    return result;
-}
-
-ALWAN_INLINE alwan_vec3 alwan_table3d_sample_nearest_v(
-        alwan_scalar const *cube, int size, alwan_vec3 coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(coord.v[0], size);
-    const alwan_table_cell cg = alwan_table_cell_v(coord.v[1], size);
-    const alwan_table_cell cb = alwan_table_cell_v(coord.v[2], size);
-    const int ri = (cr.frac < ALWAN_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    const int gi = (cg.frac < ALWAN_LITERAL(0.5)) ? cg.i0 : cg.i1;
-    const int bi = (cb.frac < ALWAN_LITERAL(0.5)) ? cb.i0 : cb.i1;
-    alwan_scalar const *c = ALWAN_TABLE3D_AT_(cube, size, ri, gi, bi);
-    alwan_vec3 result;
-    result.v[0] = c[0];
-    result.v[1] = c[1];
-    result.v[2] = c[2];
-    return result;
-}
-
-ALWAN_INLINE alwan_vec3 alwan_table3d_sample_v(
-        alwan_scalar const *cube, int size, alwan_vec3 coord, alwan_sample_mode mode) {
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return alwan_table3d_sample_nearest_v(cube, size, coord);
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_TETRAHEDRAL)
-        return alwan_table3d_sample_tetrahedral_v(cube, size, coord);
-    return alwan_table3d_sample_trilinear_v(cube, size, coord);
-}
-
-/* ================================================================
- * Rank 2 strip: the same cube flattened to (size*size) x size.
- * index = (g*size*size + b*size + r)*3 + channel
- *
- * The strip IS a cube, so it is sampled trilinearly over r, g and b.
- * ALWAN_SAMPLE_BILINEAR is rejected at the API tier rather than quietly
- * treated as TRILINEAR: substituting a mode is how a colour pipeline ships the
- * wrong curve and nobody notices for two releases.
- * ================================================================ */
-
-#define ALWAN_TABLE2D_AT_(strip, size, rr, gg, bb) \
-    ((strip) + ((size_t)(gg) * (size_t)(size) * (size_t)(size) + \
-                (size_t)(bb) * (size_t)(size) + (size_t)(rr)) * 3)
-
-ALWAN_INLINE alwan_vec3 alwan_table2d_sample_trilinear_v(
-        alwan_scalar const *strip, int size, alwan_vec3 coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(coord.v[0], size);
-    const alwan_table_cell cg = alwan_table_cell_v(coord.v[1], size);
-    const alwan_table_cell cb = alwan_table_cell_v(coord.v[2], size);
-
-    const alwan_scalar fr = cr.frac;
-    const alwan_scalar fg = cg.frac;
-    const alwan_scalar fb = cb.frac;
-
-    alwan_scalar const *c000 = ALWAN_TABLE2D_AT_(strip, size, cr.i0, cg.i0, cb.i0);
-    alwan_scalar const *c100 = ALWAN_TABLE2D_AT_(strip, size, cr.i1, cg.i0, cb.i0);
-    alwan_scalar const *c010 = ALWAN_TABLE2D_AT_(strip, size, cr.i0, cg.i1, cb.i0);
-    alwan_scalar const *c110 = ALWAN_TABLE2D_AT_(strip, size, cr.i1, cg.i1, cb.i0);
-    alwan_scalar const *c001 = ALWAN_TABLE2D_AT_(strip, size, cr.i0, cg.i0, cb.i1);
-    alwan_scalar const *c101 = ALWAN_TABLE2D_AT_(strip, size, cr.i1, cg.i0, cb.i1);
-    alwan_scalar const *c011 = ALWAN_TABLE2D_AT_(strip, size, cr.i0, cg.i1, cb.i1);
-    alwan_scalar const *c111 = ALWAN_TABLE2D_AT_(strip, size, cr.i1, cg.i1, cb.i1);
-
-    alwan_vec3 result;
-    for (int ch = 0; ch < 3; ch++) {
-        alwan_scalar c00 = c000[ch] * (ALWAN_LITERAL(1.0) - fr) + c100[ch] * fr;
-        alwan_scalar c01 = c001[ch] * (ALWAN_LITERAL(1.0) - fr) + c101[ch] * fr;
-        alwan_scalar c10 = c010[ch] * (ALWAN_LITERAL(1.0) - fr) + c110[ch] * fr;
-        alwan_scalar c11 = c011[ch] * (ALWAN_LITERAL(1.0) - fr) + c111[ch] * fr;
-
-        alwan_scalar c0 = c00 * (ALWAN_LITERAL(1.0) - fg) + c10 * fg;
-        alwan_scalar c1 = c01 * (ALWAN_LITERAL(1.0) - fg) + c11 * fg;
-
-        result.v[ch] = c0 * (ALWAN_LITERAL(1.0) - fb) + c1 * fb;
-    }
-    return result;
-}
-
-ALWAN_INLINE alwan_vec3 alwan_table2d_sample_nearest_v(
-        alwan_scalar const *strip, int size, alwan_vec3 coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(coord.v[0], size);
-    const alwan_table_cell cg = alwan_table_cell_v(coord.v[1], size);
-    const alwan_table_cell cb = alwan_table_cell_v(coord.v[2], size);
-    const int ri = (cr.frac < ALWAN_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    const int gi = (cg.frac < ALWAN_LITERAL(0.5)) ? cg.i0 : cg.i1;
-    const int bi = (cb.frac < ALWAN_LITERAL(0.5)) ? cb.i0 : cb.i1;
-    alwan_scalar const *c = ALWAN_TABLE2D_AT_(strip, size, ri, gi, bi);
-    alwan_vec3 result;
-    result.v[0] = c[0];
-    result.v[1] = c[1];
-    result.v[2] = c[2];
-    return result;
-}
-
-ALWAN_INLINE alwan_vec3 alwan_table2d_sample_v(
-        alwan_scalar const *strip, int size, alwan_vec3 coord, alwan_sample_mode mode) {
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return alwan_table2d_sample_nearest_v(strip, size, coord);
-    return alwan_table2d_sample_trilinear_v(strip, size, coord);
-}
-
-/* ================================================================
- * Rank 3, three PLANAR scalar cubes sharing one coordinate, B-fastest
- * index = (r*size + g)*size + b
- *
- * This is the Jakob 2019 coefficient layout: three independent scalar fields,
- * not one interleaved RGB cube, and the fastest axis is b rather than r. A
- * separate reader rather than a flag on alwan_table3d_sample, because a
- * layout mismatch that compiles is exactly the trap this file exists to close.
- * ================================================================ */
-
-#define ALWAN_TABLE3D_PLANAR_AT_(size, rr, gg, bb) \
-    ((size_t)(rr) * (size_t)(size) * (size_t)(size) + \
-     (size_t)(gg) * (size_t)(size) + (size_t)(bb))
-
-ALWAN_INLINE alwan_vec3 alwan_table3d_planar3_sample_trilinear_v(
-        alwan_scalar const *cube0, alwan_scalar const *cube1, alwan_scalar const *cube2,
-        int size, alwan_vec3 coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(coord.v[0], size);
-    const alwan_table_cell cg = alwan_table_cell_v(coord.v[1], size);
-    const alwan_table_cell cb = alwan_table_cell_v(coord.v[2], size);
-
-    const alwan_scalar fr = cr.frac;
-    const alwan_scalar fg = cg.frac;
-    const alwan_scalar fb = cb.frac;
-
-    const size_t i000 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i0, cb.i0);
-    const size_t i001 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i0, cb.i1);
-    const size_t i010 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i1, cb.i0);
-    const size_t i011 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i0, cg.i1, cb.i1);
-    const size_t i100 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i0, cb.i0);
-    const size_t i101 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i0, cb.i1);
-    const size_t i110 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i1, cb.i0);
-    const size_t i111 = ALWAN_TABLE3D_PLANAR_AT_(size, cr.i1, cg.i1, cb.i1);
-
-    const alwan_scalar one = ALWAN_LITERAL(1.0);
-    alwan_vec3 result;
-
-    const alwan_scalar a_00 = cube0[i000] * (one - fb) + cube0[i001] * fb;
-    const alwan_scalar a_01 = cube0[i010] * (one - fb) + cube0[i011] * fb;
-    const alwan_scalar a_10 = cube0[i100] * (one - fb) + cube0[i101] * fb;
-    const alwan_scalar a_11 = cube0[i110] * (one - fb) + cube0[i111] * fb;
-    const alwan_scalar a_0 = a_00 * (one - fg) + a_01 * fg;
-    const alwan_scalar a_1 = a_10 * (one - fg) + a_11 * fg;
-    result.v[0] = a_0 * (one - fr) + a_1 * fr;
-
-    const alwan_scalar b_00 = cube1[i000] * (one - fb) + cube1[i001] * fb;
-    const alwan_scalar b_01 = cube1[i010] * (one - fb) + cube1[i011] * fb;
-    const alwan_scalar b_10 = cube1[i100] * (one - fb) + cube1[i101] * fb;
-    const alwan_scalar b_11 = cube1[i110] * (one - fb) + cube1[i111] * fb;
-    const alwan_scalar b_0 = b_00 * (one - fg) + b_01 * fg;
-    const alwan_scalar b_1 = b_10 * (one - fg) + b_11 * fg;
-    result.v[1] = b_0 * (one - fr) + b_1 * fr;
-
-    const alwan_scalar c_00 = cube2[i000] * (one - fb) + cube2[i001] * fb;
-    const alwan_scalar c_01 = cube2[i010] * (one - fb) + cube2[i011] * fb;
-    const alwan_scalar c_10 = cube2[i100] * (one - fb) + cube2[i101] * fb;
-    const alwan_scalar c_11 = cube2[i110] * (one - fb) + cube2[i111] * fb;
-    const alwan_scalar c_0 = c_00 * (one - fg) + c_01 * fg;
-    const alwan_scalar c_1 = c_10 * (one - fg) + c_11 * fg;
-    result.v[2] = c_0 * (one - fr) + c_1 * fr;
-
-    return result;
-}
-
-ALWAN_INLINE alwan_vec3 alwan_table3d_planar3_sample_nearest_v(
-        alwan_scalar const *cube0, alwan_scalar const *cube1, alwan_scalar const *cube2,
-        int size, alwan_vec3 coord) {
-    const alwan_table_cell cr = alwan_table_cell_v(coord.v[0], size);
-    const alwan_table_cell cg = alwan_table_cell_v(coord.v[1], size);
-    const alwan_table_cell cb = alwan_table_cell_v(coord.v[2], size);
-    const int ri = (cr.frac < ALWAN_LITERAL(0.5)) ? cr.i0 : cr.i1;
-    const int gi = (cg.frac < ALWAN_LITERAL(0.5)) ? cg.i0 : cg.i1;
-    const int bi = (cb.frac < ALWAN_LITERAL(0.5)) ? cb.i0 : cb.i1;
-    const size_t i = ALWAN_TABLE3D_PLANAR_AT_(size, ri, gi, bi);
-    alwan_vec3 result;
-    result.v[0] = cube0[i];
-    result.v[1] = cube1[i];
-    result.v[2] = cube2[i];
-    return result;
-}
-
-ALWAN_INLINE alwan_vec3 alwan_table3d_planar3_sample_v(
-        alwan_scalar const *cube0, alwan_scalar const *cube1, alwan_scalar const *cube2,
-        int size, alwan_vec3 coord, alwan_sample_mode mode) {
-    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
-        return alwan_table3d_planar3_sample_nearest_v(cube0, cube1, cube2, size, coord);
-    return alwan_table3d_planar3_sample_trilinear_v(cube0, cube1, cube2, size, coord);
-}
 #endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_TABLE_CORE_H */
