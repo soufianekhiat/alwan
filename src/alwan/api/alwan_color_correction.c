@@ -68,7 +68,14 @@ void alwan_color_matrix_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *r
 
     *rgb_out = alwan_color_matrix_apply_f64_v(*rgb_in, *matrix_3x3);
 }
+#endif /* ALWAN_WITH_F64 */
 
+/* The preset table is f64 and the f32 entry point below narrows it, so this one
+ * is an f64-internal facade and has to exist in every build. It used to sit
+ * under plain ALWAN_WITH_F64 with its f32 twin gated on BOTH precisions, which
+ * left alwan_color_matrix_get_preset_f32 declared and undefined in an f32-only
+ * build: exactly the build where the f32 entry point is the only one wanted. */
+#if ALWAN_WITH_F64_FACADE
 alwan_status alwan_color_matrix_get_preset_f64(alwan_mat3x3_f64 *matrix_3x3, alwan_color_matrix_preset_f64 preset)
 {
     if (!matrix_3x3) {
@@ -1498,7 +1505,7 @@ void alwan_white_balance_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *
  * Delegate to the f64 implementations via temporary f64 buffers.
  * ================================================================ */
 
-#if ALWAN_WITH_F32 && ALWAN_WITH_F64
+#if ALWAN_WITH_F32
 alwan_status alwan_color_matrix_get_preset_f32(alwan_mat3x3_f32 *matrix_3x3, alwan_color_matrix_preset_f32 preset) {
     if (!matrix_3x3) return ALWAN_E_INVALID;
     alwan_mat3x3_f64 tmp;
@@ -1507,7 +1514,7 @@ alwan_status alwan_color_matrix_get_preset_f32(alwan_mat3x3_f32 *matrix_3x3, alw
     for (int i = 0; i < 9; i++) matrix_3x3->m[i] = (float)tmp.m[i];
     return ALWAN_OK;
 }
-#endif /* ALWAN_WITH_F32 && ALWAN_WITH_F64 */
+#endif /* ALWAN_WITH_F32 */
 
 #if ALWAN_WITH_F32
 alwan_status alwan_poly_expand_cheung2004_f32(alwan_f32 *out, alwan_rgb_f32 const *rgb,

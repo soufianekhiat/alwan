@@ -417,6 +417,10 @@ alwan_status alwan_rgb_space_limits_f64(alwan_f64 *limits_out,
                                        space->white_xy[0], space->white_xy[1]);
 }
 
+/* Gated: this calls alwan_rgb_derive_matrices_f32, which an f64-only build does not have.
+ * It was compiled ungated, so ALWAN_BUILD_PRECISION=f64 built it and then
+ * failed to link. */
+#if ALWAN_WITH_F32
 alwan_status alwan_rgb_space_limits_f32(alwan_f32 *limits_out,
                                         alwan_rgb_space_desc_f32 const *space) {
     alwan_mat3x3_f32 npm, inv;
@@ -438,3 +442,4 @@ alwan_status alwan_rgb_space_limits_f32(alwan_f32 *limits_out,
     }
     return st;
 }
+#endif /* ALWAN_WITH_F32 */

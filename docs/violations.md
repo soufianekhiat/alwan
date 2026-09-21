@@ -269,11 +269,44 @@ entries are contract/doc/naming nits that should be cleaned up before the
   (`alwan_aces_ff.c:23`) with no ctx/sync, contradicting the per-context model.
   Move it into `alwan_ctx`.
 
-- **`reference_data.c` precision gating absent.** `reference-data.md` claims
-  single-precision builds define only the matching twin ("excluded precision
-  fails at link time"), but `alwan_reference_data.c` has zero precision `#if`
-  guards and every f32 entry calls the f64 impl. An f32-only build would leave
-  unresolved f64 symbols. Align the file or the doc.
+- ~~**`reference_data.c` precision gating absent.**~~ **FIXED 2026-09-21, and the
+  entry was pointing at a much larger problem than the file it named.** Its
+  literal claim was half stale: `reference-data.md` already documents that these
+  lookups are f64-internal facades on purpose. But it predicted a link failure,
+  and nobody had ever tested one, because NO job builds
+  `-DALWAN_BUILD_PRECISION=f32` or `=f64`. So both were built and every declared
+  entry point of the matching precision was linked against each.
+
+  **Both single-precision builds were broken at link time**, while looking fine:
+  the static library builds in every configuration, since a `.lib` never links.
+  - f32-only: 28 unresolved. Facade modules, which compile their f64 side always,
+    called f64 functions from modules that compile theirs only under
+    `ALWAN_WITH_F64` (sCAM into sUCS, film into the Jakob 2019 upsampler, exposure
+    and camera into the table samplers, the LUT bake into the view transforms).
+    And `alwan_color_matrix_get_preset_f32` was gated on BOTH precisions because
+    it narrows an f64 table, so it vanished from the one build that wanted only
+    it.
+  - f64-only: 9 unresolved. Newer modules defined `_f32` entry points with no gate
+    at all, so an f64-only build compiled them and they called f32 functions from
+    modules that are gated. `alwan_color_checker_reflectance_f32` in this very
+    file was one, so the entry was right about the file and wrong about which
+    direction.
+  - Either: **seven source files were missing from `CMakeLists.txt`**, everything
+    from several sessions. Sharpmake globs sources and CMake lists them, so the
+    Windows build never noticed, and CI builds with CMake on every other runner.
+
+  All fixed with gates, never stubs, and the dual build that ships is unchanged:
+  171 suites, 213,230 checks, `alwan_exports.def` byte-identical. One fix went on
+  the caller instead: closing the facade set from the callee side dragged the
+  LUT bake into the view transforms, then the ACES 1 output transform, then its
+  f64 matrix tables, so in an f32-only build the bake goes through the f32 view
+  transform, which is the only one that build has.
+
+  `alwan_dev/tools/check_precision_link.py` and `check_cmake_sources.py` now gate
+  both in the tooling workflow. The first was run against a tree with one bug
+  deliberately put back, since a gate that has only ever passed proves nothing; it
+  failed on exactly the two expected symbols, and in doing so exposed a bug in its
+  own error parsing, which is the argument for the exercise.
 
 ### Documentation rot
 

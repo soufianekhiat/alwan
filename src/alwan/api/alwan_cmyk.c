@@ -403,6 +403,10 @@ alwan_status alwan_cmyk_model_from_chart_f64(alwan_cmyk_model **out, alwan_chart
     return alwan__cmyk_from_chart_f64(out, chart);
 }
 
+/* Gated: this calls the alwan_chart_*_f32 accessors, which an f64-only build does not have.
+ * It was compiled ungated, so ALWAN_BUILD_PRECISION=f64 built it and then
+ * failed to link. */
+#if ALWAN_WITH_F32
 alwan_status alwan_cmyk_model_from_chart_f32(alwan_cmyk_model **out, alwan_chart_f32 const *chart, alwan_ctx *ctx) {
     size_t const n = alwan_chart_num_patches_f32(chart);
     double *cmyk, *lab;
@@ -461,6 +465,7 @@ alwan_status alwan_cmyk_model_from_chart_f32(alwan_cmyk_model **out, alwan_chart
     ALWAN_FREE(lab);
     return st;
 }
+#endif /* ALWAN_WITH_F32 */
 
 alwan_status alwan_cmyk_model_fogra39(alwan_cmyk_model **out, alwan_ctx *ctx) {
     size_t const lines = sizeof(k_fogra39_lines) / sizeof(k_fogra39_lines[0]);

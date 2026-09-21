@@ -186,6 +186,13 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_interop.c
   src/alwan/api/alwan_clf.c
   src/alwan/api/alwan_clf_import.c
+  src/alwan/api/alwan_colour_solid.c
+  src/alwan/api/alwan_ellipse.c
+  src/alwan/api/alwan_machado_continuous.c
+  src/alwan/api/alwan_michaelis_menten.c
+  src/alwan/api/alwan_display_gog.c
+  src/alwan/api/alwan_display_model.c
+  src/alwan/api/alwan_tonemap_local.c
   src/alwan/api/alwan_half.c
   src/alwan/api/alwan_video.c
   src/alwan/map/alwan_vision_map.c

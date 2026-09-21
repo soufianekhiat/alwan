@@ -242,6 +242,10 @@ alwan_status alwan_display_primaries_spd_f64(alwan_spd_f64 *r, alwan_spd_f64 *g,
     return ALWAN_OK;
 }
 
+/* Gated: this calls alwan_spd_create_f32 and alwan_spd_destroy_f32, which an f64-only build does not have.
+ * It was compiled ungated, so ALWAN_BUILD_PRECISION=f64 built it and then
+ * failed to link. */
+#if ALWAN_WITH_F32
 alwan_status alwan_display_primaries_spd_f32(alwan_spd_f32 *r, alwan_spd_f32 *g,
                                              alwan_spd_f32 *b,
                                              alwan_display_primaries which, alwan_ctx *ctx) {
@@ -263,6 +267,7 @@ alwan_status alwan_display_primaries_spd_f32(alwan_spd_f32 *r, alwan_spd_f32 *g,
     }
     return ALWAN_OK;
 }
+#endif /* ALWAN_WITH_F32 */
 
 /* ---------------------------------------------------------------- entry */
 

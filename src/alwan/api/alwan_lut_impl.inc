@@ -146,15 +146,32 @@ static ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(lut__apply_view)(
          * ALWAN_OK and the caller got a plausible-looking cube that did
          * nothing. That also reached CLF export, which bakes through this
          * same path. */
+#if ALWAN_WITH_F64
         ALWAN_CORE_T in3[3] = { in.v[0], in.v[1], in.v[2] };
         ALWAN_CORE_T out3[3];
         if (ALWAN_CORE_FNLIT(alwan_view_transform_apply)(
                 out3, 3 * sizeof(ALWAN_CORE_T),
                 in3, 3 * sizeof(ALWAN_CORE_T), 1, vt, ctx) != ALWAN_OK)
             return rgb;
-        r.v[0] = out3[0];
-        r.v[1] = out3[1];
-        r.v[2] = out3[2];
+#else
+        /* An f32-only build. This file's f64 side is still compiled there, as an
+         * f64-internal facade, but alwan_view_transform_apply_f64 is not: the
+         * view transforms keep their f64 side under plain ALWAN_WITH_F64, and
+         * pulling it in drags the ACES 1 output transform and its f64 tables
+         * after it. The f32 view transform is the only one this build has, so
+         * both instantiations go through it. For the f32 one that is the same
+         * call it would have made; for the f64 one it narrows, which is the
+         * precision this build chose. Found by linking every declared _f32 entry
+         * point against an ALWAN_BUILD_PRECISION=f32 library. */
+        alwan_f32 in3[3] = { (alwan_f32)in.v[0], (alwan_f32)in.v[1], (alwan_f32)in.v[2] };
+        alwan_f32 out3[3];
+        if (alwan_view_transform_apply_f32(out3, 3 * sizeof(alwan_f32),
+                                           in3, 3 * sizeof(alwan_f32), 1, vt, ctx) != ALWAN_OK)
+            return rgb;
+#endif
+        r.v[0] = (ALWAN_CORE_T)out3[0];
+        r.v[1] = (ALWAN_CORE_T)out3[1];
+        r.v[2] = (ALWAN_CORE_T)out3[2];
         return r;
     }
     }

@@ -528,6 +528,10 @@ alwan_status alwan_color_checker_reflectance_f64(alwan_spd_f64 *out, alwan_color
     return ALWAN_OK;
 }
 
+/* Gated: this calls alwan_spd_create_f32, which an f64-only build does not have.
+ * It was compiled ungated, so ALWAN_BUILD_PRECISION=f64 built it and then
+ * failed to link. */
+#if ALWAN_WITH_F32
 alwan_status alwan_color_checker_reflectance_f32(alwan_spd_f32 *out, alwan_colorchecker_type type,
                                                  size_t patch_index, alwan_ctx *ctx) {
     if (!out) {
@@ -547,6 +551,7 @@ alwan_status alwan_color_checker_reflectance_f32(alwan_spd_f32 *out, alwan_color
     alwan_spd_destroy_f64(&wide, ctx);
     return status;
 }
+#endif /* ALWAN_WITH_F32 */
 
 /* How many patches of a target alwan has spectra for, 0 when it has none. */
 size_t alwan_color_checker_num_reflectances(alwan_colorchecker_type type) {

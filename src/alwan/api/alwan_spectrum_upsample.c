@@ -144,7 +144,11 @@ ALWAN_DIAG_DISABLE_FLOAT_CONV
 ALWAN_DIAG_POP
 #endif
 
-#if ALWAN_WITH_F64
+/* Under the FACADE gate, not plain ALWAN_WITH_F64: an f64-internal facade in
+ * another module calls into this one, so its f64 side has to exist even in an
+ * f32-only build. Found by linking every declared _f32 entry point against an
+ * ALWAN_BUILD_PRECISION=f32 library, which no CI job had ever done. */
+#if ALWAN_WITH_F64_FACADE
 #include "alwan_api_f64_setup.h"
 #include "alwan_spectrum_upsample_impl.inc"
 #include "alwan_api_teardown.h"
