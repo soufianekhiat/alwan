@@ -1072,6 +1072,9 @@ alwan_status alwan_gamut_map_xyz_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_sp
 /* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
 alwan_status alwan_gamut_map_xyz_to_rgb_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_ctx *ctx);
 alwan_status alwan_gamut_map_xyz_to_rgb_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_ctx *ctx);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 174). */
+alwan_status alwan_gamut_map_xyz_to_rgb_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_ctx *ctx);
+alwan_status alwan_gamut_map_xyz_to_rgb_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_ctx *ctx);
 alwan_status alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *space, alwan_xyz_f32 const *xyz_in, alwan_ctx *ctx);
 
 /* CSS Color Level 4 Section 13.2 OKLCh gamut mapping (binary search on chroma)
@@ -1510,6 +1513,11 @@ alwan_status alwan_ipt_to_iptch_f32_map_interleave(alwan_f32 *out, size_t out_st
 alwan_status alwan_iptch_to_ipt_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count);
 alwan_status alwan_ipt_to_iptch_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
 alwan_status alwan_iptch_to_ipt_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 174). */
+alwan_status alwan_ipt_to_iptch_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count);
+alwan_status alwan_iptch_to_ipt_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count);
+alwan_status alwan_ipt_to_iptch_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count);
+alwan_status alwan_iptch_to_ipt_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count);
 
 /* MapXYZ <-> IPT conversions */
 alwan_status alwan_xyz_to_ipt_f32_map_interleave(alwan_f32 *ipt_out, size_t out_stride, alwan_f32 const *xyz_in, size_t in_stride, size_t count);
@@ -3362,6 +3370,9 @@ alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
 /* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
 alwan_status alwan_gamut_map_advanced_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_gamut_map_method method, alwan_rgb_space_desc_f32 const *space);
 alwan_status alwan_gamut_map_advanced_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_gamut_map_method method, alwan_rgb_space_desc_f64 const *space);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 174). */
+alwan_status alwan_gamut_map_advanced_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_gamut_map_method method, alwan_rgb_space_desc_f32 const *space);
+alwan_status alwan_gamut_map_advanced_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_gamut_map_method method, alwan_rgb_space_desc_f64 const *space);
 
 /* HDR gamut mapping in ICtCp (PQ) -- the HDR counterpart of the SDR methods
  * above. rgb_linear is linear BT.2020 RGB in ABSOLUTE cd/m2 (nits); the colour
@@ -5402,6 +5413,11 @@ alwan_status alwan_ycbcr_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out
 alwan_status alwan_ycbcr_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *ycbcr_in, size_t in_stride, size_t count, alwan_ycbcr_standard standard, alwan_gamut_map_method method);
 alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *yccbccrc_in, size_t in_stride, size_t count, int bit_depth, alwan_gamut_map_method method);
 alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *yccbccrc_in, size_t in_stride, size_t count, int bit_depth, alwan_gamut_map_method method);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 174). */
+alwan_status alwan_ycbcr_to_rgb_gamut_safe_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_ycbcr_standard standard, alwan_gamut_map_method method);
+alwan_status alwan_ycbcr_to_rgb_gamut_safe_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_ycbcr_standard standard, alwan_gamut_map_method method);
+alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, int bit_depth, alwan_gamut_map_method method);
+alwan_status alwan_yccbccrc_to_rgb_gamut_safe_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, int bit_depth, alwan_gamut_map_method method);
 alwan_status alwan_rgb_to_yccbccrc_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, int bit_depth);
 alwan_status alwan_yccbccrc_to_rgb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, int bit_depth);
 
@@ -5933,6 +5949,11 @@ alwan_status alwan_simulate_cvd_ex_gamut_safe_f32(alwan_rgb_f32 *rgb_out, alwan_
 alwan_status alwan_simulate_cvd_ex_gamut_safe_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_cvd_model model, alwan_gamut_map_method method);
 alwan_status alwan_simulate_cvd_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
 alwan_status alwan_simulate_cvd_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 174). */
+alwan_status alwan_simulate_cvd_gamut_safe_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
+alwan_status alwan_simulate_cvd_gamut_safe_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
 alwan_status alwan_simulate_cvd_machado_gamut_safe_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method);
 alwan_status alwan_simulate_cvd_machado_gamut_safe_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method);
 
@@ -6966,6 +6987,11 @@ alwan_status alwan_colour_correct_cheung2004_f32_map_interleave(alwan_f32 *out, 
 alwan_status alwan_colour_correct_finlayson2015_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const *matrix, int degree, int root_poly);
 alwan_status alwan_colour_correct_cheung2004_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const *matrix, alwan_poly_cheung_terms terms);
 alwan_status alwan_colour_correct_finlayson2015_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const *matrix, int degree, int root_poly);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 174). */
+alwan_status alwan_colour_correct_cheung2004_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_f32 const *matrix, alwan_poly_cheung_terms terms);
+alwan_status alwan_colour_correct_finlayson2015_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_f32 const *matrix, int degree, int root_poly);
+alwan_status alwan_colour_correct_cheung2004_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_f64 const *matrix, alwan_poly_cheung_terms terms);
+alwan_status alwan_colour_correct_finlayson2015_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_f64 const *matrix, int degree, int root_poly);
 
 /* How a colour correction matrix is fitted. The zero value, or NULL, is the plain
  * least-squares fit of alwan_colour_correction_matrix_*, bit for bit.
@@ -8244,6 +8270,9 @@ void alwan_hdr_gamut_map_jzczhz_f64(alwan_jzczhz_f64 *out, alwan_jzczhz_f64 cons
 /* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
 alwan_status alwan_hdr_gamut_map_jzczhz_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 Cz_max);
 alwan_status alwan_hdr_gamut_map_jzczhz_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 Cz_max);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 174). */
+alwan_status alwan_hdr_gamut_map_jzczhz_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_f32 Cz_max);
+alwan_status alwan_hdr_gamut_map_jzczhz_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_f64 Cz_max);
 
 /* ----------------------------------------------------------------
  * Display Characterization

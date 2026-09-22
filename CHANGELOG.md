@@ -339,6 +339,24 @@
 
 ### Added
 
+- **Planar buffer forms for the eleven operations that had only an interleaved one.**
+  `alwan_ipt_to_iptch_{T}`, `alwan_iptch_to_ipt_{T}`, `alwan_hdr_gamut_map_jzczhz_{T}`,
+  `alwan_colour_correct_cheung2004_{T}`, `alwan_colour_correct_finlayson2015_{T}`,
+  `alwan_gamut_map_advanced_{T}`, `alwan_gamut_map_xyz_to_rgb_{T}`,
+  `alwan_simulate_cvd_gamut_safe_{T}`, `alwan_simulate_cvd_machado_gamut_safe_{T}`,
+  `alwan_ycbcr_to_rgb_gamut_safe_{T}` and `alwan_yccbccrc_to_rgb_gamut_safe_{T}` all gained
+  a `_map_planar` twin in both precisions: three channel planes in, three out, one stride
+  shared by the planes, the trailing arguments in the interleave order. That is the shape a
+  video pipeline and a plane-per-channel image already hold, so it saves the caller an
+  interleave pass on each side.
+
+  The four gamut-safe conversions fetch the space descriptor once for the buffer rather
+  than once per pixel, as their interleave forms do, so the two agree to the bit. Suite 174
+  asserts exactly that: planar against interleave, per pixel, both precisions, over a plane
+  stride that is deliberately not the interleave stride, so a twin that assumed packed
+  planes fails. It also checks that a NULL plane, a NULL space and a NULL matrix are
+  refused.
+
 - **`alwan_optimize_spectrum_for_xyz_{T}` did not optimise anything.** It ignored the
   observer, ignored the target's X and Z, and gave every one of its seven Gaussians the
   weight `target_xyz->y / 7`, so two targets with the same luminance produced the same

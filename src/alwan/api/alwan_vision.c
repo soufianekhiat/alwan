@@ -163,6 +163,50 @@ alwan_status alwan_simulate_cvd_machado_gamut_safe_f64_map_interleave(alwan_f64 
     }
     return ALWAN_OK;
 }
+
+/* The planar twin of the fixup above. The raw simulation is already in the
+ * three output planes, and each pixel is mapped in place out of them. The
+ * space is fetched once for the buffer rather than once per pixel, exactly as
+ * the interleave map does. */
+static int alwan__cvd_gamut_fixup_planar_f64(alwan_f64 *out_ch0, size_t out_stride,
+        alwan_f64 *out_ch1, alwan_f64 *out_ch2, size_t count, alwan_gamut_map_method method) {
+    alwan_rgb_space_desc_f64 space;
+    int st = alwan_rgb_get_space_descriptor_f64(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_f64 *p0 = (alwan_f64 *)((char *)out_ch0 + i * out_stride);
+        alwan_f64 *p1 = (alwan_f64 *)((char *)out_ch1 + i * out_stride);
+        alwan_f64 *p2 = (alwan_f64 *)((char *)out_ch2 + i * out_stride);
+        alwan_rgb_f64 raw, mapped;
+        raw.r = *p0; raw.g = *p1; raw.b = *p2;
+        st = alwan_gamut_map_advanced_f64(&mapped, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+        *p0 = mapped.r;
+        *p1 = mapped.g;
+        *p2 = mapped.b;
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_simulate_cvd_gamut_safe_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride,
+        alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride,
+        alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,
+        alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_f64_map_planar(out_ch0, out_stride, out_ch1, out_ch2,
+                                               in_ch0, in_stride, in_ch1, in_ch2, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_planar_f64(out_ch0, out_stride, out_ch1, out_ch2, count, method);
+}
+
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride,
+        alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride,
+        alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,
+        alwan_cvd_type cvd_type, alwan_f64 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_machado_f64_map_planar(out_ch0, out_stride, out_ch1, out_ch2,
+                                                       in_ch0, in_stride, in_ch1, in_ch2, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_planar_f64(out_ch0, out_stride, out_ch1, out_ch2, count, method);
+}
 #endif /* ALWAN_WITH_F64 */
 
 #if ALWAN_WITH_F32
@@ -230,5 +274,49 @@ alwan_status alwan_simulate_cvd_machado_gamut_safe_f32_map_interleave(alwan_f32 
         if (st != ALWAN_OK) return st;
     }
     return ALWAN_OK;
+}
+
+/* The planar twin of the fixup above. The raw simulation is already in the
+ * three output planes, and each pixel is mapped in place out of them. The
+ * space is fetched once for the buffer rather than once per pixel, exactly as
+ * the interleave map does. */
+static int alwan__cvd_gamut_fixup_planar_f32(alwan_f32 *out_ch0, size_t out_stride,
+        alwan_f32 *out_ch1, alwan_f32 *out_ch2, size_t count, alwan_gamut_map_method method) {
+    alwan_rgb_space_desc_f32 space;
+    int st = alwan_rgb_get_space_descriptor_f32(&space, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 *p0 = (alwan_f32 *)((char *)out_ch0 + i * out_stride);
+        alwan_f32 *p1 = (alwan_f32 *)((char *)out_ch1 + i * out_stride);
+        alwan_f32 *p2 = (alwan_f32 *)((char *)out_ch2 + i * out_stride);
+        alwan_rgb_f32 raw, mapped;
+        raw.r = *p0; raw.g = *p1; raw.b = *p2;
+        st = alwan_gamut_map_advanced_f32(&mapped, method, &space, &raw);
+        if (st != ALWAN_OK) return st;
+        *p0 = mapped.r;
+        *p1 = mapped.g;
+        *p2 = mapped.b;
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_simulate_cvd_gamut_safe_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride,
+        alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride,
+        alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
+        alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_f32_map_planar(out_ch0, out_stride, out_ch1, out_ch2,
+                                               in_ch0, in_stride, in_ch1, in_ch2, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_planar_f32(out_ch0, out_stride, out_ch1, out_ch2, count, method);
+}
+
+alwan_status alwan_simulate_cvd_machado_gamut_safe_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride,
+        alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride,
+        alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
+        alwan_cvd_type cvd_type, alwan_f32 severity, alwan_gamut_map_method method) {
+    int st = alwan_simulate_cvd_machado_f32_map_planar(out_ch0, out_stride, out_ch1, out_ch2,
+                                                       in_ch0, in_stride, in_ch1, in_ch2, count, cvd_type, severity);
+    if (st != ALWAN_OK) return st;
+    return alwan__cvd_gamut_fixup_planar_f32(out_ch0, out_stride, out_ch1, out_ch2, count, method);
 }
 #endif /* ALWAN_WITH_F32 */
