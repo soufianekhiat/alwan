@@ -1321,7 +1321,7 @@ ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
     alwan_simd_lane const c1 = (alwan_simd_lane)0.8359375;
     alwan_simd_lane const c2 = (alwan_simd_lane)18.8515625;
     alwan_simd_lane const c3 = (alwan_simd_lane)18.6875;
-    alwan_simd_lane const eps = (alwan_simd_lane)ALWAN_MAP_PQ_DIV_GUARD;
+    alwan_simd_lane const eps = (alwan_simd_lane)ALWAN_EPSILON_F64;   /* the scalar core's guard and predicate */
     ALWAN_ALIGN(64) alwan_simd_lane lanes[ALWAN_SIMD_WIDTH];
     alwan_simd_store(lanes, v);
     for (size_t i = 0; i < ALWAN_SIMD_WIDTH; i++) {
@@ -1331,7 +1331,7 @@ ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
         alwan_simd_lane const num = Ep - c1;
         alwan_simd_lane const den = c2 - c3 * Ep;
         alwan_simd_lane const abs_den = (den < (alwan_simd_lane)0) ? -den : den;
-        alwan_simd_lane ratio = (abs_den > eps) ? (num / den) : (alwan_simd_lane)0;
+        alwan_simd_lane ratio = (abs_den < eps) ? (alwan_simd_lane)0 : (num / den);
         if (ratio < (alwan_simd_lane)0) ratio = (alwan_simd_lane)0;
         lanes[i] = (alwan_simd_lane)10000.0 * ALWAN_POW_F64(ratio, n_inv);
     }
@@ -1346,15 +1346,15 @@ ALWAN_INLINE alwan_simd alwan__pq_jz_eotf_simd(alwan_simd v) {
     alwan_simd const c3    = alwan_simd_set1((alwan_simd_lane)18.6875);
     alwan_simd const ten_k = alwan_simd_set1((alwan_simd_lane)10000.0);
     alwan_simd const zero  = alwan_simd_zero();
-    alwan_simd const eps   = alwan_simd_set1((alwan_simd_lane)ALWAN_MAP_PQ_DIV_GUARD);
+    alwan_simd const eps   = alwan_simd_set1((alwan_simd_lane)ALWAN_EPSILON_F64);   /* the scalar core's guard and predicate */
 
     alwan_simd_mask pos = alwan_simd_cmpgt(v, zero);
     alwan_simd enc = alwan_simd_select(pos, v, zero);
     alwan_simd Ep = alwan_simd_pow(enc, p_inv);
     alwan_simd num = alwan_simd_sub(Ep, c1);
     alwan_simd den = alwan_simd_sub(c2, alwan_simd_mul(c3, Ep));
-    alwan_simd_mask safe = alwan_simd_cmpgt(alwan_simd_abs(den), eps);
-    alwan_simd ratio = alwan_simd_select(safe, alwan_simd_div(num, den), zero);
+    alwan_simd_mask singular = alwan_simd_cmplt(alwan_simd_abs(den), eps);
+    alwan_simd ratio = alwan_simd_select(singular, zero, alwan_simd_div(num, den));
     ratio = alwan_simd_select(alwan_simd_cmplt(ratio, zero), zero, ratio);
     alwan_simd result = alwan_simd_mul(ten_k, alwan_simd_pow(ratio, n_inv));
     return alwan_simd_select(pos, result, zero);

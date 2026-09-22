@@ -435,7 +435,11 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__pq_jz_eotf_simd)(alwan_map_sim
     alwan_map_lane const c1    = (alwan_map_lane)0.8359375;
     alwan_map_lane const c2    = (alwan_map_lane)18.8515625;
     alwan_map_lane const c3    = (alwan_map_lane)18.6875;
-    alwan_map_lane const eps   = (alwan_map_lane)ALWAN_MAP_PQ_DIV_GUARD;
+    /* The scalar core (pq_jz_eotf) guards its division with ALWAN_EPSILON and the
+     * predicate |den| < eps; this must be the same constant and the same predicate,
+     * or a value in one buffer answers differently on a lane and on the tail. Until
+     * 2026-09-22 the lanes used a 1e-30 guard, a band of width 1e-12 apart. */
+    alwan_map_lane const eps   = (alwan_map_lane)ALWAN_MAP_EPSILON;
     ALWAN_ALIGN(64) alwan_map_lane lanes[ALWAN_MAP_SIMD_WIDTH];
     alwan_map_simd_store(lanes, v);
     for (int i = 0; i < ALWAN_MAP_SIMD_WIDTH; i++) {
@@ -448,7 +452,7 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__pq_jz_eotf_simd)(alwan_map_sim
         alwan_map_lane const num = Ep - c1;
         alwan_map_lane const den = c2 - c3 * Ep;
         alwan_map_lane const abs_den = (den < (alwan_map_lane)0) ? -den : den;
-        alwan_map_lane ratio = (abs_den > eps) ? (num / den) : (alwan_map_lane)0;
+        alwan_map_lane ratio = (abs_den < eps) ? (alwan_map_lane)0 : (num / den);
         if (ratio < (alwan_map_lane)0) ratio = (alwan_map_lane)0;
         lanes[i] = (alwan_map_lane)10000.0 * alwan_map_scalar_pow(ratio, n_inv);
     }
@@ -465,14 +469,14 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__pq_jz_eotf_simd)(alwan_map_sim
     alwan_map_simd const c3    = alwan_map_simd_set1((alwan_map_lane)18.6875);
     alwan_map_simd const ten_k = alwan_map_simd_set1((alwan_map_lane)10000.0);
     alwan_map_simd const zero  = alwan_map_simd_zero();
-    alwan_map_simd const eps   = alwan_map_simd_set1((alwan_map_lane)ALWAN_MAP_PQ_DIV_GUARD);
+    alwan_map_simd const eps   = alwan_map_simd_set1((alwan_map_lane)ALWAN_MAP_EPSILON);   /* the scalar core's guard, see the det body */
     alwan_map_simd_mask pos = alwan_map_simd_cmpgt(v, zero);
     alwan_map_simd enc = alwan_map_simd_select(pos, v, zero);
     alwan_map_simd Ep = alwan_map_simd_pow(enc, p_inv);
     alwan_map_simd num = alwan_map_simd_sub(Ep, c1);
     alwan_map_simd den = alwan_map_simd_sub(c2, alwan_map_simd_mul(c3, Ep));
-    alwan_map_simd_mask safe = alwan_map_simd_cmpgt(alwan_map_simd_abs(den), eps);
-    alwan_map_simd ratio = alwan_map_simd_select(safe, alwan_map_simd_div(num, den), zero);
+    alwan_map_simd_mask singular = alwan_map_simd_cmplt(alwan_map_simd_abs(den), eps);
+    alwan_map_simd ratio = alwan_map_simd_select(singular, zero, alwan_map_simd_div(num, den));
     ratio = alwan_map_simd_select(alwan_map_simd_cmplt(ratio, zero), zero, ratio);
     alwan_map_simd result = alwan_map_simd_mul(ten_k, alwan_map_simd_pow(ratio, n_inv));
     return alwan_map_simd_select(pos, result, zero);

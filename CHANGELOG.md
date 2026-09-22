@@ -417,6 +417,16 @@
   scalar. OUTPUT CHANGED for PQ-encoded input above 1 on the SIMD lanes only: NaN
   where it was 0.
 
+  The JzAzBz maps carry their own PQ inverse, and it was checked the same way. Its
+  scalar core guards the division by `c2 - c3 E'` with `ALWAN_EPSILON` (1e-12 in f64,
+  1e-6 in f32) and the SIMD lanes guarded it with 1e-30 and the opposite comparison, so
+  the two disagreed on a band 1e-12 wide at LMS' = 3.23, which no grid lands on. The
+  lanes now use the scalar's constant and predicate (`ALWAN_MAP_EPSILON`, per
+  precision), and suite 88 sweeps 4,097 JzAzBz inputs from Jz = -0.2 to 1.5 through
+  `alwan_jzazbz_to_xyz_{T}_map_interleave` against the scalar: every element classifies
+  the same (finite, infinite, NaN) in f32 and f64, 0 ULP in a deterministic build. No
+  reachable output changed.
+
 - **What every transfer curve does outside [0, 1] is now stated and pinned.** sRGB
   continues its linear toe below zero (12.92 x, so -0.5 encodes to -6.46) and its power
   curve above one, and a round trip returns the value either side; that is CLF's

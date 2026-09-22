@@ -88,6 +88,7 @@
 #undef alwan_map_scalar_floor
 #undef alwan_map_scalar_ceil
 #undef alwan_map_scalar_fmod
+#undef ALWAN_MAP_EPSILON
 
 /* Direct-paste */
 #undef ALWAN_MAP_LIT

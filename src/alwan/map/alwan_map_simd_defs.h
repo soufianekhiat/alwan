@@ -117,6 +117,7 @@
 #define alwan_map_scalar_floor(x)     ALWAN_FLOOR_F32(x)
 #define alwan_map_scalar_ceil(x)      ALWAN_CEIL_F32(x)
 #define alwan_map_scalar_fmod(x,y)    ALWAN_FMOD_F32(x,y)
+#define ALWAN_MAP_EPSILON             ALWAN_EPSILON_F32   /* the scalar core's guard, so a lane and the tail agree */
 
 /* Direct-paste: base is NOT expanded (## at level 1 suppresses expansion) */
 #define ALWAN_MAP_LIT(base)         base##_f32
@@ -197,6 +198,7 @@
 #define alwan_map_scalar_floor(x)     ALWAN_FLOOR_F64(x)
 #define alwan_map_scalar_ceil(x)      ALWAN_CEIL_F64(x)
 #define alwan_map_scalar_fmod(x,y)    ALWAN_FMOD_F64(x,y)
+#define ALWAN_MAP_EPSILON             ALWAN_EPSILON_F64
 
 /* Direct-paste: base is NOT expanded (## at level 1 suppresses expansion) */
 #define ALWAN_MAP_LIT(base)         base##_f64
