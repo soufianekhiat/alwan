@@ -11,6 +11,39 @@
  */
 
 /* ----------------------------------------------------------------
+ * pow and cbrt with a zero lane routed round the call
+ *
+ * MSVC x64 links SVML for every _mm*_pow and _mm*_cbrt (ALWAN_HAS_SVML), and
+ * SVML takes a slow path on a special operand: measured 2026-09-22 on the AVX2
+ * build, 1200 Mval/s on (0.01, 1) against 120 on zeros and negatives, and one
+ * black pixel in a vector halved XYZ -> Lab, XYZ -> Oklab and RGB -> ICtCp. A
+ * zero base is the common special value (black), so it is replaced by 1.0 for
+ * the call and its exact special result put back afterwards: cbrt(0) is 0 with
+ * its sign, pow(0, y) is +0 for y > 0, 1 for y = 0 and +inf for y < 0, as libm
+ * and SVML return them (pow(-0, y) for an odd integer y is the one case libm
+ * signs, and no kernel raises a signed zero to an integer). Every other lane
+ * sees the same call on the same value, so the outputs are bit-identical to
+ * the unguarded call; negative and denormal bases still reach it.
+ * ---------------------------------------------------------------- */
+
+ALWAN_FORCE_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__cbrt_guarded)(alwan_map_simd x) {
+    alwan_map_simd_mask const is_zero = alwan_map_simd_cmpeq(x, alwan_map_simd_zero());
+    alwan_map_simd const r = alwan_map_simd_cbrt_raw(
+        alwan_map_simd_select(is_zero, alwan_map_simd_set1((alwan_map_lane)1.0), x));
+    return alwan_map_simd_select(is_zero, x, r);
+}
+
+ALWAN_FORCE_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__pow_guarded)(alwan_map_simd base, alwan_map_simd e) {
+    alwan_map_simd const zero = alwan_map_simd_zero();
+    alwan_map_simd const one = alwan_map_simd_set1((alwan_map_lane)1.0);
+    alwan_map_simd_mask const is_zero = alwan_map_simd_cmpeq(base, zero);
+    alwan_map_simd const r = alwan_map_simd_pow_raw(alwan_map_simd_select(is_zero, one, base), e);
+    alwan_map_simd const special = alwan_map_simd_select(alwan_map_simd_cmpgt(e, zero), zero,
+        alwan_map_simd_select(alwan_map_simd_cmpeq(e, zero), one, alwan_map_simd_set1((alwan_map_lane)HUGE_VAL)));
+    return alwan_map_simd_select(is_zero, special, r);
+}
+
+/* ----------------------------------------------------------------
  * Matrix-vector multiply (3x3, SIMD lanes)
  * Matrix is row-major, scalars broadcast from matrix elements.
  * ---------------------------------------------------------------- */
@@ -256,6 +289,16 @@ ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_ma
 
 #else /* fast mode -- vectorised approximations */
 
+/* The lanes the mask sends to the linear segment are fed 1.0 to the power, not their
+ * own value. Their power result is discarded by the select either way, and a base
+ * that is zero, negative or denormal, or whose power underflows, runs the series
+ * pow24 / pow_inv24 about ten times slower than a normal one (measured 2026-09-22 on
+ * the AVX2 routines: 1200 Mval/s on (0.01, 1), 120 on zeros and negatives, 12 on
+ * 1e-30 through pow24). An out-of-gamut image gives XYZ -> sRGB a negative lane in
+ * most vectors, which is why it ran at a quarter of sRGB -> XYZ. The outputs are
+ * bit-identical to the old clamp-to-zero form: every lane's value comes from the
+ * same branch as before. */
+
 /* sRGB EOTF: encoded -> linear */
 ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_map_simd v) {
     alwan_map_simd thresh = alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_EOTF_THRESH);
@@ -263,9 +306,10 @@ ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_eotf_simd)(alwan_ma
     alwan_map_simd lo     = alwan_map_simd_mul(v, alwan_map_simd_set1((alwan_map_lane)(1.0 / ALWAN_SRGB_LINEAR_GAIN)));
     if (alwan_map_simd_mask_all_set(mask))
         return lo;
-    alwan_map_simd hi_base = alwan_map_simd_mul(
-        alwan_map_simd_add(v, alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_B)),
-        alwan_map_simd_set1((alwan_map_lane)(1.0 / ALWAN_SRGB_A)));
+    alwan_map_simd hi_base = alwan_map_simd_select(mask, alwan_map_simd_set1((alwan_map_lane)1.0),
+        alwan_map_simd_mul(
+            alwan_map_simd_add(v, alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_B)),
+            alwan_map_simd_set1((alwan_map_lane)(1.0 / ALWAN_SRGB_A))));
     alwan_map_simd hi     = alwan_map_simd_pow24(hi_base);
     return alwan_map_simd_select(mask, lo, hi);
 }
@@ -278,11 +322,9 @@ ALWAN__OETF_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__srgb_oetf_simd)(alwan_ma
     /* Early-out: skip pow_inv24 when all lanes are in the linear region */
     if (alwan_map_simd_mask_all_set(mask))
         return lo;
-    /* Clamp to zero before pow_inv24 to avoid undefined pow(negative, non-integer) */
-    alwan_map_simd hi_base = alwan_map_simd_select(
-        alwan_map_simd_cmpgt(v, alwan_map_simd_zero()),
-        v,
-        alwan_map_simd_zero());
+    /* A negative lane is below the threshold, so it takes the linear segment and its
+     * power base is the benign 1.0; nothing negative reaches pow_inv24. */
+    alwan_map_simd hi_base = alwan_map_simd_select(mask, alwan_map_simd_set1((alwan_map_lane)1.0), v);
     alwan_map_simd hi = alwan_map_simd_sub(
         alwan_map_simd_mul(
             alwan_map_simd_set1((alwan_map_lane)ALWAN_SRGB_A),

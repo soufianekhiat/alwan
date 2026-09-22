@@ -2246,6 +2246,21 @@
 
 ### Changed
 
+- **The SIMD maps no longer pay SVML's special-value tax on black and out-of-gamut
+  pixels.** Every MSVC x64 build links Intel SVML for the vector `pow` and `cbrt`
+  (`ALWAN_HAS_SVML`), and SVML takes a slow path on a zero, negative or denormal lane:
+  measured at 1200 Mval/s on (0.01, 1) against 120 on zeros and negatives, so one black
+  pixel in a vector halved XYZ to Lab, XYZ to Oklab and RGB to ICtCp, and an out-of-gamut
+  image ran XYZ to sRGB at a quarter of sRGB to XYZ. Two changes, both bit-identical to
+  what they replace: the sRGB helpers feed a benign 1.0 to the power on the lanes the
+  linear segment takes anyway (the negative lanes among them, which is where the old
+  clamp-to-zero sat), and the map layer's `pow` and `cbrt` route a zero base round the
+  call and put its exact special value back (`cbrt(0)` with its sign; `pow(0, y)` as libm
+  returns it). Measured on the AVX2 DLL, 1 Mpx random or black-in-every-vector input:
+  XYZ to sRGB 55 to 211 Mpx/s, Oklab to sRGB 60 to 157, XYZ to Lab 31 to 83, XYZ to Oklab
+  54 to 121, RGB to ICtCp 30 to 58, XYZ to JzAzBz 49 to 72. The determinism dump is
+  byte-identical and every SIMD parity suite passes unchanged.
+
 - **Interop IDs are the Color Interop Forum's published ones.** `alwan_interop_format`
   wrote `lin_ap1`, `srgb_texture`, `rec2100_pq` and the like, none of which the Forum
   publishes. It now writes the IDs of the Forum's texture (v1.1.0) and display

@@ -69,8 +69,12 @@
 #define alwan_map_simd_fmadd        alwan_simd_f32_fmadd
 #define alwan_map_simd_fmsub        alwan_simd_f32_fmsub
 #define alwan_map_simd_sqrt         alwan_simd_f32_sqrt
-#define alwan_map_simd_cbrt         alwan_simd_f32_cbrt
-#define alwan_map_simd_pow          alwan_simd_f32_pow
+/* pow and cbrt go through the zero-lane guard in alwan_map_simd_helpers.inc; the
+ * backend's own routines are the _raw names. */
+#define alwan_map_simd_cbrt_raw     alwan_simd_f32_cbrt
+#define alwan_map_simd_pow_raw      alwan_simd_f32_pow
+#define alwan_map_simd_cbrt         ALWAN_MAP_NAME(alwan__cbrt_guarded)
+#define alwan_map_simd_pow          ALWAN_MAP_NAME(alwan__pow_guarded)
 #define alwan_map_simd_exp          alwan_simd_f32_exp
 #define alwan_map_simd_log          alwan_simd_f32_log
 #define alwan_map_simd_log2         alwan_simd_f32_log2
@@ -150,8 +154,10 @@
 #define alwan_map_simd_fmadd        alwan_simd_f64_fmadd
 #define alwan_map_simd_fmsub        alwan_simd_f64_fmsub
 #define alwan_map_simd_sqrt         alwan_simd_f64_sqrt
-#define alwan_map_simd_cbrt         alwan_simd_f64_cbrt
-#define alwan_map_simd_pow          alwan_simd_f64_pow
+#define alwan_map_simd_cbrt_raw     alwan_simd_f64_cbrt
+#define alwan_map_simd_pow_raw      alwan_simd_f64_pow
+#define alwan_map_simd_cbrt         ALWAN_MAP_NAME(alwan__cbrt_guarded)
+#define alwan_map_simd_pow          ALWAN_MAP_NAME(alwan__pow_guarded)
 #define alwan_map_simd_exp          alwan_simd_f64_exp
 #define alwan_map_simd_log          alwan_simd_f64_log
 #define alwan_map_simd_log2         alwan_simd_f64_log2

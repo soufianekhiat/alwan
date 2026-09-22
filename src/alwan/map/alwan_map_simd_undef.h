@@ -42,6 +42,8 @@
 #undef alwan_map_simd_sqrt
 #undef alwan_map_simd_cbrt
 #undef alwan_map_simd_pow
+#undef alwan_map_simd_cbrt_raw
+#undef alwan_map_simd_pow_raw
 #undef alwan_map_simd_exp
 #undef alwan_map_simd_log
 #undef alwan_map_simd_log2
