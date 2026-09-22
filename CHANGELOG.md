@@ -339,13 +339,39 @@
 
 ### Added
 
+- **`alwan_optimize_spectrum_for_xyz_{T}` did not optimise anything.** It ignored the
+  observer, ignored the target's X and Z, and gave every one of its seven Gaussians the
+  weight `target_xyz->y / 7`, so two targets with the same luminance produced the same
+  "match" and no target was met. It also rejected a NULL context it never used, which is
+  why the determinism dump's five `optimize_spectrum` sections had never been written, and
+  it forced an 81-sample 380-780 nm grid over whatever the caller had allocated, so a
+  caller that pre-allocated a smaller SPD, as the header tells it to, was written past the
+  end of its buffer.
+
+  It now solves for the weights. XYZ is a linear functional of the SPD, so with A the 3x7
+  matrix whose column is each basis function's XYZ under the requested observer on the
+  caller's own grid, the minimum-norm solution of `A w = xyz` meets the target exactly:
+  measured 3.6e-14 of Y = 50 in suite 42. A negative weight means the target is not a
+  non-negative mixture of this basis, which is the case for every saturated colour, and
+  that is `ALWAN_E_RANGE` with the values zeroed rather than an SPD that misses the target;
+  the header points those callers at `alwan_xyz_to_spectrum_otsu2018`. The caller's grid is
+  honoured, and `count = 0` still asks for the 81-sample default every caller got before.
+
+- **`alwan_gamut_map_advanced_{T}` rejected one of its own methods, and only sometimes.**
+  `ALWAN_GAMUT_MAP_HUE_PRESERVING` returned `ALWAN_E_INVALID`, but the in-gamut early-out
+  returns before the method is examined, so the same call succeeded on a colour inside the
+  cube and failed on one outside it. `alwan_simulate_cvd_gamut_safe_{T}` passes this enum
+  straight through and its header offers the whole of it: with that method it failed on
+  2,425 of the 2,426 random sRGB colours (of 4,000) whose CVD simulation leaves the gamut,
+  which is to say on the pixels it exists for. The method is now the projection the plain
+  `alwan_gamut_{T}` maps run, applied in the working space so `space` is honoured, and it
+  is bit-identical to those maps for sRGB. Suite 41 sweeps all eight methods over colours
+  whose simulation is known to leave the gamut.
+
 - **Buffer forms of the last per-pixel operations that had none.** IPT <-> IPTch, the
   Jzczhz HDR gamut map, `gamut_map_advanced`, `gamut_map_xyz_to_rgb`, and the Cheung 2004
   and Finlayson 2015 colour corrections, in `api/alwan_apply_maps.c`, bit-identical to their
-  scalars (suite 174). Writing the test showed that `alwan_gamut_map_advanced_{T}` rejects
-  `ALWAN_GAMUT_MAP_HUE_PRESERVING` with `ALWAN_E_INVALID` although the enum it documents
-  lists it; that method is the plain `alwan_gamut_{T}_map_interleave`'s, and the header says
-  so now.
+  scalars (suite 174).
 
 - **Buffer forms of every colour-difference metric.** Sixteen `alwan_delta_e_<name>_{T}_map_interleave`
   in `api/alwan_delta_e_maps.c`, one shape for all: two strided buffers of the metric's

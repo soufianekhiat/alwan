@@ -819,6 +819,30 @@ alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
     alwan_vec3_f64 rgb_work;
     alwan_mat3_mulv_f64(&rgb_work, &to_srgb, &rgb_vec);
 
+    /* ALWAN_GAMUT_MAP_HUE_PRESERVING: the same projection the plain
+     * alwan_gamut_{T} maps run, applied in the working space so `space` is
+     * honoured here as it is for the Oklab methods below.
+     *
+     * It was ALWAN_E_INVALID here until 2026-09-22, and the failure was
+     * data-dependent: the in-gamut early-out below returns before the method
+     * is ever examined, so the same call succeeded on a colour inside the cube
+     * and failed on one outside it. alwan_simulate_cvd_gamut_safe_{T} passes
+     * this enum straight through and documents the whole of it, so with this
+     * method it failed on 2,425 of the 2,426 random sRGB colours (of 4,000)
+     * whose simulation leaves the gamut: exactly the pixels it exists for. */
+    if (method == ALWAN_GAMUT_MAP_HUE_PRESERVING) {
+        alwan_vec3_f64 mapped, rgb_result;
+        gamut_map_hue_preserving_single(&rgb_work, &mapped);
+        alwan_mat3_mulv_f64(&rgb_result, &from_srgb, &mapped);
+        rgb_out->r = (rgb_result.v[0] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                     (rgb_result.v[0] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[0];
+        rgb_out->g = (rgb_result.v[1] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                     (rgb_result.v[1] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[1];
+        rgb_out->b = (rgb_result.v[2] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
+                     (rgb_result.v[2] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[2];
+        return ALWAN_OK;
+    }
+
     /* Convert to Oklab */
     alwan_vec3_f64 oklab;
     alwan_linear_srgb_to_oklab(&rgb_work, &oklab);
@@ -1635,6 +1659,27 @@ alwan_status alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
     }
     alwan_vec3_f32 rgb_work;
     alwan_mat3_mulv_f32(&rgb_work, &to_srgb, &rgb_vec);
+
+    /* ALWAN_GAMUT_MAP_HUE_PRESERVING: the same projection the plain
+     * alwan_gamut_{T} maps run, applied in the working space so `space` is
+     * honoured here as it is for the Oklab methods below.
+     *
+     * It was ALWAN_E_INVALID here until 2026-09-22, and the failure was
+     * data-dependent: the in-gamut early-out below returns before the method
+     * is ever examined, so the same call succeeded on a colour inside the cube
+     * and failed on one outside it. alwan_simulate_cvd_gamut_safe_{T} passes
+     * this enum straight through and documents the whole of it, so with this
+     * method it failed on 2,425 of the 2,426 random sRGB colours (of 4,000)
+     * whose simulation leaves the gamut: exactly the pixels it exists for. */
+    if (method == ALWAN_GAMUT_MAP_HUE_PRESERVING) {
+        alwan_vec3_f32 mapped, rgb_result;
+        gamut_map_hue_preserving_single_f32(&rgb_work, &mapped);
+        alwan_mat3_mulv_f32(&rgb_result, &from_srgb, &mapped);
+        rgb_out->r = (rgb_result.v[0] < 0.0f) ? 0.0f : (rgb_result.v[0] > 1.0f) ? 1.0f : rgb_result.v[0];
+        rgb_out->g = (rgb_result.v[1] < 0.0f) ? 0.0f : (rgb_result.v[1] > 1.0f) ? 1.0f : rgb_result.v[1];
+        rgb_out->b = (rgb_result.v[2] < 0.0f) ? 0.0f : (rgb_result.v[2] > 1.0f) ? 1.0f : rgb_result.v[2];
+        return ALWAN_OK;
+    }
 
     alwan_vec3_f32 oklab = gamut_linear_srgb_to_oklab_f32_v(rgb_work);
     alwan_f32 L = oklab.v[0];

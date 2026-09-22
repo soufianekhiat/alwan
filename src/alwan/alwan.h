@@ -2682,9 +2682,16 @@ alwan_status alwan_spd_extend_planckian_f32(alwan_spd_f32 *dst, alwan_spd_f32 co
  * illuminant: illuminant SPD (NULL = assume spd is already weighted by illuminant)
  * observer: any alwan_observer_type
  * method: integration method (trapezoid or Simpson; any other value is ALWAN_E_INVALID)
- * bandpass_nm: bandpass width for Stearns & Stearns correction (0 = no correction)
+ * bandpass_nm: bandpass width for the Stearns & Stearns (1988) correction, or 0
+ *              for none. The correction is derived for a triangular passband
+ *              whose width EQUALS the sampling interval, so this asserts the
+ *              SPD's own spacing rather than selecting a strength: a value that
+ *              disagrees with (wavelength_max - wavelength_min) / (count - 1),
+ *              or an SPD of fewer than three samples, is ALWAN_E_INVALID rather
+ *              than a correction applied at the wrong width.
  * ctx: context
- * Returns ALWAN_OK on success */
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID for a bandpass that is not the
+ * SPD's interval or an unknown integration method */
 alwan_status alwan_xyz_from_spd_f64(alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f64 bandpass_nm, alwan_ctx *ctx);
 alwan_status alwan_xyz_from_spd_f32(alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, alwan_observer_type observer, alwan_integrate_method method, alwan_f32 bandpass_nm, alwan_ctx *ctx);
 
@@ -3334,9 +3341,11 @@ alwan_status alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
 /* Map out-of-gamut RGB color to valid gamut
  * Maps an RGB color (possibly out of [0,1] range) back into valid gamut
  * using perceptually-aware algorithms
- * method: ALWAN_GAMUT_MAP_CLIP, or one of the Oklab projections, methods 2 to 7.
- *         ALWAN_GAMUT_MAP_HUE_PRESERVING is NOT one of this function's methods and
- *         is ALWAN_E_INVALID here; it belongs to alwan_gamut_{T}_map_interleave.
+ * method: any alwan_gamut_map_method. CLIP clamps in `space`'s own cube;
+ *         HUE_PRESERVING is the projection the plain alwan_gamut_{T} maps run,
+ *         applied in the working space; 2 to 7 are the Oklab projections.
+ *         HUE_PRESERVING was ALWAN_E_INVALID here until 2026-09-22, and only
+ *         for a colour outside the gamut, which is when a caller asks.
  * space: RGB color space descriptor (primaries and white point)
  * rgb_linear: input RGB color in linear (not gamma-corrected) space
  * rgb_out: receives mapped RGB color (guaranteed in [0,1])
@@ -6318,12 +6327,32 @@ alwan_status alwan_cct_duv_optimize_f64(alwan_f64 *cct_out, alwan_f64 *duv_out, 
 alwan_status alwan_cct_duv_optimize_f32(alwan_f32 *cct_out, alwan_f32 *duv_out, alwan_vec2_f32 const *xy);
 
 /* Tristimulus Optimization
- * Finds a spectral power distribution that matches target XYZ tristimulus values
- * spd_out: receives optimized SPD (must be pre-allocated with desired wavelength range)
- * target_xyz: target XYZ tristimulus values
- * observer: observer type (e.g., CIE 1931 2 deg)
- * ctx: context for SPD allocation
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
+ * Finds a spectral power distribution that MEETS the target XYZ under the given
+ * observer, as a non-negative sum of seven Gaussians at 420, 470, 520, 570, 600,
+ * 630 and 680 nm, 40 nm wide. Three equations in seven unknowns, solved for the
+ * minimum-norm weights, so the match is exact rather than fitted: the recovered
+ * SPD reproduces the target to about 1e-13 of Y through alwan_xyz_from_spd.
+ * spd_out: receives the SPD. Its wavelength_min, wavelength_max and count are
+ *          READ and honoured, and values[] must hold count entries. count = 0
+ *          asks for the default grid, 380-780 nm at 81 samples, which is what
+ *          this returned to every caller before 2026-09-22; values[] must then
+ *          have room for 81. On any failure the values are set to zero.
+ * target_xyz: target XYZ tristimulus values, on any scale
+ * observer: any alwan_observer_type; it selects the CMFs the match is made under
+ * ctx: context, or NULL
+ * Returns ALWAN_OK on success,
+ *         ALWAN_E_INVALID for a NULL argument or a grid of fewer than two samples,
+ *         ALWAN_E_RANGE when the target is NOT a non-negative mixture of this
+ *                       basis, which is the case for a saturated colour: the
+ *                       three sRGB primaries all need a negative weight. No SPD
+ *                       is returned in that case rather than one that misses the
+ *                       target. For a saturated colour use
+ *                       alwan_xyz_to_spectrum_otsu2018 or the RGB upsamplers,
+ *                       which solve a better-posed problem.
+ * OUTPUT CHANGED on 2026-09-22: before that this ignored the observer and the
+ * target's X and Z, weighted every Gaussian by Y/7, forced an 81-sample
+ * 380-780 nm grid over whatever the caller had allocated, and rejected the NULL
+ * context it never used.
  * Note: Multiple SPDs can match the same XYZ (metamerism), this finds one solution */
 alwan_status alwan_optimize_spectrum_for_xyz_f64(alwan_spd_f64 *spd_out, alwan_xyz_f64 const *target_xyz, alwan_observer_type observer, alwan_ctx *ctx);
 alwan_status alwan_optimize_spectrum_for_xyz_f32(alwan_spd_f32 *spd_out, alwan_xyz_f32 const *target_xyz, alwan_observer_type observer, alwan_ctx *ctx);

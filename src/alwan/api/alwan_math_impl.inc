@@ -578,45 +578,136 @@ alwan_status ALWAN_CORE_FNLIT(alwan_optimize_spectrum_for_xyz)(ALWAN_CORE_SPD *s
                                       ALWAN_CORE_XYZ const *target_xyz,
                                       alwan_observer_type observer,
                                       alwan_ctx *ctx) {
-    (void)observer;
-
-    if (!target_xyz || !ctx || !spd_out || !spd_out->values) {
-        return ALWAN_E_RANGE;
-    }
-
+    /* A weighted sum of seven Gaussians, solved so that the result MEETS the
+     * target under the requested observer.
+     *
+     * What this did until 2026-09-22, and why every part of it is now
+     * different:
+     *
+     *   - It rejected a NULL ctx, which it never used, so every caller that
+     *     followed the library's own convention got ALWAN_E_RANGE. The
+     *     determinism dump is such a caller: its five optimize_spectrum
+     *     sections had never been written.
+     *   - It ignored `observer`, with a (void) cast.
+     *   - It ignored the target's X and Z. Each of the seven weights was
+     *     target_xyz->y / 7, so the output was one fixed curve scaled by
+     *     luminance, and two targets with the same Y produced the same
+     *     "match". Nothing was optimised.
+     *   - It forced wavelength_min 380, max 780 and count 81 over whatever the
+     *     caller had allocated, so a caller who pre-allocated the range the
+     *     header tells it to pre-allocate, at any other count, was written
+     *     past the end of its buffer.
+     *
+     * The solve. XYZ is a linear functional of the SPD, so with A the 3x7
+     * matrix whose column j is the XYZ of basis function j at unit weight,
+     * every reachable target is A w for some weight vector w. Three equations
+     * in seven unknowns: take the minimum-norm solution,
+     * w = A^T (A A^T)^-1 xyz, which is exact rather than a fit.
+     *
+     * A is built by putting each basis function through alwan_xyz_from_spd on
+     * the caller's own grid, so the identity holds for the grid the answer is
+     * written on rather than for an ideal one.
+     *
+     * A NEGATIVE weight means the target is not a non-negative mixture of this
+     * basis, which is to say there is no SPD of this shape with the power it
+     * asks for. That is ALWAN_E_RANGE, not an SPD that misses the target: of
+     * D65 white, a neutral and the three sRGB primaries, the first two are
+     * reachable and match to 4e-14, and the three saturated primaries are not
+     * reachable at all. A caller that wants a spectrum for a saturated colour
+     * wants alwan_xyz_to_spectrum_otsu2018 or the RGB upsamplers, which solve
+     * a different and better-posed problem.
+     */
     size_t const num_gaussians = 7;
     ALWAN_CORE_T const centers[7] = {
         ALWAN_CORE_LITERAL(420.0), ALWAN_CORE_LITERAL(470.0), ALWAN_CORE_LITERAL(520.0),
         ALWAN_CORE_LITERAL(570.0), ALWAN_CORE_LITERAL(600.0), ALWAN_CORE_LITERAL(630.0),
         ALWAN_CORE_LITERAL(680.0)
     };
-    ALWAN_CORE_T const widths[7] = {
-        ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0),
-        ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0), ALWAN_CORE_LITERAL(40.0),
-        ALWAN_CORE_LITERAL(40.0)
-    };
+    ALWAN_CORE_T const width = ALWAN_CORE_LITERAL(40.0);
+    ALWAN_CORE_T A[3][7];
+    ALWAN_CORE_T w[7];
+    ALWAN_CORE_MAT3X3 gram, gram_inv;
+    ALWAN_CORE_T step, y0, y1, y2;
+    size_t i, j;
+    int r, c;
+    alwan_status st;
 
-    spd_out->wavelength_min = ALWAN_CORE_LITERAL(380.0);
-    spd_out->wavelength_max = ALWAN_CORE_LITERAL(780.0);
-    spd_out->count = 81;
-
-    ALWAN_CORE_T weights[7];
-    ALWAN_CORE_T luminance = target_xyz->y;
-    for (size_t i = 0; i < num_gaussians; i++) {
-        weights[i] = luminance / (ALWAN_CORE_T)num_gaussians;
+    if (!target_xyz || !spd_out || !spd_out->values) {
+        return ALWAN_E_INVALID;
+    }
+    /* count == 0 means "use the default grid", which is what this function has
+     * always done to every caller: 380-780 nm at 81 samples. values[] must then
+     * have room for 81. A caller that fills in a count gets THAT grid, which is
+     * what the header asks it to pre-allocate and what this used to overwrite. */
+    if (spd_out->count == 0) {
+        spd_out->wavelength_min = ALWAN_CORE_LITERAL(380.0);
+        spd_out->wavelength_max = ALWAN_CORE_LITERAL(780.0);
+        spd_out->count = 81;
+    }
+    if (spd_out->count < 2 || !(spd_out->wavelength_max > spd_out->wavelength_min)) {
+        return ALWAN_E_INVALID;
     }
 
-    ALWAN_CORE_T wavelength_step = (spd_out->wavelength_max - spd_out->wavelength_min) / (ALWAN_CORE_T)(spd_out->count - 1);
-    for (size_t i = 0; i < spd_out->count; i++) {
-        ALWAN_CORE_T lambda = spd_out->wavelength_min + (ALWAN_CORE_T)i * wavelength_step;
-        ALWAN_CORE_T value = ALWAN_CORE_LITERAL(0.0);
+    step = (spd_out->wavelength_max - spd_out->wavelength_min)
+         / (ALWAN_CORE_T)(spd_out->count - 1);
 
-        for (size_t j = 0; j < num_gaussians; j++) {
-            ALWAN_CORE_T dx = (lambda - centers[j]) / widths[j];
-            value += weights[j] * ALWAN_CORE_EXP(ALWAN_CORE_LITERAL(-0.5) * dx * dx);
+    /* Column j of A: basis function j alone, through the library's own
+     * integrator, on the caller's grid. spd_out is the scratch space for it,
+     * which is why a failure below leaves it zeroed rather than half-written. */
+    for (j = 0; j < num_gaussians; j++) {
+        ALWAN_CORE_XYZ col;
+        for (i = 0; i < spd_out->count; i++) {
+            ALWAN_CORE_T const lambda = spd_out->wavelength_min + (ALWAN_CORE_T)i * step;
+            ALWAN_CORE_T const dx = (lambda - centers[j]) / width;
+            spd_out->values[i] = ALWAN_CORE_EXP(ALWAN_CORE_LITERAL(-0.5) * dx * dx);
         }
+        st = ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(&col, spd_out, NULL, observer,
+                                                  ALWAN_INTEGRATE_TRAPEZOID,
+                                                  ALWAN_CORE_LITERAL(0.0), ctx);
+        if (st != ALWAN_OK) {
+            for (i = 0; i < spd_out->count; i++) spd_out->values[i] = ALWAN_CORE_LITERAL(0.0);
+            return st;
+        }
+        A[0][j] = col.x;
+        A[1][j] = col.y;
+        A[2][j] = col.z;
+    }
 
-        spd_out->values[i] = (value > ALWAN_CORE_LITERAL(0.0)) ? value : ALWAN_CORE_LITERAL(0.0);
+    /* A A^T, and the minimum-norm weights. */
+    for (r = 0; r < 3; r++) {
+        for (c = 0; c < 3; c++) {
+            ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
+            for (j = 0; j < num_gaussians; j++) sum += A[r][j] * A[c][j];
+            gram.m[r * 3 + c] = sum;
+        }
+    }
+    if (ALWAN_CORE_FNLIT(alwan_mat3_inv)(&gram_inv, &gram) != ALWAN_OK) {
+        /* The basis does not span XYZ on this grid: too few samples, or a
+         * range that misses the visible band. */
+        for (i = 0; i < spd_out->count; i++) spd_out->values[i] = ALWAN_CORE_LITERAL(0.0);
+        return ALWAN_E_RANGE;
+    }
+    y0 = gram_inv.m[0] * target_xyz->x + gram_inv.m[1] * target_xyz->y + gram_inv.m[2] * target_xyz->z;
+    y1 = gram_inv.m[3] * target_xyz->x + gram_inv.m[4] * target_xyz->y + gram_inv.m[5] * target_xyz->z;
+    y2 = gram_inv.m[6] * target_xyz->x + gram_inv.m[7] * target_xyz->y + gram_inv.m[8] * target_xyz->z;
+    for (j = 0; j < num_gaussians; j++) {
+        w[j] = A[0][j] * y0 + A[1][j] * y1 + A[2][j] * y2;
+        if (w[j] < ALWAN_CORE_LITERAL(0.0)) {
+            for (i = 0; i < spd_out->count; i++) spd_out->values[i] = ALWAN_CORE_LITERAL(0.0);
+            return ALWAN_E_RANGE;
+        }
+    }
+
+    /* The answer. Every weight and every basis value is non-negative, so no
+     * clamp is needed and none is applied. */
+    for (i = 0; i < spd_out->count; i++) {
+        ALWAN_CORE_T const lambda = spd_out->wavelength_min + (ALWAN_CORE_T)i * step;
+        ALWAN_CORE_T value = ALWAN_CORE_LITERAL(0.0);
+        for (j = 0; j < num_gaussians; j++) {
+            ALWAN_CORE_T const dx = (lambda - centers[j]) / width;
+            value += w[j] * ALWAN_CORE_EXP(ALWAN_CORE_LITERAL(-0.5) * dx * dx);
+        }
+        spd_out->values[i] = value;
     }
 
     return ALWAN_OK;
