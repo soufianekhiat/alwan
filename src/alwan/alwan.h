@@ -1531,11 +1531,14 @@ void alwan_prolab_to_xyz_custom_f32(alwan_xyz_f32 *xyz, alwan_prolab_f32 const *
 void alwan_prolab_to_xyz_custom_f64(alwan_xyz_f64 *xyz, alwan_prolab_f64 const *prolab, alwan_xyz_f64 const *xyz_n);
 
 /* OSA-UCS <-> XYZ conversions (Optical Society of America Uniform Color Scales)
- * - XYZ input/output is D65 adapted
+ * MacAdam (1978), as colour-science's XYZ_to_OSA_UCS and OSA_UCS_to_XYZ.
+ * - XYZ input/output is D65 adapted, Y = 100 scale
  * - OSA-UCS: L (lightness), j (yellowness), g (greenness)
- * - Forward transform is exact, inverse is approximate (iterative solution)
- * - Note: Inverse transformation has lower precision than other color spaces
- */
+ * - The inverse is exact: a cubic for Y0 and a Newton solve on the red cube
+ *   root, twenty fixed steps, agreeing with the reference to 3e-11 in XYZ.
+ *   OUTPUT CHANGED on 2026-09-22: until then it was an approximation with
+ *   invented coefficients that returned D65 white 11 per cent off, and its
+ *   test printed the miss and passed. See alwan_osa_ucs_core.inc. */
 void alwan_xyz_to_osa_ucs_f32(alwan_osa_ucs_f32 *osa_ucs, alwan_xyz_f32 const *xyz);
 void alwan_xyz_to_osa_ucs_f64(alwan_osa_ucs_f64 *osa_ucs, alwan_xyz_f64 const *xyz);
 void alwan_osa_ucs_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_osa_ucs_f32 const *osa_ucs);

@@ -25,6 +25,16 @@
   than silently taking F_s where F used to go. `alwan_zcam_degree_of_adaptation_v` is new.
   Several documents described the inverse as iterative. It never was.
 
+- **The OSA-UCS inverse was an approximation with invented coefficients.**
+  `alwan_osa_ucs_to_xyz_{T}` recovered the cube roots of RGB from j and g with three
+  numbers that appear in no paper, and dropped the 0.042 term of Lambda. It returned
+  D65 white as (107, 111, 123), eleven per cent off. Its test ran that one colour,
+  printed the miss, and passed, on every run. The inverse is now the reference's: a
+  cubic for Y0 solved by Cardano, then Newton on the red cube root with the two linear
+  forms of j and g, twenty fixed steps. It agrees with colour-science's `OSA_UCS_to_XYZ`
+  to 3e-11 and round-trips XYZ to 2e-11, checked in suite 24 over the same pairs the
+  forward transform is checked on. The header called it approximate; it is exact.
+
 - **Zhai 2018 scaled with its destination white.** `alwan_cat_zhai2018_{T}` computed
   D * (RGB_o / RGB_w) + 1 - D, where Zhai and Luo, and colour-science, carry the luminance
   ratio: D * (Y_w / Y_o) * (RGB_o / RGB_w) + 1 - D. With every white at Y = 100, which is what
