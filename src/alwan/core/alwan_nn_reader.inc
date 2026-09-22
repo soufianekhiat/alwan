@@ -64,6 +64,31 @@
  * accessor is never evaluated for it.
  * ================================================================ */
 
+/* Integer division on a shading language is signed and slow, and fxc says so
+ * with a warning on every one, which a consumer's warnings-as-errors build
+ * would turn into a failure. Every quotient here has non-negative operands,
+ * so it is taken unsigned there and plain in C, and the two agree exactly.
+ * The loop attribute keeps fxc from unrolling a channel loop whose count it
+ * can see is one (a depthwise kernel), which it otherwise warns about. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_HLSL
+# define ALWAN_NN_DIV(a, b)  ((int)((uint)(a) / (uint)(b)))
+# define ALWAN_NN_LOOP       [loop]
+/* fxc warns (X3557) that a loop runs once when a caller's constants make it
+ * so, as a depthwise kernel's channel loop does. That is the caller's shape,
+ * not a defect in the template, and a consumer building with warnings as
+ * errors should not fail on it. dxc does not warn and does not take this
+ * pragma, so it is fxc's alone. */
+# if !defined(__DXC_VERSION_MAJOR)
+#  pragma warning(disable : 3557)
+# endif
+#elif ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+# define ALWAN_NN_DIV(a, b)  ((int)((uint)(a) / (uint)(b)))
+# define ALWAN_NN_LOOP
+#else
+# define ALWAN_NN_DIV(a, b)  ((a) / (b))
+# define ALWAN_NN_LOOP
+#endif
+
 #if defined(ALWAN_NN_READER_POINTER)
 
 # define ALWAN_NN_FN_(base)        ALWAN_CORE_FNVLIT(base)
@@ -96,7 +121,7 @@
 ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_dense_at)(ALWAN_NN_PARAMS_ int n_in, int n_out, int has_bias, int o) {
     ALWAN_DET_PRECISE ALWAN_CORE_T acc = ALWAN_CORE_LITERAL(0.0);
     int i;
-    for (i = 0; i < n_in; i++) {
+    ALWAN_NN_LOOP for (i = 0; i < n_in; i++) {
         acc = acc + ALWAN_NN_READ_IN(i) * ALWAN_NN_READ_W(i * n_out + o);
     }
     if (has_bias) acc = acc + ALWAN_NN_READ_B(o);
@@ -112,16 +137,16 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_conv2d_at)(ALWAN_NN_PARAMS_ int 
                                                             int stride, int pad, int groups, int has_bias,
                                                             int y, int x, int o) {
     ALWAN_DET_PRECISE ALWAN_CORE_T acc = ALWAN_CORE_LITERAL(0.0);
-    const int Cg = Cin / groups;
-    const int g = o / (Cout / groups);
+    const int Cg = ALWAN_NN_DIV(Cin, groups);
+    const int g = ALWAN_NN_DIV(o, ALWAN_NN_DIV(Cout, groups));
     int ky, kx, ci;
-    for (ky = 0; ky < KH; ky++) {
+    ALWAN_NN_LOOP for (ky = 0; ky < KH; ky++) {
         const int iy = y * stride - pad + ky;
         if (iy < 0 || iy >= H) continue;
-        for (kx = 0; kx < KW; kx++) {
+        ALWAN_NN_LOOP for (kx = 0; kx < KW; kx++) {
             const int ix = x * stride - pad + kx;
             if (ix < 0 || ix >= W) continue;
-            for (ci = 0; ci < Cg; ci++) {
+            ALWAN_NN_LOOP for (ci = 0; ci < Cg; ci++) {
                 acc = acc + ALWAN_NN_READ_IN((iy * W + ix) * Cin + g * Cg + ci)
                           * ALWAN_NN_READ_W(((ky * KW + kx) * Cg + ci) * Cout + o);
             }
@@ -141,10 +166,10 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_pool2d_at)(ALWAN_NN_IN_PARAMS_ i
     ALWAN_DET_PRECISE ALWAN_CORE_T acc = ALWAN_CORE_LITERAL(0.0);
     int seen = 0;
     int ky, kx;
-    for (ky = 0; ky < k; ky++) {
+    ALWAN_NN_LOOP for (ky = 0; ky < k; ky++) {
         const int iy = y * stride - pad + ky;
         if (iy < 0 || iy >= H) continue;
-        for (kx = 0; kx < k; kx++) {
+        ALWAN_NN_LOOP for (kx = 0; kx < k; kx++) {
             const int ix = x * stride - pad + kx;
             ALWAN_CORE_T v;
             if (ix < 0 || ix >= W) continue;
@@ -165,7 +190,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_pool2d_at)(ALWAN_NN_IN_PARAMS_ i
 ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_global_avg_at)(ALWAN_NN_IN_PARAMS_ int H, int W, int C, int c) {
     ALWAN_DET_PRECISE ALWAN_CORE_T acc = ALWAN_CORE_LITERAL(0.0);
     int p;
-    for (p = 0; p < H * W; p++) acc = acc + ALWAN_NN_READ_IN(p * C + c);
+    ALWAN_NN_LOOP for (p = 0; p < H * W; p++) acc = acc + ALWAN_NN_READ_IN(p * C + c);
     return acc / (ALWAN_CORE_T)(H * W);
 }
 
@@ -178,7 +203,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_global_avg_at)(ALWAN_NN_IN_PARAM
 ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_upsample2d_at)(ALWAN_NN_IN_PARAMS_ int H, int W, int C, int scale, int mode,
                                                                 int yo, int xo, int c) {
     if (mode == 0) {
-        return ALWAN_NN_READ_IN(((yo / scale) * W + (xo / scale)) * C + c);
+        return ALWAN_NN_READ_IN((ALWAN_NN_DIV(yo, scale) * W + ALWAN_NN_DIV(xo, scale)) * C + c);
     } else {
         const ALWAN_CORE_T sy = ALWAN_CORE_SELECT(((ALWAN_CORE_T)yo + ALWAN_CORE_LITERAL(0.5)) / (ALWAN_CORE_T)scale - ALWAN_CORE_LITERAL(0.5) < ALWAN_CORE_LITERAL(0.0),
                                                   ALWAN_CORE_LITERAL(0.0),
@@ -209,11 +234,11 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_softmax_at)(ALWAN_NN_IN_PARAMS_ 
     ALWAN_CORE_T m = ALWAN_NN_READ_IN(0);
     ALWAN_DET_PRECISE ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
     int j;
-    for (j = 1; j < n; j++) {
+    ALWAN_NN_LOOP for (j = 1; j < n; j++) {
         const ALWAN_CORE_T v = ALWAN_NN_READ_IN(j);
         m = ALWAN_CORE_SELECT(v > m, v, m);
     }
-    for (j = 0; j < n; j++) sum = sum + ALWAN_CORE_EXP(ALWAN_NN_READ_IN(j) - m);
+    ALWAN_NN_LOOP for (j = 0; j < n; j++) sum = sum + ALWAN_CORE_EXP(ALWAN_NN_READ_IN(j) - m);
     return ALWAN_CORE_EXP(ALWAN_NN_READ_IN(i) - m) / sum;
 }
 
@@ -228,4 +253,6 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_softmax_at)(ALWAN_NN_IN_PARAMS_ 
 # undef ALWAN_NN_PASTE_
 # undef ALWAN_NN_NAME
 #endif
+#undef ALWAN_NN_DIV
+#undef ALWAN_NN_LOOP
 #undef ALWAN_NN_READER_POINTER
