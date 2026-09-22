@@ -339,6 +339,24 @@
 
 ### Added
 
+- **Every public operation has a reference entry, and the count is a gate.**
+  `alwan_dev/tools/check_doc_coverage.py` folds the precision and buffer-form suffixes
+  and asks which base operations appear nowhere under `docs/`: 54 of 687 on the morning
+  of 2026-09-22, 0 of 675 by the end of it (the `_batch` forms fold into their metric).
+  The 54 went on the pages their families live on, written from their header comments:
+  the camera and DNG helpers in `api/spectral.md`, the ISO 12232 exposure functions and
+  Mantiuk 2006 in `api/hdr.md`, the illuminant chromaticity accessors, the CGATS.17
+  writers and the CMYK inverse cache in `api/reference-data.md`, the batch colour
+  differences and Michaelis-Menten in `api/color-difference.md`,
+  `alwan_rgb_space_limits` in `api/color-spaces.md`, and a new `api/display.md` for the
+  GOG fits, the display model and the calibration LUT.
+
+- **The twenty `alwan_data_get_*` accessors refuse a NULL argument.** None checked its
+  `data` or `count` pointer, and no suite called any of them; writing their entry found
+  it. `ALWAN_E_INVALID` now, and suite 113 calls the eight illuminant chromaticity
+  accessors, checks each returns its two embedded values and the same pointer every
+  time, and that E is the equal-energy point.
+
 - **`alwan_image_convert_data_{T}`: the data semantic, decided once for the image.**
   `alwan_data_semantic` has been declared since 2.0.0 and nothing in the library read
   it. This does what its three comments say and no more: `ALWAN_DATA_COLOR` is

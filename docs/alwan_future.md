@@ -242,14 +242,17 @@ macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
 
 Measured, not estimated, and re-measured after each pass. Counting base
 operations on the public surface with precision and `_map_*` variants folded
-together: **687 base operations, 633 documented, 54 without an entry** anywhere
+together: **675 base operations, 675 documented, 0 without an entry** anywhere
 under `docs/` (2026-09-22, by `alwan_dev/tools/check_doc_coverage.py`, which is
 the method written down; the earlier figures, 324 undocumented before the
 passes of 2026-09-08 and 196 of 641 after them, were counted by hand and the
-method was not recorded, so they are not comparable to this one). The 54 are
-listed by `--list`: the DNG matrix helpers, the display model and GOG fits, the
-CMYK inverse cache, the exposure and photometric helpers, the Michaelis-Menten
-rates, the illuminant data accessors and the `_batch` colour-difference forms.
+method was not recorded, so they are not comparable to this one). The last 54,
+measured that morning, were the DNG matrix helpers, the display model and GOG
+fits (now `api/display.md`), the CMYK inverse cache, the exposure and
+photometric helpers, the Michaelis-Menten rates, the illuminant chromaticity
+accessors and the `_batch` colour-difference forms, and each went on the page
+its family lives on, written from its header comment. The tool is the gate
+from here: a new public operation with no entry shows up in `--list`.
 
 Closed so far, each as its own page or as sections on an existing one:
 

@@ -616,6 +616,7 @@ ALWAN_DIAG_POP
 
 #if ALWAN_WITH_F64_FACADE
 alwan_status alwan_data_get_illuminant_a_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;  /* Unused in embedded mode */
     *data = (alwan_f64 *)g_a_xy_f64;
     *count = sizeof(g_a_xy_f64) / sizeof(g_a_xy_f64[0]);
@@ -623,6 +624,7 @@ alwan_status alwan_data_get_illuminant_a_f64(alwan_f64 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_d50_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_d50_xy_f64;
     *count = sizeof(g_d50_xy_f64) / sizeof(g_d50_xy_f64[0]);
@@ -630,6 +632,7 @@ alwan_status alwan_data_get_illuminant_d50_f64(alwan_f64 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_d55_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_d55_xy_f64;
     *count = sizeof(g_d55_xy_f64) / sizeof(g_d55_xy_f64[0]);
@@ -637,6 +640,7 @@ alwan_status alwan_data_get_illuminant_d55_f64(alwan_f64 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_d60_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_d60_xy_f64;
     *count = sizeof(g_d60_xy_f64) / sizeof(g_d60_xy_f64[0]);
@@ -644,6 +648,7 @@ alwan_status alwan_data_get_illuminant_d60_f64(alwan_f64 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_d65_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_d65_xy_f64;
     *count = sizeof(g_d65_xy_f64) / sizeof(g_d65_xy_f64[0]);
@@ -651,6 +656,7 @@ alwan_status alwan_data_get_illuminant_d65_f64(alwan_f64 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_e_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_e_xy_f64;
     *count = sizeof(g_e_xy_f64) / sizeof(g_e_xy_f64[0]);
@@ -658,6 +664,7 @@ alwan_status alwan_data_get_illuminant_e_f64(alwan_f64 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_b_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_b_xy_f64;
     *count = sizeof(g_b_xy_f64) / sizeof(g_b_xy_f64[0]);
@@ -665,6 +672,7 @@ alwan_status alwan_data_get_illuminant_b_f64(alwan_f64 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_c_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_c_xy_f64;
     *count = sizeof(g_c_xy_f64) / sizeof(g_c_xy_f64[0]);
@@ -672,6 +680,7 @@ alwan_status alwan_data_get_illuminant_c_f64(alwan_f64 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_d75_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_d75_xy_f64;
     *count = sizeof(g_d75_xy_f64) / sizeof(g_d75_xy_f64[0]);
@@ -859,6 +868,7 @@ alwan_status alwan_data_get_illuminant_xy_f64(alwan_f64 **data, size_t *count, a
 }
 
 alwan_status alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f64 *)g_srgb_primaries_3x2_f64;
     *count = sizeof(g_srgb_primaries_3x2_f64) / sizeof(g_srgb_primaries_3x2_f64[0]);
@@ -875,6 +885,7 @@ alwan_status alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, 
 
 #if ALWAN_WITH_F32
 alwan_status alwan_data_get_illuminant_a_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_a_xy_f32;
     *count = sizeof(g_a_xy_f32) / sizeof(g_a_xy_f32[0]);
@@ -882,6 +893,7 @@ alwan_status alwan_data_get_illuminant_a_f32(alwan_f32 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_d50_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_d50_xy_f32;
     *count = sizeof(g_d50_xy_f32) / sizeof(g_d50_xy_f32[0]);
@@ -889,6 +901,7 @@ alwan_status alwan_data_get_illuminant_d50_f32(alwan_f32 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_d55_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_d55_xy_f32;
     *count = sizeof(g_d55_xy_f32) / sizeof(g_d55_xy_f32[0]);
@@ -896,6 +909,7 @@ alwan_status alwan_data_get_illuminant_d55_f32(alwan_f32 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_d60_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_d60_xy_f32;
     *count = sizeof(g_d60_xy_f32) / sizeof(g_d60_xy_f32[0]);
@@ -903,6 +917,7 @@ alwan_status alwan_data_get_illuminant_d60_f32(alwan_f32 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_d65_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_d65_xy_f32;
     *count = sizeof(g_d65_xy_f32) / sizeof(g_d65_xy_f32[0]);
@@ -910,6 +925,7 @@ alwan_status alwan_data_get_illuminant_d65_f32(alwan_f32 **data, size_t *count, 
 }
 
 alwan_status alwan_data_get_illuminant_e_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_e_xy_f32;
     *count = sizeof(g_e_xy_f32) / sizeof(g_e_xy_f32[0]);
@@ -917,6 +933,7 @@ alwan_status alwan_data_get_illuminant_e_f32(alwan_f32 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_b_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_b_xy_f32;
     *count = sizeof(g_b_xy_f32) / sizeof(g_b_xy_f32[0]);
@@ -924,6 +941,7 @@ alwan_status alwan_data_get_illuminant_b_f32(alwan_f32 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_c_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_c_xy_f32;
     *count = sizeof(g_c_xy_f32) / sizeof(g_c_xy_f32[0]);
@@ -931,6 +949,7 @@ alwan_status alwan_data_get_illuminant_c_f32(alwan_f32 **data, size_t *count, al
 }
 
 alwan_status alwan_data_get_illuminant_d75_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_d75_xy_f32;
     *count = sizeof(g_d75_xy_f32) / sizeof(g_d75_xy_f32[0]);
@@ -997,6 +1016,7 @@ alwan_status alwan_data_get_illuminant_xy_f32(alwan_f32 **data, size_t *count, a
 }
 
 alwan_status alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx) {
+    if (!data || !count) return ALWAN_E_INVALID;
     (void)ctx;
     *data = (alwan_f32 *)g_srgb_primaries_3x2_f32;
     *count = sizeof(g_srgb_primaries_3x2_f32) / sizeof(g_srgb_primaries_3x2_f32[0]);

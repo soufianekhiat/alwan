@@ -1104,6 +1104,101 @@ alwan_cmyk_model_destroy(fogra, ctx);
 
 ---
 
+## The other illuminant tables
+
+```c
+alwan_status alwan_data_get_illuminant_b_{T}(alwan_{T} **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_c_{T}(alwan_{T} **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_d50_{T}(alwan_{T} **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_d55_{T}(alwan_{T} **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_d60_{T}(alwan_{T} **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_d75_{T}(alwan_{T} **data, size_t *count, alwan_ctx *ctx);
+alwan_status alwan_data_get_illuminant_e_{T}(alwan_{T} **data, size_t *count, alwan_ctx *ctx);
+```
+
+The xy chromaticity of one illuminant, as `alwan_data_get_illuminant_xy_{T}`
+above gives it for D65: B (direct sunlight), C (average daylight), D50, D55,
+D60, D75 and E (equal energy). `data` receives a pointer to the embedded,
+read-only two-value table (x then y) and `count` receives 2; the pointer is
+not the caller's to free and the values are not the caller's to write. For the
+illuminant's spectrum use `alwan_spd_illuminant_{T}`; these are the
+chromaticities alone. A NULL `data` or `count` is `ALWAN_E_INVALID`, a check
+every accessor on this page gained on 2026-09-22 (none had one).
+
+---
+
+## alwan_chart_write_cgats17_{T}, alwan_chart_write_cgats17_buffer_{T}
+
+```c
+alwan_status alwan_chart_write_cgats17_{T}(char const *path, alwan_chart_{T} const *chart);
+alwan_status alwan_chart_write_cgats17_buffer_{T}(char *buf, size_t *bytes_written, size_t buf_size,
+                                                  alwan_chart_{T} const *chart);
+```
+
+The chart written back out in the CGATS.17 dialect, to a path or into a
+buffer. The two dialects `alwan_chart_write` and these produce differ in
+exactly two places: the identifier on the first line, and how a reflectance
+column names its wavelength (`SPECTRAL_NM560` against `SPEC_560`); the rest is
+the same text. Spectra are written when the chart has them. The buffer form
+reports the length it needs when called with a NULL buffer and returns
+`ALWAN_E_RANGE` if the buffer cannot hold the result and its terminator.
+Neither writer invents a header key the source chart did not carry, so a reload
+through `alwan_chart_load` is an identity, and that round trip is the test.
+
+---
+
+## The CMYK inverse, cached
+
+```c
+alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_model const *model,
+                                       alwan_f64 k, int size, alwan_ctx *ctx);
+void         alwan_cmyk_inverse_destroy(alwan_cmyk_inverse *inv, alwan_ctx *ctx);
+int          alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv);
+alwan_status alwan_cmyk_inverse_eval_{T}(alwan_cmyk_{T} *cmyk_out, alwan_{T} *delta_e_out,
+                                         alwan_lab_{T} const *lab, alwan_cmyk_inverse const *inv);
+alwan_status alwan_cmyk_inverse_map_interleave_{T}(alwan_{T} *cmyk_out, size_t out_stride,
+                                                   alwan_{T} const *lab_in, size_t in_stride, size_t count,
+                                                   alwan_{T} *worst_delta_e_out, alwan_cmyk_inverse const *inv);
+```
+
+The same inverse as `alwan_lab_to_cmyk_{T}`, cached, so CMYK can be a per-pixel
+target. `alwan_lab_to_cmyk` scans a 729-node CMY cube and walks downhill from
+the best eight of its nodes: 1.2 ms a call on the embedded FOGRA39, which makes
+a 1920 x 1080 frame 42 minutes. `create` runs that exact search once per node
+of a regular grid over the Lab the characterisation can reach at one fixed
+black `k`; a query then interpolates the grid, scores the result and the eight
+corner inks of the cell it landed in, and takes a short walk from the best: 25
+us rather than 1.2 ms, the same frame 53 seconds. Held to the exact search over
+729 in-gamut targets, the worst it falls behind is 0.0415 dE and the worst
+single ink differs by 0.0010.
+
+The build is `size^3` exact searches, about 5 seconds at size 17; `size` is 4
+to 64, outside that `ALWAN_E_RANGE`. The black is fixed at build because it is
+an input to the exact search: a colour can be printed with more ink and less
+black or the reverse, and a cache spanning `k` would interpolate between two
+ink-sharing decisions and print neither.
+
+A Lab outside the box the characterisation reaches runs the exact search
+instead and returns results bit-identical to calling it directly; the cache
+holds no data out there and does not approximate where it has none. The cost
+is real, so know which pixels pay it: on a photograph a third fall outside and
+it converts at about 4x rather than 45x, and the reason is not saturated
+colour: 29 per cent of that frame is below the printable black (L 22.89 at k =
+0), 4.9 per cent above the ceiling, none outside on a or b. What a press
+cannot hold in a photograph is the darkness. Flat saturated artwork is the
+opposite case, and has a handful of distinct colours: convert its palette.
+
+`delta_e_out` is measured, not interpolated: the inks are put back through the
+forward model and compared to the target by CIEDE2000, so the number includes
+the cache's own error. The map form reports the worst over the run.
+
+Not testable against an external reference: no library publishes an
+intermediate for this (Argyll and littleCMS bake a B2A table into an ICC
+profile, the same idea in a different container). Suite 143 holds it to
+alwan's own exact search, which is the function it exists to approximate.
+
+---
+
 ## See Also
 
 - [Spectral Operations](spectral.md): SPD creation and XYZ integration

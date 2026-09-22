@@ -458,6 +458,56 @@ Single-element functions return the dE value directly (no status code).
 
 ---
 
+## Batch colour difference over two Lab buffers
+
+```c
+alwan_status alwan_delta_e_76_{T}_batch(alwan_{T} *delta_e_out, alwan_{T} const *lab1_in, size_t in1_stride,
+                                        alwan_{T} const *lab2_in, size_t in2_stride, size_t count);
+alwan_status alwan_delta_e_94_{T}_batch(...same...);
+alwan_status alwan_delta_e_2000_{T}_batch(...same...);
+alwan_status alwan_delta_e_cmc_{T}_batch(...same..., alwan_{T} l, alwan_{T} c);
+```
+
+One difference per pixel between two Lab buffers, the two input strides in
+bytes (typically `3 * sizeof(alwan_{T})`), `delta_e_out` packed. These predate
+the `_map_interleave` forms of every metric, which take the same arguments
+with an output stride as well, and stay for source compatibility; new code
+takes the map form.
+
+---
+
+## Michaelis-Menten
+
+```c
+alwan_status alwan_michaelis_menten_rate_{T}(alwan_{T} *rate_out, alwan_{T} substrate, alwan_{T} v_max, alwan_{T} k_m);
+alwan_status alwan_michaelis_menten_substrate_{T}(alwan_{T} *substrate_out, alwan_{T} rate, alwan_{T} v_max, alwan_{T} k_m);
+alwan_status alwan_michaelis_menten_rate_abebe2017_{T}(alwan_{T} *rate_out, alwan_{T} substrate, alwan_{T} v_max, alwan_{T} k_m, alwan_{T} b_m);
+alwan_status alwan_michaelis_menten_substrate_abebe2017_{T}(alwan_{T} *substrate_out, alwan_{T} rate, alwan_{T} v_max, alwan_{T} k_m, alwan_{T} b_m);
+```
+
+The saturating two-parameter curve, which arrived in colour science through
+vision rather than enzymes: a photoreceptor's response saturates the way a
+reaction rate does. It is inside the library twice already, as
+`ALWAN_LIGHTNESS_ABEBE2017_MICHAELIS_MENTEN` and as the JP2499 tonescale; these
+make the relation itself callable.
+
+    Michaelis 1913   v = V_max S / (K_m + S)         S = v K_m / (V_max - v)
+    Abebe 2017       v = V_max S / (b_m S + K_m)     S = v K_m / (V_max - b_m v)
+
+`K_m` is the substrate at which the rate reaches half of `V_max`, a position
+on the input axis rather than a shape, which is what makes it the parameter
+worth fitting. Abebe's `b_m` scales the substrate term; at 1 it gives
+Michaelis's form back exactly.
+
+**Returns:** `ALWAN_E_DIVZERO` where a denominator vanishes, which for the
+inverse is the rate the curve approaches and never reaches: a saturating curve
+has no answer for an input above its maximum, and saying so is more use than an
+infinity. A non-finite argument is `ALWAN_E_INVALID`. Michaelis and Menten
+(1913); Abebe, Pouli, Larabi and Reinhard (2017). Pinned against colour-science
+in suite 166.
+
+---
+
 ## See Also
 
 - [Color Spaces](color-spaces.md) -- Lab / Oklab / ICtCp / DIN99 conversions

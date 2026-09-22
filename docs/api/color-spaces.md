@@ -1166,6 +1166,26 @@ CLIP on hot paths (`alwan.h:3450-3452`). For the bulk argument conventions see
 
 ---
 
+## alwan_rgb_space_limits_{T}
+
+```c
+alwan_status alwan_rgb_space_limits_{T}(alwan_{T} *limits_out, alwan_rgb_space_desc_{T} const *space);
+```
+
+The Lab extent of an RGB space: the smallest and largest L*, a* and b* the
+space can reach, six values in the order L min, L max, a min, a max, b min, b
+max. Taken over the eight corners of the unit RGB cube. L* is monotonic in Y
+and Y is linear in RGB, so its extremes are at corners by construction; a* and
+b* are differences of non-linear functions and theirs need not be, which makes
+this a bound over the corners rather than a proof about the whole cube.
+Measured against 400,000 points drawn uniformly from the sRGB cube, nothing
+exceeded it; colour-science's `RGB_colourspace_limits` takes the corners too.
+The space's own white is the Lab reference white, so the limits describe the
+space on its own terms and are not comparable across two spaces with different
+white points without adapting first.
+
+---
+
 ## See Also
 
 - [Transfer Functions](transfer-functions.md): OETF/EOTF/view transforms

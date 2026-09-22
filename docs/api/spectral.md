@@ -771,6 +771,113 @@ Spectral functions return the `alwan_status` enum:
 
 ---
 
+## Camera characterisation helpers
+
+The pieces the IDT and DNG paths are built from, callable on their own.
+
+### alwan_idt_params_init
+
+```c
+void alwan_idt_params_init(alwan_idt_params *params);
+```
+
+Sets the defaults an IDT fit uses when handed no parameters: `objective`
+`ALWAN_IDT_OBJECTIVE_LAB`, `skip_chromatic_adaptation` 0, `max_iterations` 0
+(the fit's own default). A NULL `params` is ignored. Zeroing the struct is not
+the same thing, since the objective enum's zero may not be the default.
+
+### alwan_idt_training_count, alwan_spd_idt_training_{T}
+
+```c
+size_t alwan_idt_training_count(void);
+alwan_status alwan_spd_idt_training_{T}(alwan_spd_{T} *out, size_t patch_index, alwan_ctx *ctx);
+```
+
+The IDT training reflectances: how many there are, and one of them as an SPD
+on 380-780 nm at 5 nm, allocated through `ctx` and released with
+`alwan_spd_destroy_{T}`. The count is 190 with the table compiled in and 0
+without (`ALWAN_TABLE_IDT_TRAINING_190`), in which case the accessor is
+`ALWAN_E_NODATA`; `patch_index` at or past the count is `ALWAN_E_RANGE`.
+
+### alwan_idt_white_balance_{T}
+
+```c
+alwan_status alwan_idt_white_balance_{T}(alwan_rgb_{T} *white_balance_out,
+                                         alwan_spd_{T} const *sens_r, alwan_spd_{T} const *sens_g,
+                                         alwan_spd_{T} const *sens_b, alwan_spd_{T} const *illuminant);
+```
+
+White balance multipliers of a camera under an illuminant: `1 / sum(sensitivity
+x illuminant)` per channel, scaled so the smallest multiplier is 1. The three
+sensitivities must share one grid; the illuminant is read on that grid.
+
+### alwan_best_illuminant_{T}
+
+```c
+alwan_status alwan_best_illuminant_{T}(size_t *index_out, alwan_{T} *sse_out,
+                                       alwan_rgb_{T} const *white_balance,
+                                       alwan_spd_{T} const *sens_r, alwan_spd_{T} const *sens_g,
+                                       alwan_spd_{T} const *sens_b,
+                                       alwan_spd_{T} const *candidates, size_t candidate_count);
+```
+
+Which of a set of candidate illuminants a camera was shot under, given the
+white balance it needed. For each candidate the multipliers it would call for
+are computed as `alwan_idt_white_balance` does, and the closest to the measured
+`white_balance` wins, by the sum over channels of
+`(candidate_multiplier / measured_multiplier - 1)^2`: a relative error with no
+separate normalising step. `index_out` receives the winner's position in
+`candidates`; `sse_out`, when not NULL, its error, 0 when the measurement came
+from a candidate exactly. Equal errors keep the earlier candidate.
+
+The candidates are the caller's, read on the sensitivities' grid, so this does
+not decide what a sensible bank is. colour-science's rawtoaces v1 bank is 50
+sources on 380-780 nm at 5 nm: daylights every 500 K from 4000 K to 25000 K,
+blackbodies from 1000 K to 3500 K, and ISO 7589 studio tungsten, all of which
+`alwan_spd_cie_daylight`, `alwan_spd_blackbody` and `alwan_spd_iso7589_tungsten`
+build.
+
+**Returns:** `ALWAN_E_INVALID` for no candidates or a measured multiplier that
+is not positive, since the error divides by it; `ALWAN_E_RANGE` for a candidate
+that integrates to nothing in some channel, reported rather than passed over,
+so a degenerate entry in the array is visible. Matches
+`colour.characterisation.best_illuminant`.
+
+### alwan_dng_interpolate_matrix_{T}, alwan_dng_xyz_to_camera_matrix_{T}, alwan_dng_xy_to_camera_neutral_{T}
+
+```c
+alwan_status alwan_dng_interpolate_matrix_{T}(alwan_mat3x3_{T} *matrix_out, alwan_{T} cct,
+                                              alwan_{T} cct_1, alwan_{T} cct_2,
+                                              alwan_mat3x3_{T} const *m1, alwan_mat3x3_{T} const *m2);
+alwan_status alwan_dng_xyz_to_camera_matrix_{T}(alwan_mat3x3_{T} *matrix_out,
+                                                alwan_dng_profile_{T} const *profile,
+                                                alwan_vec2_{T} const *white_xy);
+alwan_status alwan_dng_xy_to_camera_neutral_{T}(alwan_rgb_{T} *neutral_out,
+                                                alwan_dng_profile_{T} const *profile,
+                                                alwan_vec2_{T} const *white_xy);
+```
+
+The three steps of the DNG colour model, separately. `interpolate_matrix` is one
+tag at a CCT: `m1` at or below `cct_1`, `m2` at or above `cct_2`, linear in
+1/CCT between; the two illuminants may come in either order.
+`xyz_to_camera_matrix` is XYZ to camera space at a white, AnalogBalance x
+CameraCalibration x ColorMatrix, each interpolated at the white's CCT.
+`xy_to_camera_neutral` is the camera neutral of a white, what AsShotNeutral
+stores, with G = 1.
+
+### alwan_cfa_bayer_mosaic_{T}
+
+```c
+alwan_status alwan_cfa_bayer_mosaic_{T}(alwan_{T} *cfa_out, size_t cfa_row_stride,
+                                        alwan_{T} const *rgb, size_t rgb_row_stride,
+                                        size_t width, size_t height, alwan_cfa_pattern pattern);
+```
+
+The mosaic an RGB image would record: each site keeps its layout's channel.
+The inverse of the demosaicers, and what their tests mosaic their inputs with.
+
+---
+
 ## See Also
 
 - [CCT & Light Quality](cct-light-quality.md): CRI, TM-30, SSI, metamerism

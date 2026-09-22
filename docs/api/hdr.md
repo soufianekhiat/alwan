@@ -837,6 +837,125 @@ is the weights' precision.
 
 ---
 
+## Exposure, ISO 12232 and ISO 2720
+
+Photometric exposure as the camera standards define it. Every function is
+`ALWAN_E_INVALID` for a NULL output or a luminance, illuminance, ISO, f-number
+or time that is not positive.
+
+```c
+alwan_status alwan_luminance_to_exposure_value_{T}(alwan_{T} *ev_out, alwan_{T} luminance, alwan_{T} iso, alwan_{T} k);
+alwan_status alwan_illuminance_to_exposure_value_{T}(alwan_{T} *ev_out, alwan_{T} illuminance, alwan_{T} iso, alwan_{T} c);
+alwan_status alwan_exposure_value_100_{T}(alwan_{T} *ev100_out, alwan_{T} f_number, alwan_{T} exposure_time, alwan_{T} iso);
+alwan_status alwan_average_illuminance_{T}(alwan_{T} *illuminance_out, alwan_{T} f_number, alwan_{T} exposure_time, alwan_{T} iso, alwan_{T} c);
+alwan_status alwan_focal_plane_exposure_{T}(alwan_{T} *exposure_out, alwan_{T} luminance, alwan_{T} f_number, alwan_{T} exposure_time,
+                                            alwan_{T} focal_length, alwan_{T} image_distance, alwan_{T} flare,
+                                            alwan_{T} transmittance, alwan_{T} vignetting, alwan_{T} angle);
+alwan_status alwan_saturation_based_speed_focal_plane_exposure_{T}(alwan_{T} *exposure_out, alwan_{T} luminance, alwan_{T} f_number,
+                                            alwan_{T} exposure_time, alwan_{T} iso, alwan_{T} focal_length, alwan_{T} image_distance,
+                                            alwan_{T} flare, alwan_{T} transmittance, alwan_{T} vignetting, alwan_{T} angle);
+alwan_status alwan_exposure_index_{T}(alwan_{T} *index_out, alwan_{T} focal_plane_exposure);
+alwan_status alwan_photometric_exposure_scale_factor_lagarde2014_{T}(alwan_{T} *scale_out, alwan_{T} ev100,
+                                            alwan_{T} transmittance, alwan_{T} vignetting, alwan_{T} angle);
+```
+
+- `luminance_to_exposure_value`: `log2(L S / k)`; `illuminance_to_exposure_value`:
+  `log2(E S / c)`. A `k` or `c` of 0 takes the ISO 2720 default, 12.5 for the
+  reflected-light constant and 250 for the incident one.
+- `exposure_value_100`: EV100, the exposure value of the settings referred to
+  ISO 100.
+- `average_illuminance`: the ISO 2720 incident-light meter, lux,
+  `N^2 / t / S x c`, `c` 0 being 250.
+- `focal_plane_exposure`: ISO 12232, lux-seconds,
+  `q L t F^2 / (N^2 i^2) + flare` with `q = pi / 4 T f_v cos^4(angle)`; focal
+  length and image distance in metres, transmittance T (0.9 typical),
+  vignetting f_v (0.98), angle off axis in degrees (10).
+- `saturation_based_speed_focal_plane_exposure`: the same, scaled for
+  saturation-based speed, `H S / 78`.
+- `exposure_index`: ISO 12232's `10 / H`.
+- `photometric_exposure_scale_factor_lagarde2014`: Lagarde and de Rousiers
+  2014, the factor that turns a camera's pixel values into absolute luminance,
+  `1 / (78 / (100 q) 2^EV100)`.
+
+Pinned against colour-science's `exposure` module in suite 118.
+
+---
+
+## Merge weights, camera-response sampling, PU21 decode, Mantiuk 2006
+
+### alwan_hdr_merge_weight_{T}
+
+```c
+alwan_status alwan_hdr_merge_weight_{T}(alwan_{T} *weight_out, alwan_{T} value, alwan_merge_weight fn);
+```
+
+One weighting function of `alwan_hdr_merge` at one value, so a caller can see
+the curve the merge is applying.
+
+### alwan_crf_samples_grossberg2003_{T}
+
+```c
+alwan_status alwan_crf_samples_grossberg2003_{T}(size_t *bins_out, alwan_{T} const *const *images,
+                                                 size_t in_stride, size_t count, size_t image_count,
+                                                 size_t samples, size_t bins);
+```
+
+Grossberg and Nayar 2003: the pixel values to sample for a camera-response
+recovery, chosen so that each sample sits at the same point of every exposure's
+histogram. For each of `samples` points u on [0, 1], the bin whose cumulative
+histogram is nearest u, per exposure and channel. `bins_out` receives
+`samples x image_count x 3` bin indices.
+
+### alwan_pu21_decode_{T}
+
+```c
+alwan_status alwan_pu21_decode_{T}(alwan_{T} *out, alwan_{T} value, alwan_pu21_variant variant);
+alwan_status alwan_pu21_decode_{T}_map_interleave(alwan_{T} *out, size_t out_stride, alwan_{T} const *in,
+                                                  size_t in_stride, size_t count, alwan_pu21_variant variant);
+```
+
+The inverse of `alwan_pu21_encode`: PU21 units back to luminance, for the same
+four variants. `ALWAN_E_INVALID` for an unknown variant.
+
+### alwan_tonemap_mantiuk2006_{T}
+
+```c
+alwan_status alwan_tonemap_mantiuk2006_{T}(alwan_{T} *rgb_out, size_t out_row_stride,
+                                           alwan_{T} const *rgb_in, size_t in_row_stride,
+                                           size_t width, size_t height,
+                                           alwan_tonemap_local_params_{T} const *params, int *iterations_out);
+```
+
+Local tone mapping. Every other operator on this page is a curve: a pixel's
+result depends on that pixel and on statistics of the image. This one takes the
+log luminance apart into contrasts at every scale, shrinks each through a
+response curve, and solves for the image whose contrasts those are, so a
+pixel's result depends on its neighbours, which is what lets it hold local
+texture while losing global range, and why it takes a width and a height rather
+than a count.
+
+`rgb_in` and `rgb_out` are interleaved RGB, rows a stride apart; `out` may be
+`in`. `params` NULL is every default: `scale` is how hard contrasts are pulled
+in, 0 reading as 0.7, larger meaning flatter; `saturation` is the exponent on
+each channel's ratio to luminance, 0 reading as 1. `iterations_out`, which may
+be NULL, receives how many conjugate-gradient steps the solve took; it stops on
+a relative residual of 1e-3 and caps at 100, and in practice takes five to ten,
+so a result at the cap is worth looking at. The luminance weights follow the
+rest of alwan: zero is the sRGB primaries' Y row; OpenCV uses Rec.601 luma,
+which is a different quantity and the wrong one for linear light, and suite 170
+passes it explicitly to compare.
+
+The output is not normalised: the solve is anchored at the image's own mean log
+luminance, so the result has a level and the caller decides what to do with it.
+An image smaller than 2 x 2 is `ALWAN_E_RANGE`; a negative or non-finite
+luminance is `ALWAN_E_INVALID`. Reproduces OpenCV's TonemapMantiuk to 2e-06 in
+float32 once OpenCV's own rescaling of input and output to [0, 1], which is not
+in the paper, is taken off. Mantiuk, Myszkowski and Seidel, "A Perceptual
+Framework for Contrast Processing of High Dynamic Range Images", ACM TAP 3(3),
+2006.
+
+---
+
 ## See Also
 
 - [Transfer Functions](transfer-functions.md) -- PQ, HLG, standard OETF/EOTF
