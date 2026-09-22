@@ -153,10 +153,11 @@ What would need deciding:
 
 ### 4. Convenience Queries And Ergonomics
 
-Possible additions:
-
-- richer colorspace metadata helpers
-- display/scene/HDR/basic query helpers
+- ~~richer colorspace metadata helpers~~ ~~display/scene/HDR/basic query
+  helpers~~ *(done, 2026-09-22: `alwan_interop_query` / `alwan_interop_query_id`
+  return the interop ID, its display twin, published or `alwan:` namespace,
+  scene or display referred, HDR and the transfer function; "basic" is not a
+  field because the Forum's recommendation text is not vendored)*
 - more convenience wrappers around common descriptor-driven workflows
 
 These are ergonomic improvements rather than architectural prerequisites.
@@ -191,23 +192,23 @@ into "six runners agree", and that run has not happened yet.
 
 ### 6. Batch / Map / Planar Coverage Gaps
 
-Several per-pixel hot paths still lack batch/map frontends, and some carry dead
-normalization macros that signal an unfinished map kernel:
-
-- batch/map variants for ZCAM forward/inverse, CAM18sl, CAM20u (consume their
-  dead `NORM` macros), IPTch (consume `ALWAN_NORM_IPTCH`),
-  `aces1_output_transform`, `gamut_map_advanced`, `gamut_map_xyz_to_rgb`,
-  `hdr_gamut_map_jzczhz`, the Cheung2004 / Finlayson2015 CCM applies, and the 10
-  scalar-only deltaE metrics (dE-OK, dE-ITP, HyAB, DIN99, ZCAM,
-  CAM02/CAM16 LCD/SCD/UCS)
-- `_map_planar` parity for the extended-space block, all CAMs, Brettel CVD, and
-  YCoCg (SoA callers currently have no planar path for these)
+**Done, 2026-09-22.** Every per-pixel path named here has its map: ZCAM (with
+the white's terms hoisted), CAM18sl, CAM20u, IPTch, `aces1_output_transform`,
+`gamut_map_advanced`, `gamut_map_xyz_to_rgb`, `hdr_gamut_map_jzczhz`, the two
+CCM applies and all sixteen deltaE metrics, each bit-identical to its scalar
+(suites 172, 173, 174, 28, 56). Planar parity closed the same day for every
+operation the three-channel convention fits: eleven twins as loops over the
+scalar and twenty-one as the interleave form on a 256-pixel tile (suites 174,
+175); the CAMs, the metrics, the spectrum upsamplers, the merges and the gain
+maps do not fit it and `docs/map.md` says why. Measured: planar is a convenience
+of shape, not speed.
 
 ### 7. Performance Hoisting (CAT)
 
-- bulk two-step Zhai 2018 CAT that hoists the white-point-dependent factors out
-  of the per-pixel loop, mirroring the existing one-step `xyz_adapt` batch
-  design
+- ~~bulk two-step Zhai 2018 CAT that hoists the white-point-dependent factors out
+  of the per-pixel loop~~ *(done, 2026-09-22: `alwan_cat_zhai2018_{T}_map_interleave`,
+  gains once then the matrices per pixel, bit-identical to the scalar, 38 to 10
+  ns a pixel, suite 144; the same hoisting gave ZCAM's map its 2.2x)*
 
 ### 8. API Parity And Dual-Precision Completeness
 
@@ -221,8 +222,11 @@ macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
   them as intentional f64-internal facades (some already are)~~ *(documented:
   [precision-and-limits.md](precision-and-limits.md) lists every facade and why
   it stays one; the position taken there is that they should not be made native)*
-- f32 twin accessor for `alwan_pointer_gamut_boundary` and the other f64-only
-  reference-data accessors, for full dual-precision interop
+- ~~f32 twin accessor for `alwan_pointer_gamut_boundary` and the other f64-only
+  reference-data accessors~~ *(stale, closed 2026-09-22: the boundary accessor
+  no longer exists, the table is read through `alwan_pointer_gamut_max_chroma_{T}`
+  and `_white_{T}` in both precisions, and a measurement over the header found
+  0 of 914 `_f64` names without an `_f32` twin)*
 
 ### 9. Robustness And ABI Stability
 
@@ -234,9 +238,12 @@ macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
   *(done: every enumerator in the 44 public enums carries an explicit value;
   new values are appended, as the transfer-function and ACES 1.x additions were)*
 - ~~rename `gamut_volume_mc` to reflect that it returns an exact determinant~~
-  *(done: renamed to `alwan_gamut_volume`, dead params dropped)*; a
+  *(done: renamed to `alwan_gamut_volume`, dead params dropped)*; ~~a
   real Monte-Carlo **perceptual** gamut volume (Lab/Oklab solid) remains
-  future work
+  future work~~ *(done, 2026-09-22, and not by Monte Carlo:
+  `alwan_gamut_volume_perceptual_{T}` integrates |det J| over a tetrahedral
+  mesh, deterministic and exact on a linear map, within 1.8e-3 of colour's
+  sampler on four spaces, suite 18)*
 
 ### 10. Documentation Of The Undocumented Tail
 
