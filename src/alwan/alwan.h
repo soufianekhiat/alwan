@@ -1039,9 +1039,7 @@ typedef enum {
 /* Exact RGB gamut volume in linear XYZ.
  * The RGB unit cube maps to a parallelepiped under the RGB->XYZ matrix M,
  * whose volume is exactly |det(M)| -- a closed-form result, not an estimate.
- * (A *perceptual* gamut volume in a nonlinear space such as Lab/Oklab has no
- *  closed form and would require Monte Carlo sampling; that is a separate,
- *  currently unimplemented operation.)
+ * For the volume in a nonlinear space see alwan_gamut_volume_perceptual below.
  * space:  RGB color space descriptor
  * volume: output volume (in XYZ units cubed)
  * Returns ALWAN_OK on success */
@@ -1049,6 +1047,39 @@ alwan_status alwan_gamut_volume_f64(alwan_f64 *volume,
                           alwan_rgb_space_desc_f64 const *space);
 alwan_status alwan_gamut_volume_f32(alwan_f32 *volume,
                           alwan_rgb_space_desc_f32 const *space);
+
+/* Perceptual gamut volume: the RGB unit cube's image in Lab, Oklab or XYZ,
+ * measured deterministically. An n^3 lattice of RGB points is mapped into the
+ * target space, each cell is cut into six tetrahedra, and their volumes are
+ * summed. No Monte Carlo (two calls agree to the bit) and no convex hull (a
+ * concave boundary is measured as concave). This is the piecewise-linear
+ * image of the cube, and it converges to the true volume as the lattice is
+ * refined: for a linear target it is exact at n = 1, where it equals
+ * alwan_gamut_volume's |det M| to every digit; in Lab and Oklab it moves by
+ * about 3e-3 from n = 32 to 64 and 5e-4 from 64 to 96 on sRGB.
+ * space:  RGB color space descriptor. Lab is taken relative to the space's
+ *         own white, so the answer is the space's coverage of Lab under its
+ *         own illuminant, with no adaptation involved.
+ * target: ALWAN_GAMUT_VOLUME_LAB (units of L*a*b*, sRGB is about 8.2e5),
+ *         ALWAN_GAMUT_VOLUME_OKLAB (sRGB about 0.054),
+ *         ALWAN_GAMUT_VOLUME_XYZ (equals alwan_gamut_volume)
+ * n:      lattice cells per axis; 0 takes ALWAN_GAMUT_VOLUME_DEFAULT_N (64),
+ *         above 4096 is ALWAN_E_RANGE. Cost is n^3 conversions; memory is two
+ *         (n + 1)^2 slabs, from ctx or the default allocator.
+ * Reference: colour-science RGB_colourspace_volume_MonteCarlo(space, ...,
+ * illuminant_Lab = the space's white, chromatic_adaptation_transform = None)
+ * asks the same question of Lab by sampling, and suite 18 pins the two
+ * against each other within that method's noise.
+ * Returns ALWAN_OK, ALWAN_E_INVALID for a NULL argument or an unknown target,
+ * ALWAN_E_RANGE for n > 4096, ALWAN_E_NOMEM if the slabs cannot be had. */
+typedef enum {
+    ALWAN_GAMUT_VOLUME_LAB = 0,
+    ALWAN_GAMUT_VOLUME_OKLAB = 1,
+    ALWAN_GAMUT_VOLUME_XYZ = 2
+} alwan_gamut_volume_space;
+#define ALWAN_GAMUT_VOLUME_DEFAULT_N 64
+alwan_status alwan_gamut_volume_perceptual_f64(alwan_f64 *volume, alwan_rgb_space_desc_f64 const *space, alwan_gamut_volume_space target, size_t n, alwan_ctx *ctx);
+alwan_status alwan_gamut_volume_perceptual_f32(alwan_f32 *volume, alwan_rgb_space_desc_f32 const *space, alwan_gamut_volume_space target, size_t n, alwan_ctx *ctx);
 
 /* Map RGB colors to [0,1] gamut using specified method
  * Map operation with stride support for efficient array processing

@@ -50,6 +50,161 @@ alwan_status alwan_gamut_volume_f64(alwan_f64 *volume,
 
     return ALWAN_OK;
 }
+
+/* ----------------------------------------------------------------
+ * Perceptual gamut volume: the RGB unit cube's image in a nonlinear space
+ *
+ * The comment above alwan_gamut_volume used to say a perceptual volume "would
+ * require Monte Carlo sampling". It does not. The image of the cube under a
+ * smooth injective map has the volume
+ *
+ *     V = integral over the cube of |det J(rgb)|,
+ *
+ * and a tetrahedral mesh evaluates it deterministically: map an n^3 lattice of
+ * RGB points into the target space, cut each cell into six tetrahedra along
+ * its main diagonal (Kuhn's decomposition, which tiles the cell without gaps
+ * or overlaps), and sum |det| / 6 of each. The mesh is the piecewise-linear
+ * image of the cube: no hull, so a concave boundary is measured as concave,
+ * and no random numbers, so two calls agree to the bit.
+ *
+ * Exactness and convergence, measured (scratch proto_volume.py):
+ *   - a linear target (XYZ) is exact at n = 1: the six tetrahedra of one cell
+ *     sum to |det M| to every digit, which is alwan_gamut_volume's answer;
+ *   - Lab and Oklab converge like a mesh, roughly O(1/n^2) in the interior
+ *     with the cube-root corner at black slower: sRGB in Lab moves 8.7e-3 from
+ *     n = 16 to 32, 3.2e-3 from 32 to 64, 5e-4 from 64 to 96. n = 64 is the
+ *     default, and the header says what a caller buys with more.
+ *
+ * Memory: two lattice slabs of (n + 1)^2 points, allocated from ctx or the
+ * default allocator, so n = 256 costs 3 MiB rather than the 400 MiB a full
+ * lattice would.
+ *
+ * Lab is taken relative to the space's own white (its white_xy at Y = 1), so
+ * the question is "how much of Lab does this space cover as seen under its
+ * own illuminant", with no adaptation to argue about. colour-science's
+ * RGB_colourspace_volume_MonteCarlo answers the same question for a D65
+ * space with illuminant_Lab = the space's white and no adaptation transform,
+ * and is the reference in suite 18.
+ * ---------------------------------------------------------------- */
+
+/* Two slabs from the context's allocator when there is one, else the default. */
+static alwan_f64 *gamut_volume_slabs_alloc(alwan_ctx *ctx, size_t bytes) {
+    return (alwan_f64 *)(ctx ? ctx->alloc_fn(bytes, sizeof(alwan_f64)) : ALWAN_ALLOC(bytes, sizeof(alwan_f64)));
+}
+
+static void gamut_volume_slabs_free(alwan_ctx *ctx, alwan_f64 *p) {
+    if (ctx) ctx->free_fn(p); else ALWAN_FREE(p);
+}
+
+static void gamut_volume_lattice_point(alwan_f64 out[3], alwan_f64 r, alwan_f64 g, alwan_f64 b,
+                                       alwan_mat3x3_f64 const *rgb_to_xyz,
+                                       alwan_xyz_f64 const *white,
+                                       alwan_gamut_volume_space target) {
+    alwan_vec3_f64 v, x;
+    alwan_xyz_f64 xyz;
+    v.v[0] = r; v.v[1] = g; v.v[2] = b;
+    alwan_mat3_mulv_f64(&x, rgb_to_xyz, &v);
+    xyz.x = x.v[0]; xyz.y = x.v[1]; xyz.z = x.v[2];
+    if (target == ALWAN_GAMUT_VOLUME_LAB) {
+        alwan_lab_f64 lab;
+        alwan_xyz_to_lab_f64(&lab, &xyz, white);
+        out[0] = lab.L; out[1] = lab.a; out[2] = lab.b;
+    } else if (target == ALWAN_GAMUT_VOLUME_OKLAB) {
+        alwan_oklab_f64 ok;
+        alwan_xyz_to_oklab_f64(&ok, &xyz);
+        out[0] = ok.L; out[1] = ok.a; out[2] = ok.b;
+    } else {
+        out[0] = xyz.x; out[1] = xyz.y; out[2] = xyz.z;
+    }
+}
+
+/* |det [a-o, b-o, c-o]| / 6: the volume of one tetrahedron. */
+static alwan_f64 gamut_volume_tetra(alwan_f64 const *o, alwan_f64 const *a, alwan_f64 const *b, alwan_f64 const *c) {
+    alwan_f64 const u0 = a[0] - o[0], u1 = a[1] - o[1], u2 = a[2] - o[2];
+    alwan_f64 const v0 = b[0] - o[0], v1 = b[1] - o[1], v2 = b[2] - o[2];
+    alwan_f64 const w0 = c[0] - o[0], w1 = c[1] - o[1], w2 = c[2] - o[2];
+    alwan_f64 const det = u0 * (v1 * w2 - v2 * w1) - u1 * (v0 * w2 - v2 * w0) + u2 * (v0 * w1 - v1 * w0);
+    return ALWAN_ABS(det) / ALWAN_LITERAL(6.0);
+}
+
+alwan_status alwan_gamut_volume_perceptual_f64(alwan_f64 *volume, alwan_rgb_space_desc_f64 const *space,
+                                               alwan_gamut_volume_space target, size_t n, alwan_ctx *ctx) {
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
+    alwan_xyz_f64 white;
+    alwan_f64 *slab0, *slab1, *lo, *hi;
+    alwan_f64 sum = ALWAN_LITERAL(0.0);
+    size_t m;
+    size_t i, j, k;
+    int status;
+
+    if (!volume || !space) return ALWAN_E_INVALID;
+    if (target != ALWAN_GAMUT_VOLUME_LAB && target != ALWAN_GAMUT_VOLUME_OKLAB &&
+        target != ALWAN_GAMUT_VOLUME_XYZ) {
+        return ALWAN_E_INVALID;
+    }
+    if (n == 0) n = ALWAN_GAMUT_VOLUME_DEFAULT_N;
+    if (n > 4096) return ALWAN_E_RANGE;
+    m = n + 1;   /* after the default: suite 18 caught this computed before it */
+    status = alwan_rgb_derive_matrices_f64(&rgb_to_xyz, &xyz_to_rgb, space);
+    if (status != ALWAN_OK) return status;
+    {
+        alwan_xyy_f64 w;
+        w.x = space->white_xy[0]; w.y = space->white_xy[1]; w.Y = ALWAN_LITERAL(1.0);
+        if (!(w.y > ALWAN_LITERAL(0.0))) return ALWAN_E_INVALID;
+        alwan_xyy_to_xyz_f64(&white, &w);
+    }
+
+    slab0 = gamut_volume_slabs_alloc(ctx, 2 * m * m * 3 * sizeof(alwan_f64));
+    if (!slab0) return ALWAN_E_NOMEM;
+    slab1 = slab0 + m * m * 3;
+
+    /* The lattice is walked one R-slab at a time: lo holds R = i / n, hi holds
+     * R = (i + 1) / n, and the cells between them are summed. */
+    for (j = 0; j < m; j++) {
+        for (k = 0; k < m; k++) {
+            gamut_volume_lattice_point(slab0 + (j * m + k) * 3, ALWAN_LITERAL(0.0),
+                                       (alwan_f64)j / (alwan_f64)n, (alwan_f64)k / (alwan_f64)n,
+                                       &rgb_to_xyz, &white, target);
+        }
+    }
+    lo = slab0;
+    hi = slab1;
+    for (i = 0; i < n; i++) {
+        alwan_f64 const r1 = (alwan_f64)(i + 1) / (alwan_f64)n;
+        for (j = 0; j < m; j++) {
+            for (k = 0; k < m; k++) {
+                gamut_volume_lattice_point(hi + (j * m + k) * 3, r1,
+                                           (alwan_f64)j / (alwan_f64)n, (alwan_f64)k / (alwan_f64)n,
+                                           &rgb_to_xyz, &white, target);
+            }
+        }
+        for (j = 0; j < n; j++) {
+            for (k = 0; k < n; k++) {
+                /* c<rgb>: the cell's corners, r from lo/hi, g by j, b by k */
+                alwan_f64 const *c000 = lo + (j * m + k) * 3;
+                alwan_f64 const *c010 = lo + ((j + 1) * m + k) * 3;
+                alwan_f64 const *c001 = lo + (j * m + k + 1) * 3;
+                alwan_f64 const *c011 = lo + ((j + 1) * m + k + 1) * 3;
+                alwan_f64 const *c100 = hi + (j * m + k) * 3;
+                alwan_f64 const *c110 = hi + ((j + 1) * m + k) * 3;
+                alwan_f64 const *c101 = hi + (j * m + k + 1) * 3;
+                alwan_f64 const *c111 = hi + ((j + 1) * m + k + 1) * 3;
+                /* Kuhn: the six monotone paths from c000 to c111, each a tetrahedron
+                 * with c000 and c111 and the path's two interior corners. */
+                sum += gamut_volume_tetra(c000, c100, c110, c111);
+                sum += gamut_volume_tetra(c000, c100, c101, c111);
+                sum += gamut_volume_tetra(c000, c010, c110, c111);
+                sum += gamut_volume_tetra(c000, c010, c011, c111);
+                sum += gamut_volume_tetra(c000, c001, c101, c111);
+                sum += gamut_volume_tetra(c000, c001, c011, c111);
+            }
+        }
+        { alwan_f64 *t = lo; lo = hi; hi = t; }
+    }
+    gamut_volume_slabs_free(ctx, slab0);
+    *volume = sum;
+    return ALWAN_OK;
+}
 #endif /* ALWAN_WITH_F64_FACADE */
 
 /* ----------------------------------------------------------------
@@ -1350,6 +1505,20 @@ static void rgb_space_desc_f32_to_f64(alwan_rgb_space_desc_f64 *out, alwan_rgb_s
         out->xyz_to_rgb.m[j] = (double)in->xyz_to_rgb.m[j];
     }
     out->has_matrices = in->has_matrices;
+}
+
+
+/* The gamut metrics stay f64-internal, as the note above says. */
+alwan_status alwan_gamut_volume_perceptual_f32(alwan_f32 *volume, alwan_rgb_space_desc_f32 const *space,
+                                               alwan_gamut_volume_space target, size_t n, alwan_ctx *ctx) {
+    alwan_rgb_space_desc_f64 tmp;
+    alwan_f64 v = 0.0;
+    int rc;
+    if (!space || !volume) return ALWAN_E_INVALID;
+    rgb_space_desc_f32_to_f64(&tmp, space);
+    rc = alwan_gamut_volume_perceptual_f64(&v, &tmp, target, n, ctx);
+    if (rc == ALWAN_OK) *volume = (alwan_f32)v;
+    return rc;
 }
 
 alwan_status alwan_gamut_volume_f32(alwan_f32 *volume,

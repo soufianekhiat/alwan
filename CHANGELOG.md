@@ -339,6 +339,25 @@
 
 ### Added
 
+- **`alwan_gamut_volume_perceptual_{T}`: the RGB cube's volume in Lab, Oklab or XYZ,
+  deterministically.** The header used to say a perceptual gamut volume "would require
+  Monte Carlo sampling". It does not: the image of the cube under a smooth injective map
+  has the volume of the integral of |det J|, and a tetrahedral mesh evaluates it. An n^3
+  lattice of RGB points is mapped into the target, each cell is cut into six tetrahedra
+  along its diagonal, and their volumes are summed. No hull, so a concave boundary is
+  measured as concave, and no random numbers, so two calls agree to the bit. For a linear
+  target it is exact at n = 1, reproducing `alwan_gamut_volume`'s |det M| to every digit;
+  in Lab and Oklab it converges as a mesh does, moving 3e-3 from n = 32 to 64 and 5e-4
+  from 64 to 96 on sRGB. Lab is taken relative to the space's own white. Memory is two
+  (n + 1)^2 slabs from the context's allocator or the default one.
+
+  Suite 18 pins it against colour-science's `RGB_colourspace_volume_MonteCarlo` at 1e7
+  samples on four D65 spaces, within four of that sampler's own sigmas: sRGB in Lab is
+  about 8.2e5 by both. Two things learned about that sampler are in the gendata script:
+  run in parallel it hands one `random_state` to every worker and came out 2% high, so it
+  is run single-process, which is also faster; and it is Lab only, so Oklab is pinned
+  against colour's conversion through an independent quadrature, and the test says so.
+
 - **Planar buffer forms for the twenty-one operations whose interleave form has no
   scalar behind it.** The ACES 1 and 2 output transforms, camera RGB to ACES2065-1, the
   Zhai 2018 adaptation, CLF apply, the DNG highlight blend, the four BT.2408 conversions,
