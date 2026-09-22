@@ -1830,6 +1830,15 @@ EXPORTS
     alwan_tonemap_global_f64
     alwan_tonemap_mantiuk2006_f32
     alwan_tonemap_mantiuk2006_f64
+    alwan_tonescale_grade_f32
+    alwan_tonescale_grade_f32_map_interleave
+    alwan_tonescale_grade_f32_map_planar
+    alwan_tonescale_grade_f64
+    alwan_tonescale_grade_f64_map_interleave
+    alwan_tonescale_grade_f64_map_planar
+    alwan_tonescale_grade_params_init
+    alwan_tonescale_grade_weights_f32
+    alwan_tonescale_grade_weights_f64
     alwan_ucs_to_xyz_f32
     alwan_ucs_to_xyz_f32_map_interleave
     alwan_ucs_to_xyz_f32_map_planar

@@ -128,6 +128,44 @@ alwan_aces_lmt_apply_f64(&graded, &acescg_pixel, &cdl);
 
 ---
 
+## Tonescale regions
+
+```c
+alwan_tonescale_grade_params p;
+alwan_tonescale_grade_params_init(&p);          /* pivots 0.1 0.4 0.5 0.9, slopes -10 -5 5 10 */
+p.offset_b[0] = -10; p.offset_b[1] = 10;        /* darkest cooler, dark warmer */
+alwan_tonescale_grade_f64_map_interleave(out, 0, in, 0, n, &display_p3, &p);
+```
+
+Canham, Punnappurath and Brown, "Adaptive Color Grading" (arXiv:2609.21169). The
+tonescale is split into four overlapping regions, darkest, dark, light and lightest, by
+each pixel's intensity, the mean of its encoded RGB, and each region carries a CIELAB
+a*b* offset. Membership is `clip(1 + slope (intensity - pivot), 0, 1)`, which is 1 on
+the region's own side of its pivot and falls to 0 at |slope| per unit of intensity; the
+paper's slopes are -10 and -5 for the dark pair and 5 and 10 for the light pair. The
+regions apply in that order, each on the previous one's output:
+
+    v = v + w (encode(rgb(lab(decode(v)) + (0, a, b))) - v)
+
+with the Lab white the space's own. The running value is held in [0, 1] between
+regions, not after the last: the value is display-encoded, and the authors' tables
+take their input on that domain and return their output as it is, so a region that
+pushes a channel past it hands the next region the clamped value (without the clamp a
+light pixel's -10 then +10 on b* cancel here where they do not there, 0.03 on blue
+near white), and the last region's output may sit just outside [0, 1] for the caller
+to clip. Input and output are display-encoded RGB in the descriptor's space; the paper
+grades Display P3. `alwan_tonescale_grade_weights_{T}`
+returns the four memberships at one intensity, for a UI or a histogram.
+
+What the paper contributes is the pivots: a K-nearest-neighbours predictor over frame
+histograms, trained on 1,564 annotated frames, so a grade carries across a project as the
+regions move with the content. Those annotations and the authors' code carry no licence,
+so nothing of them ships and the pivots are the caller's, from a colourist or a
+predictor of their own; the operator is implemented from the paper. Suite 179 holds it to
+the authors' code, called as an oracle at generation time: their implementation evaluates
+each region on a 17^3 lookup table and composes the tables, so the reference is run on a
+129-node table and the tolerance is what its interpolation leaves.
+
 ## Color Matrix
 
 ### alwan_color_matrix_apply_{T}

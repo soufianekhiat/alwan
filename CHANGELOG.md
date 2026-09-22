@@ -360,6 +360,17 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **Tonescale-region grading (roadmap 3.9).** `alwan_tonescale_grade_{T}` and its
+  interleave and planar maps: Canham, Punnappurath and Brown's four overlapping tonescale
+  regions by the pixel's intensity, each with a CIELAB a*b* offset, applied in sequence on
+  display-encoded RGB in a descriptor's space; `alwan_tonescale_grade_params` carries the
+  pivots, slopes and offsets, `_params_init` the paper's defaults, and
+  `alwan_tonescale_grade_weights_{T}` the four memberships at an intensity. The weight and
+  the blend are cores. Implemented from the paper; the authors' code has no licence, so
+  it is an oracle only (suite 179, on a 129-node table). The paper's threshold predictor
+  needs its annotated frames, which cannot ship, so the pivots are the caller's.
+  `docs/api/color-correction.md`.
+
 - **The film profiles read against a second, independent digitisation of the same
   datasheets.** `OwlMightyCh/film-scan-calibration` (data CC-BY-4.0) is registered as a
   validation source and `alwan_dev/tools/film_cross_check.py` runs the 14 stocks both

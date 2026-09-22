@@ -6984,6 +6984,55 @@ void alwan_printer_lights_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const 
 /* Color Correction Batch Map Functions */
 alwan_status alwan_lgg_apply_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_rgb_f32 const *lift, alwan_rgb_f32 const *gamma, alwan_rgb_f32 const *gain);
 alwan_status alwan_lgg_apply_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain);
+
+/* ----------------------------------------------------------------
+ * Tonescale-region grading
+ *
+ * Canham, Punnappurath and Brown, "Adaptive Color Grading" (arXiv:2609.21169):
+ * the tonescale split into four overlapping regions, darkest, dark, light and
+ * lightest, by the pixel's intensity (the mean of its encoded RGB), each
+ * region carrying a CIELAB a*b* offset. A region's membership is
+ * clip(1 + slope (intensity - pivot), 0, 1): 1 on its own side of the pivot,
+ * falling to 0 at |slope| per unit of intensity. The regions apply in that
+ * order, each on the previous one's output, as
+ *   v = v + w (encode(rgb(lab(decode(v)) + offset)) - v)
+ * with the Lab white the space's own; the running value is held in [0, 1]
+ * between regions, not after the last, as the authors' tables take their
+ * input on that domain and return their output as it is (without the clamp a
+ * light pixel's -10 then +10 on b* cancel where they should not). Input and
+ * output are display-encoded RGB
+ * in `space` (the paper grades Display P3); the pixel is evaluated, where the
+ * authors' code evaluates a 17^3 table, and suite 179 holds the two to the
+ * table's interpolation. The paper's thresholds come from a KNN over frame
+ * histograms trained on annotations that cannot ship (no licence), so the
+ * pivots are the caller's: a colourist's, or a predictor of their own.
+ * The weight and the blend are cores (core/alwan_tonescale_grade_core.h).
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_f64 pivot[4];      /* darkest, dark, light, lightest; on the [0, 1] intensity scale */
+    alwan_f64 slope[4];      /* -10, -5, 5, 10 in the paper: negative for the dark pair, positive for the light */
+    alwan_f64 offset_a[4];   /* CIELAB a* offset per region */
+    alwan_f64 offset_b[4];   /* CIELAB b* offset per region */
+} alwan_tonescale_grade_params;
+
+/* The paper's pivots and slopes, zero offsets (the identity). */
+void alwan_tonescale_grade_params_init(alwan_tonescale_grade_params *params);
+
+/* The four memberships at one intensity. */
+alwan_status alwan_tonescale_grade_weights_f64(alwan_f64 weights_out[4], alwan_f64 intensity, alwan_tonescale_grade_params const *params);
+alwan_status alwan_tonescale_grade_weights_f32(alwan_f32 weights_out[4], alwan_f32 intensity, alwan_tonescale_grade_params const *params);
+
+/* One pixel, and buffers. Evaluation runs in double on both paths. Strides in
+ * bytes, 0 packed. ALWAN_E_INVALID for a NULL, a parameter that is not finite,
+ * a descriptor whose transfer functions are unknown or whose white has no y. */
+alwan_status alwan_tonescale_grade_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_rgb_space_desc_f64 const *space, alwan_tonescale_grade_params const *params);
+alwan_status alwan_tonescale_grade_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_rgb_space_desc_f32 const *space, alwan_tonescale_grade_params const *params);
+alwan_status alwan_tonescale_grade_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_tonescale_grade_params const *params);
+alwan_status alwan_tonescale_grade_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_tonescale_grade_params const *params);
+/* Planar twin: the scalar per pixel over three planes under one stride. */
+alwan_status alwan_tonescale_grade_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_tonescale_grade_params const *params);
+alwan_status alwan_tonescale_grade_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_tonescale_grade_params const *params);
 alwan_status alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain);
 alwan_status alwan_color_matrix_apply_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_mat3x3_f32 const *matrix);
 alwan_status alwan_color_matrix_apply_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_mat3x3_f64 const *matrix);
