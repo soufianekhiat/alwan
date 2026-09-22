@@ -1248,11 +1248,13 @@ ALWAN_INLINE alwan_simd alwan__pq_eotf_simd(alwan_simd v) {
     alwan_simd num = alwan_simd_sub(Ep, c1);
     num = alwan_simd_select(alwan_simd_cmplt(num, zero), zero, num);
     alwan_simd den = alwan_simd_sub(c2, alwan_simd_mul(c3, Ep));
-    /* Avoid div-by-zero: if |den| < eps, result is 0 */
-    alwan_simd const eps = alwan_simd_set1((alwan_simd_lane)ALWAN_MAP_PQ_DIV_GUARD);
-    alwan_simd_mask safe = alwan_simd_cmpgt(alwan_simd_abs(den), eps);
-    alwan_simd ratio = alwan_simd_select(safe, alwan_simd_div(num, den), zero);
-    ratio = alwan_simd_select(alwan_simd_cmplt(ratio, zero), zero, ratio);
+    /* No guard on the denominator and no clamp on the ratio, on purpose: the
+     * scalar alwan_pq_eotf has neither. Until 2026-09-22 this returned 0 for
+     * an encoded value above PQ's domain while the scalar tail of the same
+     * buffer returned NaN, so alwan_eotf_apply's answer for 4.0 depended on
+     * which lane it fell in. Suite 34 pins the lanes and the tail agreeing.
+     * The same fix is in alwan_map_simd_helpers.inc's copy of this kernel. */
+    alwan_simd ratio = alwan_simd_div(num, den);
     return alwan_simd_mul(ten_k, alwan_simd_pow(ratio, m1_inv));
 }
 #endif /* ALWAN_DETERMINISTIC */

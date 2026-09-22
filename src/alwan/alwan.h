@@ -1139,12 +1139,35 @@ alwan_status alwan_css_gamut_map_planar_ex(void *out0, size_t out_stride, void *
 
 /* Apply Opto-Electronic Transfer Function (linear -> encoded)
  * tf: transfer function to apply
+ * Outside [0, 1] the curves differ, and the difference is the contract
+ * (measured 2026-09-22, pinned in suite 34):
+ *   ALWAN_TF_LINEAR   passes any value through, both directions.
+ *   ALWAN_TF_SRGB     is extended by its own two segments: below zero the
+ *                     linear toe continues (12.92 x, so -0.5 encodes to -6.46
+ *                     and -0.1 decodes to -0.0077), above 1 the power curve
+ *                     continues (4.0 encodes to 1.82), and a round trip
+ *                     returns the value either side. That is CLF's
+ *                     monCurveFwd and OpenColorIO's default negative style.
+ *                     It is NOT the mirrored form, sign(x) f(|x|), which CLF
+ *                     names monCurveMirrorFwd and which -0.5 would encode to
+ *                     -0.74; alwan does not offer that through this enum.
+ *   the pure gammas, PQ and HLG clamp a negative input to 0 and continue
+ *                     above 1 by their own formula. PQ's EOTF is defined on
+ *                     [0, 1] only: an encoded value above 1 decodes to no
+ *                     luminance, NaN under the libm build and an arbitrary
+ *                     finite number under the deterministic one (its pow is
+ *                     a polynomial for a positive base), the same in every
+ *                     lane of a buffer. Clamp on the way in if that is not
+ *                     wanted.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if function not supported */
 alwan_status alwan_oetf_apply_f64(alwan_f64 *encoded_out, size_t out_stride, alwan_f64 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf);
 alwan_status alwan_oetf_apply_f32(alwan_f32 *encoded_out, size_t out_stride, alwan_f32 const *linear_in, size_t in_stride, size_t count, alwan_transfer_function tf);
 
 /* Apply Electro-Optical Transfer Function (encoded -> linear)
  * tf: transfer function to apply
+ * Outside [0, 1]: the contract stated above alwan_oetf_apply applies in this
+ * direction too; sRGB decodes 1.5 to 2.54 and -0.1 to -0.0077, PQ decodes an
+ * encoded value above 1 to NaN, and the rest clamp a negative input to 0.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if function not supported */
 alwan_status alwan_eotf_apply_f64(alwan_f64 *linear_out, size_t out_stride, alwan_f64 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf);
 alwan_status alwan_eotf_apply_f32(alwan_f32 *linear_out, size_t out_stride, alwan_f32 const *encoded_in, size_t in_stride, size_t count, alwan_transfer_function tf);

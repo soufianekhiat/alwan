@@ -359,10 +359,14 @@ ALWAN_INLINE alwan_map_simd ALWAN_MAP_NAME(alwan__pq_eotf_simd)(alwan_map_simd v
     alwan_map_simd num = alwan_map_simd_sub(Ep, c1);
     num = alwan_map_simd_select(alwan_map_simd_cmplt(num, zero), zero, num);
     alwan_map_simd den = alwan_map_simd_sub(c2, alwan_map_simd_mul(c3, Ep));
-    alwan_map_simd const eps = alwan_map_simd_set1((alwan_map_lane)ALWAN_MAP_PQ_DIV_GUARD);
-    alwan_map_simd_mask safe = alwan_map_simd_cmpgt(alwan_map_simd_abs(den), eps);
-    alwan_map_simd ratio = alwan_map_simd_select(safe, alwan_map_simd_div(num, den), zero);
-    ratio = alwan_map_simd_select(alwan_map_simd_cmplt(ratio, zero), zero, ratio);
+    /* No guard on the denominator and no clamp on the ratio, on purpose:
+     * the scalar alwan_pq_eotf has neither. Until 2026-09-22 this path
+     * returned 0 for an encoded value above PQ's domain, where the ratio
+     * goes negative, while the scalar tail of the same buffer returned NaN,
+     * so a map's answer for 4.0 depended on which lane the value fell in
+     * (suite 34 pins the two agreeing). NaN is the honest answer for a
+     * signal PQ does not define, and it is the scalar's. */
+    alwan_map_simd ratio = alwan_map_simd_div(num, den);
     return alwan_map_simd_mul(ten_k, alwan_map_simd_pow(ratio, m1_inv));
 }
 

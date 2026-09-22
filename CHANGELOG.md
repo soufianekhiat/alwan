@@ -339,6 +339,29 @@
 
 ### Added
 
+- **PQ's EOTF gave a different answer for the same value depending on where it sat in
+  the buffer.** In a fast build, `alwan_eotf_apply_{T}` with `ALWAN_TF_PQ` runs four
+  lanes through a SIMD kernel and the remainder through the scalar. For an encoded value
+  above PQ's domain (4.0, say), the scalar returns NaN, since the ratio under the final
+  power goes negative and no luminance is right for it; the SIMD kernel clamped that
+  ratio to zero and returned 0. So a 9-element buffer with 4.0 at positions 0 and 8
+  came back 0 at one end and NaN at the other. Both copies of the kernel (the one the
+  generic apply uses and the one the ICtCp maps use) now do what the scalar does, and
+  suite 34 pins the lanes and the tail agreeing. In-domain values were never affected;
+  a determinism build was never affected either, since its lanes already ran the
+  scalar. OUTPUT CHANGED for PQ-encoded input above 1 on the SIMD lanes only: NaN
+  where it was 0.
+
+- **What every transfer curve does outside [0, 1] is now stated and pinned.** sRGB
+  continues its linear toe below zero (12.92 x, so -0.5 encodes to -6.46) and its power
+  curve above one, and a round trip returns the value either side; that is CLF's
+  `monCurveFwd` and OpenColorIO's default, and NOT the mirrored `monCurveMirrorFwd`
+  (which -0.5 would encode to -0.74), which alwan does not offer through the enum. The
+  pure gammas, PQ and HLG encode a negative input as they encode zero (for PQ that is
+  c1^m2 = 7.3e-7, not 0) and decode a negative encoded value to 0. Suite 34. Nothing
+  changed here but the header and the test; the first draft of the test assumed the
+  mirrored form, failed, and that is how the contract got written down.
+
 - **`alwan_interop_query` and `alwan_interop_query_id`: what the interop tables know
   about a space, as fields.** A UI or a file writer that has to decide, rather than look
   up one string, gets the formatted ID, the Forum's display-referred ID where one is
