@@ -593,10 +593,11 @@ alwan_status alwan_oklch_to_rgb_{T}(alwan_rgb_{T} *rgb,
 inherits the missing adaptation above.
 
 **Hue units:** the core hue is `atan2(b, a)` in **radians** on `[-pi, pi]`
-(`alwan_oklab_core.inc:98`). A default build applies `h = (h + pi) / 2pi` and
-returns `[0, 1]`; the inverse applies `h = h * 2pi - pi` and accepts `[0, 1]`
-(`ALWAN_NORM_OKLCH` / `ALWAN_DENORM_OKLCH`, `alwan_platform.h:1201-1202`). With
-`ALWAN_NORMALIZE_RANGES=0` both use radians on `[-pi, pi]`. **Degrees are never
+(`alwan_oklab_core.inc:98`). A normalised build returns `h / pi` on `[-1, 1]`,
+the signed range scaled by its bound, and the inverse multiplies by `pi`
+(`ALWAN_NORM_OKLCH` / `ALWAN_DENORM_OKLCH` in `alwan_platform.h`). Until 3.0.0 the
+normalised form was `(h + pi) / 2pi`. With `ALWAN_NORMALIZE_RANGES=0` both use
+radians on `[-pi, pi]`. **Degrees are never
 accepted.** `C` is unbounded. Neither direction wraps or range-checks `h`.
 
 ---
@@ -613,9 +614,9 @@ them.
 
 > **Three hue conventions, three formulas, one output range.** LCh(ab) and
 > LCh(uv) hue is **degrees**, folded to `[0, 360)`, normalized as `h / 360`.
-> Oklch hue is **radians** on `[-pi, pi]`, normalized as `(h + pi) / 2pi`. In a
-> default build all three come back on `[0, 1]`, from different native units and
-> by different formulas. With `ALWAN_NORMALIZE_RANGES=0` they come back in their
+> Oklch hue is **radians** on `[-pi, pi]`, normalized as `h / pi` on `[-1, 1]`.
+> In a normalised build each is divided by the bound of its range, so LCh comes
+> back on `[0, 1)` and Oklch on `[-1, 1]`, with `+a` at 0 in both. With `ALWAN_NORMALIZE_RANGES=0` they come back in their
 > native units, and the inverses then refuse the other convention.
 
 ### alwan_xyz_to_lch_{T} / alwan_lch_to_xyz_{T}
@@ -660,7 +661,7 @@ void alwan_oklch_to_xyz_{T}(alwan_xyz_{T} *xyz, alwan_oklch_{T} const *oklch);
 
 **No white point parameter.** The input XYZ is assumed already D65-relative and
 nothing verifies or adapts it; the output XYZ is D65-relative. Hue is radians
-`[-pi, pi]` in the core and `[0, 1]` in a default build, by `(h + pi) / 2pi`.
+`[-pi, pi]` in the core and `h / pi` on `[-1, 1]` in a normalised build.
 
 ---
 

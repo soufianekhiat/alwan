@@ -148,7 +148,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_oklab_to_oklch, _map_interleave)(alwan_map_l
             c0[i] = (alwan_map_lane)r.L; c1[i] = (alwan_map_lane)r.C; c2[i] = (alwan_map_lane)r.h;
         }
 
-        ALWAN_MAP_P_NORM_AFFINE(c2, tile, 0.15915494309189533577, 0.5);
+        ALWAN_MAP_P_NORM_MUL(c2, tile, 0.31830988618379067154);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(oklch_out, processed, out_stride, c0, c1, c2, tile);
         processed += tile;
     }
@@ -176,7 +176,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_oklch_to_oklab, _map_interleave)(alwan_map_l
         if (tile > ALWAN_MAP_TILE_PIXELS) tile = ALWAN_MAP_TILE_PIXELS;
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, oklch_in, processed, in_stride, tile);
-        ALWAN_MAP_P_NORM_AFFINE(c2, tile, 6.28318530717958647692, -3.14159265358979323846);
+        ALWAN_MAP_P_NORM_MUL(c2, tile, 3.14159265358979323846);
 
         size_t i = 0;
         for (; i + W <= tile; i += W) {
@@ -279,7 +279,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_oklab_to_oklch, _map_planar)(alwan_map_lane 
             c0[i] = (alwan_map_lane)r.L; c1[i] = (alwan_map_lane)r.C; c2[i] = (alwan_map_lane)r.h;
         }
 
-        ALWAN_MAP_P_NORM_AFFINE(c2, tile, 0.15915494309189533577, 0.5);
+        ALWAN_MAP_P_NORM_MUL(c2, tile, 0.31830988618379067154);
         ALWAN_MAP_NAME(alwan__store_tile_planar3)(out_ch0, out_ch1, out_ch2, processed, out_stride, c0, c1, c2, tile);
         processed += tile;
     }
@@ -311,7 +311,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_oklch_to_oklab, _map_planar)(alwan_map_lane 
         if (tile > ALWAN_MAP_TILE_PIXELS) tile = ALWAN_MAP_TILE_PIXELS;
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_planar3)(c0, c1, c2, in_ch0, in_ch1, in_ch2, processed, in_stride, tile);
-        ALWAN_MAP_P_NORM_AFFINE(c2, tile, 6.28318530717958647692, -3.14159265358979323846);
+        ALWAN_MAP_P_NORM_MUL(c2, tile, 3.14159265358979323846);
 
         size_t i = 0;
         for (; i + W <= tile; i += W) {

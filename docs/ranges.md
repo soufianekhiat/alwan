@@ -108,7 +108,7 @@ are reference CSVs written for native ranges do not, and are not meant to.
 |--------|----------------------------|----------------------------------------------|
 | RGB / HSV / HSL / CMY-like spaces | already bounded near `[0, 1]` | unchanged unless a channel has a different native bound |
 | CIE Lab / Luv cylindrical forms | `L` in `[0, 100]`, hue often in degrees | `L` and finite hue channels mapped to `[0, 1]` |
-| Oklch / JzCzhz / IPTch / HCL | hue stored as radians | hue mapped to `[0, 1]` |
+| Oklch / JzCzhz / IPTch / HCL | hue stored as radians `[-pi, pi]` | hue scaled by its bound, `[-1, 1]` |
 | CAM correlates | lightness in `[0, 100]`, hue in degrees, some `H` channels in `[0, 400]` | bounded lightness and hue-like channels mapped to `[0, 1]` |
 | YCbCr / YcCbcCrc | luma bounded, chroma already centred on `0.5` in `[0, 1]` | unchanged; normalisation is a no-op |
 | YCoCg | luma bounded, chroma signed in `[-0.5, 0.5]` | chroma shifted by `+0.5` into `[0, 1]` |
@@ -169,15 +169,15 @@ Notes:
 | Space | Native range shape | Public form with normalization enabled |
 |-------|--------------------|----------------------------------------|
 | `alwan_oklab_*` | `L` lightness-like, native ~`[0, 1]`; `a` / `b` signed, native ~`[-0.4, 0.4]` | unchanged; Oklab has **no** normalization macro, so even `L` stays native (it is already ~`[0, 1]`) |
-| `alwan_oklch_*` | `L` near `[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | `h` maps to `[0, 1]`; `L` remains `[0, 1]` |
+| `alwan_oklch_*` | `L` near `[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | `h` becomes `h / pi` on `[-1, 1]`; `L` remains `[0, 1]` |
 | `alwan_jzazbz_*` | `Jz` lightness-like (native ~`[0, 0.17]`), `Az` / `Bz` signed | unchanged; no normalization macro; `Jz` stays native |
-| `alwan_jzczhz_*` | `Jz` native ~`[0, 0.17]`, `Cz` unbounded, `hz` in radians `[-pi, pi]` | only `hz` maps to `[0, 1]`; `Jz` and `Cz` unchanged |
+| `alwan_jzczhz_*` | `Jz` native ~`[0, 0.17]`, `Cz` unbounded, `hz` in radians `[-pi, pi]` | only `hz` changes, to `hz / pi` on `[-1, 1]`; `Jz` and `Cz` unchanged |
 | `alwan_ictcp_*` | intensity-like `I`, centered opponent `Ct` / `Cp` | unchanged; no normalization macro; all channels native |
 | `alwan_ipt_*` | `I` native ~`[0, 1]`, `P` / `T` signed | unchanged; no normalization macro; `I` stays native |
-| `alwan_iptch_*` | `I` native ~`[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | only `h` maps to `[0, 1]`; `I` and `C` unchanged |
+| `alwan_iptch_*` | `I` native ~`[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | only `h` changes, to `h / pi` on `[-1, 1]`; `I` and `C` unchanged |
 | `alwan_igpgtg_*` | intensity-like `Ig`, signed `Pg` / `Tg` | unchanged; no normalization macro; all channels native |
 | `alwan_icacb_*` | intensity / chromatic axes, signed | unchanged; no normalization macro; all channels native |
-| `alwan_hcl_*` | `H` in radians `[-pi, pi]`, `C` unbounded, `L` bounded | `H` maps to `[0, 1]`; `L` remains bounded |
+| `alwan_hcl_*` | `H` in radians `[-pi, pi]`, `C` unbounded, `L` bounded | `H` becomes `H / pi` on `[-1, 1]`; `L` remains bounded |
 | `alwan_ihls_*` | `H` in radians `[0, 2pi)`, `L` and `S` bounded | `H` maps to `[0, 1]`; `L` and `S` unchanged |
 | `alwan_hlc_*` | `H` in **degrees** `[0, 360)`, `L` `[0, 100]`, `C` unbounded | `H` and `L` map to `[0, 1]`; `C` unchanged |
 
@@ -186,6 +186,11 @@ Notes:
 - The cylindrical modern spaces are where hue-unit confusion happens most often.
 - `Oklch`, `JzCzhz`, `IPTch`, and `HCL` do not use degrees natively. `HLC` does,
   despite the similar name: it is `LCH` with the channels reordered.
+- With normalisation on, a hue is divided by the bound of its natural range and
+  keeps its sign: degrees in `[0, 360)` give `[0, 1)`, radians in `[0, 2pi)`
+  give `[0, 1)`, and radians in `[-pi, pi]` give `[-1, 1]`. The `+a` axis is 0
+  in every space. Until 3.0.0 the four signed radian spaces used
+  `(h + pi) / 2pi`, which put `+a` at 0.5.
 
 ---
 
@@ -349,7 +354,7 @@ alwan_video_encode_f64(
 | normalized `[0, 1]` | `HSV`, `HSL`, `HSP`, `HSPLog`, `HSY`, `HWB` |
 | degrees `[0, 360)` | `LCh`, `LChuv`, many CAM hue channels |
 | degrees `[0, 400]` | CAM hue quadrature `H` channels |
-| radians `[-pi, pi]` | `Oklch`, `JzCzhz`, `IPTch`, `HCL` |
+| radians `[-pi, pi]` | `Oklch`, `JzCzhz`, `IPTch`, `HCL` (normalised: `h / pi` on `[-1, 1]`) |
 | radians `[0, 2pi)` | `IHLS`, `Nayatani95` hue-like angle |
 
 ---

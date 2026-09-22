@@ -27,9 +27,9 @@ means the same thing whether or not `ALWAN_NORMALIZE_RANGES` is set:
 | Lightness | [0, 1]: HSV V, Oklab L, or L* / 100 |
 | Chroma | its own scale: HSV S in 0..1, Oklab C about 0..0.4, C*ab about 0..150 |
 
-The library's normalised OkLCh hue is `(h + pi) / 2pi`, half a turn away from this
-convention and from normalised CIE LCh (`h / 360`). The selection API does not inherit
-that offset: a hue of 0 is the +a axis in all three models.
+A hue of 0 is the +a axis in all three models. A normalised CIE LCh hue
+(`h / 360`) is already in turns. A normalised OkLCh hue is `h / pi` on `[-1, 1]`
+(see [ranges](../ranges.md)): half of it, plus 1 when negative, is the turn.
 
 Soft edges are linear: 1 inside the range (or below the tolerance), falling to 0 over
 `softness` outside it. Softness 0 is a hard edge.

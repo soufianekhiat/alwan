@@ -2,6 +2,16 @@
 
 ### Fixed: output differs
 
+- **The HCL inverse map returned the wrong red channel for pixels with R == G.** Its
+  vector kernel (every non-det build with a SIMD width above 1) formed `tan = sin / cos`
+  and replaced a cosine below epsilon by 1. At the sector edges H = pi/3 and -2pi/3,
+  exactly where R == G, the tangent has a pole and the channel's limit is Max (or Min);
+  the replacement gave the other extreme: `(0.1, 0.1, 0.5)` came back as
+  `(0.5, 0.1, 0.5)`, 0.4 off, while the scalar `alwan_hcl_to_rgb_{T}` was right. The four
+  pole-bearing ratios are now written over sin and cos, so the limit comes out of the
+  arithmetic; interleave and planar maps agree with the scalar to 2.2e-16. Suite 182
+  holds them at and beside both edges in f64 and f32.
+
 - **`ALWAN_TONEMAP_REINHARD2004`'s global adaptation level takes the paper's arithmetic
   means.** `I_g = c mean(channel) + (1 - c) mean(L)`, which `light_adaptation` below 1
   mixes into every pixel's adaptation. alwan took the log average of luminance there,
@@ -264,6 +274,17 @@
   0.0010 and 0.0058, which closes the item listed as known in 2.0.0.
 
 ### Breaking
+
+- **Normalised signed radian hues are `h / pi` on `[-1, 1]`** (`ALWAN_NORMALIZE_RANGES`
+  builds only; the default build is unchanged). OkLCh `h`, JzCzhz `hz`, IPTch `h` and HCL
+  `H` have the natural range `[-pi, pi]` and normalised as `(h + pi) / 2pi`, which put
+  the +a axis at 0.5, half a turn from where every other normalised hue has it. A signed
+  range is now scaled by its bound and keeps its sign, as the rest of the library
+  normalises: +a is 0, +b is 0.5, -a is 1 (or -1 from below the axis), -b is -0.5. The
+  inverse is a multiply by pi. Scalars, interleave and planar maps and the
+  `ALWAN_NORM_*` / `ALWAN_DENORM_*` macros changed together, and a scalar and its map
+  agree bit for bit. A stored hue converts with `h_new = 2 * h_old - 1`. Suite 182 pins
+  the cardinal directions in both builds.
 
 - **The ACES 1.x tone curve method is a parameter, and the process-wide global is gone.**
   `alwan_set_aces_interp` / `alwan_get_aces_interp` stored the method in a non-atomic

@@ -1904,8 +1904,9 @@ alwan_status alwan_pattern_render_planar_f64(alwan_f64 *r_out, size_t row_stride
  * hue is a fraction of a turn in [0, 1) measured from the +a axis (HSV's own
  * convention), lightness is in [0, 1] (HSV V, Oklab L, L* / 100), and chroma keeps
  * its scale, which ALWAN_NORMALIZE_RANGES leaves alone too (HSV S in 0..1, Oklab C
- * about 0..0.4, C*ab about 0..150). Note that the library's normalised OkLCh hue
- * is (h + pi) / 2pi, half a turn from this and from normalised CIE LCh, h / 360.
+ * about 0..0.4, C*ab about 0..150). A normalised CIE LCh hue (h / 360) is
+ * already in turns; a normalised OkLCh hue is h / pi on [-1, 1], so half of it,
+ * plus 1 when negative, is the turn.
  *
  * Soft edges are linear: 1 inside the range (or below the tolerance), falling to
  * 0 over `softness` outside it; softness 0 is a hard edge. Strides are bytes and

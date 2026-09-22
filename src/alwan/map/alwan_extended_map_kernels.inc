@@ -1819,27 +1819,35 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel)(alwan_map_lane *
                     zero),
                 zero);
 
-            /* Sector 0 [0,60): tan(3H/2) */
+            /* The tangents of sectors 0, 1, 4 and 5 have a pole at a sector edge
+             * (H = pi/3 and -2pi/3, every pixel with R == G), where the channel
+             * tends to Max or Min. Each ratio is written over sin and cos, so the
+             * limit comes out of the arithmetic; a tangent with its cosine
+             * replaced by 1 there returned the other extreme. Sectors 2 and 3
+             * keep the tangent: their cosine stays above cos(pi/4). */
+
+            /* Sector 0 [0,60): tan(3H/2); g0 = (Max s + Min c) / (s + c) */
             alwan_map_simd arg0 = alwan_map_simd_mul(three_half, H);
             alwan_map_simd s0 = alwan_map_simd_sin(arg0), c0_ = alwan_map_simd_cos(arg0);
-            alwan_map_simd safe_c0 = alwan_map_simd_select(alwan_map_simd_cmpgt(alwan_map_simd_abs(c0_), eps), c0_, one);
-            alwan_map_simd t0 = alwan_map_simd_div(s0, safe_c0);
+            alwan_map_simd den0 = alwan_map_simd_add(s0, c0_);
+            alwan_map_simd safe_den0 = alwan_map_simd_select(alwan_map_simd_cmpgt(alwan_map_simd_abs(den0), eps), den0, one);
             alwan_map_simd r0 = Max;
-            alwan_map_simd g0 = alwan_map_simd_div(alwan_map_simd_add(alwan_map_simd_mul(Max, t0), Min),
-                                            alwan_map_simd_add(one, t0));
+            alwan_map_simd g0 = alwan_map_simd_div(alwan_map_simd_add(alwan_map_simd_mul(Max, s0), alwan_map_simd_mul(Min, c0_)),
+                                            safe_den0);
             alwan_map_simd b0 = Min;
 
             /* Sectors 1,2 [60,180): tan(3(H-pi)/4) */
             alwan_map_simd arg1 = alwan_map_simd_mul(three_quarter, alwan_map_simd_sub(H, pi));
             alwan_map_simd s1 = alwan_map_simd_sin(arg1), c1_ = alwan_map_simd_cos(arg1);
             alwan_map_simd safe_c1 = alwan_map_simd_select(alwan_map_simd_cmpgt(alwan_map_simd_abs(c1_), eps), c1_, one);
-            alwan_map_simd t1 = alwan_map_simd_div(s1, safe_c1);
-            alwan_map_simd_mask t1_ok = alwan_map_simd_cmpgt(alwan_map_simd_abs(t1), eps);
-            alwan_map_simd safe_t1 = alwan_map_simd_select(t1_ok, t1, one);
+            alwan_map_simd t1 = alwan_map_simd_div(s1, safe_c1);   /* sector 2 only */
+            alwan_map_simd_mask s1_ok = alwan_map_simd_cmpgt(alwan_map_simd_abs(s1), eps);
+            alwan_map_simd safe_s1 = alwan_map_simd_select(s1_ok, s1, one);
 
-            alwan_map_simd r1 = alwan_map_simd_select(t1_ok,
+            /* r1 = (Max (1 + t) - Min) / t = (Max (c + s) - Min c) / s */
+            alwan_map_simd r1 = alwan_map_simd_select(s1_ok,
                 alwan_map_simd_div(alwan_map_simd_sub(
-                    alwan_map_simd_mul(Max, alwan_map_simd_add(one, t1)), Min), safe_t1),
+                    alwan_map_simd_mul(Max, alwan_map_simd_add(c1_, s1)), alwan_map_simd_mul(Min, c1_)), safe_s1),
                 Max);
             alwan_map_simd g1 = Max;
             alwan_map_simd b1 = Min;
@@ -1854,9 +1862,9 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel)(alwan_map_lane *
             alwan_map_simd arg3 = alwan_map_simd_mul(three_quarter, H);
             alwan_map_simd s3 = alwan_map_simd_sin(arg3), c3_ = alwan_map_simd_cos(arg3);
             alwan_map_simd safe_c3 = alwan_map_simd_select(alwan_map_simd_cmpgt(alwan_map_simd_abs(c3_), eps), c3_, one);
-            alwan_map_simd t3 = alwan_map_simd_div(s3, safe_c3);
-            alwan_map_simd_mask t3_ok = alwan_map_simd_cmpgt(alwan_map_simd_abs(t3), eps);
-            alwan_map_simd safe_t3 = alwan_map_simd_select(t3_ok, t3, one);
+            alwan_map_simd t3 = alwan_map_simd_div(s3, safe_c3);   /* sector 3 only */
+            alwan_map_simd_mask s3_ok = alwan_map_simd_cmpgt(alwan_map_simd_abs(s3), eps);
+            alwan_map_simd safe_s3 = alwan_map_simd_select(s3_ok, s3, one);
 
             alwan_map_simd r3 = Max;
             alwan_map_simd g3 = Min;
@@ -1864,9 +1872,10 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel)(alwan_map_lane *
                 alwan_map_simd_mul(Min, alwan_map_simd_add(one, t3)),
                 alwan_map_simd_mul(Max, t3));
 
-            alwan_map_simd r4 = alwan_map_simd_select(t3_ok,
+            /* r4 = (Min (1 + t) - Max) / t = (Min (c + s) - Max c) / s */
+            alwan_map_simd r4 = alwan_map_simd_select(s3_ok,
                 alwan_map_simd_div(alwan_map_simd_sub(
-                    alwan_map_simd_mul(Min, alwan_map_simd_add(one, t3)), Max), safe_t3),
+                    alwan_map_simd_mul(Min, alwan_map_simd_add(c3_, s3)), alwan_map_simd_mul(Max, c3_)), safe_s3),
                 Min);
             alwan_map_simd g4 = Min;
             alwan_map_simd b4 = Max;
@@ -1874,11 +1883,11 @@ ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel)(alwan_map_lane *
             /* Sector 5 [-180,-120): tan(3(H+pi)/2) */
             alwan_map_simd arg5 = alwan_map_simd_mul(three_half, alwan_map_simd_add(H, pi));
             alwan_map_simd s5 = alwan_map_simd_sin(arg5), c5_ = alwan_map_simd_cos(arg5);
-            alwan_map_simd safe_c5 = alwan_map_simd_select(alwan_map_simd_cmpgt(alwan_map_simd_abs(c5_), eps), c5_, one);
-            alwan_map_simd t5 = alwan_map_simd_div(s5, safe_c5);
+            alwan_map_simd den5 = alwan_map_simd_add(s5, c5_);
+            alwan_map_simd safe_den5 = alwan_map_simd_select(alwan_map_simd_cmpgt(alwan_map_simd_abs(den5), eps), den5, one);
             alwan_map_simd r5 = Min;
-            alwan_map_simd g5 = alwan_map_simd_div(alwan_map_simd_add(alwan_map_simd_mul(Min, t5), Max),
-                                            alwan_map_simd_add(one, t5));
+            alwan_map_simd g5 = alwan_map_simd_div(alwan_map_simd_add(alwan_map_simd_mul(Min, s5), alwan_map_simd_mul(Max, c5_)),
+                                            safe_den5);
             alwan_map_simd b5 = Max;
 
             /* Branchless 6-way sector selection via nested selects */
@@ -1926,7 +1935,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_rgb_to_hcl, _map_interleave)(alwan_map_lane 
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, rgb_in, processed, in_stride, tile);
         ALWAN_MAP_LIT(alwan__rgb_to_hcl_kernel)(d0, d1, d2, c0, c1, c2, tile);
-        ALWAN_MAP_P_NORM_AFFINE(d0, tile, 0.15915494309189533577, 0.5);
+        ALWAN_MAP_P_NORM_MUL(d0, tile, 0.31830988618379067154);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(hcl_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
     }
@@ -1942,7 +1951,7 @@ alwan_status ALWAN_MAP_LITCAT(alwan_hcl_to_rgb, _map_interleave)(alwan_map_lane 
         ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS];
         ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, hcl_in, processed, in_stride, tile);
-        ALWAN_MAP_P_NORM_AFFINE(c0, tile, 6.28318530717958647692, -3.14159265358979323846);
+        ALWAN_MAP_P_NORM_MUL(c0, tile, 3.14159265358979323846);
         ALWAN_MAP_LIT(alwan__hcl_to_rgb_kernel)(d0, d1, d2, c0, c1, c2, tile);
         ALWAN_MAP_NAME(alwan__store_tile_aos3)(rgb_out, processed, out_stride, d0, d1, d2, tile);
         processed += tile;
@@ -2307,9 +2316,9 @@ alwan_status ALWAN_MAP_LITCAT(alwan_din99_to_lab, _map_interleave)(alwan_map_lan
 /* H / 2pi: IHLS, hue already in [0, 2pi) */
 #define ALWAN_MAP_P_N_H_UNIT(c0, c1, c2, n)   ALWAN_MAP_P_NORM_MUL((c0), (n), 0.15915494309189533577)
 #define ALWAN_MAP_P_N_H_NATIVE(c0, c1, c2, n) ALWAN_MAP_P_NORM_MUL((c0), (n), 6.28318530717958647692)
-/* (H + pi) / 2pi: HCL, hue in [-pi, pi) */
-#define ALWAN_MAP_P_N_HS_UNIT(c0, c1, c2, n)   ALWAN_MAP_P_NORM_AFFINE((c0), (n), 0.15915494309189533577, 0.5)
-#define ALWAN_MAP_P_N_HS_NATIVE(c0, c1, c2, n) ALWAN_MAP_P_NORM_AFFINE((c0), (n), 6.28318530717958647692, -3.14159265358979323846)
+/* HCL, hue in [-pi, pi]: scaled by its bound to [-1, 1] */
+#define ALWAN_MAP_P_N_HS_UNIT(c0, c1, c2, n)   ALWAN_MAP_P_NORM_MUL((c0), (n), 0.31830988618379067154)
+#define ALWAN_MAP_P_N_HS_NATIVE(c0, c1, c2, n) ALWAN_MAP_P_NORM_MUL((c0), (n), 3.14159265358979323846)
 
 #define ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(name, kernel, pre_l, post_l) \
 alwan_status name(alwan_map_lane *out0, size_t out_stride, alwan_map_lane *out1, alwan_map_lane *out2, \

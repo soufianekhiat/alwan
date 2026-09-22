@@ -1450,17 +1450,17 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_NORM_LCHUV(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
 #define ALWAN_DENORM_LCHUV(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
 
-/* Oklch: h [-pi, pi] -> [0,1] (L already [0,1]) */
-#define ALWAN_NORM_OKLCH(p)   do { (p)->h = ((p)->h + ALWAN_PI) / ALWAN__TWOPI; } while(0)
-#define ALWAN_DENORM_OKLCH(p) do { (p)->h = (p)->h * ALWAN__TWOPI - ALWAN_PI; } while(0)
+/* Oklch: h [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
+#define ALWAN_NORM_OKLCH(p)   do { (p)->h *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
+#define ALWAN_DENORM_OKLCH(p) do { (p)->h *= ALWAN_PI; } while(0)
 
-/* JzCzhz: hz [-pi, pi] -> [0,1] (Jz already [0,1]) */
-#define ALWAN_NORM_JZCZHZ(p)   do { (p)->hz = ((p)->hz + ALWAN_PI) / ALWAN__TWOPI; } while(0)
-#define ALWAN_DENORM_JZCZHZ(p) do { (p)->hz = (p)->hz * ALWAN__TWOPI - ALWAN_PI; } while(0)
+/* JzCzhz: hz [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
+#define ALWAN_NORM_JZCZHZ(p)   do { (p)->hz *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
+#define ALWAN_DENORM_JZCZHZ(p) do { (p)->hz *= ALWAN_PI; } while(0)
 
-/* IPTch: h [-pi, pi] -> [0,1] (I already [0,1]) */
-#define ALWAN_NORM_IPTCH(p)   do { (p)->h = ((p)->h + ALWAN_PI) / ALWAN__TWOPI; } while(0)
-#define ALWAN_DENORM_IPTCH(p) do { (p)->h = (p)->h * ALWAN__TWOPI - ALWAN_PI; } while(0)
+/* IPTch: h [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
+#define ALWAN_NORM_IPTCH(p)   do { (p)->h *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
+#define ALWAN_DENORM_IPTCH(p) do { (p)->h *= ALWAN_PI; } while(0)
 
 /* YCbCr: Cb [-0.5,0.5] -> [0,1], Cr [-0.5,0.5] -> [0,1] */
 /* YCbCr needs no normalisation: the core kernel already emits Cb and Cr on
@@ -1491,9 +1491,9 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 #define ALWAN_NORM_YCCBCCRC(p)   ((void)(p))
 #define ALWAN_DENORM_YCCBCCRC(p) ((void)(p))
 
-/* HCL: H [-pi, pi] -> [0,1] (L already [0,1]) */
-#define ALWAN_NORM_HCL(p)   do { (p)->H = ((p)->H + ALWAN_PI) / ALWAN__TWOPI; } while(0)
-#define ALWAN_DENORM_HCL(p) do { (p)->H = (p)->H * ALWAN__TWOPI - ALWAN_PI; } while(0)
+/* HCL: H [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
+#define ALWAN_NORM_HCL(p)   do { (p)->H *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
+#define ALWAN_DENORM_HCL(p) do { (p)->H *= ALWAN_PI; } while(0)
 
 /* IHLS: H [0, 2pi) -> [0,1] */
 #define ALWAN_NORM_IHLS(p)   do { (p)->H /= ALWAN__TWOPI; } while(0)
