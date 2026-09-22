@@ -632,6 +632,80 @@ alwan_colour_correct_cheung2004_f64(&corrected, &camera_pixel, matrix,
                                     ALWAN_POLY_CHEUNG_11);
 ```
 
+### Thin-Plate Spline (TPS-3D)
+
+A smooth warp of RGB through every control pair (Menesatti 2012 on Bookstein
+1989), where the polynomial methods above are least-squares fits whose residual
+on the patches is the price of their global shape. Without smoothing the fit
+returns each reference patch for its test patch to round-off and interpolates
+between them; smoothing relaxes that for a smoother warp. Reference:
+colour-science's `colour_correction_TPS3D`, which is on its develop branch and
+not in the 0.4.7 release; suite 180 holds both kernels to that code, run at a
+pinned commit, at 1e-12.
+
+> **The reference's Bookstein branch is unreachable.** colour's `tps3d_parameters`
+> and `apply_tps3d` compare the kernel name after `validate_method` has lowercased
+> it (`"bookstein" == "Bookstein"` is never true), so colour's own TPS-3D runs the
+> polyharmonic kernel whatever is asked for. The generator asserts that (the two
+> kernels give one answer, to the bit, under colour's validator), then runs the
+> file's Bookstein arithmetic with a validator that keeps the name; alwan's
+> `ALWAN_TPS3D_KERNEL_BOOKSTEIN` is that arithmetic, and its polyharmonic kernel is
+> what colour computes today under either name.
+
+```c
+typedef enum {
+    ALWAN_TPS3D_KERNEL_BOOKSTEIN = 0,    /* U(r) = r^2 log r^2 */
+    ALWAN_TPS3D_KERNEL_POLYHARMONIC = 1  /* U(r) = r */
+} alwan_tps3d_kernel;
+
+typedef struct {
+    alwan_{T} const *weights;   /* (num_samples + 4) x 3 from alwan_tps3d_fit_{T} */
+    alwan_{T} const *control;   /* num_samples x 3: the M_T the fit was given */
+    int num_samples;
+    alwan_tps3d_kernel kernel;  /* the kernel the fit used */
+    int clip;                   /* nonzero: clamp the result to [0, 1] */
+} alwan_tps3d_model_{T};
+
+alwan_status alwan_tps3d_fit_{T}(alwan_{T} *weights_out, alwan_{T} const *M_T, alwan_{T} const *M_R,
+                                 int num_samples, alwan_{T} smoothing, alwan_tps3d_kernel kernel);
+void alwan_tps3d_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb,
+                           alwan_tps3d_model_{T} const *model);
+alwan_status alwan_tps3d_apply_{T}_map_interleave(alwan_{T} *out, size_t out_stride, alwan_{T} const *in,
+                                                  size_t in_stride, size_t count,
+                                                  alwan_tps3d_model_{T} const *model);
+alwan_status alwan_tps3d_apply_{T}_map_planar(/* three planes each way, one stride each side */
+                                              ..., size_t count, alwan_tps3d_model_{T} const *model);
+```
+
+The fit solves the (N + 4) x (N + 4) system `[K + s I, P; P^T, 0] [W; A] = [M_R; 0]`,
+`K_ij = U(|t_i - t_j|)` with a zero diagonal and `P = [1, R, G, B]`, through the same
+Householder QR as the CCM fits, in double whatever the precision (the f32 entry point
+is an f64-internal facade). `weights_out` receives the N kernel rows `W` then the four
+affine rows `A` (constant, R, G, B). The Bookstein kernel floors `r^2` at 1e-12 before
+the log, the reference's own floor, so a pixel on a control point returns its number.
+
+The apply is `sum_j W_j U(|rgb - t_j|) + A_0 + A_R R + A_G G + A_B B` in the pixel's
+own precision, clamped to [0, 1] when `clip` is set (the reference's default). The
+model points at the caller's weights and at the control points the fit was given,
+`M_T`, which must outlive it. Like the polynomial applies the scalar is void and a
+NULL or incomplete model writes nothing; the maps validate the model once, return
+`ALWAN_E_INVALID` for one, and are the scalar in a loop, bit-identical to it.
+
+**Errors:** `ALWAN_E_INVALID` for a NULL, fewer than four samples, a non-finite sample,
+a negative or non-finite smoothing or a kernel outside the enum; `ALWAN_E_DIVZERO`
+when the system is singular (coincident or coplanar control points);
+`ALWAN_E_NOMEM` when the (N + 4)^2 system cannot be allocated.
+
+**Example:** the ColorChecker: fit once, then correct a buffer.
+
+```c
+alwan_f64 w[(24 + 4) * 3];
+alwan_tps3d_model_f64 model = { w, camera_rgb /* 24 x 3 */, 24, ALWAN_TPS3D_KERNEL_BOOKSTEIN, 1 };
+if (alwan_tps3d_fit_f64(w, camera_rgb, reference_rgb, 24, 0.0, ALWAN_TPS3D_KERNEL_BOOKSTEIN) == ALWAN_OK) {
+    alwan_tps3d_apply_f64_map_interleave(out, 3 * sizeof(alwan_f64), in, 3 * sizeof(alwan_f64), count, &model);
+}
+```
+
 ### Polynomial Expansion Utilities
 
 ```c

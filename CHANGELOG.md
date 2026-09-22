@@ -396,6 +396,22 @@
 
 ### Added
 
+- **Thin-plate spline colour correction, `alwan_tps3d_fit_{T}` / `alwan_tps3d_apply_{T}`
+  and its maps.** A smooth RGB warp through every control pair (Menesatti 2012 on
+  Bookstein 1989), the non-polynomial alternative to the Cheung and Finlayson fits: without
+  smoothing it returns each reference patch for its test patch to round-off and
+  interpolates between them, and a smoothing term relaxes that. Both kernels, `r^2 log r^2`
+  and `r`; the fit is one dense square solve through the CCM fits' Householder QR, in
+  double whatever the precision; the apply runs in the pixel's own precision with the
+  interleave and planar maps of the family, bit-identical to the scalar. Reference:
+  colour-science's `colour_correction_TPS3D`, which is on its develop branch and not in the
+  0.4.7 release, so gendata fetches that file at a pinned commit (`datasets.py`,
+  `colour-develop`, BSD-3-Clause) and runs its five TPS functions as written; suite 180
+  holds the weights and the outputs to 1e-12 on both kernels. Found on the first run: the
+  reference compares its kernel name after lowercasing it, so its Bookstein branch is
+  unreachable and colour's own TPS-3D is polyharmonic under either name; the generator
+  asserts that, then runs the file's Bookstein arithmetic with a name-keeping validator.
+
 - **Neural layer kernels (roadmap 3.10, step two).** `alwan_nn_dense_{T}`,
   `alwan_nn_conv2d_{T}` (stride, zero padding, groups and depthwise),
   `alwan_nn_activation_{T}` (ReLU, leaky, sigmoid, tanh, GELU in the tanh form),

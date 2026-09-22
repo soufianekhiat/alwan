@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: MIT
  *
  * Buffer forms of the last per-pixel operations that had none: IPT <-> IPTch,
- * the Jzczhz HDR gamut map, the two gamut mappers that take a space, and the
- * two polynomial colour corrections.
+ * the Jzczhz HDR gamut map, the two gamut mappers that take a space, the two
+ * polynomial colour corrections and the thin-plate spline apply.
  *
  * Each is its scalar in a loop, the arguments validated once, so a map agrees
  * with its scalar twin to the bit, which suite 174 asserts. Three scalars in,
@@ -65,6 +65,9 @@ ALWAN_APPLY_MAP_VOID_ARGS(colour_correct_cheung2004, T, TN, alwan_rgb_##TN, alwa
 ALWAN_APPLY_MAP_VOID_ARGS(colour_correct_finlayson2015, T, TN, alwan_rgb_##TN, alwan_rgb_##TN,           \
                           T const *matrix ALWAN_COMMA int degree ALWAN_COMMA int root_poly, !matrix,     \
                           matrix ALWAN_COMMA degree ALWAN_COMMA root_poly)                               \
+ALWAN_APPLY_MAP_VOID_ARGS(tps3d_apply, T, TN, alwan_rgb_##TN, alwan_rgb_##TN,                            \
+                          alwan_tps3d_model_##TN const *model,                                           \
+                          !model || !model->weights || !model->control || model->num_samples < 1, model)  \
                                                                                                          \
 /* The two gamut mappers return a status per pixel, which the map passes on. */                          \
 alwan_status alwan_gamut_map_advanced_##TN##_map_interleave(T *out, size_t out_stride,                   \
@@ -182,6 +185,10 @@ ALWAN_APPLY_PLANAR_VOID_ARGS(colour_correct_cheung2004, T, TN, alwan_rgb_##TN, a
 ALWAN_APPLY_PLANAR_VOID_ARGS(colour_correct_finlayson2015, T, TN, alwan_rgb_##TN, alwan_rgb_##TN,        \
                              T const *matrix ALWAN_COMMA int degree ALWAN_COMMA int root_poly, !matrix,  \
                              matrix ALWAN_COMMA degree ALWAN_COMMA root_poly)                            \
+ALWAN_APPLY_PLANAR_VOID_ARGS(tps3d_apply, T, TN, alwan_rgb_##TN, alwan_rgb_##TN,                         \
+                             alwan_tps3d_model_##TN const *model,                                        \
+                             !model || !model->weights || !model->control || model->num_samples < 1,     \
+                             model)                                                                      \
                                                                                                          \
 /* The two gamut mappers return a status per pixel, which the map passes on. */                          \
 alwan_status alwan_gamut_map_advanced_##TN##_map_planar(T *out_ch0, size_t out_stride, T *out_ch1,        \

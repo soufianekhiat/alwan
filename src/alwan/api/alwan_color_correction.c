@@ -1915,3 +1915,173 @@ alwan_status alwan_ccm_select_cheung2004_f32(alwan_poly_cheung_terms *terms_out,
     return rc;
 }
 #endif /* ALWAN_WITH_F32 */
+
+/* ================================================================
+ * Thin-plate spline in RGB (TPS-3D)
+ *
+ * The system, the kernels and the apply are colour-science's develop-branch
+ * colour_correction_TPS3D (tps3d_parameters + apply_tps3d), which suite 180
+ * holds them to. The fit is one dense square solve through the same
+ * Householder QR as the polynomial fits; the apply is N kernel evaluations a
+ * pixel, in the pixel's own precision.
+ * ================================================================ */
+
+static int alwan__tps3d_kernel_valid(alwan_tps3d_kernel kernel) {
+    return kernel == ALWAN_TPS3D_KERNEL_BOOKSTEIN || kernel == ALWAN_TPS3D_KERNEL_POLYHARMONIC;
+}
+
+#if ALWAN_WITH_F64_FACADE
+/* NaN and the infinities are the values whose difference with themselves is not 0. */
+static int alwan__tps3d_finite(alwan_f64 v) {
+    return v - v == 0.0;
+}
+#endif
+
+#if ALWAN_WITH_F64_FACADE
+/* U(r) with the reference's floor: r^2 is clipped at 1e-12 before the log, so a
+ * pixel sitting on a control point returns the same small number the reference
+ * does. The fit zeroes its own diagonal separately, as the reference does. */
+static alwan_f64 alwan__tps3d_u_f64(alwan_f64 r, alwan_tps3d_kernel kernel) {
+    alwan_f64 r2;
+    if (kernel == ALWAN_TPS3D_KERNEL_POLYHARMONIC) return r;
+    r2 = r * r;
+    if (r2 < 1e-12) r2 = 1e-12;
+    return r2 * ALWAN_LN_F64(r2);
+}
+
+alwan_status alwan_tps3d_fit_f64(alwan_f64 *weights_out, alwan_f64 const *M_T, alwan_f64 const *M_R,
+                                 int num_samples, alwan_f64 smoothing, alwan_tps3d_kernel kernel) {
+    int const n = num_samples;
+    int const m = num_samples + 4;
+    size_t lb, bb;
+    alwan_f64 *L, *b;
+    int i, j, c, st;
+
+    if (!weights_out || !M_T || !M_R || num_samples < 4) return ALWAN_E_INVALID;
+    if (!(smoothing >= 0.0) || !alwan__tps3d_kernel_valid(kernel)) return ALWAN_E_INVALID;
+    for (i = 0; i < 3 * n; i++) {
+        if (!alwan__tps3d_finite(M_T[i]) || !alwan__tps3d_finite(M_R[i])) return ALWAN_E_INVALID;
+    }
+
+    lb = alwan_safe_array_size((size_t)m * (size_t)m, sizeof(alwan_f64));
+    bb = alwan_safe_array_size((size_t)m * 3, sizeof(alwan_f64));
+    if (lb == 0 || bb == 0) return ALWAN_E_NOMEM;
+    L = (alwan_f64 *)ALWAN_ALLOC(lb, sizeof(alwan_f64));
+    b = (alwan_f64 *)ALWAN_ALLOC(bb, sizeof(alwan_f64));
+    if (!L || !b) {
+        if (L) ALWAN_FREE(L);
+        if (b) ALWAN_FREE(b);
+        return ALWAN_E_NOMEM;
+    }
+    memset(L, 0, lb);
+    memset(b, 0, bb);
+
+    /* [K + s I, P; P^T, 0]: K's diagonal is the smoothing alone, P = [1, R, G, B]. */
+    for (i = 0; i < n; i++) {
+        alwan_f64 const *ti = M_T + 3 * i;
+        for (j = 0; j < n; j++) {
+            if (i == j) {
+                L[(size_t)i * m + j] = smoothing;
+            } else {
+                alwan_f64 const *tj = M_T + 3 * j;
+                alwan_f64 const dx = ti[0] - tj[0], dy = ti[1] - tj[1], dz = ti[2] - tj[2];
+                L[(size_t)i * m + j] = alwan__tps3d_u_f64(ALWAN_SQRT(dx * dx + dy * dy + dz * dz), kernel);
+            }
+        }
+        L[(size_t)i * m + n] = 1.0;
+        L[(size_t)n * m + i] = 1.0;
+        for (c = 0; c < 3; c++) {
+            L[(size_t)i * m + n + 1 + c] = ti[c];
+            L[(size_t)(n + 1 + c) * m + i] = ti[c];
+            b[3 * i + c] = M_R[3 * i + c];
+        }
+    }
+
+    st = least_squares_solve(L, b, m, m, weights_out);
+    ALWAN_FREE(L);
+    ALWAN_FREE(b);
+    return (alwan_status)st;
+}
+#endif /* ALWAN_WITH_F64_FACADE */
+
+#if ALWAN_WITH_F64
+void alwan_tps3d_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb, alwan_tps3d_model_f64 const *model) {
+    alwan_f64 acc[3] = { 0.0, 0.0, 0.0 };
+    alwan_f64 const *W, *Aff;
+    int j, c;
+    if (!rgb_out || !rgb || !model || !model->weights || !model->control || model->num_samples < 1) return;
+    W = model->weights;
+    Aff = W + 3 * model->num_samples;
+    for (j = 0; j < model->num_samples; j++) {
+        alwan_f64 const *tj = model->control + 3 * j;
+        alwan_f64 const dx = rgb->r - tj[0], dy = rgb->g - tj[1], dz = rgb->b - tj[2];
+        alwan_f64 const u = alwan__tps3d_u_f64(ALWAN_SQRT(dx * dx + dy * dy + dz * dz), model->kernel);
+        for (c = 0; c < 3; c++) acc[c] += u * W[3 * j + c];
+    }
+    for (c = 0; c < 3; c++) {
+        alwan_f64 v = acc[c] + Aff[c] + Aff[3 + c] * rgb->r + Aff[6 + c] * rgb->g + Aff[9 + c] * rgb->b;
+        if (model->clip) {
+            if (v < 0.0) v = 0.0;
+            if (v > 1.0) v = 1.0;
+        }
+        acc[c] = v;
+    }
+    rgb_out->r = acc[0];
+    rgb_out->g = acc[1];
+    rgb_out->b = acc[2];
+}
+#endif /* ALWAN_WITH_F64 */
+
+#if ALWAN_WITH_F32
+static alwan_f32 alwan__tps3d_u_f32(alwan_f32 r, alwan_tps3d_kernel kernel) {
+    alwan_f32 r2;
+    if (kernel == ALWAN_TPS3D_KERNEL_POLYHARMONIC) return r;
+    r2 = r * r;
+    if (r2 < 1e-12f) r2 = 1e-12f;
+    return r2 * ALWAN_LN_F32(r2);
+}
+
+/* The fit widens to the f64 worker and narrows the weights, as the CCM fits do. */
+alwan_status alwan_tps3d_fit_f32(alwan_f32 *weights_out, alwan_f32 const *M_T, alwan_f32 const *M_R,
+                                 int num_samples, alwan_f32 smoothing, alwan_tps3d_kernel kernel) {
+    size_t ns, ws, i;
+    alwan_f64 *buf;
+    int rc;
+    if (!weights_out || !M_T || !M_R || num_samples < 4) return ALWAN_E_INVALID;
+    ns = (size_t)num_samples * 3;
+    ws = ((size_t)num_samples + 4) * 3;
+    buf = (alwan_f64 *)ALWAN_ALLOC((2 * ns + ws) * sizeof(alwan_f64), sizeof(alwan_f64));
+    if (!buf) return ALWAN_E_NOMEM;
+    for (i = 0; i < ns; i++) { buf[i] = (alwan_f64)M_T[i]; buf[ns + i] = (alwan_f64)M_R[i]; }
+    rc = alwan_tps3d_fit_f64(buf + 2 * ns, buf, buf + ns, num_samples, (alwan_f64)smoothing, kernel);
+    if (rc == ALWAN_OK) for (i = 0; i < ws; i++) weights_out[i] = (alwan_f32)buf[2 * ns + i];
+    ALWAN_FREE(buf);
+    return (alwan_status)rc;
+}
+
+void alwan_tps3d_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb, alwan_tps3d_model_f32 const *model) {
+    alwan_f32 acc[3] = { 0.0f, 0.0f, 0.0f };
+    alwan_f32 const *W, *Aff;
+    int j, c;
+    if (!rgb_out || !rgb || !model || !model->weights || !model->control || model->num_samples < 1) return;
+    W = model->weights;
+    Aff = W + 3 * model->num_samples;
+    for (j = 0; j < model->num_samples; j++) {
+        alwan_f32 const *tj = model->control + 3 * j;
+        alwan_f32 const dx = rgb->r - tj[0], dy = rgb->g - tj[1], dz = rgb->b - tj[2];
+        alwan_f32 const u = alwan__tps3d_u_f32(ALWAN_SQRT_F32(dx * dx + dy * dy + dz * dz), model->kernel);
+        for (c = 0; c < 3; c++) acc[c] += u * W[3 * j + c];
+    }
+    for (c = 0; c < 3; c++) {
+        alwan_f32 v = acc[c] + Aff[c] + Aff[3 + c] * rgb->r + Aff[6 + c] * rgb->g + Aff[9 + c] * rgb->b;
+        if (model->clip) {
+            if (v < 0.0f) v = 0.0f;
+            if (v > 1.0f) v = 1.0f;
+        }
+        acc[c] = v;
+    }
+    rgb_out->r = acc[0];
+    rgb_out->g = acc[1];
+    rgb_out->b = acc[2];
+}
+#endif /* ALWAN_WITH_F32 */

@@ -7329,6 +7329,67 @@ alwan_status alwan_ccm_loo_finlayson2015_f32(alwan_f32 *rms_out, alwan_f32 *pred
 alwan_status alwan_ccm_select_cheung2004_f64(alwan_poly_cheung_terms *terms_out, alwan_f64 *rms_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_ccm_fit_params const *params);
 alwan_status alwan_ccm_select_cheung2004_f32(alwan_poly_cheung_terms *terms_out, alwan_f32 *rms_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_ccm_fit_params const *params);
 
+/* Thin-plate spline in RGB (TPS-3D), Menesatti 2012 on Bookstein 1989: a smooth warp
+ * through every control pair, exactly at smoothing 0, where a polynomial is a least-squares
+ * fit whose residual on the patches is the price of its global shape. Reference:
+ * colour-science's colour_correction_TPS3D, on its develop branch and not in the 0.4.7
+ * release; suite 180 holds both kernels to it at 1e-12 through that code at a pinned commit.
+ * (That code compares its kernel name after lowercasing it, so its own Bookstein branch is
+ * unreachable and every fit it makes is polyharmonic; the generator runs the Bookstein
+ * arithmetic the file contains, and says so. alwan reaches both.)
+ *
+ * Fit: the (N + 4) x (N + 4) system [K + s I, P; P^T, 0] [W; A] = [M_R; 0], K_ij =
+ * U(|t_i - t_j|) with a zero diagonal, P = [1, R, G, B], solved by the Householder QR the
+ * CCM fits use, in double whatever the precision (an f64-internal facade, see
+ * ALWAN_WITH_F64_FACADE). weights_out receives (num_samples + 4) x 3 row-major: the N kernel
+ * rows W, then the four affine rows A (constant, R, G, B). smoothing >= 0 relaxes the
+ * interpolation (Tikhonov on K); 0 passes through the pairs to round-off. At least four
+ * samples. ALWAN_E_INVALID for a NULL, fewer, a non-finite sample, a negative or non-finite
+ * smoothing or a kernel outside the enum; ALWAN_E_DIVZERO when the system is singular
+ * (coincident or coplanar control points).
+ *
+ * Apply: out = sum_j W_j U(|rgb - t_j|) + A_0 + A_R R + A_G G + A_B B in the pixel's own
+ * precision, clamped to [0, 1] when the model's clip is set (the reference's default). The
+ * model points at the caller's weights and at the control points the fit was given, M_T,
+ * the same N x 3 buffer, which must outlive it. A void scalar like the polynomial applies:
+ * a NULL or incomplete model writes nothing. The maps validate the model once and are the
+ * scalar in a loop, bit-identical to it.
+ *
+ * Kernels: U(r) = r^2 log r^2 with r^2 floored at 1e-12 before the log (Bookstein, the
+ * reference's floor, kept so a pixel on a control point returns its number), or U(r) = r,
+ * the polyharmonic spline the three-dimensional thin plate is. */
+typedef enum {
+    ALWAN_TPS3D_KERNEL_BOOKSTEIN = 0,    /* r^2 log r^2 */
+    ALWAN_TPS3D_KERNEL_POLYHARMONIC = 1  /* r */
+} alwan_tps3d_kernel;
+
+typedef struct {
+    alwan_f32 const *weights;   /* (num_samples + 4) x 3 from alwan_tps3d_fit_f32 */
+    alwan_f32 const *control;   /* num_samples x 3: the M_T the fit was given */
+    int num_samples;
+    alwan_tps3d_kernel kernel;  /* the kernel the fit used */
+    int clip;                   /* nonzero: clamp the result to [0, 1] */
+} alwan_tps3d_model_f32;
+
+typedef struct {
+    alwan_f64 const *weights;
+    alwan_f64 const *control;
+    int num_samples;
+    alwan_tps3d_kernel kernel;
+    int clip;
+} alwan_tps3d_model_f64;
+
+alwan_status alwan_tps3d_fit_f32(alwan_f32 *weights_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_f32 smoothing, alwan_tps3d_kernel kernel);
+alwan_status alwan_tps3d_fit_f64(alwan_f64 *weights_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_f64 smoothing, alwan_tps3d_kernel kernel);
+void alwan_tps3d_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb, alwan_tps3d_model_f32 const *model);
+void alwan_tps3d_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb, alwan_tps3d_model_f64 const *model);
+/* Buffer forms, strides in bytes; the scalar in a loop, the model validated once (suite 180). */
+alwan_status alwan_tps3d_apply_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_tps3d_model_f32 const *model);
+alwan_status alwan_tps3d_apply_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_tps3d_model_f64 const *model);
+/* Planar twin, one stride shared by the three planes; identical to the interleave form (suite 180). */
+alwan_status alwan_tps3d_apply_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_tps3d_model_f32 const *model);
+alwan_status alwan_tps3d_apply_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_tps3d_model_f64 const *model);
+
 /* White balance multipliers from neutral gray measurement
  * Given a measured RGB value that should be neutral gray,
  * computes the multipliers to normalize it.
