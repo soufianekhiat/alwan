@@ -339,3 +339,36 @@ the header.
 `LICENSE.txt` and a `SOURCE.txt` naming the commit. The generator refuses to write unless
 a shipped profile regenerates bit for bit, so a change in the model's profiling cannot
 land a mixed set.
+
+### A second reading of the same sheets
+
+`OwlMightyCh/film-scan-calibration` (data CC-BY-4.0, registered in
+`alwan_dev/gendata/datasets.py`, fetched for validation only) digitised the same
+manufacturer datasheets independently, with a per-sheet audit of its axis fits.
+`alwan_dev/tools/film_cross_check.py` runs the 14 stocks both sources hold through the
+built library and compares, measured on 2026-09-22:
+
+| what | how | negatives (11) | reversals (3) |
+|---|---|---|---|
+| characteristic curve | a neutral exposure at the sheet's log H developed, transmittance, Status M or A density; one log H shift per stock fitted (the sources do not share an exposure origin), RMS after it | G 0.02 to 0.05 D; R 0.08 to 0.25, B 0.04 to 0.14 | 0.01 to 0.05 D, all layers |
+| log spectral sensitivity | per-layer offset fitted (alwan's linear sensitivity is in the model's units), RMS of the shape at the 10 nm bands | 0.005 to 0.04 log10 | no file |
+| D-min spectrum | 400-700 nm, no fit | 0.015 to 0.09 D, alwan the denser by 0.01 to 0.09 | no file |
+| dye shapes | peak-normalised, no fit; the second source's dyes are surrogate fits and say so | Vision3 0.003 to 0.006; the others 0.04 to 0.09 (theirs are warped Vision3 dyes) | 0.003 to 0.011 |
+| midscale neutral minus D-min | fitted as three amplitudes of alwan's dyes, residual | 0.002 to 0.012 D | no file |
+
+The one number that needs explaining is the negatives' red and blue curves, because
+green and every reversal agree to a few hundredths. It is not digitisation and it is not
+alwan: it is how the model holds a negative's curve. For `status_m` stocks
+spectral_film_lut inverts the sheet's Status M curves through
+`inv(APD^T . dyes . CDD_TO_CID^T)`, the ACES printing-density responsivities and the
+CDD-to-CID matrix, "to get appropriate interlayer interaction factors for color
+masking", where a reversal's Status A curve is inverted through its own responsivities.
+So a negative's activation curve is the sheet's curve in a channel-independent density
+space, and reading it back through the Status M responsivities returns the sheet's green
+but a red that is low and a blue that is high by an amount that grows with exposure
+(Portra 400 at the top of its curve: R 1.64 against the sheet's 2.02, B 3.28 against
+3.05). Suite 158 pins alwan to the oracle at 1e-6, so this is the model's decision
+carried faithfully, and it matters to one thing: `alwan_film_status_density` of a
+developed negative is the model's Status M, not the datasheet's, and anyone comparing to a
+sheet should compare green or a reversal. The D-min level, the dye shapes and the
+midscale neutral are the sheet's in both sources.

@@ -360,6 +360,19 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **The film profiles read against a second, independent digitisation of the same
+  datasheets.** `OwlMightyCh/film-scan-calibration` (data CC-BY-4.0) is registered as a
+  validation source and `alwan_dev/tools/film_cross_check.py` runs the 14 stocks both
+  sources hold through the library: D-min spectra within 0.015 to 0.09 D, dye shapes within
+  0.006 where both digitised the same dyes, the sheets' midscale neutral spanned by alwan's
+  dyes to 0.002 to 0.012 D, and the characteristic curves within 0.02 to 0.05 D for every
+  reversal and for the green of every negative. The negatives' red and blue curves read back
+  0.08 to 0.25 D from the sheet, and that is a documented decision of the model rather than
+  either digitisation: spectral_film_lut holds a negative's curve in the ACES
+  channel-independent density space so that colour masking comes out right, and alwan
+  carries it faithfully (suite 158). `docs/api/film.md` says what that means for
+  `alwan_film_status_density` on a negative.
+
 - **Jiang 2013 recovery over a caller's basis, and the embedded basis measured out of
   sample.** `alwan_camera_sensitivities_from_chart_basis_{T}` takes a basis of
   3 x k x 81 values (channel-major, then component, then wavelength; the shipped
