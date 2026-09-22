@@ -342,7 +342,32 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_cubic_basis_shaper)(ALWAN_CORE
  * Source: Academy S-2014-003 / aces-dev lib/ACESlib.Tonescales.ctl
  * coefsLow / coefsHigh are the cubic B-spline control values.
  * N = 5 segments per half; knots are uniformly spaced in log10 domain. */
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(ALWAN_CORE_T x) {
+/* The C5 spline's breakpoints in log10, which depend on nothing but constants.
+ * Computed by the same expressions the spline used to evaluate per channel, so a
+ * caller that makes them once and passes them to _c5_k gets the same bits; the
+ * one-argument _c5 below is exactly that. The ACES 1 forward makes them once a
+ * pixel, which removed fifteen transcendentals a pixel (three channels, two pows
+ * and three log10s each). */
+typedef struct {
+    ALWAN_CORE_T log_min, log_mid, log_max, log_min_y, log_max_y;
+} ALWAN_CORE_FNLIT(aces1_c5_consts);
+
+ALWAN_INLINE ALWAN_CORE_FNLIT(aces1_c5_consts) ALWAN_CORE_FNVLIT(aces1_c5_consts)(void) {
+    ALWAN_CORE_FNLIT(aces1_c5_consts) k;
+    const ALWAN_CORE_T min_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(-15.0));
+    const ALWAN_CORE_T min_pt_y = ALWAN_CORE_LITERAL(0.0001);
+    const ALWAN_CORE_T mid_pt_x = ALWAN_CORE_LITERAL(0.18);
+    const ALWAN_CORE_T max_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(18.0));
+    const ALWAN_CORE_T max_pt_y = ALWAN_CORE_LITERAL(10000.0);
+    k.log_min = ALWAN_CORE_LOG10(min_pt_x);
+    k.log_mid = ALWAN_CORE_LOG10(mid_pt_x);
+    k.log_max = ALWAN_CORE_LOG10(max_pt_x);
+    k.log_min_y = ALWAN_CORE_LOG10(min_pt_y);
+    k.log_max_y = ALWAN_CORE_LOG10(max_pt_y);
+    return k;
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5_k)(ALWAN_CORE_T x, ALWAN_CORE_FNLIT(aces1_c5_consts) k) {
     /* B-spline coefficients (low side: shadows, high side: highlights) */
     const ALWAN_CORE_T coefsLow[6] = {
         ALWAN_CORE_LITERAL(-4.0000000000), ALWAN_CORE_LITERAL(-4.0000000000),
@@ -354,24 +379,18 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(ALWAN_COR
         ALWAN_CORE_LITERAL( 3.6681241237), ALWAN_CORE_LITERAL( 4.0000000000),
         ALWAN_CORE_LITERAL( 4.0000000000), ALWAN_CORE_LITERAL( 4.0000000000)
     };
-    const ALWAN_CORE_T min_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(-15.0));
-    const ALWAN_CORE_T min_pt_y = ALWAN_CORE_LITERAL(0.0001);
-    const ALWAN_CORE_T mid_pt_x = ALWAN_CORE_LITERAL(0.18);
-    const ALWAN_CORE_T max_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(18.0));
-    const ALWAN_CORE_T max_pt_y = ALWAN_CORE_LITERAL(10000.0);
-
     ALWAN_CORE_T log_x = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(x, ALWAN_CORE_LITERAL(1e-10)));
-    ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(min_pt_x);
-    ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(mid_pt_x);
-    ALWAN_CORE_T log_max = ALWAN_CORE_LOG10(max_pt_x);
+    ALWAN_CORE_T log_min = k.log_min;
+    ALWAN_CORE_T log_mid = k.log_mid;
+    ALWAN_CORE_T log_max = k.log_max;
 
     /* Academy reference: N_KNOTS = 4 per half, quadratic B-spline basis.
      * Source: aces-dev/lib/ACESlib.Tonescales.ctl segmented_spline_c5_fwd */
     ALWAN_CORE_T log_y;
     if (log_x <= log_min) {
-        log_y = ALWAN_CORE_LOG10(min_pt_y);
+        log_y = k.log_min_y;
     } else if (log_x >= log_max) {
-        log_y = ALWAN_CORE_LOG10(max_pt_y);
+        log_y = k.log_max_y;
     } else {
         ALWAN_CORE_T const *coefs;
         ALWAN_CORE_T knot_start, knot_end;
@@ -403,6 +422,10 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(ALWAN_COR
     }
 
     return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), log_y);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(ALWAN_CORE_T x) {
+    return ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5_k)(x, ALWAN_CORE_FNVLIT(aces1_c5_consts)());
 }
 
 /* Inverse of the segmented spline C5: given OCES nits, return scene-referred linear.

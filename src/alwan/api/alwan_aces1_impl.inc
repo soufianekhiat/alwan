@@ -125,16 +125,31 @@ static ALWAN_CORE_T ALWAN_CORE_FN(aces1_ocio_hdr1000)(ALWAN_CORE_T scene_val) {
     return (display_nits - ALWAN_CORE_LITERAL(0.0001)) / (ALWAN_CORE_LITERAL(1000.0) - ALWAN_CORE_LITERAL(0.0001));
 }
 
-static ALWAN_CORE_T ALWAN_CORE_FN(aces1_spline_c9)(ALWAN_CORE_T oces, ALWAN_CORE_FNLIT(aces1_c9_params) const *p) {
+/* The table's breakpoints in log10, made once a pixel by the forward (see the
+ * f64 twin in alwan_aces_ff.c): the same expressions, so the same bits. */
+typedef struct { ALWAN_CORE_T log_min, log_mid, log_max, log_min_y, log_max_y; } ALWAN_CORE_FN(aces1_c9_logs_t);
+
+static ALWAN_CORE_FN(aces1_c9_logs_t) ALWAN_CORE_FN(aces1_c9_logs)(ALWAN_CORE_FNLIT(aces1_c9_params) const *p) {
+    ALWAN_CORE_FN(aces1_c9_logs_t) k;
+    k.log_min = ALWAN_CORE_LOG10(p->min_x);
+    k.log_mid = ALWAN_CORE_LOG10(p->mid_x);
+    k.log_max = ALWAN_CORE_LOG10(p->max_x);
+    k.log_min_y = ALWAN_CORE_LOG10(p->min_y);
+    k.log_max_y = ALWAN_CORE_LOG10(p->max_y);
+    return k;
+}
+
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_spline_c9)(ALWAN_CORE_T oces, ALWAN_CORE_FNLIT(aces1_c9_params) const *p,
+                                                   ALWAN_CORE_FN(aces1_c9_logs_t) const *k) {
     ALWAN_CORE_T lx = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(oces, ALWAN_CORE_LITERAL(1e-10)));
-    ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(p->min_x);
-    ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(p->mid_x);
-    ALWAN_CORE_T log_max = ALWAN_CORE_LOG10(p->max_x);
+    ALWAN_CORE_T log_min = k->log_min;
+    ALWAN_CORE_T log_mid = k->log_mid;
+    ALWAN_CORE_T log_max = k->log_max;
     ALWAN_CORE_T ly;
     if (lx <= log_min) {
-        ly = ALWAN_CORE_LOG10(p->min_y) + p->slope_low * (lx - log_min);
+        ly = k->log_min_y + p->slope_low * (lx - log_min);
     } else if (lx >= log_max) {
-        ly = ALWAN_CORE_LOG10(p->max_y) + p->slope_high * (lx - log_max);
+        ly = k->log_max_y + p->slope_high * (lx - log_max);
     } else {
         ALWAN_CORE_T const *co; ALWAN_CORE_T ks, ke; int nk = 8;
         if (lx < log_mid) { co = p->coefsLow;  ks = log_min; ke = log_mid; }
@@ -275,9 +290,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
                 rrt.g = ALWAN_CORE_FN(aces1_rrt_hermite)(rrt.g);
                 rrt.b = ALWAN_CORE_FN(aces1_rrt_hermite)(rrt.b);
             } else {
-                rrt.r = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(rrt.r);
-                rrt.g = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(rrt.g);
-                rrt.b = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(rrt.b);
+                ALWAN_CORE_FNLIT(aces1_c5_consts) const k5 = ALWAN_CORE_FNVLIT(aces1_c5_consts)();
+                rrt.r = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5_k)(rrt.r, k5);
+                rrt.g = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5_k)(rrt.g, k5);
+                rrt.b = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5_k)(rrt.b, k5);
             }
             ALWAN_CORE_FNLIT(aces1_c9_params) const *c9p;
             switch (output) {
@@ -291,9 +307,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
                 rrt.g = ALWAN_CORE_FN(aces1_odt48_hermite)(rrt.g);
                 rrt.b = ALWAN_CORE_FN(aces1_odt48_hermite)(rrt.b);
             } else {
-                rrt.r = ALWAN_CORE_FN(aces1_spline_c9)(rrt.r, c9p);
-                rrt.g = ALWAN_CORE_FN(aces1_spline_c9)(rrt.g, c9p);
-                rrt.b = ALWAN_CORE_FN(aces1_spline_c9)(rrt.b, c9p);
+                ALWAN_CORE_FN(aces1_c9_logs_t) const k9 = ALWAN_CORE_FN(aces1_c9_logs)(c9p);
+                rrt.r = ALWAN_CORE_FN(aces1_spline_c9)(rrt.r, c9p, &k9);
+                rrt.g = ALWAN_CORE_FN(aces1_spline_c9)(rrt.g, c9p, &k9);
+                rrt.b = ALWAN_CORE_FN(aces1_spline_c9)(rrt.b, c9p, &k9);
             }
         }
     }

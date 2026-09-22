@@ -638,13 +638,6 @@ static alwan_f64 const ACES1_D65_TO_D60[9] = {
 ALWAN_DIAG_POP
 #endif /* ALWAN_WITH_F64_FACADE */
 
-#if ALWAN_WITH_F64
-/* Segmented spline function for RRT tone scale
- * This is a simplified version - full implementation would use LUTs */
-static alwan_f64 aces1_segmented_spline_c5(alwan_f64 x) {
-    return aces1_segmented_spline_c5_f64_v(x);
-}
-#endif
 
 /* ---- C9 spline parameters per luminance target (from aces-dev CTL) ---- */
 
@@ -1070,18 +1063,33 @@ static alwan_f64 aces1_ocio_hdr1000_eval(alwan_f64 scene_val) {
          / (ALWAN_LITERAL(1000.0) - ALWAN_LITERAL(0.0001));
 }
 
+/* A C9 table's breakpoints in log10: constants of the table, made once a pixel
+ * by the forward and shared by the three channels, by the same expressions the
+ * spline used to evaluate per channel (so the same bits). */
+typedef struct { alwan_f64 log_min, log_mid, log_max, log_min_y, log_max_y; } aces1_c9_logs_f64;
+
+static aces1_c9_logs_f64 aces1_c9_logs(aces1_c9_params_f64 const *p) {
+    aces1_c9_logs_f64 k;
+    k.log_min = ALWAN_LOG10_F64(p->min_x);
+    k.log_mid = ALWAN_LOG10_F64(p->mid_x);
+    k.log_max = ALWAN_LOG10_F64(p->max_x);
+    k.log_min_y = ALWAN_LOG10_F64(p->min_y);
+    k.log_max_y = ALWAN_LOG10_F64(p->max_y);
+    return k;
+}
+
 /* Evaluate C9 spline + Y_to_linCV.  Input: OCES nits (from C5), output: [0,1] */
-static alwan_f64 aces1_segmented_spline_c9(alwan_f64 oces, aces1_c9_params_f64 const *p) {
+static alwan_f64 aces1_segmented_spline_c9(alwan_f64 oces, aces1_c9_params_f64 const *p, aces1_c9_logs_f64 const *k) {
     alwan_f64 lx = ALWAN_LOG10_F64(fmax(oces, ALWAN_LITERAL(1e-10)));
-    alwan_f64 log_min = ALWAN_LOG10_F64(p->min_x);
-    alwan_f64 log_mid = ALWAN_LOG10_F64(p->mid_x);
-    alwan_f64 log_max = ALWAN_LOG10_F64(p->max_x);
+    alwan_f64 log_min = k->log_min;
+    alwan_f64 log_mid = k->log_mid;
+    alwan_f64 log_max = k->log_max;
     alwan_f64 ly;
 
     if (lx <= log_min) {
-        ly = ALWAN_LOG10_F64(p->min_y) + p->slope_low * (lx - log_min);
+        ly = k->log_min_y + p->slope_low * (lx - log_min);
     } else if (lx >= log_max) {
-        ly = ALWAN_LOG10_F64(p->max_y) + p->slope_high * (lx - log_max);
+        ly = k->log_max_y + p->slope_high * (lx - log_max);
     } else {
         alwan_f64 const *co;
         alwan_f64 ks, ke;
@@ -1330,9 +1338,10 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                 rrt.g = aces1_rrt_hermite(rrt.g);
                 rrt.b = aces1_rrt_hermite(rrt.b);
             } else {
-                rrt.r = aces1_segmented_spline_c5(rrt.r);
-                rrt.g = aces1_segmented_spline_c5(rrt.g);
-                rrt.b = aces1_segmented_spline_c5(rrt.b);
+                aces1_c5_consts_f64 const k5 = aces1_c5_consts_f64_v();
+                rrt.r = aces1_segmented_spline_c5_k_f64_v(rrt.r, k5);
+                rrt.g = aces1_segmented_spline_c5_k_f64_v(rrt.g, k5);
+                rrt.b = aces1_segmented_spline_c5_k_f64_v(rrt.b, k5);
             }
 
             /* C9 spline: the 48-nit table, or the 1.0.3 HDR tables for the _V103 outputs */
@@ -1348,9 +1357,10 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                 rrt.g = aces1_odt48_hermite(rrt.g);
                 rrt.b = aces1_odt48_hermite(rrt.b);
             } else {
-                rrt.r = aces1_segmented_spline_c9(rrt.r, c9p);
-                rrt.g = aces1_segmented_spline_c9(rrt.g, c9p);
-                rrt.b = aces1_segmented_spline_c9(rrt.b, c9p);
+                aces1_c9_logs_f64 const k9 = aces1_c9_logs(c9p);
+                rrt.r = aces1_segmented_spline_c9(rrt.r, c9p, &k9);
+                rrt.g = aces1_segmented_spline_c9(rrt.g, c9p, &k9);
+                rrt.b = aces1_segmented_spline_c9(rrt.b, c9p, &k9);
             }
         }
 

@@ -2263,6 +2263,17 @@
   behind `alwan_oetf_apply_f64` / `alwan_eotf_apply_f64` and the image convert carry
   the same guard.
 
+- **The ACES 1.x tone curves stop recomputing their constants per channel.** The C5
+  spline evaluated two `pow`s and three `log10`s of its fixed breakpoints on every channel
+  of every pixel, and the C9 spline three more `log10`s of its table's breakpoints (plus
+  one in each clamped branch): about 24 of the roughly 40 transcendentals a pixel cost. They are
+  now made once a pixel by the same expressions and shared by the three channels
+  (`aces1_c5_consts` in the core, a C9 twin in each precision's forward), so the result is
+  the same to the bit: 91 recorded outputs, every preset and tone curve method in both
+  precisions plus the ACES view, byte-identical before and after, and the determinism
+  dump unchanged. 1.2x to 1.7x on the forward, which on this machine sits near 1 Mpx/s;
+  what is left is about 16 transcendentals a pixel that are real work.
+
 - **The CIECAM02 and CAM16 maps compute the viewing-condition terms once per call.** They
   called the scalar entry point once a pixel, and the scalar resolves the surround and
   recomputes D, FL, n, Nbb, Ncb, z and A_w (several powers and the white's matrix product)
