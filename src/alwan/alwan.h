@@ -5291,6 +5291,8 @@ alwan_status alwan_ycbcr_legal_to_full_f64(alwan_ycbcr_f64 *out, alwan_ycbcr_f64
  * - Used in H.264/AVC and video codecs */
 alwan_status alwan_rgb_to_ycocg_f32(alwan_ycocg_f32 *ycocg_out, alwan_rgb_f32 const *rgb);
 alwan_status alwan_rgb_to_ycocg_f64(alwan_ycocg_f64 *ycocg_out, alwan_rgb_f64 const *rgb);
+alwan_status alwan_ycocg_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycocg_f32 const *ycocg);
+alwan_status alwan_ycocg_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycocg_f64 const *ycocg);
 
 /* ----------------------------------------------------------------
  * Relative Luminance (Y)
@@ -5440,6 +5442,12 @@ alwan_status alwan_ycocg_to_rgb_f64_map_interleave(alwan_f64 *rgb_out, size_t ou
 alwan_status alwan_rgb_to_ycocg_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 alwan_status alwan_ycocg_to_rgb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 
+/* RGB <-> HWB conversions (Hue [0-1], Whiteness [0-1], Blackness [0-1]) */
+alwan_status alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb);
+alwan_status alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb);
+alwan_status alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb);
+alwan_status alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb);
+
 /* Single-pixel HSV <-> HWB (same hexcone: w = (1-s)*v, b = 1-v) */
 alwan_status alwan_hsv_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_hsv_f32 const *hsv);
 alwan_status alwan_hsv_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_hsv_f64 const *hsv);
@@ -5495,9 +5503,6 @@ alwan_status alwan_ycbcr_legal_to_full_f32_map_interleave(alwan_f32 *out, size_t
 alwan_status alwan_ycbcr_legal_to_full_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, int bit_depth);
 alwan_status alwan_ycbcr_full_to_legal_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, int bit_depth);
 alwan_status alwan_ycbcr_legal_to_full_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, int bit_depth);
-
-alwan_status alwan_ycocg_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_ycocg_f32 const *ycocg);
-alwan_status alwan_ycocg_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_ycocg_f64 const *ycocg);
 
 /* ----------------------------------------------------------------
  * M10: Light Quality & CCT (Correlated Color Temperature)
@@ -8392,16 +8397,6 @@ alwan_status alwan_st2086_init_f64(alwan_st2086_metadata_f64 *meta,
 /* Compute content light level info from linear RGB pixel data (cd/m2) */
 alwan_status alwan_content_light_level_compute_f32(alwan_content_light_level_f32 *cll_out, alwan_f32 const *rgb_in, size_t stride, size_t count);
 alwan_status alwan_content_light_level_compute_f64(alwan_content_light_level_f64 *cll_out, alwan_f64 const *rgb_in, size_t stride, size_t count);
-
-/* ----------------------------------------------------------------
- * HWB Color Space (CSS Color Level 4)
- * ---------------------------------------------------------------- */
-
-/* RGB <-> HWB conversions (Hue [0-1], Whiteness [0-1], Blackness [0-1]) */
-alwan_status alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb);
-alwan_status alwan_rgb_to_hwb_f64(alwan_hwb_f64 *hwb_out, alwan_rgb_f64 const *rgb);
-alwan_status alwan_hwb_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_hwb_f32 const *hwb);
-alwan_status alwan_hwb_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_hwb_f64 const *hwb);
 
 /* ----------------------------------------------------------------
  * Hero Wavelength Spectral Sampling

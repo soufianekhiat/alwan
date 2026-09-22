@@ -365,10 +365,17 @@ entries are contract/doc/naming nits that should be cleaned up before the
   the batch/`_ex` forms; `igpgtg_f32_map_planar` names its pointers `i2,i0,i1`
   vs `i0,i1,i2` elsewhere.
 
-- **Header fragmentation.** The convenience-model family is split across
-  ~2472-2616 and ~4262-4306; the YCoCg inverse is orphaned at 2618 far from its
-  forward; HWB scalars sit at 4014-4017 away from the HWB maps at 2580-2592.
-  Consolidate so an audit of one region sees the whole family.
+- ~~**Header fragmentation.**~~ **RESOLVED 2026-09-22.** Measured before
+  touching anything: the convenience families (HSV, HSL, HSY, CMY, YCbCr,
+  YcCbcCrc, YCoCg, HWB) had each become one contiguous region, 5178-5500,
+  plus their planar forms in the header's deliberate "Planar Map Functions"
+  section at the end, which groups every family's planar declarations on
+  purpose and stays. Two orphans were real and are moved: the YCoCg inverse
+  scalars sat 206 lines below their forward, after the YCbCr legal-range
+  maps, and now follow it directly; the four HWB scalars sat in their own
+  banner between the HDR metadata and hero-wavelength sampling, 2950 lines
+  from the HWB maps, and now open the HWB block beside them. No declaration
+  changed, and the build is unaffected by declaration order.
 
 ### ABI / coverage
 
