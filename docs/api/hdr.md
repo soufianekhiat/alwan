@@ -296,7 +296,11 @@ Where the result differs from colour-hdri, on purpose
   `(c x + 1 - c) L` for the paper's `c x + (1 - c) L`, and its automatic `m` raises
   only the denominator of `k` to 1.4 and subtracts a log average from a log. alwan
   takes `k = (ln L_max - ln L_avg) / (ln L_max - ln L_min)`, all of luminance plus
-  the log average's epsilon, so `k` lies in `[0, 1]`.
+  the log average's epsilon, so `k` lies in `[0, 1]`. Its global adaptation level,
+  which `light_adaptation` below 1 mixes in, is the paper's arithmetic means,
+  `c mean(channel) + (1 - c) mean(L)` (p. 17 and the source in its Fig. 7); colour-hdri
+  takes the log average of luminance there, 0.314 of output away on suite 130's image.
+  OpenCV's `TonemapReinhard` takes the mean too, and suite 130 holds alwan to it.
 - `q` or `k` below 1 is `ALWAN_E_INVALID` for `LOGARITHMIC` and `EXPONENTIAL`; colour-hdri
   raises it to 1.
 - A pixel with zero luminance is black where colour-hdri divides zero by zero.

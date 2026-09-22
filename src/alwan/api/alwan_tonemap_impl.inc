@@ -144,7 +144,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
     alwan__tm_params t;
     int const o = (int)op;
     int const lum = alwan__tm_uses_luminance(o), ratio = alwan__tm_scales_by_ratio(o);
-    double l_max = 0.0, l_min = DBL_MAX, s_log = 0.0, s_tum = 0.0, c_sum[3] = { 0.0, 0.0, 0.0 };
+    double l_max = 0.0, l_min = DBL_MAX, s_log = 0.0, s_tum = 0.0, l_sum = 0.0, c_sum[3] = { 0.0, 0.0, 0.0 };
     double scale = 0.0, extra = 0.0, f_white = 1.0, ig[3] = { 0.0, 0.0, 0.0 };
     double drago_lav = 1.0, drago_peak = 1.0;
     alwan_status st;
@@ -176,6 +176,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
             }
             if (o == (int)ALWAN_TONEMAP_TUMBLIN1999) s_tum += ALWAN_LN_F64(L + ALWAN__TM_TUMBLIN_EPS);
             if (o == (int)ALWAN_TONEMAP_REINHARD2004) {
+                l_sum += L;
                 for (ch = 0; ch < 3; ch++) {
                     /* With c > 0 a channel is its own adaptation level, which must not be negative. */
                     if (t.c > 0.0 && (double)s[ch] < 0.0) return ALWAN_E_INVALID;
@@ -210,7 +211,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
         break;
     }
     case ALWAN_TONEMAP_REINHARD2004: {
-        double const la = s_log / (double)count, l_lav = ALWAN_EXP_F64(la);
+        double const la = s_log / (double)count;
         if (t.automatic_m) {
             /* Reinhard and Devlin 2005: m = 0.3 + 0.7 k^1.4, k the key of the image in the log
              * domain. Every log is of luminance plus the epsilon of the log average, so k lies
@@ -220,7 +221,11 @@ alwan_status ALWAN_CORE_FNLIT(alwan_tonemap_global)(ALWAN_CORE_T *rgb_out, size_
             t.m = 0.3 + 0.7 * alwan__tm_pow0(kk, 1.4);
         }
         scale = ALWAN_EXP_F64(-t.f);
-        for (ch = 0; ch < 3; ch++) ig[ch] = t.c * (c_sum[ch] / (double)count) + (1.0 - t.c) * l_lav;
+        /* The global adaptation level, Reinhard and Devlin 2005 p. 17: "I^av and L^av
+         * arithmetic averages", and Fig. 7's I_g = c * Cav + (1 - c) * Lav. The log
+         * average above is the key's alone. colour-hdri takes the log average here;
+         * alwan did until 2026-09-22. OpenCV and pfstmo take the mean, as the paper does. */
+        for (ch = 0; ch < 3; ch++) ig[ch] = t.c * (c_sum[ch] / (double)count) + (1.0 - t.c) * (l_sum / (double)count);
         break;
     }
     case ALWAN_TONEMAP_DRAGO2003: {

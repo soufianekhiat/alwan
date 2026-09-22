@@ -720,6 +720,15 @@ epsilon so that `k` stays in `[0, 1]`. At `c = 0` with an explicit `m`, every
 Reinhard case of suite 130 matches colour-hdri to 8e-16; the other two parts are
 checked against the paper's formulas.
 
+The global adaptation level is the third departure, settled 2026-09-22 with the paper
+to hand. Page 17 combines the levels "with I^av and L^av arithmetic averages", and
+the source in its Fig. 7 has `I_g = c * Cav[i] + (1 - c) * Lav`, the log average
+`Llav` entering the key alone. colour-hdri takes the log average of luminance in
+`I_g`; alwan followed it until 3.0.0, and now takes the mean. On suite 130's image the
+two are 0.314 of output apart. OpenCV's `TonemapReinhard` and pfstmo's `reinhard05`
+take the mean, and suite 130 holds alwan to OpenCV on seven cases, four of them where
+the term acts, to 1e-5 (float32 is OpenCV's depth).
+
 The logarithmic and exponential operators take `q` and `k` from 1 up. colour-hdri
 raises a smaller value to 1 without saying so; alwan returns `ALWAN_E_INVALID`, the
 same rule against silent clamps as everywhere else.

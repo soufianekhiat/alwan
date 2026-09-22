@@ -2,6 +2,16 @@
 
 ### Fixed: output differs
 
+- **`ALWAN_TONEMAP_REINHARD2004`'s global adaptation level takes the paper's arithmetic
+  means.** `I_g = c mean(channel) + (1 - c) mean(L)`, which `light_adaptation` below 1
+  mixes into every pixel's adaptation. alwan took the log average of luminance there,
+  following colour-hdri; Reinhard and Devlin 2005 (p. 17, and the source in its Fig. 7)
+  take the arithmetic mean, the log average being the key's alone, and OpenCV and
+  pfstmo do the same. On suite 130's image the two readings are 0.314 of output apart.
+  Only calls with both `light_adaptation` and `chromatic_adaptation` below 1 change; at
+  1 the term drops out. Suite 130 now holds the operator to OpenCV's `TonemapReinhard`
+  on seven parameter sets, four of them where the term acts.
+
 - **ZCAM was wrong, forward and inverse, and had never been tested.** Suite 28 loaded a
   colour-science reference, printed each mismatch and returned success, so it printed nine of
   twelve on every run. Against the reference, lightness was off by up to 18 of 100. Four

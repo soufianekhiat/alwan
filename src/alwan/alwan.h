@@ -8106,23 +8106,13 @@ typedef enum {
  * and not negative. NORMALIZATION divides by the peak luminance (a zero peak gives
  * black).
  *
- * REINHARD2004's GLOBAL ADAPTATION TERM is worth knowing about before using it
- * with light_adaptation below 1 and chromatic_adaptation below 1, which is the
- * only place it has any effect. The term is
- *
- *     I_g = c * mean(channel) + (1 - c) * <a mean of luminance>
- *
- * and alwan takes the LOG average of luminance there, following colour-hdri,
- * which is the reference the rest of this operator is pinned to. OpenCV's
- * TonemapReinhard and pfstmo's reinhard05 both take the ARITHMETIC mean. The
- * two are not close: on suite 130's own image the log average is 0.301 where
- * the arithmetic mean is 23.02, and the outputs are 0.314 apart. With
- * light_adaptation or chromatic_adaptation at 1 the term drops out and the
- * question does not arise.
- *
- * Which reading is Reinhard and Devlin's is not settled here and alwan has not
- * been changed on an argument; suite 130 pins the current behaviour so that it
- * is deliberate, and roadmap 3.4 carries the open question.
+ * REINHARD2004's global adaptation level, which light_adaptation below 1 mixes in,
+ * is the paper's: I_g = c * mean(channel) + (1 - c) * mean(luminance), with both means
+ * ARITHMETIC (Reinhard and Devlin 2005, p. 17, and Fig. 7's source). The log average
+ * of luminance enters only the automatic contrast's key. colour-hdri takes the log
+ * average in I_g as well, and alwan followed it until 3.0.0; on suite 130's image the
+ * two are 0.314 of output apart. OpenCV's TonemapReinhard and pfstmo's reinhard05
+ * take the mean, and suite 130 holds alwan to OpenCV where the term has an effect.
  *
  * REINHARD2004 maps each channel against its adaptation level; a zero channel
  * stays zero, and with chromatic_adaptation above 0 no channel may be negative. The
