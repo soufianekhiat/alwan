@@ -828,8 +828,10 @@ alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
      * is ever examined, so the same call succeeded on a colour inside the cube
      * and failed on one outside it. alwan_simulate_cvd_gamut_safe_{T} passes
      * this enum straight through and documents the whole of it, so with this
-     * method it failed on 2,425 of the 2,426 random sRGB colours (of 4,000)
-     * whose simulation leaves the gamut: exactly the pixels it exists for. */
+     * method it failed on every one of the 2,426 random sRGB colours (of
+     * 4,000) whose simulation leaves the gamut: exactly the pixels it exists
+     * for. The early-out is the only other way out of this function, and it
+     * fires for none of those, nor for any of the 24,526 out of 40,000. */
     if (method == ALWAN_GAMUT_MAP_HUE_PRESERVING) {
         alwan_vec3_f64 mapped, rgb_result;
         gamut_map_hue_preserving_single(&rgb_work, &mapped);
@@ -1669,8 +1671,10 @@ alwan_status alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
      * is ever examined, so the same call succeeded on a colour inside the cube
      * and failed on one outside it. alwan_simulate_cvd_gamut_safe_{T} passes
      * this enum straight through and documents the whole of it, so with this
-     * method it failed on 2,425 of the 2,426 random sRGB colours (of 4,000)
-     * whose simulation leaves the gamut: exactly the pixels it exists for. */
+     * method it failed on every one of the 2,426 random sRGB colours (of
+     * 4,000) whose simulation leaves the gamut: exactly the pixels it exists
+     * for. The early-out is the only other way out of this function, and it
+     * fires for none of those, nor for any of the 24,526 out of 40,000. */
     if (method == ALWAN_GAMUT_MAP_HUE_PRESERVING) {
         alwan_vec3_f32 mapped, rgb_result;
         gamut_map_hue_preserving_single_f32(&rgb_work, &mapped);

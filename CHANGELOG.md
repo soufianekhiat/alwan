@@ -362,8 +362,9 @@
   returns before the method is examined, so the same call succeeded on a colour inside the
   cube and failed on one outside it. `alwan_simulate_cvd_gamut_safe_{T}` passes this enum
   straight through and its header offers the whole of it: with that method it failed on
-  2,425 of the 2,426 random sRGB colours (of 4,000) whose CVD simulation leaves the gamut,
-  which is to say on the pixels it exists for. The method is now the projection the plain
+  every one of the 2,426 random sRGB colours (of 4,000) whose CVD simulation leaves the
+  gamut, which is to say on the pixels it exists for. The early-out was its only other way
+  out and it fires for none of those, nor for any of the 24,526 out of 40,000. The method is now the projection the plain
   `alwan_gamut_{T}` maps run, applied in the working space so `space` is honoured, and it
   is bit-identical to those maps for sRGB. Suite 41 sweeps all eight methods over colours
   whose simulation is known to leave the gamut.
