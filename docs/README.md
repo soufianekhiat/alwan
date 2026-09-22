@@ -26,6 +26,7 @@ the library around that API surface.
 
 - [backends-cpu.md](backends-cpu.md) - CPU/SIMD backend: SSE2/AVX/AVX2/NEON dispatch, SVML gating, fast vs deterministic math paths
 - [api/display.md](api/display.md) - a measured display: GOG/GOGO tone fits, the additive model, the calibration LUT
+- [api/nn.md](api/nn.md) - neural layer kernels: dense, conv2d, pooling, upsampling, activations, softmax, against PyTorch, bit-exact across backends in a deterministic build
 - [api/backends.md](api/backends.md) - GPU/single-color shader backends (`ALWAN_BACKEND` C/HLSL/GLSL/Halide)
 - [backends_limits.md](backends_limits.md) - per-feature status of the shader backends: what compiles on GPU today and what stays CPU-only
 

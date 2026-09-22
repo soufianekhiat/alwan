@@ -1252,6 +1252,24 @@ EXPORTS
     alwan_nayatani95_forward_f64_map_interleave
     alwan_ncs_to_xyz_f32
     alwan_ncs_to_xyz_f64
+    alwan_nn_activation_f32
+    alwan_nn_activation_f64
+    alwan_nn_add_f32
+    alwan_nn_add_f64
+    alwan_nn_concat_channels_f32
+    alwan_nn_concat_channels_f64
+    alwan_nn_conv2d_f32
+    alwan_nn_conv2d_f64
+    alwan_nn_dense_f32
+    alwan_nn_dense_f64
+    alwan_nn_global_avg_f32
+    alwan_nn_global_avg_f64
+    alwan_nn_pool2d_f32
+    alwan_nn_pool2d_f64
+    alwan_nn_softmax_f32
+    alwan_nn_softmax_f64
+    alwan_nn_upsample2d_f32
+    alwan_nn_upsample2d_f64
     alwan_oetf_apply_f32
     alwan_oetf_apply_f64
     alwan_okhsl_to_srgb_f32

@@ -9653,6 +9653,84 @@ alwan_status alwan_interop_query(alwan_interop_info *out, alwan_rgb_space space)
 alwan_status alwan_interop_query_id(alwan_interop_info *out, char const *id);
 
 /* ----------------------------------------------------------------
+ * Neural layer kernels (roadmap 3.10, step two)
+ *
+ * The layers a small colour-science network is made of, run by alwan itself
+ * so that a deterministic build is bit-exact across backends: fixed summation
+ * order, no fused multiply-add, the committed exp. The per-element kernels
+ * are in core/alwan_nn_core.h, written against ALWAN_NN_READ_* accessors so a
+ * shader binds its own buffers (see core/alwan_nn_reader.inc); these are
+ * those kernels in a loop over the output, validated once.
+ *
+ * LAYOUT, and it is not PyTorch's. Tensors are channels-last: an image
+ * element is in[(y * W + x) * C + c]. Convolution weights are HWIO,
+ * w[((ky * KW + kx) * Cg + ci) * Cout + o] with Cg = Cin / groups; a dense
+ * weight is w[i * n_out + o]. A model converted for alwan carries its weights
+ * already in this order and nothing is transposed at run time. Shapes are the
+ * caller's: the output buffer must hold what the layer produces, stated below.
+ * f32 is the compute type every model in scope was trained in; f64 is the
+ * reference path the f32 one is checked against.
+ *
+ * Reference: PyTorch, called from gendata on seeded random tensors, per layer
+ * (suite 176). GELU is the tanh form, torch's approximate='tanh'.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_NN_ACTIVATION_RELU = 0,
+    ALWAN_NN_ACTIVATION_LEAKY_RELU = 1,   /* alpha x below zero */
+    ALWAN_NN_ACTIVATION_SIGMOID = 2,
+    ALWAN_NN_ACTIVATION_TANH = 3,
+    ALWAN_NN_ACTIVATION_GELU = 4          /* the tanh form */
+} alwan_nn_activation_kind;
+
+typedef enum { ALWAN_NN_POOL_MAX = 0, ALWAN_NN_POOL_AVG = 1 } alwan_nn_pool_kind;
+typedef enum { ALWAN_NN_UPSAMPLE_NEAREST = 0, ALWAN_NN_UPSAMPLE_BILINEAR = 1 } alwan_nn_upsample_kind;
+
+/* Dense: out[n_out] = in[n_in] w[n_in x n_out] + b[n_out]; b may be NULL. */
+alwan_status alwan_nn_dense_f32(alwan_f32 *out, alwan_f32 const *in, alwan_f32 const *w, alwan_f32 const *b, int n_in, int n_out);
+alwan_status alwan_nn_dense_f64(alwan_f64 *out, alwan_f64 const *in, alwan_f64 const *w, alwan_f64 const *b, int n_in, int n_out);
+
+/* 2D convolution (cross-correlation, as every framework means it) of an
+ * H x W x Cin image by KH x KW x (Cin / groups) x Cout weights, one stride and
+ * one zero padding on both axes, b[Cout] or NULL. groups divides Cin and Cout;
+ * groups == Cin == Cout is depthwise. The output is
+ * ((H + 2 pad - KH) / stride + 1) x ((W + 2 pad - KW) / stride + 1) x Cout.
+ * ALWAN_E_RANGE if the padded image is smaller than the kernel. */
+alwan_status alwan_nn_conv2d_f32(alwan_f32 *out, alwan_f32 const *in, int H, int W, int Cin, alwan_f32 const *w, alwan_f32 const *b, int KH, int KW, int Cout, int stride, int pad, int groups);
+alwan_status alwan_nn_conv2d_f64(alwan_f64 *out, alwan_f64 const *in, int H, int W, int Cin, alwan_f64 const *w, alwan_f64 const *b, int KH, int KW, int Cout, int stride, int pad, int groups);
+
+/* Elementwise activation; alpha is read by LEAKY_RELU only. out may be in. */
+alwan_status alwan_nn_activation_f32(alwan_f32 *out, alwan_f32 const *in, size_t count, alwan_nn_activation_kind kind, alwan_f32 alpha);
+alwan_status alwan_nn_activation_f64(alwan_f64 *out, alwan_f64 const *in, size_t count, alwan_nn_activation_kind kind, alwan_f64 alpha);
+
+/* Max or average pooling over k x k at one stride with zero padding, output
+ * ((H + 2 pad - k) / stride + 1) squared x C. An average divides by k * k,
+ * padded positions included (PyTorch's count_include_pad default); a max
+ * skips them. pad above k / 2 is ALWAN_E_RANGE, PyTorch's own rule. */
+alwan_status alwan_nn_pool2d_f32(alwan_f32 *out, alwan_f32 const *in, int H, int W, int C, int k, int stride, int pad, alwan_nn_pool_kind kind);
+alwan_status alwan_nn_pool2d_f64(alwan_f64 *out, alwan_f64 const *in, int H, int W, int C, int k, int stride, int pad, alwan_nn_pool_kind kind);
+
+/* Global average over the image: out[C]. */
+alwan_status alwan_nn_global_avg_f32(alwan_f32 *out, alwan_f32 const *in, int H, int W, int C);
+alwan_status alwan_nn_global_avg_f64(alwan_f64 *out, alwan_f64 const *in, int H, int W, int C);
+
+/* Upsampling by an integer factor to (H scale) x (W scale) x C: nearest takes
+ * the source at floor(dst / scale); bilinear is PyTorch's align_corners=False. */
+alwan_status alwan_nn_upsample2d_f32(alwan_f32 *out, alwan_f32 const *in, int H, int W, int C, int scale, alwan_nn_upsample_kind kind);
+alwan_status alwan_nn_upsample2d_f64(alwan_f64 *out, alwan_f64 const *in, int H, int W, int C, int scale, alwan_nn_upsample_kind kind);
+
+/* Softmax over n, max-subtracted. out may be in. */
+alwan_status alwan_nn_softmax_f32(alwan_f32 *out, alwan_f32 const *in, int n);
+alwan_status alwan_nn_softmax_f64(alwan_f64 *out, alwan_f64 const *in, int n);
+
+/* Elementwise sum, and channel concatenation of two H x W images. */
+alwan_status alwan_nn_add_f32(alwan_f32 *out, alwan_f32 const *a, alwan_f32 const *b, size_t count);
+alwan_status alwan_nn_add_f64(alwan_f64 *out, alwan_f64 const *a, alwan_f64 const *b, size_t count);
+alwan_status alwan_nn_concat_channels_f32(alwan_f32 *out, alwan_f32 const *a, int Ca, alwan_f32 const *b, int Cb, int H, int W);
+alwan_status alwan_nn_concat_channels_f64(alwan_f64 *out, alwan_f64 const *a, int Ca, alwan_f64 const *b, int Cb, int H, int W);
+
+
+/* ----------------------------------------------------------------
  * Color Interop Forum -- float16 (half-float) Conversion
  * ---------------------------------------------------------------- */
 

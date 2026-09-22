@@ -339,6 +339,23 @@
 
 ### Added
 
+- **Neural layer kernels (roadmap 3.10, step two).** `alwan_nn_dense_{T}`,
+  `alwan_nn_conv2d_{T}` (stride, zero padding, groups and depthwise),
+  `alwan_nn_activation_{T}` (ReLU, leaky, sigmoid, tanh, GELU in the tanh form),
+  `alwan_nn_pool2d_{T}` (max and average), `alwan_nn_global_avg_{T}`,
+  `alwan_nn_upsample2d_{T}` (nearest and PyTorch's align_corners=False bilinear),
+  `alwan_nn_softmax_{T}`, `alwan_nn_add_{T}` and `alwan_nn_concat_channels_{T}`, each
+  the per-element kernel of `core/alwan_nn_core.h` in a loop over the output. The
+  kernels are written against `ALWAN_NN_READ_*` accessors, the seam the table readers
+  proved, so a shader binds its own buffers and there is no GPU twin to drift; every
+  accumulate runs in a fixed order into an `ALWAN_DET_PRECISE` local with no fused
+  multiply-add, which is what makes a deterministic build bit-exact across backends and
+  the reason to run a network here at all. Tensors are channels-last with HWIO weights;
+  a converted model carries them in that order. Suite 176 holds the f64 path to PyTorch
+  in float64 on seeded random tensors (worst 9e-16), the f32 path to the f64 one (worst
+  2e-7), and the whole-tensor forms to the per-element kernels bit for bit.
+  `docs/api/nn.md`.
+
 - **Every public operation has a reference entry, and the count is a gate.**
   `alwan_dev/tools/check_doc_coverage.py` folds the precision and buffer-form suffixes
   and asks which base operations appear nowhere under `docs/`: 54 of 687 on the morning
