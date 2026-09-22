@@ -57,7 +57,7 @@ Current Alwan mapping:
 
 - `ALWAN_PIXEL_F16` for direct typed-pixel access
 - planar APIs when the EXR buffer is one channel per slice
-- `alwan_half_to_float_{T}` and `alwan_float_to_half_{T}` when the host needs
+- `alwan_half_to_float` and `alwan_float_to_half` when the host needs
   explicit expansion or repacking around a larger processing graph
 
 This is also a good fit for `alwan_collect3_*` / `alwan_scatter3_*` if the EXR
@@ -232,7 +232,7 @@ technically supported but inconvenient for a multi-step processing graph.
 Half support exists in two forms:
 
 - direct typed-pixel processing through `ALWAN_PIXEL_F16`
-- explicit conversion through `alwan_half_to_float_{T}` and `alwan_float_to_half_{T}`
+- explicit conversion through `alwan_half_to_float` and `alwan_float_to_half`
 
 ---
 

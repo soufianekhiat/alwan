@@ -21,6 +21,13 @@
  * Dual-Precision: emit f32 and f64 variants from shared .inc
  * ================================================================ */
 
+/* The strip's two dimensions from the cube's edge: no precision in it, so one
+ * function (the _f32/_f64 pair went in 3.0.0). */
+void alwan_lut2d_dimensions(int size, int *width, int *height) {
+    if (width)  *width  = size * size;
+    if (height) *height = size;
+}
+
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV

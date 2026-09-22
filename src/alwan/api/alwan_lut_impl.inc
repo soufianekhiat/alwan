@@ -264,15 +264,6 @@ alwan_status ALWAN_CORE_FNLIT(alwan_bake_1dlut)(ALWAN_CORE_T *out, int size,
 }
 
 /* ----------------------------------------------------------------
- * 2D LUT Dimensions
- * ---------------------------------------------------------------- */
-
-void ALWAN_CORE_FNLIT(alwan_lut2d_dimensions)(int size, int *width, int *height) {
-    if (width)  *width  = size * size;
-    if (height) *height = size;
-}
-
-/* ----------------------------------------------------------------
  * 3D -> 2D flatten
  * ---------------------------------------------------------------- */
 

@@ -9041,8 +9041,7 @@ alwan_status alwan_bake_1dlut_f64(alwan_f64 *out, int size,
  * size: 3D LUT edge length
  * width: output image width  (= size * size)
  * height: output image height (= size) */
-void alwan_lut2d_dimensions_f32(int size, int *width, int *height);
-void alwan_lut2d_dimensions_f64(int size, int *width, int *height);
+void alwan_lut2d_dimensions(int size, int *width, int *height);
 
 /* Flatten a 3D LUT into a 2D image buffer.
  * out: buffer of (size*size) * size * 3 values (row-major, RGB interleaved)
@@ -9757,8 +9756,7 @@ alwan_status alwan_clf_log_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
 
 /* Parse a Color Interop Forum ID string to an alwan_rgb_space enum.
  * Returns ALWAN_OK on success, ALWAN_E_NODATA if ID not recognized. */
-alwan_status alwan_interop_parse_f64(alwan_rgb_space *space, char const *id);
-alwan_status alwan_interop_parse_f32(alwan_rgb_space *space, char const *id);
+alwan_status alwan_interop_parse(alwan_rgb_space *space, char const *id);
 
 /* Get the Color Interop Forum ID string for an alwan_rgb_space enum.
  * Returns the canonical string, or NULL if the space has no interop ID. */
@@ -9770,8 +9768,7 @@ size_t alwan_interop_count(void);
 /* Get the interop entry at the given index (for enumeration).
  * space and id may be NULL if not needed.
  * Returns ALWAN_E_RANGE if index is out of bounds. */
-alwan_status alwan_interop_entry_at_f64(alwan_rgb_space *space, char const **id, size_t index);
-alwan_status alwan_interop_entry_at_f32(alwan_rgb_space *space, char const **id, size_t index);
+alwan_status alwan_interop_entry_at(alwan_rgb_space *space, char const **id, size_t index);
 
 /* What the interop tables know about a space, for a UI or a file writer that
  * has to decide rather than look up one string. Every field is derived from
@@ -9893,16 +9890,17 @@ alwan_status alwan_nn_concat_channels_f64(alwan_f64 *out, alwan_f64 const *a, in
 /* Convert float16 (IEEE 754 binary16) samples to float32.
  * out: output float32 buffer
  * in: input uint16_t buffer containing float16 bit patterns
- * count: number of samples */
-alwan_status alwan_half_to_float_f64(alwan_f32 *out, alwan_uint16 const *in, size_t count);
-alwan_status alwan_half_to_float_f32(alwan_f32 *out, alwan_uint16 const *in, size_t count);
+ * count: number of samples
+ * No precision in the signature, so no precision suffix: until 3.0.0 these two
+ * and the three above (lut2d_dimensions, interop_parse, interop_entry_at) came
+ * as identical _f32/_f64 pairs, one forwarding to the other. */
+alwan_status alwan_half_to_float(alwan_f32 *out, alwan_uint16 const *in, size_t count);
 
 /* Convert float32 samples to float16 (IEEE 754 binary16).
  * out: output uint16_t buffer for float16 bit patterns
  * in: input float32 buffer
  * count: number of samples */
-alwan_status alwan_float_to_half_f64(alwan_uint16 *out, alwan_f32 const *in, size_t count);
-alwan_status alwan_float_to_half_f32(alwan_uint16 *out, alwan_f32 const *in, size_t count);
+alwan_status alwan_float_to_half(alwan_uint16 *out, alwan_f32 const *in, size_t count);
 
 /* ----------------------------------------------------------------
  * CLF (Common LUT Format) Export -- SMPTE ST 2136-1:2024

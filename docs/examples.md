@@ -230,7 +230,7 @@ alwan_clf_export_view_{T}(
 ```c
 alwan_rgb_space space;
 
-if (alwan_interop_parse_{T}(&space, "lin_ap1") == ALWAN_OK) {
+if (alwan_interop_parse(&space, "lin_ap1") == ALWAN_OK) {
     char const *id = alwan_interop_format(space);
     /* id is the canonical interop string for that enum */
 }
@@ -238,7 +238,7 @@ if (alwan_interop_parse_{T}(&space, "lin_ap1") == ALWAN_OK) {
 for (size_t i = 0; i < alwan_interop_count(); ++i) {
     alwan_rgb_space s;
     char const *id = NULL;
-    if (alwan_interop_entry_at_{T}(&s, &id, i) == ALWAN_OK) {
+    if (alwan_interop_entry_at(&s, &id, i) == ALWAN_OK) {
         /* enumerate registry */
     }
 }
@@ -256,8 +256,8 @@ format.
 alwan_uint16 half_pixels[1024];
 alwan_f32 linear_f32[1024];
 
-alwan_half_to_float_{T}(linear_f32, half_pixels, 1024);
-alwan_float_to_half_{T}(half_pixels, linear_f32, 1024);
+alwan_half_to_float(linear_f32, half_pixels, 1024);
+alwan_float_to_half(half_pixels, linear_f32, 1024);
 ```
 
 ---

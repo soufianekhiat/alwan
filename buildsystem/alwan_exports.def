@@ -690,8 +690,7 @@ EXPORTS
     alwan_film_stock_info
     alwan_film_transmittance_f32
     alwan_film_transmittance_f64
-    alwan_float_to_half_f32
-    alwan_float_to_half_f64
+    alwan_float_to_half
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64
     alwan_focal_plane_exposure_f32
@@ -746,8 +745,7 @@ EXPORTS
     alwan_h273_matrix_coefficients_f64
     alwan_h273_transfer_from_tf
     alwan_h273_transfer_to_tf
-    alwan_half_to_float_f32
-    alwan_half_to_float_f64
+    alwan_half_to_float
     alwan_hcl_to_rgb_f32
     alwan_hcl_to_rgb_f32_map_interleave
     alwan_hcl_to_rgb_f32_map_planar
@@ -983,11 +981,9 @@ EXPORTS
     alwan_index_stress_f32
     alwan_index_stress_f64
     alwan_interop_count
-    alwan_interop_entry_at_f32
-    alwan_interop_entry_at_f64
+    alwan_interop_entry_at
     alwan_interop_format
-    alwan_interop_parse_f32
-    alwan_interop_parse_f64
+    alwan_interop_parse
     alwan_interop_query
     alwan_interop_query_id
     alwan_interpolate_cubic_spline_f32
@@ -1165,8 +1161,7 @@ EXPORTS
     alwan_luminous_efficiency_f64
     alwan_lut1d_sample_f32
     alwan_lut1d_sample_f64
-    alwan_lut2d_dimensions_f32
-    alwan_lut2d_dimensions_f64
+    alwan_lut2d_dimensions
     alwan_lut2d_sample_f32
     alwan_lut2d_sample_f64
     alwan_lut2d_to_3d_f32

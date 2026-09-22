@@ -356,7 +356,7 @@ entries are contract/doc/naming nits that should be cleaned up before the
 
 ### Naming / header-layout nits
 
-- **Spurious precision suffixes (duplicate identical functions).**
+- **Spurious precision suffixes (duplicate identical functions).** *(RESOLVED 2026-09-22, as a 3.0.0 break: each pair is one unsuffixed function, section 5 item 5)*
   `half_to_float_f32`/`f64` and `float_to_half_f32`/`f64` (both take
   `alwan_f32` buffers), `lut2d_dimensions_f32`/`f64` (no float arg),
   `interop_parse`/`entry_at_f32`/`f64` (string<->enum). Collapse to single

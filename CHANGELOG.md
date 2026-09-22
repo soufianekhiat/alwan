@@ -255,6 +255,15 @@
 
 ### Breaking
 
+- **Five function pairs lose a precision suffix they never had a use for.**
+  `alwan_interop_parse`, `alwan_interop_entry_at`, `alwan_half_to_float`,
+  `alwan_float_to_half` and `alwan_lut2d_dimensions` have no precision in their signatures
+  (a string, an index, a half-float buffer, an integer size) and shipped as identical
+  `_f32`/`_f64` pairs, one forwarding to the other, so every one of them had two spellings
+  in the documentation and two symbols in the export table for one function. Each is now
+  the one unsuffixed name. Callers: drop the suffix. The core `_f32_v`/`_f64_v` half-float
+  conversions keep theirs, since a core is precision-typed by construction.
+
 - **The three oldest whiteness and yellowness functions return `alwan_status` with an out
   parameter.** `alwan_yellowness_astm_e313_{T}`, `alwan_whiteness_astm_e313_{T}` and
   `alwan_whiteness_cie2004_{T}` returned the index and signalled a NULL or a bad

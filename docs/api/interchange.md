@@ -48,10 +48,10 @@ scan over two file-scope `static const` tables:
   as scene-referred, and the bare IDs alwan wrote before 3.0.0 (`lin_ap1`,
   `srgb_texture`, `rec2100_pq` and the rest), so files written then still read.
 
-### alwan_interop_parse_{T}
+### alwan_interop_parse
 
 ```c
-alwan_status alwan_interop_parse_{T}(alwan_rgb_space *space, char const *id);
+alwan_status alwan_interop_parse(alwan_rgb_space *space, char const *id);
 ```
 
 Looks `id` up in the formatted table, then in the alias table, and writes the
@@ -74,13 +74,13 @@ The header documents two outcomes. There is a third: either pointer NULL
 returns `ALWAN_E_INVALID`, checked before the scan. `ALWAN_E_NODATA` means "no
 row matched", never "argument missing".
 
-`alwan_interop_parse_f32` is a one-line forward to the `_f64` body. The two are
-the same code.
+One function since 3.0.0: the `_f32`/`_f64` pair it shipped as, one forwarding to
+the other, had no precision in it.
 
 **Example:**
 ```c
 alwan_rgb_space space;
-if (alwan_interop_parse_{T}(&space, "lin_ap1_scene") == ALWAN_OK) {
+if (alwan_interop_parse(&space, "lin_ap1_scene") == ALWAN_OK) {
     /* space == ALWAN_RGB_SPACE_ACESCG */
 }
 ```
@@ -103,7 +103,7 @@ publishes both, else the `alwan:` ID. No `{T}` suffix.
 The returned pointer is a string literal referenced by the file-scope
 `static interop_entry const` table. It has static storage duration, is valid for
 the process lifetime, and must never be freed. The header states no ownership.
-The same applies to the `id` written by `alwan_interop_entry_at_{T}`.
+The same applies to the `id` written by `alwan_interop_entry_at`.
 
 > **NULL conflates two conditions.** The function returns NULL both for a valid
 > space with no ID (57 of the 109 enum values) and for a completely out-of-range
@@ -126,15 +126,15 @@ Returns 52, the row count of the formatted table; the aliases are not counted. N
 `alwan_rgb_space` has 109 members (`ALWAN_RGB_SPACE_COUNT`, held by a
 `_Static_assert` against the transfer-function table). 52 of them have an
 interop ID; the other 57 do not. A caller enumerating spaces through
-`alwan_interop_entry_at_{T}` sees that 52-row subset, not the library's space
+`alwan_interop_entry_at` sees that 52-row subset, not the library's space
 list. Every row it enumerates round-trips: `format(parse(id))` is `id`.
 
 ---
 
-### alwan_interop_entry_at_{T}
+### alwan_interop_entry_at
 
 ```c
-alwan_status alwan_interop_entry_at_{T}(alwan_rgb_space *space, char const **id, size_t index);
+alwan_status alwan_interop_entry_at(alwan_rgb_space *space, char const **id, size_t index);
 ```
 
 Reads row `index` of the formatted table.
@@ -148,14 +148,14 @@ Both outputs are optional. Passing NULL for both is a legal no-op returning
 `ALWAN_OK`. `index` is `size_t`, so a negative `int` argument converts to a huge
 value and lands in the `ALWAN_E_RANGE` branch instead of reading backwards.
 
-`alwan_interop_entry_at_f32` forwards to the `_f64` body.
+One function since 3.0.0; the forwarding `_f32` twin is gone.
 
 **Example:**
 ```c
 for (size_t i = 0; i < alwan_interop_count(); i++) {
     alwan_rgb_space space;
     char const *id;
-    alwan_interop_entry_at_{T}(&space, &id, i);
+    alwan_interop_entry_at(&space, &id, i);
     /* id is owned by the library; do not free */
 }
 ```
@@ -252,17 +252,17 @@ and binary32 in `alwan_f32`. Per-sample bit manipulation, no lookup table.
 `count * 3`.
 
 Neither `alwan_half.c` nor `alwan_interop.c` gates its public functions on
-`ALWAN_WITH_F32` / `ALWAN_WITH_F64`. The two `#if` blocks in `alwan_half.c`
-bracket only an implementation include whose entire content is comments; the
-four functions sit outside them. An f32-only build still exports
-`alwan_half_to_float_f64`, `alwan_float_to_half_f64`, `alwan_interop_parse_f64`
-and `alwan_interop_entry_at_f64`, and they link. `alwan_video.c` does gate
-properly.
+`ALWAN_WITH_F32` / `ALWAN_WITH_F64`, and since 3.0.0 there is nothing to gate:
+`alwan_half_to_float`, `alwan_float_to_half`, `alwan_interop_parse` and
+`alwan_interop_entry_at` are one function each with no precision in the
+signature, exported and linking in every build (the precision-link gate checks
+the f32-only and f64-only builds). `alwan_video.c` does gate its precision
+twins.
 
-### alwan_half_to_float_{T}
+### alwan_half_to_float
 
 ```c
-alwan_status alwan_half_to_float_{T}(alwan_f32 *out, alwan_uint16 const *in, size_t count);
+alwan_status alwan_half_to_float(alwan_f32 *out, alwan_uint16 const *in, size_t count);
 ```
 
 **Parameters:**
@@ -275,10 +275,10 @@ Zero, subnormal, Inf and NaN are all handled. Subnormal halves are renormalised
 in a shift loop. `exp == 31` becomes `sign | 0x7F800000 | (mant << 13)`, so Inf
 stays Inf and NaN stays NaN with the payload shifted up.
 
-### alwan_float_to_half_{T}
+### alwan_float_to_half
 
 ```c
-alwan_status alwan_float_to_half_{T}(alwan_uint16 *out, alwan_f32 const *in, size_t count);
+alwan_status alwan_float_to_half(alwan_uint16 *out, alwan_f32 const *in, size_t count);
 ```
 
 **Parameters:**
@@ -696,22 +696,22 @@ GBR), 8 (YCgCo), 11 (Y'D'zD'x) and 14 (ICtCp) are specified but have no Kr and K
 
 - `ALWAN_OK` (0) -- success, for all six status-returning functions here.
 - `ALWAN_E_INVALID` (-1) -- undocumented in the header for every case below.
-  `alwan_interop_parse_{T}`: `space` or `id` NULL. `alwan_half_to_float_{T}` and
-  `alwan_float_to_half_{T}`: `out` NULL, `in` NULL, or `count == 0`.
+  `alwan_interop_parse`: `space` or `id` NULL. `alwan_half_to_float` and
+  `alwan_float_to_half`: `out` NULL, `in` NULL, or `count == 0`.
   `alwan_video_encode_{T}` and `alwan_video_decode_{T}`: `out`/`in` NULL,
   `count == 0`, `space` outside `[0, ALWAN_RGB_SPACE_COUNT)`, `bit_depth` not in
   {8, 10, 12, 16} after the `<= 0` derive, or a pixel format with no stride
   (`ALWAN_PIXEL_F16` and anything unknown).
-- `ALWAN_E_NODATA` (-2) -- `alwan_interop_parse_{T}` only, for a non-NULL `id`
+- `ALWAN_E_NODATA` (-2) -- `alwan_interop_parse` only, for a non-NULL `id`
   matching no row.
-- `ALWAN_E_RANGE` (-3) -- `alwan_interop_entry_at_{T}` only, for
+- `ALWAN_E_RANGE` (-3) -- `alwan_interop_entry_at` only, for
   `index >= alwan_interop_count()`.
 
 `count == 0` is an error, not an empty-batch no-op. The four functions here that
-take a `count` (`alwan_half_to_float_{T}`, `alwan_float_to_half_{T}`,
+take a `count` (`alwan_half_to_float`, `alwan_float_to_half`,
 `alwan_video_encode_{T}`, `alwan_video_decode_{T}`) return `ALWAN_E_INVALID` for
 zero count, so guard your loops before calling.
-`alwan_interop_parse_{T}` and `alwan_interop_entry_at_{T}` have no `count`
+`alwan_interop_parse` and `alwan_interop_entry_at` have no `count`
 parameter; `index >= alwan_interop_count()` is the analogous guard there, and it
 returns `ALWAN_E_RANGE`.
 

@@ -25,7 +25,11 @@ ALWAN_DIAG_POP
 #include "alwan_api_teardown.h"
 #endif
 
-alwan_status alwan_half_to_float_f64(alwan_f32 *out, alwan_uint16 const *in, size_t count) {
+/* One body each since 3.0.0: a half-float conversion has no precision to pick.
+ * The f64 core is used because every core is instantiated in both precisions
+ * whatever the build's API precision, and a float widened to double and rounded
+ * to half rounds exactly as the float would (the float is exact in double). */
+alwan_status alwan_half_to_float(alwan_f32 *out, alwan_uint16 const *in, size_t count) {
     if (!out || !in || count == 0) return ALWAN_E_INVALID;
 
     for (size_t i = 0; i < count; i++) {
@@ -34,29 +38,11 @@ alwan_status alwan_half_to_float_f64(alwan_f32 *out, alwan_uint16 const *in, siz
     return ALWAN_OK;
 }
 
-alwan_status alwan_half_to_float_f32(alwan_f32 *out, alwan_uint16 const *in, size_t count) {
-    if (!out || !in || count == 0) return ALWAN_E_INVALID;
-
-    for (size_t i = 0; i < count; i++) {
-        out[i] = alwan_half_to_float_f32_v((alwan_half)in[i]);
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_float_to_half_f64(alwan_uint16 *out, alwan_f32 const *in, size_t count) {
+alwan_status alwan_float_to_half(alwan_uint16 *out, alwan_f32 const *in, size_t count) {
     if (!out || !in || count == 0) return ALWAN_E_INVALID;
 
     for (size_t i = 0; i < count; i++) {
         out[i] = (alwan_uint16)alwan_float_to_half_f64_v(in[i]);
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_float_to_half_f32(alwan_uint16 *out, alwan_f32 const *in, size_t count) {
-    if (!out || !in || count == 0) return ALWAN_E_INVALID;
-
-    for (size_t i = 0; i < count; i++) {
-        out[i] = (alwan_uint16)alwan_float_to_half_f32_v(in[i]);
     }
     return ALWAN_OK;
 }

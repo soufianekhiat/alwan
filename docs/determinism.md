@@ -459,7 +459,7 @@ Coverage in the regression dump (manifest v49):
   Apple Log, Fujifilm F-Log + F-Log2, Leica L-Log, DJI D-Log, DCDM,
   ADX 10-bit + 16-bit. Combined with the v18 set, the contract now
   covers every TF enum in alwan.h.
-- Interop registry (v42): alwan_interop_count + alwan_interop_entry_at_f64
+- Interop registry (v42): alwan_interop_count + alwan_interop_entry_at
   walk over every registered RGB-space entry; for each entry pins
   (index, parsed_enum, first_id_char, parse_round_trip_ok,
   format_round_trip_ok). Catches drift in the registry layout +

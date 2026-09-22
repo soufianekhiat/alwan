@@ -52,7 +52,7 @@ x within a slice = R,  y = G,  slice index = B
 
 This is the game-engine convention (Unreal, Unity), which is why it is here: a
 strip uploads as one 2-D texture and samples with one bilinear fetch per slice
-pair. `alwan_lut2d_dimensions_{T}` computes the two numbers so a caller never
+pair. `alwan_lut2d_dimensions` computes the two numbers so a caller never
 open-codes them.
 
 **1-D, `size` values.** A single curve, not per channel.
@@ -140,10 +140,10 @@ buffer. A convenience: the two-step form is identical.
 
 ## The 2-D strip
 
-### alwan_lut2d_dimensions_{T}
+### alwan_lut2d_dimensions
 
 ```c
-void alwan_lut2d_dimensions_{T}(int size, int *width, int *height);
+void alwan_lut2d_dimensions(int size, int *width, int *height);
 ```
 
 `*width = size * size`, `*height = size`. It returns `void` because there is
@@ -162,7 +162,7 @@ altered, so a round trip is bit-identical. `out` must not alias the input.
 **Example:**
 ```c
 int w, h;
-alwan_lut2d_dimensions_f32(33, &w, &h);          /* 1089 x 33 */
+alwan_lut2d_dimensions(33, &w, &h);          /* 1089 x 33 */
 alwan_f32 *strip = malloc((size_t)w * h * 3 * sizeof *strip);
 alwan_lut3d_to_2d_f32(strip, lut, 33);
 ```

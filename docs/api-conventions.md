@@ -236,7 +236,7 @@ RGBA image helpers add `alwan_alpha_mode` before `ctx`.
 Registry and utility helpers use the smallest signature that fits the job:
 
 ```c
-alwan_status alwan_interop_parse_f64(alwan_rgb_space *space, char const *id);
+alwan_status alwan_interop_parse(alwan_rgb_space *space, char const *id);
 char const *alwan_interop_format(alwan_rgb_space space);
 size_t      alwan_interop_count(void);
 ```
