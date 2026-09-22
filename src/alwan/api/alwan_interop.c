@@ -223,3 +223,47 @@ alwan_status alwan_interop_entry_at_f64(alwan_rgb_space *space, char const **id,
 alwan_status alwan_interop_entry_at_f32(alwan_rgb_space *space, char const **id, size_t index) {
     return alwan_interop_entry_at_f64(space, id, index);
 }
+
+/* ----------------------------------------------------------------
+ * Query: everything the tables and the descriptor know about a space
+ * ---------------------------------------------------------------- */
+
+static int interop_has_suffix(char const *id, char const *suffix) {
+    size_t const n = strlen(id), m = strlen(suffix);
+    return n >= m && strcmp(id + n - m, suffix) == 0;
+}
+
+alwan_status alwan_interop_query(alwan_interop_info *out, alwan_rgb_space space) {
+    alwan_rgb_space_desc_f64 desc;
+    alwan_status st;
+    if (!out) return ALWAN_E_INVALID;
+    memset(out, 0, sizeof(*out));
+    out->id = alwan_interop_format(space);
+    if (!out->id) return ALWAN_E_NODATA;
+    out->published = strncmp(out->id, "alwan:", 6) != 0;
+    out->scene_referred = interop_has_suffix(out->id, "_scene");
+    out->display_referred = interop_has_suffix(out->id, "_display");
+    /* The Forum's display ID beside a scene-referred one lives in the alias
+     * table; the first alias of this space that ends in _display is it. */
+    for (size_t i = 0; i < g_interop_aliases_size; i++) {
+        if (g_interop_aliases[i].space == space && interop_has_suffix(g_interop_aliases[i].id, "_display")) {
+            out->display_id = g_interop_aliases[i].id;
+            out->display_referred = 1;
+            break;
+        }
+    }
+    st = alwan_rgb_get_space_descriptor_f64(&desc, space, NULL);
+    if (st != ALWAN_OK) return st;
+    out->transfer = desc.eotf;
+    out->hdr = desc.eotf == ALWAN_TF_PQ || desc.eotf == ALWAN_TF_HLG;
+    return ALWAN_OK;
+}
+
+alwan_status alwan_interop_query_id(alwan_interop_info *out, char const *id) {
+    alwan_rgb_space space;
+    alwan_status st;
+    if (!out || !id) return ALWAN_E_INVALID;
+    st = alwan_interop_parse_f64(&space, id);
+    if (st != ALWAN_OK) return st;
+    return alwan_interop_query(out, space);
+}

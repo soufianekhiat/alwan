@@ -9577,6 +9577,41 @@ size_t alwan_interop_count(void);
 alwan_status alwan_interop_entry_at_f64(alwan_rgb_space *space, char const **id, size_t index);
 alwan_status alwan_interop_entry_at_f32(alwan_rgb_space *space, char const **id, size_t index);
 
+/* What the interop tables know about a space, for a UI or a file writer that
+ * has to decide rather than look up one string. Every field is derived from
+ * the tables and the space's descriptor; nothing here is a judgement alwan
+ * makes on its own:
+ *   id                the ID alwan_interop_format returns: the Forum's
+ *                     scene-referred ID where one is published, else the
+ *                     Forum's display ID, else the alwan: namespace
+ *   display_id        the Forum's display-referred ID for the same space,
+ *                     when the Forum publishes one beside a scene-referred
+ *                     one (srgb_rec709_display for sRGB, and so on); NULL
+ *                     otherwise. A writer that has to label display-referred
+ *                     pixels uses this one.
+ *   published         1 if id is a Forum ID, 0 if it is the alwan: namespace
+ *   scene_referred    1 if id ends in _scene
+ *   display_referred  1 if id ends in _display, or display_id is set
+ *   hdr               1 if the space's transfer function is PQ or HLG
+ *   transfer          the space's transfer function, as its descriptor says
+ * "Basic" as the Forum's texture-asset recommendation uses the word is NOT
+ * here: the recommendation text is not vendored, so the subset cannot be
+ * transcribed from it, and a guess would be worse than the absence.
+ * Returns ALWAN_OK, ALWAN_E_INVALID for a NULL out, ALWAN_E_NODATA for a
+ * space with no interop entry, and whatever the descriptor lookup returns. */
+typedef struct {
+    char const *id;
+    char const *display_id;
+    int published;
+    int scene_referred;
+    int display_referred;
+    int hdr;
+    alwan_transfer_function transfer;
+} alwan_interop_info;
+alwan_status alwan_interop_query(alwan_interop_info *out, alwan_rgb_space space);
+/* The same, from an ID string: any ID alwan_interop_parse accepts, aliases included. */
+alwan_status alwan_interop_query_id(alwan_interop_info *out, char const *id);
+
 /* ----------------------------------------------------------------
  * Color Interop Forum -- float16 (half-float) Conversion
  * ---------------------------------------------------------------- */

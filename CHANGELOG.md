@@ -339,6 +339,19 @@
 
 ### Added
 
+- **`alwan_interop_query` and `alwan_interop_query_id`: what the interop tables know
+  about a space, as fields.** A UI or a file writer that has to decide, rather than look
+  up one string, gets the formatted ID, the Forum's display-referred ID where one is
+  published beside a scene-referred one (`srgb_rec709_display` for sRGB), whether the ID
+  is a Forum ID or the `alwan:` namespace, scene or display referred by the ID's own
+  suffix, HDR by the descriptor's transfer function (PQ or HLG), and that transfer
+  function. Every field is derived from the tables and the descriptor; nothing is a
+  judgement alwan makes on its own, which is why "basic" in the Forum's sense is NOT a
+  field: the recommendation text is not vendored, so the subset cannot be transcribed,
+  and a guess would be worse than the absence. Suite 59 pins named cases and the counts
+  over the whole table: 52 entries, 19 published, 15 scene-referred, 12 display-referred,
+  3 HDR.
+
 - **`alwan_gamut_volume_perceptual_{T}`: the RGB cube's volume in Lab, Oklab or XYZ,
   deterministically.** The header used to say a perceptual gamut volume "would require
   Monte Carlo sampling". It does not: the image of the cube under a smooth injective map

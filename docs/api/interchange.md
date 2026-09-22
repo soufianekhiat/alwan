@@ -65,9 +65,10 @@ Matching is `strcmp`: byte-exact, case-sensitive, no whitespace trimming or case
 folding. A namespace is part of the string, so `"alwan:logc4_awg4"` matches its
 row and `"ocio:logc4_awg4"` matches nothing. `"SRGB_REC709_SCENE"`,
 `"srgb_rec709_scene "` and `"lin-rec709-scene"` all return `ALWAN_E_NODATA`, and
-so do the Forum IDs alwan has no space for: `srgbe_p3d65_display` (the extended
-sRGB curve on P3), `g26_xyzd65_display`, `pq_xyzd65_display`, `data` and
-`unknown`.
+so do the Forum IDs alwan has no space for: `g26_xyzd65_display`,
+`pq_xyzd65_display`, `data` and `unknown`. `srgbe_p3d65_display` (the extended
+sRGB curve on P3) parses, to the same space as `srgb_p3d65_display`: the
+range convention is not part of the space model, and the alias table says so.
 
 The header documents two outcomes. There is a third: either pointer NULL
 returns `ALWAN_E_INVALID`, checked before the scan. `ALWAN_E_NODATA` means "no
@@ -191,6 +192,48 @@ BT.709's camera curve and decodes with BT.1886. `ALWAN_RGB_SPACE_GAMMA24_REC709`
 `g24_rec709_display`.
 
 ---
+
+
+### alwan_interop_query, alwan_interop_query_id
+
+```c
+typedef struct {
+    char const *id;            /* what alwan_interop_format returns */
+    char const *display_id;    /* the Forum's display-referred twin, or NULL */
+    int published;             /* 1: a Forum ID; 0: the alwan: namespace */
+    int scene_referred;        /* id ends in _scene */
+    int display_referred;      /* id ends in _display, or display_id is set */
+    int hdr;                   /* the transfer function is PQ or HLG */
+    alwan_transfer_function transfer;
+} alwan_interop_info;
+alwan_status alwan_interop_query(alwan_interop_info *out, alwan_rgb_space space);
+alwan_status alwan_interop_query_id(alwan_interop_info *out, char const *id);
+```
+
+What the two tables and the space's descriptor know, as fields, for a UI or a
+file writer that has to decide rather than look up one string. `id` is the
+formatted ID. `display_id` is the Forum's display-referred ID for the same
+space when it publishes one beside a scene-referred one (`srgb_rec709_display`
+for sRGB, `lin_rec709_display` for linear Rec.709), found in the alias table;
+a writer labelling display-referred pixels uses it. `published` is whether `id`
+is a Forum ID rather than the `alwan:` namespace. `scene_referred` and
+`display_referred` come from the ID's own suffix. `hdr` and `transfer` come
+from the descriptor: HDR means PQ or HLG. The two string pointers have the
+same static lifetime as `alwan_interop_format`'s.
+
+`alwan_interop_query_id` parses first, aliases included, so a pre-3.0.0 bare ID
+and a Forum display ID both answer as the space they name.
+
+"Basic", as the Forum's texture-asset recommendation uses the word, is not a
+field. The recommendation text is not vendored, so its subset cannot be
+transcribed, and a guess would be worse than the absence.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL argument;
+`ALWAN_E_NODATA` for a space with no interop entry or an ID no table holds;
+and the descriptor lookup's own status if that fails.
+
+Suite 59 pins named cases and the counts over the whole table: 52 entries,
+19 published, 15 scene-referred, 12 display-referred, 3 HDR.
 
 ## Half Floats
 
