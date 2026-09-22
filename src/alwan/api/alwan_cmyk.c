@@ -678,8 +678,8 @@ void alwan_cmyk_inverse_destroy(alwan_cmyk_inverse *inv, alwan_ctx *ctx) {
     ALWAN_FREE(inv);
 }
 
-int alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv) {
-    return inv ? inv->size : 0;
+size_t alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv) {
+    return inv ? (size_t)inv->size : 0;
 }
 
 

@@ -1153,7 +1153,7 @@ through `alwan_chart_load` is an identity, and that round trip is the test.
 alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_model const *model,
                                        alwan_f64 k, int size, alwan_ctx *ctx);
 void         alwan_cmyk_inverse_destroy(alwan_cmyk_inverse *inv, alwan_ctx *ctx);
-int          alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv);
+size_t       alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv);
 alwan_status alwan_cmyk_inverse_eval_{T}(alwan_cmyk_{T} *cmyk_out, alwan_{T} *delta_e_out,
                                          alwan_lab_{T} const *lab, alwan_cmyk_inverse const *inv);
 alwan_status alwan_cmyk_inverse_map_interleave_{T}(alwan_{T} *cmyk_out, size_t out_stride,

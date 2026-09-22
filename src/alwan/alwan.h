@@ -6839,7 +6839,8 @@ alwan_status alwan_lab_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_
  */
 alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_model const *model, alwan_f64 k, int size, alwan_ctx *ctx);
 void alwan_cmyk_inverse_destroy(alwan_cmyk_inverse *inv, alwan_ctx *ctx);
-int alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv);
+/* The grid size the cache was built at (nodes per axis), 0 for NULL. */
+size_t alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv);
 alwan_status alwan_cmyk_inverse_eval_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_out, alwan_lab_f32 const *lab, alwan_cmyk_inverse const *inv);
 alwan_status alwan_cmyk_inverse_eval_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out, alwan_lab_f64 const *lab, alwan_cmyk_inverse const *inv);
 alwan_status alwan_cmyk_inverse_map_interleave_f32(alwan_f32 *cmyk_out, size_t out_stride, alwan_f32 const *lab_in, size_t in_stride, size_t count, alwan_f32 *worst_delta_e_out, alwan_cmyk_inverse const *inv);
