@@ -143,18 +143,27 @@ typedef struct {
 
 alwan_status alwan_get_build_info(alwan_build_info *info_out);
 
-/* ACES tone curve interpolation method */
+/* ACES 1.x tone curve method. A parameter of alwan_aces1_output_transform_{T}
+ * and its maps, and a field of the context for the view transform (below).
+ * Until 3.0.0 it was a process-wide global, alwan_set_aces_interp, which two
+ * threads with different settings raced on and which survived every context.
+ * The three values select different curve chains, and which chain runs also
+ * depends on the output preset; docs/api/context.md has the table. The inverse
+ * transform inverts the B-spline chain whatever the forward was given. */
 typedef enum {
-    ALWAN_ACES_INTERP_BSPLINE = 0,  /* Quadratic B-spline (Academy CTL reference, default) */
+    ALWAN_ACES_INTERP_BSPLINE = 0,  /* Quadratic B-spline (Academy CTL reference) */
     ALWAN_ACES_INTERP_HERMITE = 1,  /* Legacy piecewise Hermite approximation */
     ALWAN_ACES_INTERP_OCIO = 2      /* OCIO GradingRGBCurve (monotone cubic Hermite, pixel-exact OCIO match) */
 } alwan_aces_interp;
 
-/* Set the ACES tone curve interpolation method.
- * Default: ALWAN_ACES_INTERP_BSPLINE.
- * Use ALWAN_ACES_INTERP_OCIO for pixel-exact match with OpenColorIO. */
-void alwan_set_aces_interp(alwan_aces_interp method);
-alwan_aces_interp alwan_get_aces_interp(void);
+/* The method the view transform runs under ALWAN_VIEW_ACES_REC709
+ * (alwan_view_transform_apply_{T}, _unclamped and the view maps). A new context
+ * holds ALWAN_ACES_INTERP_BSPLINE, and a NULL context reads as that too.
+ * ALWAN_E_INVALID for a NULL context or a method outside the enum, and the
+ * field is then untouched. The direct alwan_aces1_output_transform_{T} calls
+ * take the method as a parameter and do not read the context. */
+alwan_status alwan_ctx_set_aces_interp(alwan_ctx *ctx, alwan_aces_interp method);
+alwan_aces_interp alwan_ctx_get_aces_interp(alwan_ctx const *ctx);
 
 /* ----------------------------------------------------------------
  * Math Types & Semantic Color Types
@@ -7618,28 +7627,35 @@ typedef enum {
  * @param rgb_out  Output RGB, display-encoded
  * @param rgb_in   Input RGB in ACES2065-1 (AP0 linear), scene-referred
  * @param output   Output transform preset (display configuration)
- * @return         ALWAN_OK on success
+ * @param interp   Tone curve method; ALWAN_ACES_INTERP_BSPLINE is the Academy
+ *                 reference, ALWAN_ACES_INTERP_OCIO promises OCIO's pixels
+ * @return         ALWAN_OK; ALWAN_E_INVALID for a NULL, a preset or a method
+ *                 outside its enum
  */
 alwan_status alwan_aces1_output_transform_f32(alwan_rgb_f32 *rgb_out,
                                       alwan_rgb_f32 const *rgb_in,
-                                      alwan_aces1_output output);
+                                      alwan_aces1_output output,
+                                      alwan_aces_interp interp);
 alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                                       alwan_rgb_f64 const *rgb_in,
-                                      alwan_aces1_output output);
+                                      alwan_aces1_output output,
+                                      alwan_aces_interp interp);
 
 /* The same transform over a buffer of RGB triples, strides in bytes. The
  * preset is validated once; each pixel is the scalar transform, so a map and
  * its scalar twin agree to the bit. Same status codes. */
-alwan_status alwan_aces1_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces1_output output);
-alwan_status alwan_aces1_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output);
+alwan_status alwan_aces1_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces1_output output, alwan_aces_interp interp);
+alwan_status alwan_aces1_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output, alwan_aces_interp interp);
 /* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
-alwan_status alwan_aces1_output_transform_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_aces1_output output);
-alwan_status alwan_aces1_output_transform_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_aces1_output output);
+alwan_status alwan_aces1_output_transform_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_aces1_output output, alwan_aces_interp interp);
+alwan_status alwan_aces1_output_transform_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_aces1_output output, alwan_aces_interp interp);
 
 /**
  * ACES 1.x Output Transform (Inverse)
  *
- * Inverse of the ACES 1.x output transform for round-trip workflows.
+ * Inverse of the ACES 1.x output transform for round-trip workflows. It
+ * inverts the B-spline (and SSTS) chain: a forward run under HERMITE or OCIO
+ * does not round-trip through it.
  *
  * @param rgb_out  Output RGB in ACES2065-1 (AP0 linear)
  * @param rgb_in   Input RGB, display-encoded

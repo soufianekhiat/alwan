@@ -119,6 +119,7 @@ alwan_ctx *alwan_create(alwan_config const *cfg) {
     ctx->alloc_fn = alloc_fn;
     ctx->free_fn  = free_fn;
     ctx->flags    = flags;
+    ctx->aces_interp = ALWAN_ACES_INTERP_BSPLINE;
 
     /* Copy data root if provided */
     if (data_root) {
@@ -144,6 +145,20 @@ void alwan_destroy(alwan_ctx *ctx) {
 
     /* Free context itself */
     ctx->free_fn(ctx);
+}
+
+/* The ACES 1.x tone curve method the view transform reads. A NULL context is
+ * the default, so the view entry points need no NULL branch of their own. */
+alwan_status alwan_ctx_set_aces_interp(alwan_ctx *ctx, alwan_aces_interp method) {
+    if (!ctx) return ALWAN_E_INVALID;
+    if (method != ALWAN_ACES_INTERP_BSPLINE && method != ALWAN_ACES_INTERP_HERMITE &&
+        method != ALWAN_ACES_INTERP_OCIO) return ALWAN_E_INVALID;
+    ctx->aces_interp = method;
+    return ALWAN_OK;
+}
+
+alwan_aces_interp alwan_ctx_get_aces_interp(alwan_ctx const *ctx) {
+    return ctx ? ctx->aces_interp : ALWAN_ACES_INTERP_BSPLINE;
 }
 
 char const *alwan_version_string(void) {

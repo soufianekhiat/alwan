@@ -18,12 +18,13 @@
 #include "../core/alwan_aces_ff_core.h"
 
 /* ----------------------------------------------------------------
- * ACES interpolation mode (global, thread-unsafe for simplicity)
+ * ACES 1.x tone curve method: a parameter of the forward transform since
+ * 3.0.0 (it was a process-wide global). Validated like the preset, so a
+ * value outside the enum is refused rather than rendered as the B-spline.
  * ---------------------------------------------------------------- */
-static alwan_aces_interp g_aces_interp = ALWAN_ACES_INTERP_BSPLINE;
-
-void alwan_set_aces_interp(alwan_aces_interp method) { g_aces_interp = method; }
-alwan_aces_interp alwan_get_aces_interp(void) { return g_aces_interp; }
+static int aces1_interp_valid(alwan_aces_interp m) {
+    return m == ALWAN_ACES_INTERP_BSPLINE || m == ALWAN_ACES_INTERP_HERMITE || m == ALWAN_ACES_INTERP_OCIO;
+}
 
 /* ----------------------------------------------------------------
  * OCIO-matching piecewise quadratic Hermite tone curves
@@ -1226,9 +1227,11 @@ static alwan_f64 pq_oetf(alwan_f64 Y, alwan_f64 peak_nits) {
 
 alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                                       alwan_rgb_f64 const *rgb_in,
-                                      alwan_aces1_output output) {
+                                      alwan_aces1_output output,
+                                      alwan_aces_interp interp) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
+    if (!aces1_interp_valid(interp)) return ALWAN_E_INVALID;
 
     alwan_rgb_f64 ap0_mod, ap1, rrt, xyz, d65, display;
 
@@ -1304,7 +1307,7 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
             /* ACES 1.1 to 1.3: one SSTS replaces the C5 + C9 pair. Under the OCIO setting the
              * 1000-nit output keeps OCIO's own 7-knot fit of this curve, since that setting
              * promises OCIO's pixels; 2000 and 4000 have no such fit and take the SSTS. */
-            if (g_aces_interp == ALWAN_ACES_INTERP_OCIO && output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ) {
+            if (interp == ALWAN_ACES_INTERP_OCIO && output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ) {
                 rrt.r = aces1_ocio_hdr1000_eval(rrt.r);
                 rrt.g = aces1_ocio_hdr1000_eval(rrt.g);
                 rrt.b = aces1_ocio_hdr1000_eval(rrt.b);
@@ -1313,7 +1316,7 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                 rrt.g = aces1_ssts_lincv(rrt.g, ssts);
                 rrt.b = aces1_ssts_lincv(rrt.b, ssts);
             }
-        } else if (g_aces_interp == ALWAN_ACES_INTERP_OCIO && !is_v103) {
+        } else if (interp == ALWAN_ACES_INTERP_OCIO && !is_v103) {
             /* OCIO GradingRGBCurve path -- monotone cubic Hermite in log10 space.
              * Matches OCIO pixel-exactly. SDR: two cascaded curves (C5 then C9).
              * OCIO has no 1.0.3 HDR transform, so the _V103 outputs take the splines below. */
@@ -1322,7 +1325,7 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
             rrt.b = aces1_ocio_sdr_eval(rrt.b);
         } else {
             /* Academy CTL path: separate C5 + C9 B-spline evaluation */
-            if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE) {
+            if (interp == ALWAN_ACES_INTERP_HERMITE) {
                 rrt.r = aces1_rrt_hermite(rrt.r);
                 rrt.g = aces1_rrt_hermite(rrt.g);
                 rrt.b = aces1_rrt_hermite(rrt.b);
@@ -1340,7 +1343,7 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                 case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103: c9p = &c9_4000nit_f64; break;
                 default: c9p = &c9_48nit_f64; break;
             }
-            if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE && c9p == &c9_48nit_f64) {
+            if (interp == ALWAN_ACES_INTERP_HERMITE && c9p == &c9_48nit_f64) {
                 rrt.r = aces1_odt48_hermite(rrt.r);
                 rrt.g = aces1_odt48_hermite(rrt.g);
                 rrt.b = aces1_odt48_hermite(rrt.b);
@@ -1517,15 +1520,17 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
  * transform has no per-call state to hoist, so this is the scalar in a loop
  * with the preset validated once; a map and its scalar twin agree to the bit. */
 alwan_status alwan_aces1_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride,
-        alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output) {
+        alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output,
+        alwan_aces_interp interp) {
     size_t i;
     if (!out || !in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
+    if (!aces1_interp_valid(interp)) return ALWAN_E_INVALID;
     for (i = 0; i < count; i++) {
         alwan_f64 const *src = (alwan_f64 const *)((char const *)in + i * in_stride);
         alwan_f64 *dst = (alwan_f64 *)((char *)out + i * out_stride);
         alwan_rgb_f64 rgb = { src[0], src[1], src[2] }, res;
-        alwan_status status = alwan_aces1_output_transform_f64(&res, &rgb, output);
+        alwan_status status = alwan_aces1_output_transform_f64(&res, &rgb, output, interp);
         if (status != ALWAN_OK) return status;
         dst[0] = res.r;
         dst[1] = res.g;
@@ -1595,7 +1600,7 @@ static alwan_f64 aces1_segmented_spline_c5_inv(alwan_f64 y) {
 /* Native single-precision ACES 1.x output transform + inverse, generated
  * from alwan_aces1_impl.inc with f32 setup. The f64 path above remains the
  * OCIO-validated reference. All required f64 data (matrices, C9 params, OCIO
- * curves), the aces1_c9_params typedef, the g_aces_interp global and the
+ * curves), the aces1_c9_params typedef, aces1_interp_valid and the
  * REDMOD/GLOW macros are already defined above this point. */
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH

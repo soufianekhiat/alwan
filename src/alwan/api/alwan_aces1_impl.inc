@@ -12,7 +12,7 @@
  * to avoid disturbing the validated f64 reference.
  *
  * Requires in the enclosing TU (precision-independent):
- *   the f64 data arrays and aces1_c9_params struct, the global g_aces_interp,
+ *   the f64 data arrays and aces1_c9_params struct, aces1_interp_valid,
  *   ACES1_RRT_GLOW_GAIN / REDMOD10_* / REDMOD_NOISE_LIMIT macros, and the
  *   templated cores aces1_*_v / aces_*_oetf_v / aces_*_eotf_v / alwan_mat3_mulv_v.
  */
@@ -198,9 +198,10 @@ static ALWAN_CORE_FNLIT(aces1_ssts_params) const *ALWAN_CORE_FN(aces1_ssts_for_o
 
 /* ---- Forward ---- */
 alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_out,
-        ALWAN_CORE_RGB const *rgb_in, alwan_aces1_output output) {
+        ALWAN_CORE_RGB const *rgb_in, alwan_aces1_output output, alwan_aces_interp interp) {
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
+    if (!aces1_interp_valid(interp)) return ALWAN_E_INVALID;
 
     ALWAN_CORE_RGB ap0_mod = *rgb_in, ap1, rrt, xyz, d65, display;
     ALWAN_CORE_FNLIT(aces1_ssts_params) const *ssts = ALWAN_CORE_FN(aces1_ssts_for_output)(output);
@@ -255,7 +256,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
         if (ssts) {
             /* ACES 1.1 to 1.3: one SSTS in place of C5 + C9; the OCIO setting keeps OCIO's own
              * fit for the 1000-nit output, as in the f64 path */
-            if (g_aces_interp == ALWAN_ACES_INTERP_OCIO && output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ) {
+            if (interp == ALWAN_ACES_INTERP_OCIO && output == ALWAN_ACES1_OUT_REC2020_1000NIT_PQ) {
                 rrt.r = ALWAN_CORE_FN(aces1_ocio_hdr1000)(rrt.r);
                 rrt.g = ALWAN_CORE_FN(aces1_ocio_hdr1000)(rrt.g);
                 rrt.b = ALWAN_CORE_FN(aces1_ocio_hdr1000)(rrt.b);
@@ -264,12 +265,12 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
                 rrt.g = ALWAN_CORE_FN(aces1_ssts_lincv)(rrt.g, ssts);
                 rrt.b = ALWAN_CORE_FN(aces1_ssts_lincv)(rrt.b, ssts);
             }
-        } else if (g_aces_interp == ALWAN_ACES_INTERP_OCIO && !is_v103) {
+        } else if (interp == ALWAN_ACES_INTERP_OCIO && !is_v103) {
             rrt.r = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.r);
             rrt.g = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.g);
             rrt.b = ALWAN_CORE_FN(aces1_ocio_sdr)(rrt.b);
         } else {
-            if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE) {
+            if (interp == ALWAN_ACES_INTERP_HERMITE) {
                 rrt.r = ALWAN_CORE_FN(aces1_rrt_hermite)(rrt.r);
                 rrt.g = ALWAN_CORE_FN(aces1_rrt_hermite)(rrt.g);
                 rrt.b = ALWAN_CORE_FN(aces1_rrt_hermite)(rrt.b);
@@ -285,7 +286,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
                 case ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103: c9p = &ALWAN_CORE_FNLIT(c9_4000nit); break;
                 default: c9p = &ALWAN_CORE_FNLIT(c9_48nit); break;
             }
-            if (g_aces_interp == ALWAN_ACES_INTERP_HERMITE && c9p == &ALWAN_CORE_FNLIT(c9_48nit)) {
+            if (interp == ALWAN_ACES_INTERP_HERMITE && c9p == &ALWAN_CORE_FNLIT(c9_48nit)) {
                 rrt.r = ALWAN_CORE_FN(aces1_odt48_hermite)(rrt.r);
                 rrt.g = ALWAN_CORE_FN(aces1_odt48_hermite)(rrt.g);
                 rrt.b = ALWAN_CORE_FN(aces1_odt48_hermite)(rrt.b);
@@ -393,15 +394,17 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
  * transform has no per-call state to hoist, so this is the scalar in a loop
  * with the preset validated once; a map and its scalar twin agree to the bit. */
 alwan_status ALWAN_CORE_FNLIT_MAP(alwan_aces1_output_transform)(ALWAN_CORE_T *out, size_t out_stride,
-        ALWAN_CORE_T const *in, size_t in_stride, size_t count, alwan_aces1_output output) {
+        ALWAN_CORE_T const *in, size_t in_stride, size_t count, alwan_aces1_output output,
+        alwan_aces_interp interp) {
     size_t i;
     if (!out || !in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
+    if (!aces1_interp_valid(interp)) return ALWAN_E_INVALID;
     for (i = 0; i < count; i++) {
         ALWAN_CORE_T const *src = (ALWAN_CORE_T const *)((char const *)in + i * in_stride);
         ALWAN_CORE_T *dst = (ALWAN_CORE_T *)((char *)out + i * out_stride);
         ALWAN_CORE_RGB rgb = { src[0], src[1], src[2] }, res;
-        alwan_status status = ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(&res, &rgb, output);
+        alwan_status status = ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(&res, &rgb, output, interp);
         if (status != ALWAN_OK) return status;
         dst[0] = res.r;
         dst[1] = res.g;

@@ -208,73 +208,64 @@ the literal happens to hold today. Nothing enforces it.
 
 ---
 
-## Global Settings
+## Context Settings
 
-One library *setting* lives outside the context: the ACES tone curve
-interpolation method. It is process-wide, and `alwan_ctx` does not own it. It is
-not the only process-wide mutable state in the library -- the ACES 2.0 output
-transform also keeps a single-entry gamut-compression-parameter cache
-(`g_aces2_gcp_cache_f64`, `alwan_aces_ff.c:3258`) outside the context, shared by
-both precisions and documented in place as a "Single-threaded optimisation"
-(`:3249-3251`).
+The context owns one setting, the ACES 1.x tone curve method the view transform
+runs. Until 3.0.0 it lived outside the context as a process-wide global.
 
 > **Precision variants:** functions written below as `name_{T}` exist in two
 > forms, `name_f32` (single precision) and `name_f64` (double precision).
 > `T = f32 | f64`. There is no unsuffixed alias, no `_Generic` dispatch and no
 > `alwan_scalar`-typed wrapper for any of them; pick the precision explicitly.
 
-### alwan_set_aces_interp / alwan_get_aces_interp
+### alwan_ctx_set_aces_interp / alwan_ctx_get_aces_interp
 
 ```c
-/* ACES tone curve interpolation method */
+/* ACES 1.x tone curve method */
 typedef enum {
-    ALWAN_ACES_INTERP_BSPLINE = 0,  /* Quadratic B-spline (Academy CTL reference, default) */
+    ALWAN_ACES_INTERP_BSPLINE = 0,  /* Quadratic B-spline (Academy CTL reference) */
     ALWAN_ACES_INTERP_HERMITE = 1,  /* Legacy piecewise Hermite approximation */
     ALWAN_ACES_INTERP_OCIO = 2      /* OCIO GradingRGBCurve (monotone cubic Hermite, pixel-exact OCIO match) */
 } alwan_aces_interp;
 
-void alwan_set_aces_interp(alwan_aces_interp method);
-alwan_aces_interp alwan_get_aces_interp(void);
+alwan_status alwan_ctx_set_aces_interp(alwan_ctx *ctx, alwan_aces_interp method);
+alwan_aces_interp alwan_ctx_get_aces_interp(alwan_ctx const *ctx);
 ```
 
 **Parameters:**
-- `method`: one of the three enumerators. Not validated (see below).
+- `ctx`: the context whose view transforms take the method. `NULL` is
+  `ALWAN_E_INVALID` on the setter and reads as `ALWAN_ACES_INTERP_BSPLINE` on
+  the getter, which is how the view transform entry points resolve a `NULL`
+  context.
+- `method`: one of the three enumerators. Anything else is `ALWAN_E_INVALID`
+  and the field is untouched.
 
-**Returns:** `alwan_set_aces_interp` returns nothing. `alwan_get_aces_interp`
-returns the value last stored, verbatim.
+**Returns:** the setter returns `alwan_status`; the getter returns the stored
+value, which is always one of the three.
 
-**Default:** `ALWAN_ACES_INTERP_BSPLINE` (0), from the static initialiser of the
-backing global (`alwan_aces_ff.c:23`).
+**Default:** `ALWAN_ACES_INTERP_BSPLINE`, set by `alwan_create`.
 
-Neither function takes a `ctx`, neither can fail, and neither returns an
-`alwan_status`.
-
-> **This is a single non-atomic process-wide global.** `alwan_aces_ff.c:23` holds
-> it as `static alwan_aces_interp g_aces_interp = ALWAN_ACES_INTERP_BSPLINE;`
-> under the comment "ACES interpolation mode (global, thread-unsafe for
-> simplicity)". `struct alwan_ctx` has no interp field. Consequences: two threads
-> that render with different settings race on an unsynchronised read/write; a
-> `set` anywhere in the process changes results for every other user of the
-> library in that process; there is no reset function, and the value survives
-> every `alwan_create` / `alwan_destroy`. The repository tracks this as an open
-> violation of the per-context model in [violations.md](../violations.md)
-> ("Move it into `alwan_ctx`"). If you need two settings at once, you need two
-> processes.
+Until 3.0.0 the method was a process-wide global (`alwan_set_aces_interp` /
+`alwan_get_aces_interp`): two threads with different settings raced on an
+unsynchronised read/write, a set anywhere changed results for every other user
+of the library in the process, the value survived every `alwan_create` /
+`alwan_destroy`, and an out-of-range value was stored and rendered as the
+B-spline. It is now a parameter where the transform is called directly and a
+context field where a context is already in hand, and the library holds no
+process-wide setting. (The ACES 2.0 output transform still keeps a single-entry
+gamut-compression-parameter cache outside the context, `g_aces2_gcp_cache_f64`
+in `alwan_aces_ff.c`, documented in place as a single-threaded optimisation; it
+is a cache, not a setting, and does not change results.)
 
 #### Scope
 
-The header names it "the ACES tone curve interpolation method" with no scope.
-The global is read in one function, the ACES 1.x forward output transform
-`alwan_aces1_output_transform_{T}`: four branch sites in the f64 body
-(`alwan_aces_ff.c:1332`, `:1341`, `:1350`, `:1368`) and four in the native f32
-template (`alwan_aces1_impl.inc:258`, `:267`, `:272`, `:288`).
-
-The declarations the rows below refer to:
+Two entry points take the method, in two ways:
 
 ```c
 alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                                       alwan_rgb_f64 const *rgb_in,
-                                      alwan_aces1_output output);
+                                      alwan_aces1_output output,
+                                      alwan_aces_interp interp);
 
 alwan_status alwan_view_transform_apply_f64(alwan_f64 *rgb_out, size_t out_stride,
                                       alwan_f64 const *rgb_in, size_t in_stride,
@@ -282,58 +273,40 @@ alwan_status alwan_view_transform_apply_f64(alwan_f64 *rgb_out, size_t out_strid
                                       alwan_ctx *ctx);
 ```
 
-The ACES 1.x entry point is a single-triplet call; the view transform is a
-strided bulk loop that takes a `ctx`.
-
-| Entry point | Affected |
+| Entry point | Where the method comes from |
 |---|---|
-| `alwan_aces1_output_transform_{T}` | Yes, the only direct consumer |
-| `alwan_view_transform_apply_{T}` / `alwan_view_transform_apply_unclamped_{T}` with `ALWAN_VIEW_ACES_REC709` | Yes, indirectly |
-| `alwan_view_transform_{T}_map_interleave`, `alwan_view_transform_map_interleave_ex` with the same view | Yes, indirectly; they forward to `_apply_{T}` (`alwan_view_map.c:26`, `:33`, `:45`, `:49`, `:58`) |
-| `alwan_aces1_output_transform_inv_{T}` | **No** |
-| `alwan_aces2_output_transform_{T}` and its inverse | **No** |
-| The 2D/3D LUT bakers with `ALWAN_VIEW_ACES_REC709` | **No**; they substitute the Narkowicz `alwan_aces_tonemap` fit (`alwan_lut_impl.inc:103-107`) |
+| `alwan_aces1_output_transform_{T}`, `_{T}_map_interleave`, `_{T}_map_planar` | the `interp` parameter, validated like the preset: outside the enum is `ALWAN_E_INVALID` |
+| `alwan_view_transform_apply_{T}` / `alwan_view_transform_apply_unclamped_{T}` with `ALWAN_VIEW_ACES_REC709` | `alwan_ctx_get_aces_interp(ctx)`; a `NULL` context is the B-spline |
+| `alwan_view_transform_{T}_map_interleave`, `alwan_view_transform_map_interleave_ex` with the same view | the same, through `_apply_{T}` |
+| `alwan_aces1_output_transform_inv_{T}` | takes none: it inverts the B-spline (and SSTS) chain, see below |
+| `alwan_aces2_output_transform_{T}` and its inverse | none; ACES 2.0 has one tone scale |
+| The 2D/3D LUT bakers with `ALWAN_VIEW_ACES_REC709` | none; they substitute the Narkowicz `alwan_aces_tonemap` fit (`alwan_lut_impl.inc`) |
 
-> **The setting also steers the ACES view transform, and through it the bulk
-> image paths.** `ALWAN_VIEW_ACES_REC709` runs
-> `ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(&out, &ap0, ALWAN_ACES1_OUT_SRGB_100NIT)`
-> (`alwan_view_impl.inc:23`). That line is an internal template instantiation
-> that resolves to `alwan_aces1_output_transform_{T}`; it is not a call a user
-> can write. The result then has its sRGB OETF undone (`:26-28`). So
-> `alwan_set_aces_interp` moves the output of `alwan_view_transform_apply_{T}`,
-> `alwan_view_transform_apply_unclamped_{T}` and the three `map_interleave`
-> entry points. A test suite or determinism hash that sets the interp globally
-> also shifts every view-transform result taken afterwards in that process.
+> **The view runs the sRGB 100-nit ODT.** `ALWAN_VIEW_ACES_REC709` runs
+> `alwan_aces1_output_transform_{T}` with `ALWAN_ACES1_OUT_SRGB_100NIT` and the
+> context's method, then undoes the sRGB OETF (`alwan_view_impl.inc`). The
+> enumerator's comment says "ACES RRT + ODT Rec.709"; the BT.1886 output,
+> `ALWAN_ACES1_OUT_REC709_100NIT`, is never reached from this view. Suite 56
+> pins that the view under an OCIO context is the direct call under
+> `ALWAN_ACES_INTERP_OCIO` with the OETF applied, and that a B-spline context
+> and a `NULL` context give the same bytes.
 
-> **The enumerator's name and the ODT it runs disagree.** `alwan.h:587`
-> documents `ALWAN_VIEW_ACES_REC709 = 0` as "ACES RRT + ODT Rec.709". The code
-> passes `ALWAN_ACES1_OUT_SRGB_100NIT` and inverts its sRGB OETF
-> (`alwan_view_impl.inc:23`, `:26-28`). The ODT is the sRGB 100-nit one;
-> `ALWAN_ACES1_OUT_REC709_100NIT`, the BT.1886 output, is never reached from
-> this view.
-
-> **ACES 2.0 is unaffected.** `alwan_aces2_output_transform_{T}` contains no
-> reference to the global. Setting `ALWAN_ACES_INTERP_OCIO` and expecting ACES
-> 2.0 to match OCIO produces no change and no error.
-
-> **The inverse ignores the setting, so a non-default setting breaks round
+> **The inverse ignores the method, so a non-default method breaks round
 > trips.** `alwan_aces1_output_transform_inv_{T}` branches on
-> `aces1_ssts_for_output_f64(output)` (`alwan_aces_ff.c:1893-1924`): outputs
-> 8/9/10 run `aces1_ssts_inv` alone (`:1894-1902`, the comment there notes
-> "There is no C5 stage"), and every other output runs `aces1_c9_inv` then
-> `aces1_segmented_spline_c5_inv` (`:1904-1923`). Neither the Hermite tables nor
-> the OCIO knots have an inverse in the tree. The f32 inverse widens to the f64
-> one (`:1949-1963`). The header advertises the pair "for round-trip workflows"
-> and states no precondition. Under the default, `docs/alwan_future.md:700-701`
-> records all fifteen outputs round-tripping at 1.3e-11. Under `HERMITE` or
-> `OCIO` the forward and the inverse are no longer inverses of each other;
-> nothing in the tree measures how far apart they land.
+> `aces1_ssts_for_output_f64(output)`: outputs 8/9/10 run `aces1_ssts_inv` alone
+> (there is no C5 stage), and every other output runs `aces1_c9_inv` then
+> `aces1_segmented_spline_c5_inv`. Neither the Hermite tables nor the OCIO knots
+> have an inverse in the tree, which is why the inverse takes no `interp`. The
+> f32 inverse widens to the f64 one. Under the B-spline all fifteen outputs
+> round-trip at 1.3e-11 (`docs/alwan_future.md`); under `HERMITE` or `OCIO` the
+> forward and the inverse are no longer inverses of each other, and nothing in
+> the tree measures how far apart they land.
 
-#### Curve selected per setting
+#### Curve chain per method
 
 The three values do not select an interpolation of one curve. They select a
 different curve chain, and which chain you get depends on the `output` argument
-passed to the transform. `SDR/cinema` below means the nine outputs
+passed beside them. `SDR/cinema` below means the nine outputs
 `ALWAN_ACES1_OUT_REC709_100NIT` (0) through `ALWAN_ACES1_OUT_REC2020_100NIT` (7)
 plus `ALWAN_ACES1_OUT_DCDM_48NIT` (11).
 
@@ -344,11 +317,11 @@ plus `ALWAN_ACES1_OUT_DCDM_48NIT` (11).
 | `..._2000NIT_PQ` (9), `..._4000NIT_PQ` (10) | SSTS | **SSTS** (setting dropped) | **SSTS** (setting dropped) |
 | `..._PQ_V103` (12, 13, 14) | C5 + 1000/2000/4000-nit C9 | **Hermite C5 + B-spline C9** (hybrid) | **C5 + C9 B-splines** (setting dropped) |
 
-> **`ALWAN_ACES_INTERP_OCIO` is honoured for 10 of the 15 outputs.** The setting
+> **`ALWAN_ACES_INTERP_OCIO` is honoured for 10 of the 15 outputs.** The method
 > reaches the nine SDR/cinema outputs and `ALWAN_ACES1_OUT_REC2020_1000NIT_PQ`
 > only (guards at `alwan_aces_ff.c:1332` and `:1341`). For `_2000NIT_PQ`,
-> `_4000NIT_PQ` and all three `_V103` outputs the setting is discarded and the
-> default curve runs. No status, no warning, no diagnostic: the caller asked for
+> `_4000NIT_PQ` and all three `_V103` outputs the method is discarded and the
+> B-spline or SSTS curve runs. No status, no warning, no diagnostic: the caller asked for
 > OCIO and got the B-spline or SSTS path.
 >
 > The enumerator's "pixel-exact OCIO match" is pinned for one output. Suite 56
@@ -389,7 +362,7 @@ at `HALF_MIN` (`5.96046448e-08`, `:785`) and carries its own `min_x` / `max_x`.
   knot y in each of the two cascaded curves (`alwan_aces_ff.c:1052-1053`), so
   its ceiling is exactly linCV 1.0.
 
-Both non-SSTS paths floor the linear input at `1e-10` before `log10`.
+Both non-SSTS chains floor the linear input at `1e-10` before `log10`.
 
 > **For outputs 0-7 none of this is observable.** The transform clamps
 > display-linear RGB to `[0, 1]` before the OETF (`alwan_aces_ff.c:1513-1516`,
@@ -407,22 +380,18 @@ the same `0.02` / `48.0` (`aces1_ocio_sdr_eval`, `:1079-1085`, constants on
 
 #### Validation
 
-> **An out-of-range value is stored, returned verbatim, and behaves as
-> BSPLINE.** `alwan_set_aces_interp` is a bare store with no range check, no
-> clamp and no way to report anything: it returns `void` (`alwan_aces_ff.c:25`).
-> The forward transform dispatches on a chain of equality tests with the
-> B-spline arm as the fall-through, so
-> `alwan_set_aces_interp((alwan_aces_interp)99)` renders exactly like the
-> default while `alwan_get_aces_interp()` returns `99`. The getter does not
-> normalise. Do not assume its result is one of `{0, 1, 2}`.
+The parameter and the context field are checked against the enum:
+`alwan_aces1_output_transform_{T}(..., (alwan_aces_interp)99)` is
+`ALWAN_E_INVALID`, as is `alwan_ctx_set_aces_interp(ctx, 99)`, which leaves the
+field as it was. The getter therefore always returns one of `{0, 1, 2}`. Suite
+56 (`test_interp_contract`) pins both.
 
-**Error codes:** the setting itself can never produce one. The only status the
-steered transform returns is `ALWAN_E_INVALID` for a `NULL` `rgb_out` / `rgb_in`
-or an `output` outside `[0, ALWAN_ACES1_OUT_COUNT)`, which is 15
-(`alwan_aces_ff.c:1255-1256`); `alwan_view_transform_apply_{T}` returns
-`ALWAN_E_INVALID` for a `NULL` buffer or an unknown `alwan_view_transform`.
-Neither is tied to the interp setting. Signatures and per-output detail are in
-[ACES](aces.md) and [Transfer Functions](transfer-functions.md).
+**Error codes:** `ALWAN_E_INVALID` for a `NULL` `rgb_out` / `rgb_in`, an
+`output` outside `[0, ALWAN_ACES1_OUT_COUNT)`, which is 15, or an `interp`
+outside the enum; `alwan_view_transform_apply_{T}` returns `ALWAN_E_INVALID` for
+a `NULL` buffer or an unknown `alwan_view_transform`, and reads the method from
+the context without a status of its own. Signatures and per-output detail are
+in [ACES](aces.md) and [Transfer Functions](transfer-functions.md).
 
 ---
 

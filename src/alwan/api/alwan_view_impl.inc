@@ -13,14 +13,14 @@
  * ACES RRT+ODT (Simplified Approximation for Rec.709)
  * Input: ACEScg (AP1) linear. Output: sRGB linear (pre display EOTF).
  * ---------------------------------------------------------------- */
-static void ALWAN_CORE_FN(aces_rec709_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
+static void ALWAN_CORE_FN(aces_rec709_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out, alwan_aces_interp interp) {
     ALWAN_CORE_RGB ap0;
     ap0.r = ALWAN_CORE_FNLIT(ap1_to_ap0)[0]*rgb_in[0] + ALWAN_CORE_FNLIT(ap1_to_ap0)[1]*rgb_in[1] + ALWAN_CORE_FNLIT(ap1_to_ap0)[2]*rgb_in[2];
     ap0.g = ALWAN_CORE_FNLIT(ap1_to_ap0)[3]*rgb_in[0] + ALWAN_CORE_FNLIT(ap1_to_ap0)[4]*rgb_in[1] + ALWAN_CORE_FNLIT(ap1_to_ap0)[5]*rgb_in[2];
     ap0.b = ALWAN_CORE_FNLIT(ap1_to_ap0)[6]*rgb_in[0] + ALWAN_CORE_FNLIT(ap1_to_ap0)[7]*rgb_in[1] + ALWAN_CORE_FNLIT(ap1_to_ap0)[8]*rgb_in[2];
 
     ALWAN_CORE_RGB out;
-    ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(&out, &ap0, ALWAN_ACES1_OUT_SRGB_100NIT);
+    ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(&out, &ap0, ALWAN_ACES1_OUT_SRGB_100NIT, interp);
 
     /* Output includes sRGB OETF -- undo to get linear for the chain. */
     rgb_out[0] = ALWAN_CORE_FNLIT(alwan_srgb_eotf)(out.r);
@@ -363,16 +363,26 @@ static void ALWAN_CORE_FN(exposure_transform_unclamped)(ALWAN_CORE_T const *rgb_
  * View Transform API (native per-precision dispatch + bulk loop)
  * ---------------------------------------------------------------- */
 static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx, int unclamped) {
-    (void)ctx;  /* Unused for stateless transforms */
-
     if (!rgb_in || !rgb_out) {
         return ALWAN_E_INVALID;
+    }
+
+    /* The ACES view is the one transform with a setting, the tone curve method
+     * from the context (alwan_ctx_set_aces_interp; a NULL context is the
+     * B-spline). The others are stateless and do not read the context. */
+    if (vt == ALWAN_VIEW_ACES_REC709) {
+        alwan_aces_interp const interp = alwan_ctx_get_aces_interp(ctx);
+        for (size_t i = 0; i < count; i++) {
+            ALWAN_CORE_T const *in_ptr = (ALWAN_CORE_T const *)((char const *)rgb_in + i * in_stride);
+            ALWAN_CORE_T *out_ptr = (ALWAN_CORE_T *)((char *)rgb_out + i * out_stride);
+            ALWAN_CORE_FN(aces_rec709_transform)(in_ptr, out_ptr, interp);
+        }
+        return ALWAN_OK;
     }
 
     void (*transform_fn)(ALWAN_CORE_T const *, ALWAN_CORE_T *) = NULL;
 
     switch (vt) {
-        case ALWAN_VIEW_ACES_REC709:        transform_fn = ALWAN_CORE_FN(aces_rec709_transform); break;
         /* An AgX view whose table was compiled out leaves transform_fn NULL and
          * reports ALWAN_E_NODATA below. */
 #if ALWAN_TABLE_AGX_DEFAULT_CONTRAST

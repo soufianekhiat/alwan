@@ -24,6 +24,7 @@ struct alwan_ctx {
     /* Configuration */
     char *runtime_data_root;  /* Owned copy (if non-NULL) */
     uint32_t flags;
+    alwan_aces_interp aces_interp;  /* the ACES 1.x tone curve method the view transform runs; alwan_ctx_set_aces_interp */
 
     /* Future: data cache, registry, etc. */
 };

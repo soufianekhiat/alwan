@@ -255,6 +255,25 @@
 
 ### Breaking
 
+- **The ACES 1.x tone curve method is a parameter, and the process-wide global is gone.**
+  `alwan_set_aces_interp` / `alwan_get_aces_interp` stored the method in a non-atomic
+  file-scope global: two threads rendering with different settings raced on it, a set
+  anywhere in the process moved every other user's pixels, the value survived every
+  context, and a value outside the enum was stored and rendered as the B-spline. The
+  six forward entry points, `alwan_aces1_output_transform_{T}` and their
+  `_map_interleave` / `_map_planar` twins, now take `alwan_aces_interp interp` after the
+  preset, validated like it (`ALWAN_E_INVALID` outside the enum). The view transform,
+  which already takes a context, reads the method from it:
+  `alwan_ctx_set_aces_interp(ctx, method)` / `alwan_ctx_get_aces_interp(ctx)`, a new
+  context holding `ALWAN_ACES_INTERP_BSPLINE` and a `NULL` context reading as the same.
+  The inverse never read the setting (it inverts the B-spline chain) and is unchanged.
+  Callers: `f(&out, &in, preset)` becomes `f(&out, &in, preset, ALWAN_ACES_INTERP_BSPLINE)`
+  for what used to be the default; a caller that set OCIO globally passes
+  `ALWAN_ACES_INTERP_OCIO` at the call, or sets it on the context for the view. Suite 56
+  pins the contract, including that the view under an OCIO context is the direct call
+  under OCIO. The determinism dump is byte-identical, every section having run under the
+  default.
+
 - **The six `alwan_lut{1,2,3}d_sample_{T}` delegates are gone.** They were the table
   readers with the interpolation mode filled in and the size after the coordinate, so one
   operation had two spellings and two argument orders. Callers:

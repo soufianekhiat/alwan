@@ -75,7 +75,8 @@ typedef enum {
 ```c
 alwan_status alwan_aces1_output_transform_{T}(alwan_rgb_{T} *rgb_out,
                                                alwan_rgb_{T} const *rgb_in,
-                                               alwan_aces1_output output);
+                                               alwan_aces1_output output,
+                                               alwan_aces_interp interp);
 
 alwan_status alwan_aces1_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
                                                    alwan_rgb_{T} const *rgb_in,
@@ -84,10 +85,19 @@ alwan_status alwan_aces1_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
 
 Complete ACES 1.3 rendering pipeline (RRT + ODT). Input: ACES2065-1 (AP0 linear). Output: display-encoded RGB.
 
+`interp` is the tone curve method: `ALWAN_ACES_INTERP_BSPLINE` is the Academy CTL reference,
+`ALWAN_ACES_INTERP_OCIO` promises OCIO's pixels (honoured for ten of the fifteen presets) and
+`ALWAN_ACES_INTERP_HERMITE` is the legacy fit. It is validated like the preset, `ALWAN_E_INVALID`
+outside the enum. Until 3.0.0 it was a process-wide global set through
+`alwan_set_aces_interp`. The inverse takes no method: it inverts the B-spline (and SSTS) chain,
+so a forward run under HERMITE or OCIO does not round-trip through it. Which curve chain each
+method runs on each preset is tabulated in [Context](context.md).
+
 ```c
 alwan_status alwan_aces1_output_transform_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
                                                              alwan_{T} const *in, size_t in_stride,
-                                                             size_t count, alwan_aces1_output output);
+                                                             size_t count, alwan_aces1_output output,
+                                                             alwan_aces_interp interp);
 ```
 
 The same transform over a buffer of RGB triples, strides in bytes. The preset is validated once
@@ -101,7 +111,8 @@ alwan_rgb_{T} aces_pixel = {0.18, 0.18, 0.18};  /* 18% gray in AP0 */
 alwan_rgb_{T} display;
 
 alwan_aces1_output_transform_{T}(&display, &aces_pixel,
-                                  ALWAN_ACES1_OUT_SRGB_100NIT);
+                                  ALWAN_ACES1_OUT_SRGB_100NIT,
+                                  ALWAN_ACES_INTERP_BSPLINE);
 ```
 
 ---

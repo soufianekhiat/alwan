@@ -267,10 +267,15 @@ entries are contract/doc/naming nits that should be cleaned up before the
 
 ### Thread-safety / build-config consistency
 
-- **Non-atomic ACES interp global.** `alwan_set/get_aces_interp` store the
-  interp method in a non-atomic file-scope global `g_aces_interp`
-  (`alwan_aces_ff.c:23`) with no ctx/sync, contradicting the per-context model.
-  Move it into `alwan_ctx`.
+- **Non-atomic ACES interp global.** *(RESOLVED 2026-09-22, as a 3.0.0
+  break)* `alwan_set/get_aces_interp` stored the interp method in a non-atomic
+  file-scope global `g_aces_interp` with no ctx/sync, contradicting the
+  per-context model. The global is gone: the six forward
+  `alwan_aces1_output_transform` entry points take the method as a parameter,
+  validated like the preset, and the view transform reads it from its context
+  (`alwan_ctx_set_aces_interp` / `alwan_ctx_get_aces_interp`, B-spline on a new
+  or `NULL` context). The library holds no process-wide setting now; the ACES
+  2.0 gamut-compression cache remains as a cache, not a setting. Suite 56.
 
 - ~~**`reference_data.c` precision gating absent.**~~ **FIXED 2026-09-21, and the
   entry was pointing at a much larger problem than the file it named.** Its
