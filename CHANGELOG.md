@@ -339,6 +339,15 @@
 
 ### Added
 
+- **`alwan_image_convert_data_{T}`: the data semantic, decided once for the image.**
+  `alwan_data_semantic` has been declared since 2.0.0 and nothing in the library read
+  it. This does what its three comments say and no more: `ALWAN_DATA_COLOR` is
+  `alwan_image_convert_{T}` to the byte; `ALWAN_DATA_NON_COLOR` keeps the numbers and
+  changes only the pixel format, so a normal map, a mask or a displacement is not colour
+  managed (U8 0..255 becomes F32 0..1 and comes back exact; the same format in and out is
+  a row copy, every bit pattern kept, F16 NaN included); `ALWAN_DATA_UNKNOWN` is
+  `ALWAN_E_INVALID`, because the enum says the application decides. Suite 75.
+
 - **PQ's EOTF gave a different answer for the same value depending on where it sat in
   the buffer.** In a fast build, `alwan_eotf_apply_{T}` with `ALWAN_TF_PQ` runs four
   lanes through a SIMD kernel and the remainder through the scalar. For an encoded value

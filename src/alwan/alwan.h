@@ -874,6 +874,23 @@ alwan_status alwan_image_convert_f32(void *dst, size_t dst_row_stride, void cons
  * All other parameters identical to alwan_image_convert_f64.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 alwan_status alwan_image_convert_rgba_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_alpha_mode alpha_mode, alwan_ctx *ctx);
+
+/* alwan_image_convert with the data semantic decided once for the whole image.
+ * alwan_data_semantic has been declared since 2.0.0 and nothing read it; this
+ * does what its own comments say and no more:
+ *   ALWAN_DATA_COLOR      alwan_image_convert_{T}, exactly
+ *   ALWAN_DATA_NON_COLOR  the numbers pass through and only the pixel format
+ *                         changes: a normal map, a mask or a displacement keeps
+ *                         its values, U8 0..255 becoming F32 0..1 and back.
+ *                         Same format in and out is a row copy, every bit
+ *                         pattern kept. src_space, dst_space and ctx are not
+ *                         read and may be NULL.
+ *   ALWAN_DATA_UNKNOWN    ALWAN_E_INVALID: the enum says the application
+ *                         decides, and a library that guessed would be deciding.
+ * Returns what alwan_image_convert_{T} returns for COLOR, ALWAN_OK or
+ * ALWAN_E_INVALID (NULL buffer, zero size, unknown format) for NON_COLOR. */
+alwan_status alwan_image_convert_data_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_data_semantic semantic, alwan_ctx *ctx);
+alwan_status alwan_image_convert_data_f32(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_data_semantic semantic, alwan_ctx *ctx);
 alwan_status alwan_image_convert_rgba_f32(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_alpha_mode alpha_mode, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------

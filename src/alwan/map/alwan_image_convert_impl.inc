@@ -226,6 +226,51 @@ alwan_status ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_str
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * The same conversion with the data semantic decided once for the image.
+ *
+ * alwan_data_semantic has existed since 2.0.0 and nothing read it. Its own
+ * comments say what each value means, and this does exactly that and no more:
+ *   ALWAN_DATA_COLOR      the conversion above;
+ *   ALWAN_DATA_NON_COLOR  the numbers pass through and only the pixel format
+ *                         changes. A normal map, a mask or a displacement
+ *                         keeps its values; U8 0..255 becomes F32 0..1 and
+ *                         back, which is what the typed load and store do. When
+ *                         the two formats are the same the rows are copied,
+ *                         so F16 NaNs and every bit pattern survive;
+ *   ALWAN_DATA_UNKNOWN    ALWAN_E_INVALID. The enum says the application
+ *                         decides; a library that guessed would be deciding.
+ * ---------------------------------------------------------------- */
+alwan_status ALWAN_CORE_FNLIT(alwan_image_convert_data)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_data_semantic semantic, alwan_ctx *ctx) {
+    if (semantic == ALWAN_DATA_COLOR) {
+        return ALWAN_CORE_FNLIT(alwan_image_convert)(dst, dst_row_stride, src, src_row_stride, width, height,
+                                                      dst_fmt, src_fmt, src_space, dst_space, ctx);
+    }
+    if (semantic != ALWAN_DATA_NON_COLOR) return ALWAN_E_INVALID;
+    if (!dst || !src || width == 0 || height == 0) return ALWAN_E_INVALID;
+    {
+        size_t const src_px = alwan__pixel_stride(src_fmt);
+        size_t const dst_px = alwan__pixel_stride(dst_fmt);
+        size_t y, x;
+        if (src_px == 0 || dst_px == 0) return ALWAN_E_INVALID;
+        for (y = 0; y < height; y++) {
+            unsigned char const *src_row = (unsigned char const *)src + y * src_row_stride;
+            unsigned char *dst_row = (unsigned char *)dst + y * dst_row_stride;
+            if (src_fmt == dst_fmt) {
+                memmove(dst_row, src_row, width * src_px);
+                continue;
+            }
+            for (x = 0; x < width; x++) {
+                alwan_f64 v[3];
+                alwan__load3_typed(v, src_row + x * src_px, src_fmt);
+                alwan__store3_typed(dst_row + x * dst_px, v, dst_fmt);
+            }
+        }
+    }
+    (void)src_space; (void)dst_space; (void)ctx;
+    return ALWAN_OK;
+}
+
 alwan_status ALWAN_CORE_FNLIT(alwan_image_convert_rgba)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_alpha_mode alpha_mode, alwan_ctx *ctx) {
 
     if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
