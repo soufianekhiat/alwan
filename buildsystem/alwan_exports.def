@@ -349,9 +349,13 @@ EXPORTS
     alwan_colorimetric_purity_f32
     alwan_colorimetric_purity_f64
     alwan_colour_correct_cheung2004_f32
+    alwan_colour_correct_cheung2004_f32_map_interleave
     alwan_colour_correct_cheung2004_f64
+    alwan_colour_correct_cheung2004_f64_map_interleave
     alwan_colour_correct_finlayson2015_f32
+    alwan_colour_correct_finlayson2015_f32_map_interleave
     alwan_colour_correct_finlayson2015_f64
+    alwan_colour_correct_finlayson2015_f64_map_interleave
     alwan_colour_correction_matrix_cheung2004_f32
     alwan_colour_correction_matrix_cheung2004_f64
     alwan_colour_correction_matrix_finlayson2015_f32
@@ -685,13 +689,17 @@ EXPORTS
     alwan_gamut_f64_map_interleave
     alwan_gamut_f64_map_planar
     alwan_gamut_map_advanced_f32
+    alwan_gamut_map_advanced_f32_map_interleave
     alwan_gamut_map_advanced_f64
+    alwan_gamut_map_advanced_f64_map_interleave
     alwan_gamut_map_interleave_ex
     alwan_gamut_map_planar_ex
     alwan_gamut_map_spatial_f32
     alwan_gamut_map_spatial_f64
     alwan_gamut_map_xyz_to_rgb_f32
+    alwan_gamut_map_xyz_to_rgb_f32_map_interleave
     alwan_gamut_map_xyz_to_rgb_f64
+    alwan_gamut_map_xyz_to_rgb_f64_map_interleave
     alwan_gamut_volume_f32
     alwan_gamut_volume_f64
     alwan_gamut_volume_ratio_f32
@@ -727,7 +735,9 @@ EXPORTS
     alwan_hdr_gamut_map_ictcp_f32
     alwan_hdr_gamut_map_ictcp_f64
     alwan_hdr_gamut_map_jzczhz_f32
+    alwan_hdr_gamut_map_jzczhz_f32_map_interleave
     alwan_hdr_gamut_map_jzczhz_f64
+    alwan_hdr_gamut_map_jzczhz_f64_map_interleave
     alwan_hdr_ipt_to_xyz_f32
     alwan_hdr_ipt_to_xyz_f32_map_interleave
     alwan_hdr_ipt_to_xyz_f32_map_planar
@@ -947,7 +957,9 @@ EXPORTS
     alwan_ipt_ragoo2021_to_xyz_f32
     alwan_ipt_ragoo2021_to_xyz_f64
     alwan_ipt_to_iptch_f32
+    alwan_ipt_to_iptch_f32_map_interleave
     alwan_ipt_to_iptch_f64
+    alwan_ipt_to_iptch_f64_map_interleave
     alwan_ipt_to_xyz_f32
     alwan_ipt_to_xyz_f32_map_interleave
     alwan_ipt_to_xyz_f32_map_planar
@@ -957,7 +969,9 @@ EXPORTS
     alwan_ipt_to_xyz_map_interleave_ex
     alwan_ipt_to_xyz_map_planar_ex
     alwan_iptch_to_ipt_f32
+    alwan_iptch_to_ipt_f32_map_interleave
     alwan_iptch_to_ipt_f64
+    alwan_iptch_to_ipt_f64_map_interleave
     alwan_is_within_pointer_gamut_f32
     alwan_is_within_pointer_gamut_f64
     alwan_is_within_pointer_gamut_lab_f32

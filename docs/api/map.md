@@ -423,6 +423,16 @@ alwan_status alwan_ciecam02_inverse_{T}_map_interleave(
 | CAM18sl | `alwan_cam18sl_forward_{T}_map_interleave` (`Y_b`) | `alwan_cam18sl_inverse_{T}_map_interleave` |
 | CAM20u | `alwan_cam20u_forward_{T}_map_interleave` (`Y_b`, `L_a`) | `alwan_cam20u_inverse_{T}_map_interleave` |
 
+Also since 2026-09-22, the same shape (strided triples in and out, the scalar's other
+arguments after `count`, a context last), each its scalar in a loop and bit-identical to it
+(suite 174): `alwan_ipt_to_iptch_{T}_map_interleave`, `alwan_iptch_to_ipt_{T}_map_interleave`,
+`alwan_hdr_gamut_map_jzczhz_{T}_map_interleave(..., Cz_max)`,
+`alwan_gamut_map_advanced_{T}_map_interleave(..., method, space)`,
+`alwan_gamut_map_xyz_to_rgb_{T}_map_interleave(..., space, ctx)`,
+`alwan_colour_correct_cheung2004_{T}_map_interleave(..., matrix, terms)` and
+`alwan_colour_correct_finlayson2015_{T}_map_interleave(..., matrix, degree, root_poly)`.
+The two gamut mappers return the scalar's status for the first pixel it rejects.
+
 The nine added on 2026-09-22 take the same arguments as their scalars, with the XYZ side a
 strided buffer and the correlates side one struct per pixel. Each is its scalar in a loop,
 validated once, and agrees with it to the bit (suite 172 asserts equality on every correlate

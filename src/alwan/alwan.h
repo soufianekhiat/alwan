@@ -1068,6 +1068,10 @@ alwan_status alwan_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_strid
  * ctx: optional context (can be NULL)
  * Returns ALWAN_OK on success */
 alwan_status alwan_gamut_map_xyz_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *space, alwan_xyz_f64 const *xyz_in, alwan_ctx *ctx);
+
+/* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
+alwan_status alwan_gamut_map_xyz_to_rgb_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_ctx *ctx);
+alwan_status alwan_gamut_map_xyz_to_rgb_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_ctx *ctx);
 alwan_status alwan_gamut_map_xyz_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *space, alwan_xyz_f32 const *xyz_in, alwan_ctx *ctx);
 
 /* CSS Color Level 4 Section 13.2 OKLCh gamut mapping (binary search on chroma)
@@ -1500,6 +1504,12 @@ void alwan_ipt_to_iptch_f32(alwan_iptch_f32 *iptch, alwan_ipt_f32 const *ipt);
 void alwan_ipt_to_iptch_f64(alwan_iptch_f64 *iptch, alwan_ipt_f64 const *ipt);
 void alwan_iptch_to_ipt_f32(alwan_ipt_f32 *ipt, alwan_iptch_f32 const *iptch);
 void alwan_iptch_to_ipt_f64(alwan_ipt_f64 *ipt, alwan_iptch_f64 const *iptch);
+
+/* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
+alwan_status alwan_ipt_to_iptch_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count);
+alwan_status alwan_iptch_to_ipt_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count);
+alwan_status alwan_ipt_to_iptch_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
+alwan_status alwan_iptch_to_ipt_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
 
 /* MapXYZ <-> IPT conversions */
 alwan_status alwan_xyz_to_ipt_f32_map_interleave(alwan_f32 *ipt_out, size_t out_stride, alwan_f32 const *xyz_in, size_t in_stride, size_t count);
@@ -3324,7 +3334,9 @@ alwan_status alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
 /* Map out-of-gamut RGB color to valid gamut
  * Maps an RGB color (possibly out of [0,1] range) back into valid gamut
  * using perceptually-aware algorithms
- * method: gamut mapping algorithm to use
+ * method: ALWAN_GAMUT_MAP_CLIP, or one of the Oklab projections, methods 2 to 7.
+ *         ALWAN_GAMUT_MAP_HUE_PRESERVING is NOT one of this function's methods and
+ *         is ALWAN_E_INVALID here; it belongs to alwan_gamut_{T}_map_interleave.
  * space: RGB color space descriptor (primaries and white point)
  * rgb_linear: input RGB color in linear (not gamma-corrected) space
  * rgb_out: receives mapped RGB color (guaranteed in [0,1])
@@ -3337,6 +3349,10 @@ alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
                                   alwan_gamut_map_method method,
                                   alwan_rgb_space_desc_f64 const *space,
                                   alwan_rgb_f64 const *rgb_linear);
+
+/* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
+alwan_status alwan_gamut_map_advanced_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_gamut_map_method method, alwan_rgb_space_desc_f32 const *space);
+alwan_status alwan_gamut_map_advanced_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_gamut_map_method method, alwan_rgb_space_desc_f64 const *space);
 
 /* HDR gamut mapping in ICtCp (PQ) -- the HDR counterpart of the SDR methods
  * above. rgb_linear is linear BT.2020 RGB in ABSOLUTE cd/m2 (nits); the colour
@@ -6916,6 +6932,12 @@ void alwan_colour_correct_finlayson2015_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f3
 void alwan_colour_correct_finlayson2015_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb,
                                         alwan_f64 const *matrix, int degree, int root_poly);
 
+/* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
+alwan_status alwan_colour_correct_cheung2004_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const *matrix, alwan_poly_cheung_terms terms);
+alwan_status alwan_colour_correct_finlayson2015_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const *matrix, int degree, int root_poly);
+alwan_status alwan_colour_correct_cheung2004_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const *matrix, alwan_poly_cheung_terms terms);
+alwan_status alwan_colour_correct_finlayson2015_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const *matrix, int degree, int root_poly);
+
 /* How a colour correction matrix is fitted. The zero value, or NULL, is the plain
  * least-squares fit of alwan_colour_correction_matrix_*, bit for bit.
  *
@@ -8189,6 +8211,10 @@ void alwan_hdr_gamut_map_jzczhz_f32(alwan_jzczhz_f32 *out, alwan_jzczhz_f32 cons
                                 alwan_f32 Cz_max);
 void alwan_hdr_gamut_map_jzczhz_f64(alwan_jzczhz_f64 *out, alwan_jzczhz_f64 const *in,
                                 alwan_f64 Cz_max);
+
+/* Buffer form, strides in bytes; the scalar in a loop, validated once, bit-identical to it (suite 174). */
+alwan_status alwan_hdr_gamut_map_jzczhz_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 Cz_max);
+alwan_status alwan_hdr_gamut_map_jzczhz_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 Cz_max);
 
 /* ----------------------------------------------------------------
  * Display Characterization

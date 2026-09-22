@@ -339,6 +339,14 @@
 
 ### Added
 
+- **Buffer forms of the last per-pixel operations that had none.** IPT <-> IPTch, the
+  Jzczhz HDR gamut map, `gamut_map_advanced`, `gamut_map_xyz_to_rgb`, and the Cheung 2004
+  and Finlayson 2015 colour corrections, in `api/alwan_apply_maps.c`, bit-identical to their
+  scalars (suite 174). Writing the test showed that `alwan_gamut_map_advanced_{T}` rejects
+  `ALWAN_GAMUT_MAP_HUE_PRESERVING` with `ALWAN_E_INVALID` although the enum it documents
+  lists it; that method is the plain `alwan_gamut_{T}_map_interleave`'s, and the header says
+  so now.
+
 - **Buffer forms of every colour-difference metric.** Sixteen `alwan_delta_e_<name>_{T}_map_interleave`
   in `api/alwan_delta_e_maps.c`, one shape for all: two strided buffers of the metric's
   colour type in, a strided buffer of distances out, params or `textiles` after `count`
