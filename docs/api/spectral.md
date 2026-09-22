@@ -692,6 +692,34 @@ costs more than the basis does. 1 % noise on the chart raises the error to 0.018
 0.12 with 6 components and 0.028 to 0.055 with 3, so pass fewer components for a
 noisy chart, and use more patches with more spectral variety where possible.
 
+### alwan_camera_sensitivities_from_chart_basis_{T}
+
+```c
+/* basis: 3 x k x ALWAN_CAMERA_BASIS_BANDS, channel-major, component, wavelength */
+alwan_camera_sensitivities_from_chart_basis_f64(&r, &g, &b, chart_rgb, 3 * sizeof(alwan_f64),
+                                                patches, 24, &d65, basis, k, ctx);
+```
+
+The same recovery over a basis the caller supplies: for a sensor family the embedded
+basis does not span, or to measure the embedded one. `basis` holds
+3 x `basis_components` x 81 values, channel-major (R, G, B), then component, then
+wavelength on 380-780 nm at 5 nm, the layout of the shipped
+`camera_sensitivities/rawtoaces/basis_pca6.csv` and of colour-science's
+`PCA_Jiang2013` output transposed. Every component is used, and `patch_count` must be
+at least `basis_components`. It does not touch the embedded table, so it is available
+under `ALWAN_TABLES_CAMERAS=0`. `ALWAN_E_INVALID` for a NULL basis or zero components.
+
+This is how the in-sample figure above becomes an out-of-sample one.
+`alwan_dev/tools/jiang_basis_loo.py` rebuilds the basis 52 times without each camera
+in turn (colour-science's PCA, the same engine gendata uses), recovers each camera's
+own chart through this function, and reports the RMS both ways; suite 121 holds two
+held-out recoveries to colour-science at 1e-14. Measured on 2026-09-22 over the 52
+cameras, noise-free chart: in-sample median 0.0111 RMS (mean 0.0128, worst 0.0280), held out
+median 0.0126 (mean 0.0158, worst 0.0621); 39 of 52 within 0.02 and 50 within 0.05
+held out. The median ratio is 1.12, so the basis owes little to having seen the
+camera, and the two that pay most, the PowerShot S90 (0.028 to 0.062) and the ARRI
+D21 (0.026 to 0.052), are the two whose curves the other 51 least resemble.
+
 ### alwan_spd_to_aces2065_1_{T}
 
 Spectral radiance, or a reflectance with the illuminant lighting it, to ACES2065-1

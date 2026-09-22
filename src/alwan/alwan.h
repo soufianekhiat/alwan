@@ -3063,6 +3063,22 @@ alwan_status alwan_idt_matrix_f32(alwan_mat3x3_f32 *idt_out, alwan_rgb_f32 *whit
 alwan_status alwan_camera_sensitivities_from_chart_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b, alwan_f64 const *camera_rgb, size_t rgb_stride, alwan_spd_f64 const *reflectances, size_t patch_count, alwan_spd_f64 const *illuminant, size_t basis_components, alwan_ctx *ctx);
 alwan_status alwan_camera_sensitivities_from_chart_f32(alwan_spd_f32 *spd_r, alwan_spd_f32 *spd_g, alwan_spd_f32 *spd_b, alwan_f32 const *camera_rgb, size_t rgb_stride, alwan_spd_f32 const *reflectances, size_t patch_count, alwan_spd_f32 const *illuminant, size_t basis_components, alwan_ctx *ctx);
 
+/* The same recovery over a basis the caller supplies, for a sensor family the
+ * embedded basis does not span, or to measure the embedded one: basis holds
+ * 3 x basis_components x ALWAN_CAMERA_BASIS_BANDS values, channel-major (R, G,
+ * B), then component, then wavelength on 380-780 nm at 5 nm, which is the
+ * layout of the shipped rawtoaces basis (data/camera_sensitivities/rawtoaces/
+ * basis_pca6.csv) and of colour-science's PCA_Jiang2013 output transposed.
+ * Every component is used; patch_count must be at least basis_components.
+ * Does not need the embedded table, so it is available under
+ * ALWAN_TABLES_CAMERAS=0. ALWAN_E_INVALID for a NULL basis or zero components.
+ * Suite 121 holds it to colour-science over bases built without the camera
+ * being recovered (leave-one-out), which is the measurement the embedded
+ * basis's figure comes from. */
+#define ALWAN_CAMERA_BASIS_BANDS 81
+alwan_status alwan_camera_sensitivities_from_chart_basis_f64(alwan_spd_f64 *spd_r, alwan_spd_f64 *spd_g, alwan_spd_f64 *spd_b, alwan_f64 const *camera_rgb, size_t rgb_stride, alwan_spd_f64 const *reflectances, size_t patch_count, alwan_spd_f64 const *illuminant, alwan_f64 const *basis, size_t basis_components, alwan_ctx *ctx);
+alwan_status alwan_camera_sensitivities_from_chart_basis_f32(alwan_spd_f32 *spd_r, alwan_spd_f32 *spd_g, alwan_spd_f32 *spd_b, alwan_f32 const *camera_rgb, size_t rgb_stride, alwan_spd_f32 const *reflectances, size_t patch_count, alwan_spd_f32 const *illuminant, alwan_f32 const *basis, size_t basis_components, alwan_ctx *ctx);
+
 /* Camera RGB to ACES2065-1 with an IDT: white balance normalised so its smallest
  * multiplier is 1, clip at 1 when clip is non-zero (keeps saturated sensor values
  * achromatic), the IDT matrix, then the exposure factor (1 for none; the value that puts

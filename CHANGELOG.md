@@ -360,6 +360,16 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **Jiang 2013 recovery over a caller's basis, and the embedded basis measured out of
+  sample.** `alwan_camera_sensitivities_from_chart_basis_{T}` takes a basis of
+  3 x k x 81 values (channel-major, then component, then wavelength; the shipped
+  basis's own layout) in place of the embedded rawtoaces one, for a sensor family the
+  embedded basis does not span or to measure it. It does not need the embedded table.
+  Suite 121 holds it to colour-science over bases built without the camera being
+  recovered (1e-14), and `alwan_dev/tools/jiang_basis_loo.py` does that for all 52
+  cameras through the built library: the in-sample figure the docs quoted becomes a
+  held-out one. `docs/api/spectral.md`.
+
 - **The DLL no longer exports eight internal helpers.** `alwan__resolve_oetf_{T}`,
   `alwan__resolve_eotf_{T}`, `alwan__gamut_clip_kernel_{T}` and
   `alwan__css_gamut_map_kernel_{T}` are external so one translation unit can call
