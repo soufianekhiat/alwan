@@ -411,6 +411,14 @@ alwan_status alwan_ciecam02_inverse_{T}_map_interleave(
 |-------|---------|---------|
 | CIECAM02 | `alwan_ciecam02_forward_{T}_map_interleave` | `alwan_ciecam02_inverse_{T}_map_interleave` |
 | CAM16 | `alwan_cam16_forward_{T}_map_interleave` | `alwan_cam16_inverse_{T}_map_interleave` |
+| ZCAM | `alwan_zcam_forward_{T}_map_interleave` | `alwan_zcam_inverse_{T}_map_interleave` |
+
+The ZCAM maps compute the white's achromatic response, the two-step CAT gains and the
+viewing-condition powers once per call rather than once per pixel, in the arithmetic the
+one-colour form uses, so a map and its scalar twin agree to the bit (suite 28 asserts
+equality, not a tolerance). The f32 maps compute in f64 and narrow, as the f32 scalars do.
+The same hoisting is available for the two-step CAT on its own as
+`alwan_cat_zhai2018_{T}_map_interleave`, see [chromatic-adaptation](chromatic-adaptation.md).
 
 ### Color Vision Deficiency (CVD)
 

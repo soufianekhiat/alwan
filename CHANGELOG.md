@@ -339,6 +339,19 @@
 
 ### Added
 
+- **ZCAM and Zhai 2018 maps, with the white's terms hoisted.**
+  `alwan_zcam_forward_{T}_map_interleave`, `alwan_zcam_inverse_{T}_map_interleave` and
+  `alwan_cat_zhai2018_{T}_map_interleave`. The ZCAM core now has a params form: everything
+  that depends on the white and the viewing conditions, the two-step CAT gains in both
+  directions, I_z,w, and seven powers, is computed once by `alwan_zcam_params_v` and used by
+  `alwan_zcam_forward_params_v` / `alwan_zcam_inverse_params_v`; the six-argument scalars
+  call the pair. The Zhai CAT splits the same way into `alwan_cat_zhai2018_gains_v` and
+  `alwan_cat_zhai2018_apply_v`. In every case the per-pixel arithmetic is the one the
+  scalar ran before, in the same order, so a map is bit-identical to its scalar twin
+  (suites 28 and 144 assert equality) and the determinism dump did not move by a byte.
+  `ALWAN_CORE_FNLIT_MAP(base)` spells `base_f64_map_interleave` inside an `_impl.inc`,
+  which `##` could not.
+
 - **Table readers compile as shaders, and all 43 cores now do.** `alwan_table_core.h`
   and the two cores that include it, `alwan_lut_core.h` and `alwan_vision_core.h`, were
   the three that did not build as HLSL, for one reason: the readers took the table as a

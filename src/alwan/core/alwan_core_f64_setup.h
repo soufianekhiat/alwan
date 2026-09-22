@@ -23,6 +23,9 @@
 /* Direct-paste: base is NOT expanded (## at level 1 suppresses expansion) */
 #define ALWAN_CORE_FNLIT(base)      base##_f64
 #define ALWAN_CORE_FNVLIT(base)     base##_f64_v
+/* A map twin, base_f64_map_interleave: the suffix goes BEFORE the map tag, which
+ * base##suffix cannot spell. */
+#define ALWAN_CORE_FNLIT_MAP(base)  base##_f64_map_interleave
 
 /* Math macros */
 #define ALWAN_CORE_ABS(x)       ALWAN_ABS_F64(x)

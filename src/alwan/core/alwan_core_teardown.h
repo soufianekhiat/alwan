@@ -19,6 +19,7 @@
 #undef ALWAN_CORE_FNV_
 #undef ALWAN_CORE_FNV2_
 #undef ALWAN_CORE_FNLIT
+#undef ALWAN_CORE_FNLIT_MAP
 #undef ALWAN_CORE_FNVLIT
 
 /* Math macros */

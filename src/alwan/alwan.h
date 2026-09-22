@@ -2347,6 +2347,17 @@ alwan_status alwan_cat_zhai2018_f64(alwan_xyz_f64 *xyz_out,
                            alwan_xyz_f64 const *xyz_baseline,
                            alwan_cat_method transform);
 
+/* The same adaptation over a buffer of XYZ triples, strides in bytes. The
+ * per-white gains are computed once, then applied per pixel in the arithmetic
+ * the one-colour form uses, so the two agree to the bit. Same validation and
+ * the same status codes. */
+alwan_status alwan_cat_zhai2018_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count,
+                           alwan_xyz_f32 const *xyz_src, alwan_xyz_f32 const *xyz_dst, alwan_f32 D_src, alwan_f32 D_dst,
+                           alwan_xyz_f32 const *xyz_baseline, alwan_cat_method transform);
+alwan_status alwan_cat_zhai2018_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count,
+                           alwan_xyz_f64 const *xyz_src, alwan_xyz_f64 const *xyz_dst, alwan_f64 D_src, alwan_f64 D_dst,
+                           alwan_xyz_f64 const *xyz_baseline, alwan_cat_method transform);
+
 /* CIE 1994 chromatic adaptation model (CIE 109-1994).
  *
  * Adapts a stimulus seen under one adapting field to the corresponding colour under
@@ -4724,6 +4735,17 @@ alwan_status alwan_zcam_inverse_f32(alwan_xyz_f32 *xyz,
 alwan_status alwan_zcam_inverse_f64(alwan_xyz_f64 *xyz,
                             alwan_zcam_correlates_f64 const *correlates,
                             alwan_zcam_viewing_conditions_f64 const *vc);
+
+/* ZCAM over a buffer. XYZ triples with a byte stride on the XYZ side, one
+ * correlates struct per pixel on the other, as the CAM16 maps. The white's
+ * response, the CAT gains and the viewing-condition powers are computed once
+ * per call rather than per pixel, in the arithmetic the one-colour form uses,
+ * so a map and its scalar twin agree to the bit. The f32 maps compute in f64
+ * and narrow, as the f32 scalars do. */
+alwan_status alwan_zcam_forward_f32_map_interleave(alwan_zcam_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_zcam_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_zcam_forward_f64_map_interleave(alwan_zcam_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_zcam_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan_zcam_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_zcam_correlates_f32 const *correlates_in, alwan_zcam_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_zcam_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_zcam_correlates_f64 const *correlates_in, alwan_zcam_viewing_conditions_f64 const *vc, size_t count);
 
 /* ZCAM to UCS (Uniform Color Space) for color difference
  * correlates: input ZCAM correlates

@@ -168,7 +168,9 @@ EXPORTS
     alwan_cat_vk20_f32
     alwan_cat_vk20_f64
     alwan_cat_zhai2018_f32
+    alwan_cat_zhai2018_f32_map_interleave
     alwan_cat_zhai2018_f64
+    alwan_cat_zhai2018_f64_map_interleave
     alwan_ccm_fit_cheung2004_f32
     alwan_ccm_fit_cheung2004_f64
     alwan_ccm_fit_finlayson2015_f32
@@ -1980,10 +1982,14 @@ EXPORTS
     alwan_yrg_to_xyz_f32
     alwan_yrg_to_xyz_f64
     alwan_zcam_forward_f32
+    alwan_zcam_forward_f32_map_interleave
     alwan_zcam_forward_f64
+    alwan_zcam_forward_f64_map_interleave
     alwan_zcam_from_ucs_f32
     alwan_zcam_from_ucs_f64
     alwan_zcam_inverse_f32
+    alwan_zcam_inverse_f32_map_interleave
     alwan_zcam_inverse_f64
+    alwan_zcam_inverse_f64_map_interleave
     alwan_zcam_to_ucs_f32
     alwan_zcam_to_ucs_f64

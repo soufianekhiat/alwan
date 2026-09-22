@@ -94,7 +94,25 @@ destination illuminant via a baseline illuminant, with independent degree-of-ada
 - `xyz_baseline` -- baseline illuminant XYZ, or `NULL` for equal-energy white `{100,100,100}`.
 - `transform` -- underlying one-step CAT (`ALWAN_CAT_CAT02` or `ALWAN_CAT_CAT16`).
 
-**Returns:** `ALWAN_OK` on success.
+The three whites need not share a scale: each enters as Y_w / RGB_w, so a destination white
+written at Y = 1 beside a source at Y = 100 adapts as it would at Y = 100. Until 2026-09-21 the
+Y_w / Y_o term was missing and the result scaled with the destination white.
+
+**Returns:** `ALWAN_OK` on success, `ALWAN_E_RANGE` for a degree outside `[0, 1]`,
+`ALWAN_E_INVALID` for a transform other than CAT02 or CAT16.
+
+```c
+alwan_status alwan_cat_zhai2018_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                   alwan_{T} const *in, size_t in_stride, size_t count,
+                                                   alwan_xyz_{T} const *xyz_src, alwan_xyz_{T} const *xyz_dst,
+                                                   alwan_{T} D_src, alwan_{T} D_dst,
+                                                   alwan_xyz_{T} const *xyz_baseline, alwan_cat_method transform);
+```
+
+The same adaptation over a buffer of XYZ triples, strides in bytes. The per-white gains,
+three numbers, are computed once; each pixel is then the cone matrix, a scale and its
+inverse. That is the arithmetic the one-colour form runs, so the two agree to the bit
+(suite 144 asserts equality). Same validation, same status codes.
 
 ---
 

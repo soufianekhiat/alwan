@@ -203,6 +203,59 @@ alwan_status alwan_zcam_from_ucs_f64(alwan_zcam_correlates_f64 *correlates_out,
 
     return ALWAN_OK;
 }
+/* ----------------------------------------------------------------
+ * ZCAM maps: the per-white terms once, then the stimulus part per pixel
+ * ---------------------------------------------------------------- */
+
+static alwan_zcam_v_params_f64 zcam_params_from_vc(alwan_zcam_viewing_conditions_f64 const *vc) {
+    alwan_f64 Fs, F;
+    get_zcam_surround_params(vc->surround, &Fs, &F);
+    return alwan_zcam_params_f64_v(vc->xyz_w, Fs, get_zcam_adaptation(vc, F), vc->La, vc->Yb);
+}
+
+static void zcam_correlates_from_v(alwan_zcam_correlates_f64 *out, alwan_zcam_v_correlates_f64 const *v) {
+    out->Jz = v->Jz; out->Cz = v->Cz; out->hz = v->hz; out->Qz = v->Qz; out->Mz = v->Mz;
+    out->Sz = v->Sz; out->Vz = v->Vz; out->Kz = v->Kz; out->Wz = v->Wz;
+}
+
+alwan_status alwan_zcam_forward_f64_map_interleave(alwan_zcam_correlates_f64 *correlates_out,
+                       alwan_f64 const *xyz_in, size_t in_stride,
+                       alwan_zcam_viewing_conditions_f64 const *vc, size_t count) {
+    if (!correlates_out || !xyz_in || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_zcam_v_params_f64 const p = zcam_params_from_vc(vc);
+    for (size_t i = 0; i < count; i++) {
+        alwan_f64 const *src = (alwan_f64 const *)((char const *)xyz_in + i * in_stride);
+        alwan_xyz_f64 xyz = { src[0], src[1], src[2] };
+        alwan_zcam_v_correlates_f64 v = alwan_zcam_forward_params_f64_v(xyz, p);
+        zcam_correlates_from_v(&correlates_out[i], &v);
+        ALWAN_NORM_ZCAM(&correlates_out[i]);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_zcam_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride,
+                       alwan_zcam_correlates_f64 const *correlates_in,
+                       alwan_zcam_viewing_conditions_f64 const *vc, size_t count) {
+    if (!xyz_out || !correlates_in || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_zcam_v_params_f64 const p = zcam_params_from_vc(vc);
+    for (size_t i = 0; i < count; i++) {
+        alwan_zcam_correlates_f64 tmp = correlates_in[i];
+        alwan_zcam_v_correlates_f64 v;
+        alwan_f64 *dst = (alwan_f64 *)((char *)xyz_out + i * out_stride);
+        ALWAN_DENORM_ZCAM(&tmp);
+        v.Jz = tmp.Jz; v.Cz = tmp.Cz; v.hz = tmp.hz; v.Qz = tmp.Qz; v.Mz = tmp.Mz;
+        v.Sz = tmp.Sz; v.Vz = tmp.Vz; v.Kz = tmp.Kz; v.Wz = tmp.Wz;
+        alwan_xyz_f64 r = alwan_zcam_inverse_params_f64_v(v, p);
+        dst[0] = r.x;
+        dst[1] = r.y;
+        dst[2] = r.z;
+    }
+    return ALWAN_OK;
+}
 #endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F32
@@ -315,6 +368,51 @@ alwan_status alwan_zcam_from_ucs_f32(alwan_zcam_correlates_f32 *correlates_out,
     int rc = alwan_zcam_from_ucs_f64(&c64, &jab64);
     if (rc != ALWAN_OK) return rc;
     zcam_correlates_f64_to_f32(correlates_out, &c64);
+    return ALWAN_OK;
+}
+alwan_status alwan_zcam_forward_f32_map_interleave(alwan_zcam_correlates_f32 *correlates_out,
+                       alwan_f32 const *xyz_in, size_t in_stride,
+                       alwan_zcam_viewing_conditions_f32 const *vc, size_t count) {
+    if (!correlates_out || !xyz_in || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_zcam_viewing_conditions_f64 vc64;
+    zcam_vc_f32_to_f64(&vc64, vc);
+    alwan_zcam_v_params_f64 const p = zcam_params_from_vc(&vc64);
+    for (size_t i = 0; i < count; i++) {
+        alwan_f32 const *src = (alwan_f32 const *)((char const *)xyz_in + i * in_stride);
+        alwan_xyz_f64 xyz = { (alwan_f64)src[0], (alwan_f64)src[1], (alwan_f64)src[2] };
+        alwan_zcam_v_correlates_f64 v = alwan_zcam_forward_params_f64_v(xyz, p);
+        alwan_zcam_correlates_f64 c64;
+        zcam_correlates_from_v(&c64, &v);
+        ALWAN_NORM_ZCAM(&c64);
+        zcam_correlates_f64_to_f32(&correlates_out[i], &c64);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_zcam_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride,
+                       alwan_zcam_correlates_f32 const *correlates_in,
+                       alwan_zcam_viewing_conditions_f32 const *vc, size_t count) {
+    if (!xyz_out || !correlates_in || !vc) {
+        return ALWAN_E_INVALID;
+    }
+    alwan_zcam_viewing_conditions_f64 vc64;
+    zcam_vc_f32_to_f64(&vc64, vc);
+    alwan_zcam_v_params_f64 const p = zcam_params_from_vc(&vc64);
+    for (size_t i = 0; i < count; i++) {
+        alwan_zcam_correlates_f64 c64;
+        alwan_zcam_v_correlates_f64 v;
+        alwan_f32 *dst = (alwan_f32 *)((char *)xyz_out + i * out_stride);
+        zcam_correlates_f32_to_f64(&c64, &correlates_in[i]);
+        ALWAN_DENORM_ZCAM(&c64);
+        v.Jz = c64.Jz; v.Cz = c64.Cz; v.hz = c64.hz; v.Qz = c64.Qz; v.Mz = c64.Mz;
+        v.Sz = c64.Sz; v.Vz = c64.Vz; v.Kz = c64.Kz; v.Wz = c64.Wz;
+        alwan_xyz_f64 r = alwan_zcam_inverse_params_f64_v(v, p);
+        dst[0] = (alwan_f32)r.x;
+        dst[1] = (alwan_f32)r.y;
+        dst[2] = (alwan_f32)r.z;
+    }
     return ALWAN_OK;
 }
 #endif /* ALWAN_WITH_F32 */

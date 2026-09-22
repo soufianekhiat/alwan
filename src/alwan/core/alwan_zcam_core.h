@@ -205,6 +205,73 @@ ALWAN_INLINE alwan_scalar zcam_eccentricity_v(alwan_scalar h_degrees) {
 }
 
 /* ----------------------------------------------------------------
+ * The per-white terms of the model, computed once
+ *
+ * Everything the forward and inverse transforms need that does not depend on
+ * the stimulus: the two-step CAT's gains in each direction, the white's
+ * achromatic response, and the viewing-condition powers. One colour computes
+ * them and uses them once; a map computes them once for its buffer. The
+ * arithmetic is the same in both, so a map is bit-identical to its scalar
+ * twin, which the determinism dump checks.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_vec3 gains_to_d65;   /* two-step CAT, viewing white -> D65 */
+    alwan_vec3 gains_from_d65; /* and back */
+    alwan_scalar Izw;               /* achromatic response of the white */
+    alwan_scalar Qz_p;              /* exponent on I_z, 1.6 F_s / F_b^0.12 */
+    alwan_scalar Qz_m;              /* F_s^2.2 F_b^0.5 F_L^0.2 */
+    alwan_scalar Qzw;               /* brightness of the white */
+    alwan_scalar FL_pow_02;         /* F_L^0.2 */
+    alwan_scalar FL_pow_06;         /* F_L^0.6 */
+    alwan_scalar Fb_pow_01;         /* F_b^0.1 */
+    alwan_scalar Izw_pow_078;       /* I_z,w^0.78 */
+    alwan_scalar Iz_p;              /* F_b^0.12 / (1.6 F_s), the inverse's exponent */
+    alwan_scalar Iz_d;              /* 2700 * 100 * Qz_m */
+} alwan_zcam_v_params;
+
+ALWAN_INLINE alwan_zcam_v_params alwan_zcam_params_v(
+    alwan_xyz xyz_w,
+    alwan_scalar Fs,
+    alwan_scalar D,
+    alwan_scalar La,
+    alwan_scalar Y_b) {
+
+    alwan_zcam_v_params p;
+
+    /* D65 and the equal-energy baseline of the two-step CAT, at Y = 1 */
+    alwan_xyz d65;
+    d65.x = ZCAM_V_D65_X; d65.y = ALWAN_ONE; d65.z = ZCAM_V_D65_Z;
+    alwan_xyz ee;
+    ee.x = ALWAN_ONE; ee.y = ALWAN_ONE; ee.z = ALWAN_ONE;
+
+    p.gains_to_d65 = alwan_cat_zhai2018_gains_v(ZCAM_V_CAT02, xyz_w, d65, D, D, ee);
+    p.gains_from_d65 = alwan_cat_zhai2018_gains_v(ZCAM_V_CAT02, d65, xyz_w, D, D, ee);
+
+    /* Factors of the viewing conditions */
+    alwan_scalar Fb = ALWAN_SQRT(Y_b / xyz_w.y);
+    alwan_scalar FL = ALWAN_LITERAL(0.171) *
+                      alwan_cat_spow_v(La, ALWAN_ONE / ALWAN_LITERAL(3.0)) *
+                      (ALWAN_ONE - ALWAN_EXP(-ALWAN_LITERAL(48.0) / ALWAN_LITERAL(9.0) * La));
+
+    alwan_vec3 izazbz_w = zcam_xyz_to_izazbz_v(xyz_w);
+    p.Izw = izazbz_w.v[0];
+
+    alwan_scalar Fb_pow_012 = alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.12));
+    p.Qz_p = (ALWAN_LITERAL(1.6) * Fs) / Fb_pow_012;
+    p.FL_pow_02 = alwan_cat_spow_v(FL, ALWAN_LITERAL(0.2));
+    p.FL_pow_06 = alwan_cat_spow_v(FL, ALWAN_LITERAL(0.6));
+    p.Qz_m = alwan_cat_spow_v(Fs, ALWAN_LITERAL(2.2)) *
+             alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.5)) * p.FL_pow_02;
+    p.Qzw = ALWAN_LITERAL(2700.0) * alwan_cat_spow_v(p.Izw, p.Qz_p) * p.Qz_m;
+    p.Fb_pow_01 = alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.1));
+    p.Izw_pow_078 = alwan_cat_spow_v(p.Izw, ALWAN_LITERAL(0.78));
+    p.Iz_p = Fb_pow_012 / (ALWAN_LITERAL(1.6) * Fs);
+    p.Iz_d = ALWAN_LITERAL(2700.0) * ALWAN_LITERAL(100.0) * p.Qz_m;
+    return p;
+}
+
+/* ----------------------------------------------------------------
  * ZCAM Forward Transform: XYZ -> Correlates (value-returning)
  *
  * xyz, xyz_w  absolute, cd/m^2, under the viewing illuminant
@@ -214,41 +281,22 @@ ALWAN_INLINE alwan_scalar zcam_eccentricity_v(alwan_scalar h_degrees) {
  * Y_b         luminance factor of the background, on the scale of xyz_w.y
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
+ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_params_v(
     alwan_xyz xyz,
-    alwan_xyz xyz_w,
-    alwan_scalar Fs,
-    alwan_scalar D,
-    alwan_scalar La,
-    alwan_scalar Y_b) {
+    alwan_zcam_v_params p) {
 
     alwan_zcam_v_correlates result;
 
-    /* D65 and the equal-energy baseline of the two-step CAT, at Y = 1 */
-    alwan_xyz d65;
-    d65.x = ZCAM_V_D65_X; d65.y = ALWAN_ONE; d65.z = ZCAM_V_D65_Z;
-    alwan_xyz ee;
-    ee.x = ALWAN_ONE; ee.y = ALWAN_ONE; ee.z = ALWAN_ONE;
-
     /* Step 0: the stimulus to D65, by the two-step CAT over CAT02. The white is
      * NOT adapted: the model takes I_z,w from the white as given. */
-    alwan_xyz xyz_d65 = alwan_cat_zhai2018_v(
-        ZCAM_V_CAT02, ZCAM_V_CAT02_INV,
-        xyz, xyz_w, d65, D, D, ee);
+    alwan_xyz xyz_d65 = alwan_cat_zhai2018_apply_v(
+        ZCAM_V_CAT02, ZCAM_V_CAT02_INV, xyz, p.gains_to_d65);
 
-    /* Step 1: factors of the viewing conditions */
-    alwan_scalar Fb = ALWAN_SQRT(Y_b / xyz_w.y);
-    alwan_scalar FL = ALWAN_LITERAL(0.171) *
-                      alwan_cat_spow_v(La, ALWAN_ONE / ALWAN_LITERAL(3.0)) *
-                      (ALWAN_ONE - ALWAN_EXP(-ALWAN_LITERAL(48.0) / ALWAN_LITERAL(9.0) * La));
-
-    /* Step 2: achromatic response and opponent signals, stimulus and white */
+    /* Step 2: achromatic response and opponent signals */
     alwan_vec3 izazbz = zcam_xyz_to_izazbz_v(xyz_d65);
     alwan_scalar Iz = izazbz.v[0];
     alwan_scalar az = izazbz.v[1];
     alwan_scalar bz = izazbz.v[2];
-    alwan_vec3 izazbz_w = zcam_xyz_to_izazbz_v(xyz_w);
-    alwan_scalar Izw = izazbz_w.v[0];
 
     /* Step 3: hue angle, degrees in [0, 360) */
     alwan_scalar hz_raw = ALWAN_ATAN2(bz, az) * ALWAN_LITERAL(180.0) / ALWAN_PI;
@@ -257,32 +305,25 @@ ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
     /* Step 4: eccentricity */
     alwan_scalar ez = zcam_eccentricity_v(result.hz);
 
-    /* Step 5: brightness Q_z, of the stimulus and of the white */
-    alwan_scalar Qz_p = (ALWAN_LITERAL(1.6) * Fs) / alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.12));
-    alwan_scalar FL_pow_02 = alwan_cat_spow_v(FL, ALWAN_LITERAL(0.2));
-    alwan_scalar Qz_m = alwan_cat_spow_v(Fs, ALWAN_LITERAL(2.2)) *
-                        alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.5)) * FL_pow_02;
-    result.Qz = ALWAN_LITERAL(2700.0) * alwan_cat_spow_v(Iz, Qz_p) * Qz_m;
-    alwan_scalar Qzw = ALWAN_LITERAL(2700.0) * alwan_cat_spow_v(Izw, Qz_p) * Qz_m;
+    /* Step 5: brightness Q_z */
+    result.Qz = ALWAN_LITERAL(2700.0) * alwan_cat_spow_v(Iz, p.Qz_p) * p.Qz_m;
 
     /* Step 6: lightness J_z */
-    result.Jz = ALWAN_LITERAL(100.0) * (result.Qz / Qzw);
+    result.Jz = ALWAN_LITERAL(100.0) * (result.Qz / p.Qzw);
 
     /* Step 7: colourfulness M_z */
     result.Mz = ALWAN_LITERAL(100.0) *
                 alwan_cat_spow_v(az * az + bz * bz, ALWAN_LITERAL(0.37)) *
-                ((alwan_cat_spow_v(ez, ALWAN_LITERAL(0.068)) * FL_pow_02) /
-                 (alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.1)) *
-                  alwan_cat_spow_v(Izw, ALWAN_LITERAL(0.78))));
+                ((alwan_cat_spow_v(ez, ALWAN_LITERAL(0.068)) * p.FL_pow_02) /
+                 (p.Fb_pow_01 * p.Izw_pow_078));
 
     /* Step 8: chroma C_z */
-    result.Cz = ALWAN_LITERAL(100.0) * (result.Mz / Qzw);
+    result.Cz = ALWAN_LITERAL(100.0) * (result.Mz / p.Qzw);
 
     /* Step 9: saturation S_z. A stimulus with no brightness has none. */
     alwan_scalar Mz_over_Qz = ALWAN_SELECT(result.Qz > ALWAN_LITERAL(1e-10),
                                             result.Mz / result.Qz, ALWAN_ZERO);
-    result.Sz = ALWAN_LITERAL(100.0) * alwan_cat_spow_v(FL, ALWAN_LITERAL(0.6)) *
-                ALWAN_SQRT(Mz_over_Qz);
+    result.Sz = ALWAN_LITERAL(100.0) * p.FL_pow_06 * ALWAN_SQRT(Mz_over_Qz);
 
     /* Step 10: vividness V_z, blackness K_z, whiteness W_z */
     alwan_scalar J_diff = result.Jz - ALWAN_LITERAL(58.0);
@@ -298,6 +339,17 @@ ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
     return result;
 }
 
+ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
+    alwan_xyz xyz,
+    alwan_xyz xyz_w,
+    alwan_scalar Fs,
+    alwan_scalar D,
+    alwan_scalar La,
+    alwan_scalar Y_b) {
+    return alwan_zcam_forward_params_v(xyz,
+        alwan_zcam_params_v(xyz_w, Fs, D, La, Y_b));
+}
+
 /* ----------------------------------------------------------------
  * ZCAM Inverse Transform: Correlates -> XYZ (value-returning)
  *
@@ -306,47 +358,19 @@ ALWAN_INLINE alwan_zcam_v_correlates alwan_zcam_forward_v(
  * exact inverse of it: every step is closed form.
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE alwan_xyz alwan_zcam_inverse_v(
+ALWAN_INLINE alwan_xyz alwan_zcam_inverse_params_v(
     alwan_zcam_v_correlates correlates,
-    alwan_xyz xyz_w,
-    alwan_scalar Fs,
-    alwan_scalar D,
-    alwan_scalar La,
-    alwan_scalar Y_b) {
-
-    /* D65 and the equal-energy baseline of the two-step CAT, at Y = 1 */
-    alwan_xyz d65;
-    d65.x = ZCAM_V_D65_X; d65.y = ALWAN_ONE; d65.z = ZCAM_V_D65_Z;
-    alwan_xyz ee;
-    ee.x = ALWAN_ONE; ee.y = ALWAN_ONE; ee.z = ALWAN_ONE;
-
-    /* Factors of the viewing conditions, as the forward model */
-    alwan_scalar Fb = ALWAN_SQRT(Y_b / xyz_w.y);
-    alwan_scalar FL = ALWAN_LITERAL(0.171) *
-                      alwan_cat_spow_v(La, ALWAN_ONE / ALWAN_LITERAL(3.0)) *
-                      (ALWAN_ONE - ALWAN_EXP(-ALWAN_LITERAL(48.0) / ALWAN_LITERAL(9.0) * La));
-    alwan_vec3 izazbz_w = zcam_xyz_to_izazbz_v(xyz_w);
-    alwan_scalar Izw = izazbz_w.v[0];
+    alwan_zcam_v_params p) {
 
     /* Step 1: achromatic response I_z, from J_z through the white's brightness */
-    alwan_scalar Fb_pow_012 = alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.12));
-    alwan_scalar FL_pow_02 = alwan_cat_spow_v(FL, ALWAN_LITERAL(0.2));
-    alwan_scalar Qz_p = (ALWAN_LITERAL(1.6) * Fs) / Fb_pow_012;
-    alwan_scalar Qz_m = alwan_cat_spow_v(Fs, ALWAN_LITERAL(2.2)) *
-                        alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.5)) * FL_pow_02;
-    alwan_scalar Qzw = ALWAN_LITERAL(2700.0) * alwan_cat_spow_v(Izw, Qz_p) * Qz_m;
-
-    alwan_scalar Iz_p = Fb_pow_012 / (ALWAN_LITERAL(1.6) * Fs);
-    alwan_scalar Iz_d = ALWAN_LITERAL(2700.0) * ALWAN_LITERAL(100.0) * Qz_m;
-    alwan_scalar Iz = alwan_cat_spow_v((correlates.Jz * Qzw) / Iz_d, Iz_p);
+    alwan_scalar Iz = alwan_cat_spow_v((correlates.Jz * p.Qzw) / p.Iz_d, p.Iz_p);
 
     /* Step 2: opponent signals, from M_z and h_z. 50/37 is 1 / (2 * 0.37). */
     alwan_scalar ez = zcam_eccentricity_v(correlates.hz);
     alwan_scalar hz_rad = correlates.hz * ALWAN_PI / ALWAN_LITERAL(180.0);
     alwan_scalar Cz_p = alwan_cat_spow_v(
-        (correlates.Mz * alwan_cat_spow_v(Izw, ALWAN_LITERAL(0.78)) *
-         alwan_cat_spow_v(Fb, ALWAN_LITERAL(0.1))) /
-        (ALWAN_LITERAL(100.0) * alwan_cat_spow_v(ez, ALWAN_LITERAL(0.068)) * FL_pow_02),
+        (correlates.Mz * p.Izw_pow_078 * p.Fb_pow_01) /
+        (ALWAN_LITERAL(100.0) * alwan_cat_spow_v(ez, ALWAN_LITERAL(0.068)) * p.FL_pow_02),
         ALWAN_LITERAL(50.0) / ALWAN_LITERAL(37.0));
 
     alwan_vec3 izazbz;
@@ -356,9 +380,19 @@ ALWAN_INLINE alwan_xyz alwan_zcam_inverse_v(
 
     /* Step 3: to D65 XYZ, then back under the viewing illuminant */
     alwan_xyz xyz_d65 = zcam_izazbz_to_xyz_v(izazbz);
-    return alwan_cat_zhai2018_v(
-        ZCAM_V_CAT02, ZCAM_V_CAT02_INV,
-        xyz_d65, d65, xyz_w, D, D, ee);
+    return alwan_cat_zhai2018_apply_v(
+        ZCAM_V_CAT02, ZCAM_V_CAT02_INV, xyz_d65, p.gains_from_d65);
+}
+
+ALWAN_INLINE alwan_xyz alwan_zcam_inverse_v(
+    alwan_zcam_v_correlates correlates,
+    alwan_xyz xyz_w,
+    alwan_scalar Fs,
+    alwan_scalar D,
+    alwan_scalar La,
+    alwan_scalar Y_b) {
+    return alwan_zcam_inverse_params_v(correlates,
+        alwan_zcam_params_v(xyz_w, Fs, D, La, Y_b));
 }
 
 /* ----------------------------------------------------------------

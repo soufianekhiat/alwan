@@ -127,15 +127,17 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_adapt)(ALWAN_CORE_T *xyz_out, size_t out
  * native-precision data twin (g_cat_NAME_f32 / g_cat_NAME_f64).
  * ---------------------------------------------------------------- */
 
-alwan_status ALWAN_CORE_FNLIT(alwan_cat_zhai2018)(ALWAN_CORE_XYZ *xyz_out,
-                       ALWAN_CORE_XYZ const *xyz_in,
+/* The gains and the two matrices, resolved once. What both the one-colour
+ * form and the map do before any pixel. */
+static alwan_status ALWAN_CORE_FNLIT(cat_zhai2018_setup)(ALWAN_CORE_MAT3X3 *M, ALWAN_CORE_MAT3X3 *M_inv,
+                       ALWAN_CORE_VEC3 *gains,
                        ALWAN_CORE_XYZ const *xyz_src,
                        ALWAN_CORE_XYZ const *xyz_dst,
                        ALWAN_CORE_T D_src,
                        ALWAN_CORE_T D_dst,
                        ALWAN_CORE_XYZ const *xyz_baseline,
                        alwan_cat_method transform) {
-    if (!xyz_in || !xyz_src || !xyz_dst || !xyz_out) {
+    if (!xyz_src || !xyz_dst) {
         return ALWAN_E_INVALID;
     }
 
@@ -158,20 +160,70 @@ alwan_status ALWAN_CORE_FNLIT(alwan_cat_zhai2018)(ALWAN_CORE_XYZ *xyz_out,
     ALWAN_CORE_T const *M_data = (transform == ALWAN_CAT_CAT02)
         ? ALWAN_CORE_FNLIT(g_cat_cat02)
         : ALWAN_CORE_FNLIT(g_cat_cat16);
-    ALWAN_CORE_MAT3X3 M;
-    memcpy(M.m, M_data, sizeof(M.m));
+    memcpy(M->m, M_data, sizeof(M->m));
 
     /* Compute M inverse */
-    ALWAN_CORE_MAT3X3 M_inv;
-    int status = ALWAN_CORE_FNLIT(alwan_mat3_inv)(&M_inv, &M);
+    int status = ALWAN_CORE_FNLIT(alwan_mat3_inv)(M_inv, M);
     if (status != ALWAN_OK) {
         return status;
     }
 
-    /* Delegate to core two-step adaptation */
-    *xyz_out = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(M, M_inv, *xyz_in, *xyz_src, *xyz_dst,
-                                    D_src, D_dst, *xyz_o);
+    *gains = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_gains)(*M, *xyz_src, *xyz_dst, D_src, D_dst, *xyz_o);
+    return ALWAN_OK;
+}
 
+alwan_status ALWAN_CORE_FNLIT(alwan_cat_zhai2018)(ALWAN_CORE_XYZ *xyz_out,
+                       ALWAN_CORE_XYZ const *xyz_in,
+                       ALWAN_CORE_XYZ const *xyz_src,
+                       ALWAN_CORE_XYZ const *xyz_dst,
+                       ALWAN_CORE_T D_src,
+                       ALWAN_CORE_T D_dst,
+                       ALWAN_CORE_XYZ const *xyz_baseline,
+                       alwan_cat_method transform) {
+    ALWAN_CORE_MAT3X3 M, M_inv;
+    ALWAN_CORE_VEC3 gains;
+    alwan_status status;
+    if (!xyz_in || !xyz_out) {
+        return ALWAN_E_INVALID;
+    }
+    status = ALWAN_CORE_FNLIT(cat_zhai2018_setup)(&M, &M_inv, &gains, xyz_src, xyz_dst, D_src, D_dst, xyz_baseline, transform);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+    *xyz_out = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_apply)(M, M_inv, *xyz_in, gains);
+    return ALWAN_OK;
+}
+
+/* The map: the gains once, then M, a scale and M inverse per pixel. The same
+ * arithmetic as the one-colour form, so the two agree to the bit. */
+alwan_status ALWAN_CORE_FNLIT_MAP(alwan_cat_zhai2018)(ALWAN_CORE_T *out, size_t out_stride,
+                       ALWAN_CORE_T const *in, size_t in_stride, size_t count,
+                       ALWAN_CORE_XYZ const *xyz_src,
+                       ALWAN_CORE_XYZ const *xyz_dst,
+                       ALWAN_CORE_T D_src,
+                       ALWAN_CORE_T D_dst,
+                       ALWAN_CORE_XYZ const *xyz_baseline,
+                       alwan_cat_method transform) {
+    ALWAN_CORE_MAT3X3 M, M_inv;
+    ALWAN_CORE_VEC3 gains;
+    alwan_status status;
+    size_t i;
+    if (!out || !in) {
+        return ALWAN_E_INVALID;
+    }
+    status = ALWAN_CORE_FNLIT(cat_zhai2018_setup)(&M, &M_inv, &gains, xyz_src, xyz_dst, D_src, D_dst, xyz_baseline, transform);
+    if (status != ALWAN_OK) {
+        return status;
+    }
+    for (i = 0; i < count; i++) {
+        ALWAN_CORE_T const *src = (ALWAN_CORE_T const *)((char const *)in + i * in_stride);
+        ALWAN_CORE_T *dst = (ALWAN_CORE_T *)((char *)out + i * out_stride);
+        ALWAN_CORE_XYZ xyz = { src[0], src[1], src[2] };
+        ALWAN_CORE_XYZ r = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_apply)(M, M_inv, xyz, gains);
+        dst[0] = r.x;
+        dst[1] = r.y;
+        dst[2] = r.z;
+    }
     return ALWAN_OK;
 }
 

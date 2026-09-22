@@ -15,6 +15,7 @@
 
 #define ALWAN_CORE_T                   alwan_scalar
 #define ALWAN_CORE_FNLIT(base)         base
+#define ALWAN_CORE_FNLIT_MAP(base)     base##_map_interleave
 #define ALWAN_CORE_FNVLIT(base)        base##_v
 /* Name-mangling vocabulary: on GPU there is a single (float) instantiation, so
  * the suffixed name IS the base name. (The C setup pastes _f32/_f64.) Without

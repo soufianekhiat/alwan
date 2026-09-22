@@ -99,20 +99,14 @@ ALWAN_INLINE alwan_xyz alwan_cat_adapt_v(alwan_mat3x3 cat_mat, alwan_xyz xyz_in)
     return result;
 }
 
-ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_v(
+ALWAN_INLINE alwan_vec3 alwan_cat_zhai2018_gains_v(
     alwan_mat3x3 M,
-    alwan_mat3x3 M_inv,
-    alwan_xyz xyz_in,
     alwan_xyz xyz_src,
     alwan_xyz xyz_dst,
     alwan_scalar D_src,
     alwan_scalar D_dst,
     alwan_xyz xyz_baseline)
 {
-    alwan_vec3 v_in;
-    v_in.v[0] = xyz_in.x; v_in.v[1] = xyz_in.y; v_in.v[2] = xyz_in.z;
-    alwan_vec3 rgb_in = alwan_mat3_mulv_v(M, v_in);
-
     alwan_vec3 v_src;
     v_src.v[0] = xyz_src.x; v_src.v[1] = xyz_src.y; v_src.v[2] = xyz_src.z;
     alwan_vec3 rgb_src = alwan_mat3_mulv_v(M, v_src);
@@ -125,6 +119,8 @@ ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_v(
     v_o.v[0] = xyz_baseline.x; v_o.v[1] = xyz_baseline.y; v_o.v[2] = xyz_baseline.z;
     alwan_vec3 rgb_o = alwan_mat3_mulv_v(M, v_o);
 
+    /* D_RGB factors for source and destination (unrolled 3 channels)
+     * D_RGB = D * (Y_w / Y_o) * (RGB_o / RGB_w) + 1 - D */
     /* The luminance of each white against the baseline's. With every white on
      * one scale, which is what this function was documented for, both ratios
      * are exactly 1 and nothing moves. Without them the adaptation depended on
@@ -142,17 +138,50 @@ ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_v(
     alwan_scalar D_rgb_dst_1 = D_dst * y_dst * (rgb_o.v[1] / rgb_dst.v[1]) + (ALWAN_ONE - D_dst);
     alwan_scalar D_rgb_dst_2 = D_dst * y_dst * (rgb_o.v[2] / rgb_dst.v[2]) + (ALWAN_ONE - D_dst);
 
-    alwan_vec3 rgb_adapted;
-    rgb_adapted.v[0] = (D_rgb_src_0 / D_rgb_dst_0) * rgb_in.v[0];
-    rgb_adapted.v[1] = (D_rgb_src_1 / D_rgb_dst_1) * rgb_in.v[1];
-    rgb_adapted.v[2] = (D_rgb_src_2 / D_rgb_dst_2) * rgb_in.v[2];
+    alwan_vec3 gains;
+    gains.v[0] = D_rgb_src_0 / D_rgb_dst_0;
+    gains.v[1] = D_rgb_src_1 / D_rgb_dst_1;
+    gains.v[2] = D_rgb_src_2 / D_rgb_dst_2;
+    return gains;
+}
 
+ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_apply_v(
+    alwan_mat3x3 M,
+    alwan_mat3x3 M_inv,
+    alwan_xyz xyz_in,
+    alwan_vec3 gains)
+{
+    alwan_vec3 v_in;
+    v_in.v[0] = xyz_in.x; v_in.v[1] = xyz_in.y; v_in.v[2] = xyz_in.z;
+    alwan_vec3 rgb_in = alwan_mat3_mulv_v(M, v_in);
+
+    /* Two-step adaptation: RGB_d = (D_RGB_src / D_RGB_dst) * RGB_in */
+    alwan_vec3 rgb_adapted;
+    rgb_adapted.v[0] = gains.v[0] * rgb_in.v[0];
+    rgb_adapted.v[1] = gains.v[1] * rgb_in.v[1];
+    rgb_adapted.v[2] = gains.v[2] * rgb_in.v[2];
+
+    /* Transform back to XYZ */
     alwan_vec3 vec_out = alwan_mat3_mulv_v(M_inv, rgb_adapted);
     alwan_xyz result;
     result.x = vec_out.v[0];
     result.y = vec_out.v[1];
     result.z = vec_out.v[2];
     return result;
+}
+
+ALWAN_INLINE alwan_xyz alwan_cat_zhai2018_v(
+    alwan_mat3x3 M,
+    alwan_mat3x3 M_inv,
+    alwan_xyz xyz_in,
+    alwan_xyz xyz_src,
+    alwan_xyz xyz_dst,
+    alwan_scalar D_src,
+    alwan_scalar D_dst,
+    alwan_xyz xyz_baseline)
+{
+    return alwan_cat_zhai2018_apply_v(M, M_inv, xyz_in,
+        alwan_cat_zhai2018_gains_v(M, xyz_src, xyz_dst, D_src, D_dst, xyz_baseline));
 }
 
 /* ================================================================

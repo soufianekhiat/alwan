@@ -90,23 +90,22 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_adapt)(ALWAN_CORE_MAT3X3
  * Takes M and M_inv directly (caller resolves CAT02 or CAT16).
  * D_src, D_dst: degree of adaptation [0,1] for source and dest.
  * xyz_baseline: baseline illuminant (typically equal-energy E).
+ *
+ * In two parts, since 2026-09-22: the per-white GAINS, three numbers that
+ * depend only on the two whites, the baseline and the two degrees, and the
+ * per-pixel APPLY, which is M, a scale, M inverse. A map computes the gains
+ * once for its whole buffer; the one-colour form below does both, in the same
+ * arithmetic, so the two agree to the bit.
  * ================================================================ */
 
-ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_gains)(
     ALWAN_CORE_MAT3X3 M,
-    ALWAN_CORE_MAT3X3 M_inv,
-    ALWAN_CORE_XYZ xyz_in,
     ALWAN_CORE_XYZ xyz_src,
     ALWAN_CORE_XYZ xyz_dst,
     ALWAN_CORE_T D_src,
     ALWAN_CORE_T D_dst,
     ALWAN_CORE_XYZ xyz_baseline)
 {
-    /* Transform all to cone response space */
-    ALWAN_CORE_VEC3 v_in;
-    v_in.v[0] = xyz_in.x; v_in.v[1] = xyz_in.y; v_in.v[2] = xyz_in.z;
-    ALWAN_CORE_VEC3 rgb_in = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M, v_in);
-
     ALWAN_CORE_VEC3 v_src;
     v_src.v[0] = xyz_src.x; v_src.v[1] = xyz_src.y; v_src.v[2] = xyz_src.z;
     ALWAN_CORE_VEC3 rgb_src = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M, v_src);
@@ -138,11 +137,28 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
     ALWAN_CORE_T D_rgb_dst_1 = D_dst * y_dst * (rgb_o.v[1] / rgb_dst.v[1]) + (ALWAN_CORE_ONE - D_dst);
     ALWAN_CORE_T D_rgb_dst_2 = D_dst * y_dst * (rgb_o.v[2] / rgb_dst.v[2]) + (ALWAN_CORE_ONE - D_dst);
 
+    ALWAN_CORE_VEC3 gains;
+    gains.v[0] = D_rgb_src_0 / D_rgb_dst_0;
+    gains.v[1] = D_rgb_src_1 / D_rgb_dst_1;
+    gains.v[2] = D_rgb_src_2 / D_rgb_dst_2;
+    return gains;
+}
+
+ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_apply)(
+    ALWAN_CORE_MAT3X3 M,
+    ALWAN_CORE_MAT3X3 M_inv,
+    ALWAN_CORE_XYZ xyz_in,
+    ALWAN_CORE_VEC3 gains)
+{
+    ALWAN_CORE_VEC3 v_in;
+    v_in.v[0] = xyz_in.x; v_in.v[1] = xyz_in.y; v_in.v[2] = xyz_in.z;
+    ALWAN_CORE_VEC3 rgb_in = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M, v_in);
+
     /* Two-step adaptation: RGB_d = (D_RGB_src / D_RGB_dst) * RGB_in */
     ALWAN_CORE_VEC3 rgb_adapted;
-    rgb_adapted.v[0] = (D_rgb_src_0 / D_rgb_dst_0) * rgb_in.v[0];
-    rgb_adapted.v[1] = (D_rgb_src_1 / D_rgb_dst_1) * rgb_in.v[1];
-    rgb_adapted.v[2] = (D_rgb_src_2 / D_rgb_dst_2) * rgb_in.v[2];
+    rgb_adapted.v[0] = gains.v[0] * rgb_in.v[0];
+    rgb_adapted.v[1] = gains.v[1] * rgb_in.v[1];
+    rgb_adapted.v[2] = gains.v[2] * rgb_in.v[2];
 
     /* Transform back to XYZ */
     ALWAN_CORE_VEC3 vec_out = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M_inv, rgb_adapted);
@@ -153,6 +169,19 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
     return result;
 }
 
+ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
+    ALWAN_CORE_MAT3X3 M,
+    ALWAN_CORE_MAT3X3 M_inv,
+    ALWAN_CORE_XYZ xyz_in,
+    ALWAN_CORE_XYZ xyz_src,
+    ALWAN_CORE_XYZ xyz_dst,
+    ALWAN_CORE_T D_src,
+    ALWAN_CORE_T D_dst,
+    ALWAN_CORE_XYZ xyz_baseline)
+{
+    return ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_apply)(M, M_inv, xyz_in,
+        ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_gains)(M, xyz_src, xyz_dst, D_src, D_dst, xyz_baseline));
+}
 /* ================================================================
  * Signed power, as the adaptation models below need it.
  *

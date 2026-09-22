@@ -197,6 +197,73 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(zcam_eccentricity)(ALWAN_CORE_T h_de
 }
 
 /* ----------------------------------------------------------------
+ * The per-white terms of the model, computed once
+ *
+ * Everything the forward and inverse transforms need that does not depend on
+ * the stimulus: the two-step CAT's gains in each direction, the white's
+ * achromatic response, and the viewing-condition powers. One colour computes
+ * them and uses them once; a map computes them once for its buffer. The
+ * arithmetic is the same in both, so a map is bit-identical to its scalar
+ * twin, which the determinism dump checks.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    ALWAN_CORE_VEC3 gains_to_d65;   /* two-step CAT, viewing white -> D65 */
+    ALWAN_CORE_VEC3 gains_from_d65; /* and back */
+    ALWAN_CORE_T Izw;               /* achromatic response of the white */
+    ALWAN_CORE_T Qz_p;              /* exponent on I_z, 1.6 F_s / F_b^0.12 */
+    ALWAN_CORE_T Qz_m;              /* F_s^2.2 F_b^0.5 F_L^0.2 */
+    ALWAN_CORE_T Qzw;               /* brightness of the white */
+    ALWAN_CORE_T FL_pow_02;         /* F_L^0.2 */
+    ALWAN_CORE_T FL_pow_06;         /* F_L^0.6 */
+    ALWAN_CORE_T Fb_pow_01;         /* F_b^0.1 */
+    ALWAN_CORE_T Izw_pow_078;       /* I_z,w^0.78 */
+    ALWAN_CORE_T Iz_p;              /* F_b^0.12 / (1.6 F_s), the inverse's exponent */
+    ALWAN_CORE_T Iz_d;              /* 2700 * 100 * Qz_m */
+} ALWAN_CORE_FNLIT(alwan_zcam_v_params);
+
+ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_params) ALWAN_CORE_FNVLIT(alwan_zcam_params)(
+    ALWAN_CORE_XYZ xyz_w,
+    ALWAN_CORE_T Fs,
+    ALWAN_CORE_T D,
+    ALWAN_CORE_T La,
+    ALWAN_CORE_T Y_b) {
+
+    ALWAN_CORE_FNLIT(alwan_zcam_v_params) p;
+
+    /* D65 and the equal-energy baseline of the two-step CAT, at Y = 1 */
+    ALWAN_CORE_XYZ d65;
+    d65.x = ZCAM_V_D65_X; d65.y = ALWAN_CORE_ONE; d65.z = ZCAM_V_D65_Z;
+    ALWAN_CORE_XYZ ee;
+    ee.x = ALWAN_CORE_ONE; ee.y = ALWAN_CORE_ONE; ee.z = ALWAN_CORE_ONE;
+
+    p.gains_to_d65 = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_gains)(ALWAN_CORE_FNLIT(ZCAM_V_CAT02), xyz_w, d65, D, D, ee);
+    p.gains_from_d65 = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_gains)(ALWAN_CORE_FNLIT(ZCAM_V_CAT02), d65, xyz_w, D, D, ee);
+
+    /* Factors of the viewing conditions */
+    ALWAN_CORE_T Fb = ALWAN_CORE_SQRT(Y_b / xyz_w.y);
+    ALWAN_CORE_T FL = ALWAN_CORE_LITERAL(0.171) *
+                      ALWAN_CORE_FNVLIT(alwan_cat_spow)(La, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0)) *
+                      (ALWAN_CORE_ONE - ALWAN_CORE_EXP(-ALWAN_CORE_LITERAL(48.0) / ALWAN_CORE_LITERAL(9.0) * La));
+
+    ALWAN_CORE_VEC3 izazbz_w = ALWAN_CORE_FNVLIT(zcam_xyz_to_izazbz)(xyz_w);
+    p.Izw = izazbz_w.v[0];
+
+    ALWAN_CORE_T Fb_pow_012 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.12));
+    p.Qz_p = (ALWAN_CORE_LITERAL(1.6) * Fs) / Fb_pow_012;
+    p.FL_pow_02 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(FL, ALWAN_CORE_LITERAL(0.2));
+    p.FL_pow_06 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(FL, ALWAN_CORE_LITERAL(0.6));
+    p.Qz_m = ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fs, ALWAN_CORE_LITERAL(2.2)) *
+             ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.5)) * p.FL_pow_02;
+    p.Qzw = ALWAN_CORE_LITERAL(2700.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(p.Izw, p.Qz_p) * p.Qz_m;
+    p.Fb_pow_01 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.1));
+    p.Izw_pow_078 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(p.Izw, ALWAN_CORE_LITERAL(0.78));
+    p.Iz_p = Fb_pow_012 / (ALWAN_CORE_LITERAL(1.6) * Fs);
+    p.Iz_d = ALWAN_CORE_LITERAL(2700.0) * ALWAN_CORE_LITERAL(100.0) * p.Qz_m;
+    return p;
+}
+
+/* ----------------------------------------------------------------
  * ZCAM Forward Transform: XYZ -> Correlates (value-returning)
  *
  * xyz, xyz_w  absolute, cd/m^2, under the viewing illuminant
@@ -206,41 +273,22 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(zcam_eccentricity)(ALWAN_CORE_T h_de
  * Y_b         luminance factor of the background, on the scale of xyz_w.y
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) ALWAN_CORE_FNVLIT(alwan_zcam_forward)(
+ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) ALWAN_CORE_FNVLIT(alwan_zcam_forward_params)(
     ALWAN_CORE_XYZ xyz,
-    ALWAN_CORE_XYZ xyz_w,
-    ALWAN_CORE_T Fs,
-    ALWAN_CORE_T D,
-    ALWAN_CORE_T La,
-    ALWAN_CORE_T Y_b) {
+    ALWAN_CORE_FNLIT(alwan_zcam_v_params) p) {
 
     ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) result;
 
-    /* D65 and the equal-energy baseline of the two-step CAT, at Y = 1 */
-    ALWAN_CORE_XYZ d65;
-    d65.x = ZCAM_V_D65_X; d65.y = ALWAN_CORE_ONE; d65.z = ZCAM_V_D65_Z;
-    ALWAN_CORE_XYZ ee;
-    ee.x = ALWAN_CORE_ONE; ee.y = ALWAN_CORE_ONE; ee.z = ALWAN_CORE_ONE;
-
     /* Step 0: the stimulus to D65, by the two-step CAT over CAT02. The white is
      * NOT adapted: the model takes I_z,w from the white as given. */
-    ALWAN_CORE_XYZ xyz_d65 = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
-        ALWAN_CORE_FNLIT(ZCAM_V_CAT02), ALWAN_CORE_FNLIT(ZCAM_V_CAT02_INV),
-        xyz, xyz_w, d65, D, D, ee);
+    ALWAN_CORE_XYZ xyz_d65 = ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_apply)(
+        ALWAN_CORE_FNLIT(ZCAM_V_CAT02), ALWAN_CORE_FNLIT(ZCAM_V_CAT02_INV), xyz, p.gains_to_d65);
 
-    /* Step 1: factors of the viewing conditions */
-    ALWAN_CORE_T Fb = ALWAN_CORE_SQRT(Y_b / xyz_w.y);
-    ALWAN_CORE_T FL = ALWAN_CORE_LITERAL(0.171) *
-                      ALWAN_CORE_FNVLIT(alwan_cat_spow)(La, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0)) *
-                      (ALWAN_CORE_ONE - ALWAN_CORE_EXP(-ALWAN_CORE_LITERAL(48.0) / ALWAN_CORE_LITERAL(9.0) * La));
-
-    /* Step 2: achromatic response and opponent signals, stimulus and white */
+    /* Step 2: achromatic response and opponent signals */
     ALWAN_CORE_VEC3 izazbz = ALWAN_CORE_FNVLIT(zcam_xyz_to_izazbz)(xyz_d65);
     ALWAN_CORE_T Iz = izazbz.v[0];
     ALWAN_CORE_T az = izazbz.v[1];
     ALWAN_CORE_T bz = izazbz.v[2];
-    ALWAN_CORE_VEC3 izazbz_w = ALWAN_CORE_FNVLIT(zcam_xyz_to_izazbz)(xyz_w);
-    ALWAN_CORE_T Izw = izazbz_w.v[0];
 
     /* Step 3: hue angle, degrees in [0, 360) */
     ALWAN_CORE_T hz_raw = ALWAN_CORE_ATAN2(bz, az) * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
@@ -249,32 +297,25 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) ALWAN_CORE_FNVLIT(alwan_z
     /* Step 4: eccentricity */
     ALWAN_CORE_T ez = ALWAN_CORE_FNVLIT(zcam_eccentricity)(result.hz);
 
-    /* Step 5: brightness Q_z, of the stimulus and of the white */
-    ALWAN_CORE_T Qz_p = (ALWAN_CORE_LITERAL(1.6) * Fs) / ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.12));
-    ALWAN_CORE_T FL_pow_02 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(FL, ALWAN_CORE_LITERAL(0.2));
-    ALWAN_CORE_T Qz_m = ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fs, ALWAN_CORE_LITERAL(2.2)) *
-                        ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.5)) * FL_pow_02;
-    result.Qz = ALWAN_CORE_LITERAL(2700.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(Iz, Qz_p) * Qz_m;
-    ALWAN_CORE_T Qzw = ALWAN_CORE_LITERAL(2700.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(Izw, Qz_p) * Qz_m;
+    /* Step 5: brightness Q_z */
+    result.Qz = ALWAN_CORE_LITERAL(2700.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(Iz, p.Qz_p) * p.Qz_m;
 
     /* Step 6: lightness J_z */
-    result.Jz = ALWAN_CORE_LITERAL(100.0) * (result.Qz / Qzw);
+    result.Jz = ALWAN_CORE_LITERAL(100.0) * (result.Qz / p.Qzw);
 
     /* Step 7: colourfulness M_z */
     result.Mz = ALWAN_CORE_LITERAL(100.0) *
                 ALWAN_CORE_FNVLIT(alwan_cat_spow)(az * az + bz * bz, ALWAN_CORE_LITERAL(0.37)) *
-                ((ALWAN_CORE_FNVLIT(alwan_cat_spow)(ez, ALWAN_CORE_LITERAL(0.068)) * FL_pow_02) /
-                 (ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.1)) *
-                  ALWAN_CORE_FNVLIT(alwan_cat_spow)(Izw, ALWAN_CORE_LITERAL(0.78))));
+                ((ALWAN_CORE_FNVLIT(alwan_cat_spow)(ez, ALWAN_CORE_LITERAL(0.068)) * p.FL_pow_02) /
+                 (p.Fb_pow_01 * p.Izw_pow_078));
 
     /* Step 8: chroma C_z */
-    result.Cz = ALWAN_CORE_LITERAL(100.0) * (result.Mz / Qzw);
+    result.Cz = ALWAN_CORE_LITERAL(100.0) * (result.Mz / p.Qzw);
 
     /* Step 9: saturation S_z. A stimulus with no brightness has none. */
     ALWAN_CORE_T Mz_over_Qz = ALWAN_CORE_SELECT(result.Qz > ALWAN_CORE_LITERAL(1e-10),
                                             result.Mz / result.Qz, ALWAN_CORE_ZERO);
-    result.Sz = ALWAN_CORE_LITERAL(100.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(FL, ALWAN_CORE_LITERAL(0.6)) *
-                ALWAN_CORE_SQRT(Mz_over_Qz);
+    result.Sz = ALWAN_CORE_LITERAL(100.0) * p.FL_pow_06 * ALWAN_CORE_SQRT(Mz_over_Qz);
 
     /* Step 10: vividness V_z, blackness K_z, whiteness W_z */
     ALWAN_CORE_T J_diff = result.Jz - ALWAN_CORE_LITERAL(58.0);
@@ -290,6 +331,17 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) ALWAN_CORE_FNVLIT(alwan_z
     return result;
 }
 
+ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) ALWAN_CORE_FNVLIT(alwan_zcam_forward)(
+    ALWAN_CORE_XYZ xyz,
+    ALWAN_CORE_XYZ xyz_w,
+    ALWAN_CORE_T Fs,
+    ALWAN_CORE_T D,
+    ALWAN_CORE_T La,
+    ALWAN_CORE_T Y_b) {
+    return ALWAN_CORE_FNVLIT(alwan_zcam_forward_params)(xyz,
+        ALWAN_CORE_FNVLIT(alwan_zcam_params)(xyz_w, Fs, D, La, Y_b));
+}
+
 /* ----------------------------------------------------------------
  * ZCAM Inverse Transform: Correlates -> XYZ (value-returning)
  *
@@ -298,47 +350,19 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) ALWAN_CORE_FNVLIT(alwan_z
  * exact inverse of it: every step is closed form.
  * ---------------------------------------------------------------- */
 
-ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_zcam_inverse)(
+ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_zcam_inverse_params)(
     ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) correlates,
-    ALWAN_CORE_XYZ xyz_w,
-    ALWAN_CORE_T Fs,
-    ALWAN_CORE_T D,
-    ALWAN_CORE_T La,
-    ALWAN_CORE_T Y_b) {
-
-    /* D65 and the equal-energy baseline of the two-step CAT, at Y = 1 */
-    ALWAN_CORE_XYZ d65;
-    d65.x = ZCAM_V_D65_X; d65.y = ALWAN_CORE_ONE; d65.z = ZCAM_V_D65_Z;
-    ALWAN_CORE_XYZ ee;
-    ee.x = ALWAN_CORE_ONE; ee.y = ALWAN_CORE_ONE; ee.z = ALWAN_CORE_ONE;
-
-    /* Factors of the viewing conditions, as the forward model */
-    ALWAN_CORE_T Fb = ALWAN_CORE_SQRT(Y_b / xyz_w.y);
-    ALWAN_CORE_T FL = ALWAN_CORE_LITERAL(0.171) *
-                      ALWAN_CORE_FNVLIT(alwan_cat_spow)(La, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(3.0)) *
-                      (ALWAN_CORE_ONE - ALWAN_CORE_EXP(-ALWAN_CORE_LITERAL(48.0) / ALWAN_CORE_LITERAL(9.0) * La));
-    ALWAN_CORE_VEC3 izazbz_w = ALWAN_CORE_FNVLIT(zcam_xyz_to_izazbz)(xyz_w);
-    ALWAN_CORE_T Izw = izazbz_w.v[0];
+    ALWAN_CORE_FNLIT(alwan_zcam_v_params) p) {
 
     /* Step 1: achromatic response I_z, from J_z through the white's brightness */
-    ALWAN_CORE_T Fb_pow_012 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.12));
-    ALWAN_CORE_T FL_pow_02 = ALWAN_CORE_FNVLIT(alwan_cat_spow)(FL, ALWAN_CORE_LITERAL(0.2));
-    ALWAN_CORE_T Qz_p = (ALWAN_CORE_LITERAL(1.6) * Fs) / Fb_pow_012;
-    ALWAN_CORE_T Qz_m = ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fs, ALWAN_CORE_LITERAL(2.2)) *
-                        ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.5)) * FL_pow_02;
-    ALWAN_CORE_T Qzw = ALWAN_CORE_LITERAL(2700.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(Izw, Qz_p) * Qz_m;
-
-    ALWAN_CORE_T Iz_p = Fb_pow_012 / (ALWAN_CORE_LITERAL(1.6) * Fs);
-    ALWAN_CORE_T Iz_d = ALWAN_CORE_LITERAL(2700.0) * ALWAN_CORE_LITERAL(100.0) * Qz_m;
-    ALWAN_CORE_T Iz = ALWAN_CORE_FNVLIT(alwan_cat_spow)((correlates.Jz * Qzw) / Iz_d, Iz_p);
+    ALWAN_CORE_T Iz = ALWAN_CORE_FNVLIT(alwan_cat_spow)((correlates.Jz * p.Qzw) / p.Iz_d, p.Iz_p);
 
     /* Step 2: opponent signals, from M_z and h_z. 50/37 is 1 / (2 * 0.37). */
     ALWAN_CORE_T ez = ALWAN_CORE_FNVLIT(zcam_eccentricity)(correlates.hz);
     ALWAN_CORE_T hz_rad = correlates.hz * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0);
     ALWAN_CORE_T Cz_p = ALWAN_CORE_FNVLIT(alwan_cat_spow)(
-        (correlates.Mz * ALWAN_CORE_FNVLIT(alwan_cat_spow)(Izw, ALWAN_CORE_LITERAL(0.78)) *
-         ALWAN_CORE_FNVLIT(alwan_cat_spow)(Fb, ALWAN_CORE_LITERAL(0.1))) /
-        (ALWAN_CORE_LITERAL(100.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(ez, ALWAN_CORE_LITERAL(0.068)) * FL_pow_02),
+        (correlates.Mz * p.Izw_pow_078 * p.Fb_pow_01) /
+        (ALWAN_CORE_LITERAL(100.0) * ALWAN_CORE_FNVLIT(alwan_cat_spow)(ez, ALWAN_CORE_LITERAL(0.068)) * p.FL_pow_02),
         ALWAN_CORE_LITERAL(50.0) / ALWAN_CORE_LITERAL(37.0));
 
     ALWAN_CORE_VEC3 izazbz;
@@ -348,9 +372,19 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_zcam_inverse)(
 
     /* Step 3: to D65 XYZ, then back under the viewing illuminant */
     ALWAN_CORE_XYZ xyz_d65 = ALWAN_CORE_FNVLIT(zcam_izazbz_to_xyz)(izazbz);
-    return ALWAN_CORE_FNVLIT(alwan_cat_zhai2018)(
-        ALWAN_CORE_FNLIT(ZCAM_V_CAT02), ALWAN_CORE_FNLIT(ZCAM_V_CAT02_INV),
-        xyz_d65, d65, xyz_w, D, D, ee);
+    return ALWAN_CORE_FNVLIT(alwan_cat_zhai2018_apply)(
+        ALWAN_CORE_FNLIT(ZCAM_V_CAT02), ALWAN_CORE_FNLIT(ZCAM_V_CAT02_INV), xyz_d65, p.gains_from_d65);
+}
+
+ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_zcam_inverse)(
+    ALWAN_CORE_FNLIT(alwan_zcam_v_correlates) correlates,
+    ALWAN_CORE_XYZ xyz_w,
+    ALWAN_CORE_T Fs,
+    ALWAN_CORE_T D,
+    ALWAN_CORE_T La,
+    ALWAN_CORE_T Y_b) {
+    return ALWAN_CORE_FNVLIT(alwan_zcam_inverse_params)(correlates,
+        ALWAN_CORE_FNVLIT(alwan_zcam_params)(xyz_w, Fs, D, La, Y_b));
 }
 
 /* ----------------------------------------------------------------
