@@ -242,10 +242,11 @@ macros, the scalar `alwan_hsv_to_hwb` / `alwan_hwb_to_hsv`, and
 
 Measured, not estimated, and re-measured after each pass. Counting base
 operations on the public surface with precision and `_map_*` variants folded
-together: **692 base operations, 692 documented, 0 without an entry** anywhere
+together: **694 base operations, 694 documented, 0 without an entry** anywhere
 under `docs/` (2026-09-22 evening, by `alwan_dev/tools/check_doc_coverage.py`; 675 of 675
 that morning, and every operation added since, the neural layers, the CLF parametric
-curves, the caller-basis recovery and the tonescale grading, arrived with its entry, which is
+curves, the caller-basis recovery, the tonescale grading and the palette pair, arrived with its
+entry, which is
 the method written down; the earlier figures, 324 undocumented before the
 passes of 2026-09-08 and 196 of 641 after them, were counted by hand and the
 method was not recorded, so they are not comparable to this one). The last 54,
