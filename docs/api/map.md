@@ -413,6 +413,20 @@ alwan_status alwan_ciecam02_inverse_{T}_map_interleave(
 | CAM16 | `alwan_cam16_forward_{T}_map_interleave` | `alwan_cam16_inverse_{T}_map_interleave` |
 | ZCAM | `alwan_zcam_forward_{T}_map_interleave` | `alwan_zcam_inverse_{T}_map_interleave` |
 | ACES 1.x output | `alwan_aces1_output_transform_{T}_map_interleave` | see [aces](aces.md) |
+| Hellwig 2022 | `alwan_hellwig2022_forward_{T}_map_interleave` | `alwan_hellwig2022_inverse_{T}_map_interleave` |
+| Kim 2009 | `alwan_kim2009_forward_{T}_map_interleave` | `alwan_kim2009_inverse_{T}_map_interleave` |
+| Hunt | `alwan_hunt_forward_{T}_map_interleave` | `alwan_hunt_inverse_{T}_map_interleave` |
+| RLAB | `alwan_rlab_forward_{T}_map_interleave` | `alwan_rlab_inverse_{T}_map_interleave` |
+| LLAB | `alwan_llab_forward_{T}_map_interleave` | none, as the scalar |
+| ATD95 | `alwan_atd95_forward_{T}_map_interleave` | none, as the scalar |
+| Nayatani 95 | `alwan_nayatani95_forward_{T}_map_interleave` | none, as the scalar |
+| CAM18sl | `alwan_cam18sl_forward_{T}_map_interleave` (`Y_b`) | `alwan_cam18sl_inverse_{T}_map_interleave` |
+| CAM20u | `alwan_cam20u_forward_{T}_map_interleave` (`Y_b`, `L_a`) | `alwan_cam20u_inverse_{T}_map_interleave` |
+
+The nine added on 2026-09-22 take the same arguments as their scalars, with the XYZ side a
+strided buffer and the correlates side one struct per pixel. Each is its scalar in a loop,
+validated once, and agrees with it to the bit (suite 172 asserts equality on every correlate
+of every pixel, both precisions, over a padded stride).
 
 The ZCAM maps compute the white's achromatic response, the two-step CAT gains and the
 viewing-condition powers once per call rather than once per pixel, in the arithmetic the

@@ -339,6 +339,12 @@
 
 ### Added
 
+- **Buffer forms of nine appearance models.** Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95,
+  Nayatani 95, RLAB, CAM18sl and CAM20u gain `_forward_{T}_map_interleave`, and the five
+  with an inverse gain `_inverse_{T}_map_interleave`, in `api/alwan_cam_maps.c`. Each is
+  the scalar in a loop, the arguments validated once; suite 172 holds every one to bit
+  equality with its scalar over a padded stride, both precisions.
+
 - **`alwan_aces1_output_transform_{T}_map_interleave`.** The ACES 1.x output transform
   over a buffer, both precisions. It has no per-call state to hoist, so this is the scalar
   in a loop with the preset validated once; suite 56 asserts bit equality with the scalar

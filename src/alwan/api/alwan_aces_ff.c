@@ -1513,6 +1513,27 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
 
     return ALWAN_OK;
 }
+/* The output transform over a buffer of RGB triples, strides in bytes. The
+ * transform has no per-call state to hoist, so this is the scalar in a loop
+ * with the preset validated once; a map and its scalar twin agree to the bit. */
+alwan_status alwan_aces1_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride,
+        alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output) {
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
+    for (i = 0; i < count; i++) {
+        alwan_f64 const *src = (alwan_f64 const *)((char const *)in + i * in_stride);
+        alwan_f64 *dst = (alwan_f64 *)((char *)out + i * out_stride);
+        alwan_rgb_f64 rgb = { src[0], src[1], src[2] }, res;
+        alwan_status status = alwan_aces1_output_transform_f64(&res, &rgb, output);
+        if (status != ALWAN_OK) return status;
+        dst[0] = res.r;
+        dst[1] = res.g;
+        dst[2] = res.b;
+    }
+    return ALWAN_OK;
+}
+
 #endif /* ALWAN_WITH_F64 */
 
 /* Inverse EOTF functions.
@@ -1704,27 +1725,6 @@ static void aces1_glow10_inv(alwan_rgb_f64 *rgb) {
         rgb->g *= inv_scale;
         rgb->b *= inv_scale;
     }
-}
-
-/* The output transform over a buffer of RGB triples, strides in bytes. The
- * transform has no per-call state to hoist, so this is the scalar in a loop
- * with the preset validated once; a map and its scalar twin agree to the bit. */
-alwan_status alwan_aces1_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride,
-        alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output) {
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
-    for (i = 0; i < count; i++) {
-        alwan_f64 const *src = (alwan_f64 const *)((char const *)in + i * in_stride);
-        alwan_f64 *dst = (alwan_f64 *)((char *)out + i * out_stride);
-        alwan_rgb_f64 rgb = { src[0], src[1], src[2] }, res;
-        alwan_status status = alwan_aces1_output_transform_f64(&res, &rgb, output);
-        if (status != ALWAN_OK) return status;
-        dst[0] = res.r;
-        dst[1] = res.g;
-        dst[2] = res.b;
-    }
-    return ALWAN_OK;
 }
 
 alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,

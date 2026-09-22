@@ -4804,6 +4804,14 @@ alwan_status alwan_rlab_inverse_f64(alwan_xyz_f64 *xyz,
                             alwan_rlab_correlates_f64 const *correlates,
                             alwan_rlab_viewing_conditions_f64 const *vc);
 
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_rlab_forward_f32_map_interleave(alwan_rlab_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_rlab_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_rlab_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_rlab_correlates_f32 const *correlates_in, alwan_rlab_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_rlab_forward_f64_map_interleave(alwan_rlab_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_rlab_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan_rlab_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_rlab_correlates_f64 const *correlates_in, alwan_rlab_viewing_conditions_f64 const *vc, size_t count);
+
 /* ----------------------------------------------------------------
  * Hunt Color Appearance Model
  * Based on Hunt (1991, 1995)
@@ -4869,6 +4877,14 @@ alwan_status alwan_hunt_inverse_f64(alwan_xyz_f64 *xyz,
                             alwan_hunt_correlates_f64 const *correlates,
                             alwan_hunt_viewing_conditions_f64 const *vc);
 
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_hunt_forward_f32_map_interleave(alwan_hunt_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_hunt_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_hunt_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_hunt_correlates_f32 const *correlates_in, alwan_hunt_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_hunt_forward_f64_map_interleave(alwan_hunt_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_hunt_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan_hunt_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_hunt_correlates_f64 const *correlates_in, alwan_hunt_viewing_conditions_f64 const *vc, size_t count);
+
 /* ----------------------------------------------------------------
  * Hellwig2022 Color Appearance Model
  * Based on Hellwig and Fairchild (2022)
@@ -4890,6 +4906,14 @@ alwan_status alwan_hellwig2022_inverse_f32(alwan_xyz_f32 *xyz_out,
 alwan_status alwan_hellwig2022_inverse_f64(alwan_xyz_f64 *xyz_out,
                                    alwan_hellwig2022_correlates_f64 const *correlates,
                                    alwan_hellwig2022_viewing_conditions_f64 const *vc);
+
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_hellwig2022_forward_f32_map_interleave(alwan_hellwig2022_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_hellwig2022_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_hellwig2022_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_hellwig2022_correlates_f32 const *correlates_in, alwan_hellwig2022_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_hellwig2022_forward_f64_map_interleave(alwan_hellwig2022_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_hellwig2022_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan_hellwig2022_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_hellwig2022_correlates_f64 const *correlates_in, alwan_hellwig2022_viewing_conditions_f64 const *vc, size_t count);
 
 /* ----------------------------------------------------------------
  * Kim2009 Color Appearance Model
@@ -4922,6 +4946,14 @@ alwan_status alwan_kim2009_inverse_f64(alwan_xyz_f64 *xyz_out,
                                alwan_kim2009_correlates_f64 const *correlates,
                                alwan_kim2009_viewing_conditions_f64 const *vc);
 
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_kim2009_forward_f32_map_interleave(alwan_kim2009_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_kim2009_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_kim2009_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_kim2009_correlates_f32 const *correlates_in, alwan_kim2009_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_kim2009_forward_f64_map_interleave(alwan_kim2009_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_kim2009_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan_kim2009_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_kim2009_correlates_f64 const *correlates_in, alwan_kim2009_viewing_conditions_f64 const *vc, size_t count);
+
 /* ----------------------------------------------------------------
  * LLAB Color Appearance Model
  * Based on Luo, Lo and Kuo (1996)
@@ -4935,6 +4967,12 @@ alwan_status alwan_llab_forward_f32(alwan_llab_correlates_f32 *out,
 alwan_status alwan_llab_forward_f64(alwan_llab_correlates_f64 *out,
                             alwan_xyz_f64 const *xyz,
                             alwan_llab_viewing_conditions_f64 const *vc);
+
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_llab_forward_f32_map_interleave(alwan_llab_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_llab_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_llab_forward_f64_map_interleave(alwan_llab_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_llab_viewing_conditions_f64 const *vc, size_t count);
 
 /* ----------------------------------------------------------------
  * ATD95 Color Vision Model
@@ -4958,6 +4996,12 @@ alwan_status alwan_atd95_forward_f64(alwan_atd95_correlates_f64 *out,
                              alwan_xyz_f64 const *xyz,
                              alwan_atd95_viewing_conditions_f64 const *vc);
 
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_atd95_forward_f32_map_interleave(alwan_atd95_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_atd95_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_atd95_forward_f64_map_interleave(alwan_atd95_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_atd95_viewing_conditions_f64 const *vc, size_t count);
+
 /* ----------------------------------------------------------------
  * Nayatani95 Color Appearance Model
  * Based on Nayatani et al. (1995)
@@ -4975,6 +5019,12 @@ alwan_status alwan_nayatani95_forward_f32(alwan_nayatani95_correlates_f32 *out,
 alwan_status alwan_nayatani95_forward_f64(alwan_nayatani95_correlates_f64 *out,
                                   alwan_xyz_f64 const *xyz,
                                   alwan_nayatani95_viewing_conditions_f64 const *vc);
+
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_nayatani95_forward_f32_map_interleave(alwan_nayatani95_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_nayatani95_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan_nayatani95_forward_f64_map_interleave(alwan_nayatani95_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_nayatani95_viewing_conditions_f64 const *vc, size_t count);
 
 /* ----------------------------------------------------------------
  * M9: Convenience Color Models (HSV, HSL, CMY, CMYK, YCbCr)
@@ -8187,6 +8237,14 @@ alwan_status alwan_cam18sl_inverse_f64(alwan_xyz_f64 *xyz_out,
                           alwan_cam18sl_correlates_f64 const *correlates,
                           alwan_f64 Y_b);
 
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_cam18sl_forward_f32_map_interleave(alwan_cam18sl_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_f32 Y_b, size_t count);
+alwan_status alwan_cam18sl_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_cam18sl_correlates_f32 const *correlates_in, alwan_f32 Y_b, size_t count);
+alwan_status alwan_cam18sl_forward_f64_map_interleave(alwan_cam18sl_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_f64 Y_b, size_t count);
+alwan_status alwan_cam18sl_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_cam18sl_correlates_f64 const *correlates_in, alwan_f64 Y_b, size_t count);
+
 /* ----------------------------------------------------------------
  * CAM20u - Color Appearance Model for Unrelated Color
  * Reference: Kim & Park (2020)
@@ -8214,6 +8272,14 @@ alwan_status alwan_cam20u_inverse_f64(alwan_xyz_f64 *xyz_out,
                          alwan_cam20u_correlates_f64 const *correlates,
                          alwan_f64 Y_b,
                          alwan_f64 L_a);
+
+/* Buffer forms, strides in bytes on the XYZ side, one correlates struct per pixel
+ * on the other. Each is the scalar in a loop, validated once, and agrees with its
+ * scalar twin to the bit (suite 172). */
+alwan_status alwan_cam20u_forward_f32_map_interleave(alwan_cam20u_correlates_f32 *correlates_out, alwan_f32 const *xyz_in, size_t in_stride, alwan_f32 Y_b, alwan_f32 L_a, size_t count);
+alwan_status alwan_cam20u_inverse_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_cam20u_correlates_f32 const *correlates_in, alwan_f32 Y_b, alwan_f32 L_a, size_t count);
+alwan_status alwan_cam20u_forward_f64_map_interleave(alwan_cam20u_correlates_f64 *correlates_out, alwan_f64 const *xyz_in, size_t in_stride, alwan_f64 Y_b, alwan_f64 L_a, size_t count);
+alwan_status alwan_cam20u_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_cam20u_correlates_f64 const *correlates_in, alwan_f64 Y_b, alwan_f64 L_a, size_t count);
 
 /* ----------------------------------------------------------------
  * Planar Map Functions (_map_planar)
