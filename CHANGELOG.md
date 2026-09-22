@@ -2259,7 +2259,18 @@
   returns it). Measured on the AVX2 DLL, 1 Mpx random or black-in-every-vector input:
   XYZ to sRGB 55 to 211 Mpx/s, Oklab to sRGB 60 to 157, XYZ to Lab 31 to 83, XYZ to Oklab
   54 to 121, RGB to ICtCp 30 to 58, XYZ to JzAzBz 49 to 72. The determinism dump is
-  byte-identical and every SIMD parity suite passes unchanged.
+  byte-identical and every SIMD parity suite passes unchanged. The legacy f64 helpers
+  behind `alwan_oetf_apply_f64` / `alwan_eotf_apply_f64` and the image convert carry
+  the same guard.
+
+- **`alwan_oetf_apply_f32` and `alwan_eotf_apply_f32` have a vector path.** They ran a
+  scalar `powf` per value, half the speed of their f64 twins, which have had one since
+  2.0.0. The map layer's transfer helpers are instantiated at f32 for them: sRGB, PQ and
+  HLG, unit stride, a scalar tail. Measured 123 to 693 Mval/s on sRGB, 102 on PQ and
+  99 on HLG (the f64 pair sits at 200, 46 and 46). Suite 88 holds the vector path to
+  the scalar one: byte-identical in the deterministic build, where the map layer's SIMD
+  width is 1 and the applies stay scalar, and within the f64 pair's 5e-5 budget in the
+  fast build (sRGB and HLG 1.2e-7, PQ 1.6e-5 through its chain of four powers).
 
 - **Interop IDs are the Color Interop Forum's published ones.** `alwan_interop_format`
   wrote `lin_ap1`, `srgb_texture`, `rec2100_pq` and the like, none of which the Forum

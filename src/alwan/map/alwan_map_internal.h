@@ -1155,9 +1155,13 @@ ALWAN_INLINE alwan_simd alwan__srgb_eotf_simd(alwan_simd v) {
     if (alwan_simd_mask_all_set(mask))
         return lo;
 
-    alwan_simd hi_base = alwan_simd_mul(
-        alwan_simd_add(v, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_B)),
-        alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_A)));
+    /* The lanes the mask sends to the linear segment feed 1.0 to the power: their
+     * result is discarded, and a zero, negative or denormal base runs SVML's pow ten
+     * times slower (alwan_map_simd_helpers.inc has the measurement). Bit-identical. */
+    alwan_simd hi_base = alwan_simd_select(mask, alwan_simd_set1((alwan_simd_lane)1.0),
+        alwan_simd_mul(
+            alwan_simd_add(v, alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_B)),
+            alwan_simd_set1((alwan_simd_lane)(1.0 / ALWAN_SRGB_A))));
     alwan_simd hi     = alwan_simd_pow24(hi_base);
     return alwan_simd_select(mask, lo, hi);
 }
@@ -1174,11 +1178,10 @@ ALWAN_INLINE alwan_simd alwan__srgb_oetf_simd(alwan_simd v) {
     /* Early-out: skip pow_inv24 when all lanes are in the linear region */
     if (alwan_simd_mask_all_set(mask))
         return lo;
-    /* Clamp to zero before pow_inv24 to avoid undefined pow(negative, non-integer) */
-    alwan_simd hi_base = alwan_simd_select(
-        alwan_simd_cmpgt(v, alwan_simd_zero()),
-        v,
-        alwan_simd_zero());
+    /* A negative lane is below the threshold and takes the linear segment, so the
+     * power base it feeds is the benign 1.0: nothing negative or zero reaches
+     * pow_inv24, and the lanes above the threshold see exactly what they did. */
+    alwan_simd hi_base = alwan_simd_select(mask, alwan_simd_set1((alwan_simd_lane)1.0), v);
     alwan_simd hi = alwan_simd_sub(
         alwan_simd_mul(
             alwan_simd_set1((alwan_simd_lane)ALWAN_SRGB_A),
