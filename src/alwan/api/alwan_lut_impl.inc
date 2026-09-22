@@ -367,52 +367,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_bake_2dlut)(ALWAN_CORE_T *out, int size,
     return ALWAN_OK;
 }
 
-/* ----------------------------------------------------------------
- * 1D LUT linear sampling (API wrapper)
- * ---------------------------------------------------------------- */
+/* The three alwan_lut*_sample API delegates lived here until 3.0.0; the
+ * table readers are the entry points now. The _v cores stay: the bake and
+ * the inversion call them. */
 
-alwan_status ALWAN_CORE_FNLIT(alwan_lut1d_sample)(ALWAN_CORE_T *result,
-                        ALWAN_CORE_T const *lut,
-                        ALWAN_CORE_T t,
-                        int size) {
-    if (!result || !lut || size < 2) return ALWAN_E_INVALID;
-    *result = ALWAN_CORE_FNVLIT(alwan_lut1d_sample)(lut, t, size);
-    return ALWAN_OK;
-}
-
-/* ----------------------------------------------------------------
- * 2D LUT bilinear sampling (flattened 3D strip, API wrapper)
- * ---------------------------------------------------------------- */
-
-alwan_status ALWAN_CORE_FNLIT(alwan_lut2d_sample)(ALWAN_CORE_RGB *result,
-                        ALWAN_CORE_T const *lut2d,
-                        ALWAN_CORE_RGB const *rgb,
-                        int size) {
-    if (!result || !lut2d || !rgb || size < 2) return ALWAN_E_INVALID;
-    ALWAN_CORE_VEC3 in = {{rgb->r, rgb->g, rgb->b}};
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_lut2d_sample)(lut2d, in, size);
-    result->r = out.v[0];
-    result->g = out.v[1];
-    result->b = out.v[2];
-    return ALWAN_OK;
-}
-
-/* ----------------------------------------------------------------
- * 3D LUT trilinear sampling (API wrapper)
- * ---------------------------------------------------------------- */
-
-alwan_status ALWAN_CORE_FNLIT(alwan_lut3d_sample)(ALWAN_CORE_RGB *result,
-                        ALWAN_CORE_T const *lut,
-                        ALWAN_CORE_RGB const *rgb,
-                        int size) {
-    if (!result || !lut || !rgb || size < 2) return ALWAN_E_INVALID;
-    ALWAN_CORE_VEC3 in = {{rgb->r, rgb->g, rgb->b}};
-    ALWAN_CORE_VEC3 out = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, in, size);
-    result->r = out.v[0];
-    result->g = out.v[1];
-    result->b = out.v[2];
-    return ALWAN_OK;
-}
 
 /* ----------------------------------------------------------------
  * 3D LUT inversion

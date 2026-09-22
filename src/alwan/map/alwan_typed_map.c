@@ -858,15 +858,16 @@ alwan_status alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
                                 void const *lab1_in, size_t in1_stride,
                                 void const *lab2_in, size_t in2_stride,
                                 size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,
-                                alwan_f64 l, alwan_f64 c) {
+                                alwan_delta_e_cmc_params_f64 const *params) {
+    alwan_delta_e_cmc_params_f64 cmc_p;
     if (!lab1_in || !lab2_in || !delta_e_out || count == 0) return ALWAN_E_INVALID;
+    if (params) cmc_p = *params; else alwan_delta_e_cmc_params_default_f64(&cmc_p);
     for (size_t i = 0; i < count; i++) {
         alwan_f64 s1[3], s2[3];
         alwan__load3_typed(s1, (char const *)lab1_in + i * in1_stride, lab1_fmt);
         alwan__load3_typed(s2, (char const *)lab2_in + i * in2_stride, lab2_fmt);
         alwan_lab_f64 l1 = {s1[0], s1[1], s1[2]};
         alwan_lab_f64 l2 = {s2[0], s2[1], s2[2]};
-        alwan_delta_e_cmc_params_f64 cmc_p; cmc_p.l = (double)l; cmc_p.c = (double)c;
         delta_e_out[i] = alwan_delta_e_cmc_f64(&l1, &l2, &cmc_p);
     }
     return ALWAN_OK;

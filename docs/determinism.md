@@ -431,8 +431,8 @@ Coverage in the regression dump (manifest v49):
 - Quality metrics (v38): CRI Ra, CQS, CIE 224:2017 Rf, SSI, and
   metamerism index, joining the existing TM-30 Rf coverage so
   every entry in the alwan_quality module is now on the contract.
-- LUT sampling + interpolation (v39): alwan_lut1d_sample_f64,
-  alwan_lut3d_sample_f64, table_interp_3d trilinear + tetrahedral,
+- LUT sampling + interpolation (v39): alwan_table1d_sample_f64 (LINEAR),
+  alwan_table3d_sample_f64 (TRILINEAR), the delegates they replaced in 3.0.0, table_interp_3d trilinear + tetrahedral,
   table_interp_1d (LINEAR + CUBIC); alwan_interpolate_f64 over all
   6 methods (linear / cubic / lanczos / sprague / lagrange / akima)
   and alwan_extrapolate_f64 over all 6 modes; ColorChecker reference

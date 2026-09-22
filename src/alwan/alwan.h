@@ -2313,11 +2313,13 @@ alwan_status alwan_delta_e_94_batch_ex(alwan_f64 *delta_e_out,
                                void const *lab1_in, size_t in1_stride,
                                void const *lab2_in, size_t in2_stride,
                                size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt);
+/* params as the scalar takes them (NULL for the defaults, l = 2, c = 1); until 3.0.0
+ * this form took raw l and c where the scalar and the map took the struct. */
 alwan_status alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
                                 void const *lab1_in, size_t in1_stride,
                                 void const *lab2_in, size_t in2_stride,
                                 size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,
-                                alwan_f64 l, alwan_f64 c);
+                                alwan_delta_e_cmc_params_f64 const *params);
 
 /* ----------------------------------------------------------------
  * Whiteness & Yellowness Indices
@@ -2479,8 +2481,8 @@ alwan_status alwan_cat_matrix_f64(alwan_mat3x3_f64 *out,
  * dst_white_xyz: destination white point in XYZ
  * method: CAT method
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if parameters are invalid */
-alwan_status alwan_xyz_adapt_f32(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f32 const *src_white_xyz, alwan_xyz_f32 const *dst_white_xyz, alwan_cat_method method);
-alwan_status alwan_xyz_adapt_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f64 const *src_white_xyz, alwan_xyz_f64 const *dst_white_xyz, alwan_cat_method method);
+alwan_status alwan_xyz_adapt_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f32 const *src_white_xyz, alwan_xyz_f32 const *dst_white_xyz, alwan_cat_method method);
+alwan_status alwan_xyz_adapt_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *xyz_in, size_t in_stride, size_t count, alwan_xyz_f64 const *src_white_xyz, alwan_xyz_f64 const *dst_white_xyz, alwan_cat_method method);
 
 /* Zhai & Luo 2018 two-step chromatic adaptation
  * Adapts XYZ from input illuminant to output illuminant via baseline illuminant
@@ -5941,7 +5943,7 @@ alwan_status alwan_display_gog_invert_f32(alwan_f32 *digital_out, alwan_display_
  * white onto the display's MEASURED white, and the model inverse. Feed it
  * source-encoded signal and it gives you drive. size is the cube edge, 2 to
  * 256, and the output is size^3 * 3 values R-fastest, which is what
- * alwan_cube_export_3d_{T} and alwan_lut3d_sample_{T} expect.
+ * alwan_cube_export_3d_{T} and alwan_table3d_sample_{T} expect.
  * worst_excursion, which may be NULL, is the largest excursion over the whole
  * cube, and it is the number that says whether the display can show the space
  * you asked it to show.
@@ -8860,7 +8862,7 @@ alwan_status alwan_ycbcr_full_to_legal_map_planar_ex(void *out0, size_t out_stri
 alwan_status alwan_ycbcr_legal_to_full_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, int bit_depth);
 
 /* Extended color spaces planar */
-alwan_status alwan_xyz_to_igpgtg_f32_map_planar(alwan_f32 *o0, size_t out_stride, alwan_f32 *o1, alwan_f32 *o2, alwan_f32 const *i2, size_t in_stride, alwan_f32 const *i0, alwan_f32 const *i1, size_t count);
+alwan_status alwan_xyz_to_igpgtg_f32_map_planar(alwan_f32 *o0, size_t out_stride, alwan_f32 *o1, alwan_f32 *o2, alwan_f32 const *i0, size_t in_stride, alwan_f32 const *i1, alwan_f32 const *i2, size_t count);
 alwan_status alwan_xyz_to_igpgtg_f64_map_planar(alwan_f64 *o0, size_t out_stride, alwan_f64 *o1, alwan_f64 *o2, alwan_f64 const *i0, size_t in_stride, alwan_f64 const *i1, alwan_f64 const *i2, size_t count);
 alwan_status alwan_igpgtg_to_xyz_f32_map_planar(alwan_f32 *o0, size_t out_stride, alwan_f32 *o1, alwan_f32 *o2, alwan_f32 const *i0, size_t in_stride, alwan_f32 const *i1, alwan_f32 const *i2, size_t count);
 alwan_status alwan_igpgtg_to_xyz_f64_map_planar(alwan_f64 *o0, size_t out_stride, alwan_f64 *o1, alwan_f64 *o2, alwan_f64 const *i0, size_t in_stride, alwan_f64 const *i1, alwan_f64 const *i2, size_t count);
@@ -9246,57 +9248,12 @@ alwan_status alwan_agx_blender_cube_sample_f32(alwan_rgb_f32 *result,
 alwan_status alwan_agx_blender_cube_sample_f64(alwan_rgb_f64 *result,
                         alwan_rgb_f64 const *coord, alwan_sample_mode mode);
 
-/* The six alwan_lut*_sample_* entry points below keep their exact signatures
- * and are one-line delegates passing LINEAR / TRILINEAR / TRILINEAR. No ABI
- * break and no caller edit. Removing them is a 3.0.0 decision; two spellings
- * in the docs is a real cost. */
-
-/* 1D LUT linear interpolation.
- * result: output interpolated value
- * lut: 1D LUT data (size entries)
- * t: input [0,1] coordinate
- * size: number of entries
- * Returns ALWAN_OK on success */
-alwan_status alwan_lut1d_sample_f32(alwan_f32 *result,
-                        alwan_f32 const *lut,
-                        alwan_f32 t,
-                        int size);
-alwan_status alwan_lut1d_sample_f64(alwan_f64 *result,
-                        alwan_f64 const *lut,
-                        alwan_f64 t,
-                        int size);
-
-/* 2D LUT sampling (flattened 3D strip).
- * Trilinear interpolation on the 2D strip layout, matching GPU
- * texture sampling for game engine color grading LUTs.
- * result: output interpolated RGB
- * lut2d: 2D LUT data ((size*size) * size * 3, row-major RGB interleaved)
- * rgb: input [0,1] coordinate
- * size: cube edge length
- * Returns ALWAN_OK on success */
-alwan_status alwan_lut2d_sample_f32(alwan_rgb_f32 *result,
-                        alwan_f32 const *lut2d,
-                        alwan_rgb_f32 const *rgb,
-                        int size);
-alwan_status alwan_lut2d_sample_f64(alwan_rgb_f64 *result,
-                        alwan_f64 const *lut2d,
-                        alwan_rgb_f64 const *rgb,
-                        int size);
-
-/* 3D LUT trilinear interpolation.
- * result: output interpolated RGB
- * lut: 3D LUT data (size^3 * 3, R-fastest)
- * rgb: input [0,1] coordinate
- * size: cube edge length
- * Returns ALWAN_OK on success */
-alwan_status alwan_lut3d_sample_f32(alwan_rgb_f32 *result,
-                        alwan_f32 const *lut,
-                        alwan_rgb_f32 const *rgb,
-                        int size);
-alwan_status alwan_lut3d_sample_f64(alwan_rgb_f64 *result,
-                        alwan_f64 const *lut,
-                        alwan_rgb_f64 const *rgb,
-                        int size);
+/* The six alwan_lut{1,2,3}d_sample_{T} delegates left in 3.0.0: they were the
+ * table readers below with LINEAR / TRILINEAR / TRILINEAR filled in and a
+ * different argument order, so one operation had two spellings. Use
+ * alwan_table1d_sample_{T}(result, lut, size, t, ALWAN_SAMPLE_LINEAR),
+ * alwan_table2d_sample_{T}(result, strip, size, rgb, ALWAN_SAMPLE_TRILINEAR) and
+ * alwan_table3d_sample_{T}(result, cube, size, rgb, ALWAN_SAMPLE_TRILINEAR). */
 
 /* Invert a 3D LUT: build the cube that undoes it.
  * out: output, out_size^3 * 3 values, R-fastest. Must not alias lut.

@@ -255,6 +255,23 @@
 
 ### Breaking
 
+- **The six `alwan_lut{1,2,3}d_sample_{T}` delegates are gone.** They were the table
+  readers with the interpolation mode filled in and the size after the coordinate, so one
+  operation had two spellings and two argument orders. Callers:
+  `alwan_lut1d_sample_{T}(r, lut, t, n)` is `alwan_table1d_sample_{T}(r, lut, n, t, ALWAN_SAMPLE_LINEAR)`,
+  and the 2-D and 3-D forms are `alwan_table2d_sample_{T}(r, strip, n, rgb, ALWAN_SAMPLE_TRILINEAR)`
+  and `alwan_table3d_sample_{T}(r, cube, n, rgb, ALWAN_SAMPLE_TRILINEAR)`. The `_v` cores of
+  the same names stay, since the bake and the inversion are written on them. The
+  determinism dump's sections were rewritten to the readers and are byte-identical.
+
+- **Three naming drifts corrected.** `alwan_xyz_adapt_{T}`, the one-step CAT over a
+  buffer, is `alwan_xyz_adapt_{T}_map_interleave`, the name every other bulk operation
+  carries. `alwan_delta_e_cmc_batch_ex` takes `alwan_delta_e_cmc_params_f64 const *`
+  (NULL for l = 2, c = 1) instead of raw `l, c`, as the scalar and the map already did. The
+  `alwan_xyz_to_igpgtg_f32_map_planar` declaration named its input planes `i2, i0, i1`;
+  it names them `i0, i1, i2` like its f64 twin (a header-only change: the parameters were
+  always read in plane order).
+
 - **Five function pairs lose a precision suffix they never had a use for.**
   `alwan_interop_parse`, `alwan_interop_entry_at`, `alwan_half_to_float`,
   `alwan_float_to_half` and `alwan_lut2d_dimensions` have no precision in their signatures

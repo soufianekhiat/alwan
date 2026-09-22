@@ -171,29 +171,28 @@ alwan_lut3d_to_2d_f32(strip, lut, 33);
 
 ## Sampling
 
-### alwan_lut1d_sample_{T} / alwan_lut2d_sample_{T} / alwan_lut3d_sample_{T}
+### alwan_table1d_sample_{T} / alwan_table2d_sample_{T} / alwan_table3d_sample_{T}
 
 ```c
-alwan_status alwan_lut1d_sample_{T}(alwan_{T} *result, alwan_{T} const *lut,
-                                    alwan_{T} t, int size);
-
-alwan_status alwan_lut2d_sample_{T}(alwan_rgb_{T} *result, alwan_{T} const *lut2d,
-                                    alwan_rgb_{T} const *rgb, int size);
-
-alwan_status alwan_lut3d_sample_{T}(alwan_rgb_{T} *result, alwan_{T} const *lut,
-                                    alwan_rgb_{T} const *rgb, int size);
+alwan_status alwan_table1d_sample_{T}(alwan_{T} *result, alwan_{T} const *table, int size,
+                                      alwan_{T} coord, alwan_sample_mode mode);
+alwan_status alwan_table2d_sample_{T}(alwan_rgb_{T} *result, alwan_{T} const *strip, int size,
+                                      alwan_rgb_{T} const *coord, alwan_sample_mode mode);
+alwan_status alwan_table3d_sample_{T}(alwan_rgb_{T} *result, alwan_{T} const *cube, int size,
+                                      alwan_rgb_{T} const *coord, alwan_sample_mode mode);
 ```
 
-Interpolate at a coordinate in `[0, 1]`: linear for the 1-D curve, trilinear for
-the strip and the cube. The strip sampler reproduces what a GPU does with the
-same texture, so a preview on the CPU matches the shader.
+Interpolate at a coordinate in `[0, 1]`: `ALWAN_SAMPLE_LINEAR` for the 1-D curve,
+`ALWAN_SAMPLE_TRILINEAR` for the strip and the cube (`ALWAN_SAMPLE_TETRAHEDRAL`,
+`ALWAN_SAMPLE_NEAREST` and `ALWAN_SAMPLE_STRICT` are the other choices). The strip
+sampler reproduces what a GPU does with the same texture, so a preview on the CPU
+matches the shader. These are the general table readers of [tables.md](tables.md),
+where the addressing contract, including how out-of-range coordinates and NaN
+resolve, is documented.
 
-These three are one-line delegates to the general table readers in
-[tables.md](tables.md), passing LINEAR, TRILINEAR and TRILINEAR. Reach for
-`alwan_table3d_sample_{T}` instead when you want tetrahedral interpolation,
-nearest, or `ALWAN_SAMPLE_STRICT`; the addressing contract, including how
-out-of-range coordinates and NaN resolve, is documented there and applies here
-unchanged.
+Until 3.0.0 `alwan_lut{1,2,3}d_sample_{T}` existed beside them as one-line delegates
+with the mode filled in and the size after the coordinate; one operation had two
+spellings, and the delegates are gone.
 
 ---
 

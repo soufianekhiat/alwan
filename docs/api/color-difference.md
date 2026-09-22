@@ -283,7 +283,7 @@ alwan_status alwan_delta_e_cmc_batch_ex(alwan_f64 *delta_e_out,
              void const *lab1_in, size_t in1_stride,
              void const *lab2_in, size_t in2_stride,
              size_t count, alwan_pixel_format lab1_fmt, alwan_pixel_format lab2_fmt,
-             alwan_f64 l, alwan_f64 c);
+             alwan_delta_e_cmc_params_f64 const *params);   /* NULL: l = 2, c = 1 */
 ```
 
 ---

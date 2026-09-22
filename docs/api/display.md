@@ -94,7 +94,7 @@ source primaries, a chromatic adaptation from the source white onto the
 display's measured white, and the model inverse. Feed it source-encoded signal
 and it gives drive. `size` is the cube edge, 2 to 256, and the output is
 `size^3 * 3` values R-fastest, which is what `alwan_cube_export_3d_{T}` and
-`alwan_lut3d_sample_{T}` expect. `worst_excursion`, which may be NULL, is the
+`alwan_table3d_sample_{T}` expect. `worst_excursion`, which may be NULL, is the
 largest excursion over the whole cube: the number that says whether the display
 can show the space you asked it to show.
 

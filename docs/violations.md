@@ -362,11 +362,12 @@ entries are contract/doc/naming nits that should be cleaned up before the
   `interop_parse`/`entry_at_f32`/`f64` (string<->enum). Collapse to single
   un-suffixed functions.
 
-- **Naming-convention drift.** `alwan_xyz_adapt` is the one-step CAT bulk map
-  but does not follow the `_map_interleave` naming convention;
-  `delta_e_cmc` takes a params struct in scalar form but raw `l,c` scalars in
-  the batch/`_ex` forms; `igpgtg_f32_map_planar` names its pointers `i2,i0,i1`
-  vs `i0,i1,i2` elsewhere.
+- **Naming-convention drift.** *(RESOLVED 2026-09-22, section 5 item 6, as a
+  3.0.0 break)* `alwan_xyz_adapt_{T}` is `alwan_xyz_adapt_{T}_map_interleave`;
+  `alwan_delta_e_cmc_batch_ex` takes `alwan_delta_e_cmc_params_f64 const *`
+  (NULL for the defaults) like the scalar and the map; the `igpgtg_f32_map_planar`
+  declaration names its pointers `i0, i1, i2`. The six `alwan_lut*_sample`
+  delegates went in the same pass (item 4).
 
 - ~~**Header fragmentation.**~~ **RESOLVED 2026-09-22.** Measured before
   touching anything: the convenience families (HSV, HSL, HSY, CMY, YCbCr,

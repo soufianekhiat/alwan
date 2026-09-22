@@ -78,7 +78,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_cat_matrix)(ALWAN_CORE_MAT3X3 *out,
  * element in a stride-based buffer.
  * ---------------------------------------------------------------- */
 
-alwan_status ALWAN_CORE_FNLIT(alwan_xyz_adapt)(ALWAN_CORE_T *xyz_out, size_t out_stride,
+alwan_status ALWAN_CORE_FNLIT_MAP(alwan_xyz_adapt)(ALWAN_CORE_T *xyz_out, size_t out_stride,
                      ALWAN_CORE_T const *xyz_in, size_t in_stride, size_t count,
                      ALWAN_CORE_XYZ const *src_white_xyz,
                      ALWAN_CORE_XYZ const *dst_white_xyz,
