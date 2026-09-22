@@ -1,6 +1,6 @@
 # GPU Backends
 
-Alwan's core math is header-only and cross-platform. The same `*_core.inc` files that produce C f32/f64 functions are also compiled directly into HLSL, GLSL, and Halide pipelines.
+Alwan's core math is header-only and cross-platform. The same `*_core.inc` files that produce C f32/f64 functions are also compiled directly into HLSL, GLSL, OpenCL and Halide pipelines, and into CUDA kernels through the C branch itself.
 
 ---
 
@@ -12,8 +12,10 @@ Alwan's core math is header-only and cross-platform. The same `*_core.inc` files
 | **HLSL** | `alwan_hlsl.h` | `float` | f32 | DirectX shaders |
 | **GLSL** | `alwan_glsl.h` | `float` | f32 | OpenGL / Vulkan shaders |
 | **Halide** | `alwan_halide.h` | `Halide::Expr` | f32 or f64 | Pipeline generators |
+| **OpenCL** | `alwan_opencl.h` | `float` (`double` with `ALWAN_OPENCL_FP64=1`) | f32, f64 opt-in | OpenCL C kernels |
+| **CUDA** | none: `ALWAN_CUDA` under `__CUDACC__` | `float` and `double` | f32 and f64 | CUDA kernels, the C branch as-is |
 
-The HLSL and GLSL backends are single-precision only; the Halide backend supports both single and double precision (set `ALWAN_HALIDE_FLOAT_BITS` to 32 or 64). The C backend exposes both `_f32` (float) and `_f64` (double) variants; choose the appropriate suffix at each call site.
+The HLSL and GLSL backends are single-precision only; OpenCL is single precision unless the device reports `cl_khr_fp64` and the program is built with `ALWAN_OPENCL_FP64=1`; the Halide backend supports both (set `ALWAN_HALIDE_FLOAT_BITS` to 32 or 64). The C backend exposes both `_f32` (float) and `_f64` (double) variants, and CUDA compiles that same C branch, so a kernel can call either suffix.
 
 ---
 
@@ -311,6 +313,141 @@ static alwan_scalar const OKLAB_M1[9] = {
 
 ---
 
+## CUDA
+
+CUDA is not an `ALWAN_BACKEND` value. nvcc is a C++ compiler with a real
+`double`, so it compiles the ordinary C branch of every core header unchanged,
+`_f32` and `_f64` alike; a separate id would only make every
+`ALWAN_BACKEND == ALWAN_BACKEND_C` guard in the tree wrong. What CUDA needs is
+the qualifier, and `alwan_platform.h` supplies it when `__CUDACC__` is defined:
+`ALWAN_CUDA` is 1, every header-only function is `__host__ __device__`, and the
+constant tables they read carry `__device__` in the device pass and nothing in
+the host pass, so one declaration serves both. Test `ALWAN_CUDA`, not
+`ALWAN_BACKEND`, to ask "am I being compiled for CUDA".
+
+### Setup
+
+```
+nvcc -std=c++14 --expt-relaxed-constexpr -arch=sm_86 --fmad=false \
+     -I <alwan>/src/alwan -I <alwan>/src/alwan/core my_kernel.cu
+```
+
+`--fmad=false` is the CUDA spelling of `-ffp-contract=off`. nvcc fuses
+`a*b + c` into an fma by default, and a build that fuses is not bit-comparable
+with a CPU that does not. The flag is required for parity and is what the
+regression harness uses.
+
+### Usage in a kernel
+
+Alwan launches nothing, allocates no device memory and owns no image. You write
+the `__global__` function, index the pixel and call the core on it. This is
+`alwan_dev/cuda_regression/example_kernel.cu`, which the harness compiles and
+runs so the snippet cannot rot:
+
+```cuda
+#include "alwan_types.h"
+#include "core/alwan_oklab_core.h"
+#include "core/alwan_core.h"
+
+__global__ void srgb_to_oklab_kernel(float *out, float const *in, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+
+    alwan_xyz_f32 lin;
+    lin.x = alwan_srgb_eotf_f32(in[i * 3 + 0]);
+    lin.y = alwan_srgb_eotf_f32(in[i * 3 + 1]);
+    lin.z = alwan_srgb_eotf_f32(in[i * 3 + 2]);
+
+    alwan_xyz_f32 xyz;   /* the caller's own matrix, next to alwan's maths */
+    xyz.x = 0.4124564f * lin.x + 0.3575761f * lin.y + 0.1804375f * lin.z;
+    xyz.y = 0.2126729f * lin.x + 0.7151522f * lin.y + 0.0721750f * lin.z;
+    xyz.z = 0.0193339f * lin.x + 0.1191920f * lin.y + 0.9503041f * lin.z;
+
+    alwan_oklab_f32 lab = alwan_xyz_to_oklab_f32_v(xyz);
+    out[i * 3 + 0] = lab.L;
+    out[i * 3 + 1] = lab.a;
+    out[i * 3 + 2] = lab.b;
+}
+```
+
+The `_f64` core is equally callable here, which is the one thing the
+shading-language backends cannot offer.
+
+### What agrees with the CPU, and when
+
+Host and device compile one source, so any difference is the hardware and the
+compiler, and there are two: contraction, closed by `--fmad=false`, and the
+device math library, whose `pow`, `exp` and `log` are not bit-identical to the
+host's and are not required to be. Under `ALWAN_DETERMINISTIC=1` those calls
+are the committed polynomials, and the answer is bit-exact CPU against GPU on
+every kernel the harness runs (`alwan_dev/cuda_regression/README.md` has the
+table and the ULP caveat that goes with transfer functions). The fast build
+agrees to the accuracy of the device library, and the harness says which of
+the two it is measuring.
+
+---
+
+## OpenCL
+
+OpenCL **is** an `ALWAN_BACKEND` value (4), because OpenCL C is not C:
+program-scope constants live in an address space, `double` is an extension
+rather than a given, and there is no C library. It takes the same single-pass
+GPU branch of the core headers that HLSL and GLSL take, at single precision.
+
+### Setup
+
+```c
+#include "alwan_opencl.h"
+#include "core/alwan_oklab_core.h"
+```
+
+Build the program with `-I` pointing at `src/alwan` and `src/alwan/core`, and
+with `-cl-std=CL2.0`. After the bootstrap header, `alwan_scalar` is `float`,
+the math macros are OpenCL C builtins, and every colour type is a struct:
+alwan never aliases to `float3`, whose size is 16 bytes rather than 12 and
+whose components are swizzles.
+
+`double` is opt-in: query the device for `cl_khr_fp64` first, then build with
+`-DALWAN_OPENCL_FP64=1`. A program that enables the extension on a device
+without it fails to build rather than silently demoting, which is the right
+failure.
+
+### Usage in a kernel
+
+```c
+#include "alwan_opencl.h"
+#include "core/alwan_oklab_core.h"
+
+__kernel void to_oklab(__global float *out, __global const float *xyz) {
+    int i = get_global_id(0);
+    alwan_xyz x;
+    x.x = xyz[i*3+0]; x.y = xyz[i*3+1]; x.z = xyz[i*3+2];
+    alwan_oklab lab = alwan_xyz_to_oklab_v(x);
+    out[i*3+0] = lab.L; out[i*3+1] = lab.a; out[i*3+2] = lab.b;
+}
+```
+
+The tables the core reads are `__global const`, not `__constant`, and that is
+structural rather than a preference: `__constant` is not part of the generic
+address space in 1.2 or 2.0, so a `__constant T *` cannot be passed where the
+core's samplers take a plain pointer. `alwan_dev/opencl_regression/README.md`
+walks through it.
+
+### What agrees with the CPU, and when
+
+Under `ALWAN_DETERMINISTIC=1` every kernel the harness runs is bit-exact
+against the CPU, every sample, on two conditions. Contraction is closed by
+`#pragma OPENCL FP_CONTRACT OFF` inside the deterministic header. Division is
+the one that hides: OpenCL allows single-precision divide to be 2.5 ULP off,
+and `-cl-fp32-correctly-rounded-divide-sqrt` is what asks for IEEE. Without it
+four of six kernels differ, and the primitives do not show it, because the
+only division in `log2`, `exp2`, `pow_pos` and `cbrt` is by 0.5, which every
+implementation rounds correctly; the sRGB EOTF, which divides by 1.055, was
+wrong on 2831 of 65536 samples. The flag is a device capability, and the
+harness checks for it before claiming anything.
+
+---
+
 ## Backend Detection
 
 `alwan_platform.h` auto-detects the backend from compiler macros:
@@ -318,6 +455,8 @@ static alwan_scalar const OKLAB_M1[9] = {
 ```c
 #if defined(__HLSL_VERSION)
 #  define ALWAN_BACKEND ALWAN_BACKEND_HLSL
+#elif defined(__OPENCL_VERSION__)
+#  define ALWAN_BACKEND ALWAN_BACKEND_OPENCL
 #elif defined(GL_core_profile) || defined(GL_es_profile)
 #  define ALWAN_BACKEND ALWAN_BACKEND_GLSL
 #elif defined(HALIDE_HALIDERUNTIME_H)
@@ -327,6 +466,11 @@ static alwan_scalar const OKLAB_M1[9] = {
 #endif
 ```
 
+OpenCL is checked before GLSL on purpose: an OpenCL C compiler defines
+`__OPENCL_VERSION__`, and some also predefine GL interop symbols. CUDA is not
+in this chain: under `__CUDACC__` the backend stays `ALWAN_BACKEND_C` and
+`ALWAN_CUDA` is set instead, as the CUDA section explains.
+
 To force a backend (e.g. cross-compilation tools or offline preprocessing):
 
 ```c
@@ -334,7 +478,7 @@ To force a backend (e.g. cross-compilation tools or offline preprocessing):
 #include "alwan_platform.h"
 ```
 
-The bootstrap headers (`alwan_hlsl.h`, `alwan_glsl.h`, `alwan_halide.h`) do this for you with `#ifndef ALWAN_BACKEND` guards.
+The bootstrap headers (`alwan_hlsl.h`, `alwan_glsl.h`, `alwan_halide.h`, `alwan_opencl.h`) do this for you with `#ifndef ALWAN_BACKEND` guards.
 
 ---
 
