@@ -218,9 +218,22 @@ repository's own because the first target network's weights are published
 under a non-commercial licence and cannot ship.
 
 The forward function is generated for the f32 API. A model trained in float64
-is converted through float32. A residual connection (a forward that is a
-graph rather than a sequence) is not emitted yet; `alwan_nn_add` exists for
-it.
+is converted through float32.
+
+A forward that is a graph rather than a sequence, a residual block or a
+concatenation, goes through `alwan_dev/gendata/nn_convert_graph.py`
+(`convert_graph(model, name, (H, W, C))`, the same output contract), which
+traces the model with torch.fx, propagates shapes from a zero input, and emits
+the nodes in order: `x + y` and `torch.add` become `alwan_nn_add`,
+`torch.cat([x, y], dim=1)` becomes `alwan_nn_concat_channels`, `torch.relu`,
+`F.relu`, `torch.softmax` and `torch.flatten` their layer, and every module the
+sequential converter accepts is accepted here. Batch normalisation folds into
+the convolution or dense layer that feeds it when that layer has no other
+consumer. The arena is slots reused as the graph's tensors die (a slot returns
+to the free list once its tensor's last consumer is emitted), and an activation
+runs in place when its input has no other consumer: suite 177's residual model
+is eleven tensors in four slots, 648 floats. Held to torch at 1e-6 like the
+other two.
 
 ---
 

@@ -445,7 +445,9 @@
   float32 weights with batch norm unfolded: worst 1.9e-8 and 4.6e-8 on outputs of order
   one, where a permutation or fold mistake is order one. The first target network's
   weights are non-commercial and cannot ship, which is why the converter is proven on
-  models the repository defines. `docs/api/nn.md`.
+  models the repository defines. `docs/api/nn.md`. A forward that is a graph (residual
+  add, concatenation) goes through `nn_convert_graph.py` over torch.fx, with the arena as
+  slots reused as tensors die; suite 177's third model is eleven tensors in four slots.
 
 - **Every public operation has a reference entry, and the count is a gate.**
   `alwan_dev/tools/check_doc_coverage.py` folds the precision and buffer-form suffixes
