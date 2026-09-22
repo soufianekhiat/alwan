@@ -412,6 +412,7 @@ alwan_status alwan_ciecam02_inverse_{T}_map_interleave(
 | CIECAM02 | `alwan_ciecam02_forward_{T}_map_interleave` | `alwan_ciecam02_inverse_{T}_map_interleave` |
 | CAM16 | `alwan_cam16_forward_{T}_map_interleave` | `alwan_cam16_inverse_{T}_map_interleave` |
 | ZCAM | `alwan_zcam_forward_{T}_map_interleave` | `alwan_zcam_inverse_{T}_map_interleave` |
+| ACES 1.x output | `alwan_aces1_output_transform_{T}_map_interleave` | see [aces](aces.md) |
 
 The ZCAM maps compute the white's achromatic response, the two-step CAT gains and the
 viewing-condition powers once per call rather than once per pixel, in the arithmetic the

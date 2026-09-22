@@ -7252,6 +7252,12 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
                                       alwan_rgb_f64 const *rgb_in,
                                       alwan_aces1_output output);
 
+/* The same transform over a buffer of RGB triples, strides in bytes. The
+ * preset is validated once; each pixel is the scalar transform, so a map and
+ * its scalar twin agree to the bit. Same status codes. */
+alwan_status alwan_aces1_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces1_output output);
+alwan_status alwan_aces1_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output);
+
 /**
  * ACES 1.x Output Transform (Inverse)
  *

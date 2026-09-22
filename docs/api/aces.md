@@ -84,6 +84,17 @@ alwan_status alwan_aces1_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
 
 Complete ACES 1.3 rendering pipeline (RRT + ODT). Input: ACES2065-1 (AP0 linear). Output: display-encoded RGB.
 
+```c
+alwan_status alwan_aces1_output_transform_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                             alwan_{T} const *in, size_t in_stride,
+                                                             size_t count, alwan_aces1_output output);
+```
+
+The same transform over a buffer of RGB triples, strides in bytes. The preset is validated once
+and each pixel is the scalar transform, so a map and its scalar twin agree to the bit (suite 56
+asserts equality over every preset). Suite 56 also holds seven presets to OCIO's display views
+at a thirtieth of a 10-bit code.
+
 **Example:**
 ```c
 alwan_rgb_{T} aces_pixel = {0.18, 0.18, 0.18};  /* 18% gray in AP0 */

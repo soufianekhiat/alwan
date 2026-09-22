@@ -388,3 +388,24 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
     }
     return ALWAN_OK;
 }
+
+/* The output transform over a buffer of RGB triples, strides in bytes. The
+ * transform has no per-call state to hoist, so this is the scalar in a loop
+ * with the preset validated once; a map and its scalar twin agree to the bit. */
+alwan_status ALWAN_CORE_FNLIT_MAP(alwan_aces1_output_transform)(ALWAN_CORE_T *out, size_t out_stride,
+        ALWAN_CORE_T const *in, size_t in_stride, size_t count, alwan_aces1_output output) {
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (output < 0 || output >= ALWAN_ACES1_OUT_COUNT) return ALWAN_E_INVALID;
+    for (i = 0; i < count; i++) {
+        ALWAN_CORE_T const *src = (ALWAN_CORE_T const *)((char const *)in + i * in_stride);
+        ALWAN_CORE_T *dst = (ALWAN_CORE_T *)((char *)out + i * out_stride);
+        ALWAN_CORE_RGB rgb = { src[0], src[1], src[2] }, res;
+        alwan_status status = ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(&res, &rgb, output);
+        if (status != ALWAN_OK) return status;
+        dst[0] = res.r;
+        dst[1] = res.g;
+        dst[2] = res.b;
+    }
+    return ALWAN_OK;
+}

@@ -14,7 +14,9 @@ EXPORTS
     alwan__resolve_oetf_f32
     alwan__resolve_oetf_f64
     alwan_aces1_output_transform_f32
+    alwan_aces1_output_transform_f32_map_interleave
     alwan_aces1_output_transform_f64
+    alwan_aces1_output_transform_f64_map_interleave
     alwan_aces1_output_transform_inv_f32
     alwan_aces1_output_transform_inv_f64
     alwan_aces2_output_transform_custom_display_linear_f32

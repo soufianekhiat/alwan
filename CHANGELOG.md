@@ -339,6 +339,11 @@
 
 ### Added
 
+- **`alwan_aces1_output_transform_{T}_map_interleave`.** The ACES 1.x output transform
+  over a buffer, both precisions. It has no per-call state to hoist, so this is the scalar
+  in a loop with the preset validated once; suite 56 asserts bit equality with the scalar
+  over every preset.
+
 - **ZCAM and Zhai 2018 maps, with the white's terms hoisted.**
   `alwan_zcam_forward_{T}_map_interleave`, `alwan_zcam_inverse_{T}_map_interleave` and
   `alwan_cat_zhai2018_{T}_map_interleave`. The ZCAM core now has a params form: everything
