@@ -563,7 +563,7 @@ alwan_xyz_f64 d50 = {96.422, 100.000,  82.521};
 alwan_f64 in [3]  = {50.0, 60.0, 40.0};
 alwan_f64 out[3];
 
-alwan_xyz_adapt_f64(out, sizeof(alwan_f64) * 3,
+alwan_xyz_adapt_f64_map_interleave(out, sizeof(alwan_f64) * 3,
                     in,  sizeof(alwan_f64) * 3,
                     1, &d65, &d50, ALWAN_CAT_BRADFORD);
 ```
