@@ -360,52 +360,58 @@ typedef enum {
 ### alwan_yellowness_astm_e313
 
 ```c
-alwan_f32 alwan_yellowness_astm_e313_f32(alwan_xyz_f32 const *xyz,
-                                         alwan_astm_e313_illuminant illuminant);
-alwan_f64 alwan_yellowness_astm_e313_f64(alwan_xyz_f64 const *xyz,
-                                         alwan_astm_e313_illuminant illuminant);
+alwan_status alwan_yellowness_astm_e313_{T}(alwan_{T} *yi_out, alwan_xyz_{T} const *xyz,
+                                            alwan_astm_e313_illuminant illuminant);
 ```
 
-ASTM E313 Yellowness Index. Input XYZ must be normalized to Y=100 for perfect white.
+ASTM E313 Yellowness Index, YI = 100 (Cx X - Cz Z) / Y. Input XYZ must be normalized to
+Y=100 for perfect white. `ALWAN_E_INVALID` for a NULL or an illuminant outside the enum,
+`ALWAN_E_RANGE` for Y at zero. Until 3.0.0 the three functions of this group returned the
+value and signalled failure as -1, which a yellowness or whiteness index can legitimately
+be; they now take the status-and-out form the rest of the family (Berger, Taube, Stensby,
+Ganz, ASTM D1925) already had, and suite 31 pins that -1 comes back as -1 with `ALWAN_OK`.
 
 ### alwan_whiteness_astm_e313
 
 ```c
-alwan_f32 alwan_whiteness_astm_e313_f32(alwan_xyz_f32 const *xyz,
-                                        alwan_astm_e313_illuminant illuminant);
-alwan_f64 alwan_whiteness_astm_e313_f64(alwan_xyz_f64 const *xyz,
-                                        alwan_astm_e313_illuminant illuminant);
+alwan_status alwan_whiteness_astm_e313_{T}(alwan_{T} *wi_out, alwan_xyz_{T} const *xyz,
+                                           alwan_astm_e313_illuminant illuminant);
 ```
 
-ASTM E313 Whiteness Index. Input XYZ must be normalized to Y=100 for perfect white.
+ASTM E313 Whiteness Index, WI = 3.388 Z - 3 Y. Input XYZ must be normalized to Y=100 for
+perfect white. The formula has no illuminant term; the parameter sits beside the
+yellowness one and must still be inside the enum (`ALWAN_E_INVALID` otherwise, or for a
+NULL).
 
 ### alwan_whiteness_cie2004
 
 ```c
-alwan_f32 alwan_whiteness_cie2004_f32(alwan_vec2_f32 const *xy, alwan_f32 Y,
-                                      alwan_vec2_f32 const *xy_n);
-alwan_f64 alwan_whiteness_cie2004_f64(alwan_vec2_f64 const *xy, alwan_f64 Y,
-                                      alwan_vec2_f64 const *xy_n);
+alwan_status alwan_whiteness_cie2004_{T}(alwan_{T} *w_out, alwan_vec2_{T} const *xy, alwan_{T} Y,
+                                         alwan_vec2_{T} const *xy_n);
 ```
 
-CIE 2004 Whiteness Index. Returns the whiteness (W) value. Tint (T) is computed
-internally but not returned by this function.
+CIE 2004 Whiteness Index, W = Y + 800 (xn - x) + 1700 (yn - y). `w_out` receives W; the
+tint is not returned here (`alwan_whiteness_ganz1979` returns a tint with its whiteness).
+`ALWAN_E_INVALID` for a NULL.
 
 **Example:**
 ```c
 alwan_xyz_f64 paper = {93.0, 95.0, 101.0};  /* Slightly blue-white */
+alwan_f64 yi, wi;
 
-alwan_f64 yi = alwan_yellowness_astm_e313_f64(&paper, ALWAN_ASTM_E313_D65_2DEG);
-alwan_f64 wi = alwan_whiteness_astm_e313_f64(&paper, ALWAN_ASTM_E313_D65_2DEG);
-printf("YI = %.1f, WI = %.1f\n", yi, wi);
+if (alwan_yellowness_astm_e313_f64(&yi, &paper, ALWAN_ASTM_E313_D65_2DEG) == ALWAN_OK &&
+    alwan_whiteness_astm_e313_f64(&wi, &paper, ALWAN_ASTM_E313_D65_2DEG) == ALWAN_OK) {
+    printf("YI = %.1f, WI = %.1f\n", yi, wi);
+}
 ```
 
 ---
 
 ## Error Codes
 
-The CCT/Duv and other `int`-returning helpers use the `alwan_status` enum; the metric
-functions return a score directly and signal failure with a negative value.
+Every function on this page that can fail returns `alwan_status` with an out parameter;
+the CRI, CQS and TM-30 scores that return a value directly cannot fail on a valid
+descriptor and say so in their own entries.
 
 - `ALWAN_OK` (0): Success
 - `ALWAN_E_INVALID` (-1): NULL pointer or unsupported parameter

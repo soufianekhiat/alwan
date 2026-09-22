@@ -695,54 +695,38 @@ static alwan_f64 const astm_e313_white_xy[][2] = {
 /* ASTM E313 Yellowness Index
  * Formula: YI = 100(Cx*X - Cz*Z) / Y
  * where Cx and Cz are coefficients that depend on illuminant/observer */
-alwan_f64 alwan_yellowness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
-    if (!xyz) {
-        return ALWAN_LITERAL(-1.0);
-    }
-
-    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) {
-        return ALWAN_LITERAL(-1.0);
-    }
-
-    alwan_f64 X = xyz->x;
-    alwan_f64 Y = xyz->y;
-    alwan_f64 Z = xyz->z;
-
-    /* Avoid division by zero */
-    if (ALWAN_ABS(Y) < ALWAN_EPSILON) {
-        return ALWAN_LITERAL(-1.0);
-    }
-
-    int const row = alwan_table_row_f64_v((int)illuminant, ASTM_E313_ROWS);
-    alwan_f64 Cx = astm_e313_yi_coeffs[row][0];
-    alwan_f64 Cz = astm_e313_yi_coeffs[row][1];
-
-    return alwan_yellowness_astm_e313_f64_v(X, Y, Z, Cx, Cz);
+alwan_status alwan_yellowness_astm_e313_f64(alwan_f64 *yi_out, alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
+    alwan_f64 X, Y, Z, Cx, Cz;
+    int row;
+    if (!yi_out || !xyz) return ALWAN_E_INVALID;
+    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) return ALWAN_E_INVALID;
+    X = xyz->x; Y = xyz->y; Z = xyz->z;
+    if (ALWAN_ABS(Y) < ALWAN_EPSILON) return ALWAN_E_RANGE;   /* the index divides by Y */
+    row = alwan_table_row_f64_v((int)illuminant, ASTM_E313_ROWS);
+    Cx = astm_e313_yi_coeffs[row][0];
+    Cz = astm_e313_yi_coeffs[row][1];
+    *yi_out = alwan_yellowness_astm_e313_f64_v(X, Y, Z, Cx, Cz);
+    return ALWAN_OK;
 }
 
 /* ASTM E313 Whiteness Index
  * Formula: WI = 3.388 * Z - 3 * Y
  * Note: This formula does not depend on illuminant/observer, but the parameter
  * is kept for API consistency with yellowness function */
-alwan_f64 alwan_whiteness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
-    if (!xyz) {
-        return ALWAN_LITERAL(-1.0);
-    }
-
-    (void)illuminant;  /* Not used for ASTM E313 whiteness */
-
-    return alwan_whiteness_astm_e313_f64_v(xyz->y, xyz->z);
+alwan_status alwan_whiteness_astm_e313_f64(alwan_f64 *wi_out, alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant) {
+    if (!wi_out || !xyz) return ALWAN_E_INVALID;
+    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) return ALWAN_E_INVALID;
+    *wi_out = alwan_whiteness_astm_e313_f64_v(xyz->y, xyz->z);   /* the formula has no illuminant term */
+    return ALWAN_OK;
 }
 
 /* CIE 2004 Whiteness Index
  * Formula: W = Y + 800(xn - x) + 1700(yn - y)
  * where xn, yn are the reference white chromaticity coordinates */
-alwan_f64 alwan_whiteness_cie2004_f64(alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n) {
-    if (!xy || !xy_n) {
-        return ALWAN_LITERAL(-1.0);
-    }
-
-    return alwan_whiteness_cie2004_f64_v(xy->v[0], xy->v[1], Y, xy_n->v[0], xy_n->v[1]);
+alwan_status alwan_whiteness_cie2004_f64(alwan_f64 *w_out, alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n) {
+    if (!w_out || !xy || !xy_n) return ALWAN_E_INVALID;
+    *w_out = alwan_whiteness_cie2004_f64_v(xy->v[0], xy->v[1], Y, xy_n->v[0], xy_n->v[1]);
+    return ALWAN_OK;
 }
 
 /* ================================================================
@@ -877,48 +861,33 @@ alwan_f32 alwan_cct_kang_xy_f32(alwan_vec2_f32 const *xy) {
 }
 
 /* ASTM E313 Yellowness Index (native f32) */
-alwan_f32 alwan_yellowness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant) {
-    if (!xyz) {
-        return ALWAN_LITERAL_F32(-1.0);
-    }
-
-    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) {
-        return ALWAN_LITERAL_F32(-1.0);
-    }
-
-    alwan_f32 X = xyz->x;
-    alwan_f32 Y = xyz->y;
-    alwan_f32 Z = xyz->z;
-
-    if (ALWAN_ABS_F32(Y) < ALWAN_EPSILON_F32) {
-        return ALWAN_LITERAL_F32(-1.0);
-    }
-
-    int const row = alwan_table_row_f64_v((int)illuminant, ASTM_E313_ROWS);
-    alwan_f32 Cx = (alwan_f32)astm_e313_yi_coeffs[row][0];
-    alwan_f32 Cz = (alwan_f32)astm_e313_yi_coeffs[row][1];
-
-    return alwan_yellowness_astm_e313_f32_v(X, Y, Z, Cx, Cz);
+alwan_status alwan_yellowness_astm_e313_f32(alwan_f32 *yi_out, alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant) {
+    alwan_f32 X, Y, Z, Cx, Cz;
+    int row;
+    if (!yi_out || !xyz) return ALWAN_E_INVALID;
+    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) return ALWAN_E_INVALID;
+    X = xyz->x; Y = xyz->y; Z = xyz->z;
+    if (ALWAN_ABS_F32(Y) < ALWAN_EPSILON_F32) return ALWAN_E_RANGE;
+    row = alwan_table_row_f64_v((int)illuminant, ASTM_E313_ROWS);
+    Cx = (alwan_f32)astm_e313_yi_coeffs[row][0];
+    Cz = (alwan_f32)astm_e313_yi_coeffs[row][1];
+    *yi_out = alwan_yellowness_astm_e313_f32_v(X, Y, Z, Cx, Cz);
+    return ALWAN_OK;
 }
 
 /* ASTM E313 Whiteness Index (native f32) */
-alwan_f32 alwan_whiteness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant) {
-    if (!xyz) {
-        return ALWAN_LITERAL_F32(-1.0);
-    }
-
-    (void)illuminant;  /* Not used for ASTM E313 whiteness */
-
-    return alwan_whiteness_astm_e313_f32_v(xyz->y, xyz->z);
+alwan_status alwan_whiteness_astm_e313_f32(alwan_f32 *wi_out, alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant) {
+    if (!wi_out || !xyz) return ALWAN_E_INVALID;
+    if (illuminant < 0 || illuminant > ALWAN_ASTM_E313_D65_10DEG) return ALWAN_E_INVALID;
+    *wi_out = alwan_whiteness_astm_e313_f32_v(xyz->y, xyz->z);
+    return ALWAN_OK;
 }
 
 /* CIE 2004 Whiteness Index (native f32) */
-alwan_f32 alwan_whiteness_cie2004_f32(alwan_vec2_f32 const *xy, alwan_f32 Y, alwan_vec2_f32 const *xy_n) {
-    if (!xy || !xy_n) {
-        return ALWAN_LITERAL_F32(-1.0);
-    }
-
-    return alwan_whiteness_cie2004_f32_v(xy->v[0], xy->v[1], Y, xy_n->v[0], xy_n->v[1]);
+alwan_status alwan_whiteness_cie2004_f32(alwan_f32 *w_out, alwan_vec2_f32 const *xy, alwan_f32 Y, alwan_vec2_f32 const *xy_n) {
+    if (!w_out || !xy || !xy_n) return ALWAN_E_INVALID;
+    *w_out = alwan_whiteness_cie2004_f32_v(xy->v[0], xy->v[1], Y, xy_n->v[0], xy_n->v[1]);
+    return ALWAN_OK;
 }
 
 #endif /* ALWAN_WITH_F32 */

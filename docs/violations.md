@@ -218,10 +218,13 @@ entries are contract/doc/naming nits that should be cleaned up before the
   function that refuses everything. ACES AP0 is among them on purpose, since one
   of its primaries is negative.
 
-- **Sentinel collision on whiteness/yellowness.**
-  `alwan_yellowness_astm_e313` / `whiteness_astm_e313` / `whiteness_cie2004`
-  return `-1.0` as the NULL/invalid sentinel, but all three are legitimately
-  negative for some inputs. Use NaN or document the ambiguity.
+- **Sentinel collision on whiteness/yellowness.** *(RESOLVED 2026-09-22, as a
+  3.0.0 break)* `alwan_yellowness_astm_e313` / `whiteness_astm_e313` /
+  `whiteness_cie2004` returned `-1.0` as the NULL/invalid sentinel, but all
+  three are legitimately negative for some inputs. They now return
+  `alwan_status` with an out parameter, the form the newer whiteness family
+  already had; suite 31 pins that a whiteness of exactly -1 comes back as -1
+  with `ALWAN_OK`, and that Y at zero is `ALWAN_E_RANGE` rather than a value.
 
 - **Misleading `_mc` name + dead params.** *(RESOLVED)*
   `alwan_gamut_volume_mc_{f64,f32}` did `(void)num_samples; (void)seed;` and

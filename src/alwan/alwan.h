@@ -2331,30 +2331,35 @@ typedef enum {
     ALWAN_ASTM_E313_D65_10DEG = 3  /* Illuminant D65, CIE 1964 10 deg observer */
 } alwan_astm_e313_illuminant;
 
-/* ASTM E313 Yellowness Index
+/* ASTM E313 Yellowness Index, YI = 100 (Cx X - Cz Z) / Y.
  * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
  * illuminant: illuminant/observer pair (C/2 deg, D65/2 deg, C/10 deg, or D65/10 deg)
- * Returns: Yellowness Index (YI) value */
-alwan_f32  alwan_yellowness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant);
-alwan_f64 alwan_yellowness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant);
+ * yi_out receives the index. ALWAN_E_INVALID for a NULL or an illuminant outside
+ * the enum, ALWAN_E_RANGE for Y at zero, where the index is undefined.
+ * Until 3.0.0 these three returned the value and signalled failure as -1, which a
+ * yellowness index or a whiteness index can legitimately be; the status and the
+ * out parameter are the form the rest of the family (Berger, Taube, Stensby,
+ * Ganz, ASTM D1925) already took. */
+alwan_status alwan_yellowness_astm_e313_f32(alwan_f32 *yi_out, alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant);
+alwan_status alwan_yellowness_astm_e313_f64(alwan_f64 *yi_out, alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant);
 
-/* ASTM E313 Whiteness Index
- * xyz: CIE XYZ tristimulus values (normalized to Y=100 for perfect white)
- * illuminant: illuminant/observer pair (C/2 deg, D65/2 deg, C/10 deg, or D65/10 deg)
- * Returns: Whiteness Index (WI) value */
-alwan_f32  alwan_whiteness_astm_e313_f32(alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant);
-alwan_f64 alwan_whiteness_astm_e313_f64(alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant);
+/* ASTM E313 Whiteness Index, WI = 3.388 Z - 3 Y. The formula does not depend on
+ * the illuminant/observer pair; the parameter is kept beside the yellowness
+ * one and must still be inside the enum. ALWAN_E_INVALID for a NULL or an
+ * illuminant outside the enum. */
+alwan_status alwan_whiteness_astm_e313_f32(alwan_f32 *wi_out, alwan_xyz_f32 const *xyz, alwan_astm_e313_illuminant illuminant);
+alwan_status alwan_whiteness_astm_e313_f64(alwan_f64 *wi_out, alwan_xyz_f64 const *xyz, alwan_astm_e313_illuminant illuminant);
 
-/* CIE 2004 Whiteness Index
+/* CIE 2004 Whiteness Index, W = Y + 800 (xn - x) + 1700 (yn - y).
  * xy: CIE 1931 chromaticity coordinates (x, y)
  * Y: CIE Y tristimulus value (luminance factor)
  * xy_n: reference white chromaticity coordinates
- * Returns: CIE Whiteness (W) value
- * Note: Also computes Tint (T), but this function only returns W.
- *       Tint = 900(xn - x) - 650(yn - y) for 2 deg observer
- *       Tint = 1000(xn - x) - 650(yn - y) for 10 deg observer */
-alwan_f32  alwan_whiteness_cie2004_f32(alwan_vec2_f32 const *xy, alwan_f32 Y, alwan_vec2_f32 const *xy_n);
-alwan_f64 alwan_whiteness_cie2004_f64(alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n);
+ * w_out receives W. The tint, 900 (xn - x) - 650 (yn - y) for the 2 degree
+ * observer and 1000 (xn - x) - 650 (yn - y) for the 10 degree one, is not
+ * returned here; alwan_whiteness_ganz1979 returns a tint with its whiteness.
+ * ALWAN_E_INVALID for a NULL. */
+alwan_status alwan_whiteness_cie2004_f32(alwan_f32 *w_out, alwan_vec2_f32 const *xy, alwan_f32 Y, alwan_vec2_f32 const *xy_n);
+alwan_status alwan_whiteness_cie2004_f64(alwan_f64 *w_out, alwan_vec2_f64 const *xy, alwan_f64 Y, alwan_vec2_f64 const *xy_n);
 
 /* ----------------------------------------------------------------
  * Lightness, luminance, Munsell value, whiteness and yellowness

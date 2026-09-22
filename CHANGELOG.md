@@ -255,6 +255,18 @@
 
 ### Breaking
 
+- **The three oldest whiteness and yellowness functions return `alwan_status` with an out
+  parameter.** `alwan_yellowness_astm_e313_{T}`, `alwan_whiteness_astm_e313_{T}` and
+  `alwan_whiteness_cie2004_{T}` returned the index and signalled a NULL or a bad
+  illuminant as -1, which is a value every one of them can legitimately produce, so a
+  caller could not tell a failure from a slightly bluish paper. They now take
+  `(out, ...)` and return `ALWAN_OK`, `ALWAN_E_INVALID` (a NULL, an illuminant outside the
+  enum, which the whiteness now checks too) or `ALWAN_E_RANGE` (Y at zero for the
+  yellowness, whose formula divides by it), the form the Berger, Taube, Stensby, Ganz and
+  ASTM D1925 functions added on this branch already had. Suite 31 pins the contract and
+  that -1 comes back as -1 with `ALWAN_OK`. Callers: `yi = f(&xyz, ill)` becomes
+  `f(&yi, &xyz, ill)`.
+
 - **Cameras are registry indices; the `alwan_camera_sensitivity` enum is gone.** The enum
   named two NPL cameras and lived beside the 52-camera registry, so a camera had two kinds
   of identity depending on which call reached it. The two NPL cameras now join the
