@@ -105,7 +105,8 @@ What makes Alwan different from other colour libraries:
   upsampling, CVD simulation, 11 gamut-mapping entry points (including an
   HDR ICtCp mapper and 19 spatial picture-formation methods), the DeltaE
   family, LUT baking, inversion and interchange (.cube, .spi1d, .spi3d, .3dl, .csp,
-  .spimtx, CLF read and write)
+  .spimtx, CLF read and write, and CLF's parametric curves without a file),
+  neural layer kernels that a shader binds, and tonescale-region grading
 - Six host targets verified in CI (Linux/macOS/Windows x x64/ARM)
 
 ---
@@ -305,7 +306,8 @@ Low-level colour science operations:
 - Camera characterisation: 52 measured cameras (rawtoaces-data), spectral IDT
   to ACES2065-1, spectral-to-ACES through the RICD
 - Camera sensitivities recovered from a chart (Jiang 2013), for a camera nobody
-  has measured
+  has measured, over the embedded basis or a caller's; the embedded one is
+  measured out of sample, every one of its 52 cameras held out in turn
 - DNG colour model: profile tags to camera-to-XYZ matrices, AsShotNeutral to
   white and back, dcraw's highlight blend
 - Bayer demosaicing: bilinear, Malvar 2004, Menon 2007, bit-exact to
@@ -318,11 +320,37 @@ Low-level colour science operations:
   projection, ISO 5-3 status densitometry, held to spectral_film_lut; a look
   on scene-linear footage as shot; halation from a derived base-reflection
   kernel and grain from the sheet's RMS granularity by Selwyn's law, with
-  Newson's Boolean disc model for pictures (experimental)
+  Newson's Boolean disc model for pictures (experimental); the profiles read
+  against a second, independent digitisation of the same datasheets
+- Flat artwork as a palette: the distinct colours of a rendered pattern
+  extracted once, converted once, written back per pixel, which is how a
+  colour bar reaches CMYK through the FOGRA39 inverse in 237 calls
 - Hero wavelength sampling for spectral renderers
 - Gamut mapping (8 core algorithms + HDR ICtCp/JzCzHz mappers),
   matrix-determinant volume estimation, coverage analysis
 - Rayleigh scattering model (Bodhaine 1999) for atmospheric work
+
+### Colour Grading
+- Lift/gamma/gain, colour matrices with presets, the ASC CDL core, printer
+  lights, white balance from a grey
+- Tonescale regions (Canham, Punnappurath and Brown 2025): four overlapping
+  regions by intensity, each with a CIELAB offset, from the paper, held to the
+  authors' code
+- Camera profiling: polynomial colour correction (Cheung 2004, Finlayson 2015)
+  with weights, ridge, a robust loss, a neutral constraint and leave-one-out
+  term selection
+
+### Neural Inference
+- Layer kernels in the core tier, dense, 2D convolution with stride, padding,
+  groups and depthwise, pooling, upsampling, the activations, softmax, written
+  against accessors so a shader binds its own buffers; a fixed summation order
+  with no fused multiply-add, so a deterministic build is bit-exact across C,
+  CUDA, OpenCL, HLSL and GLSL (proven on D3D12 WARP under dxc and fxc)
+- A converter that turns a PyTorch model into a generated C forward function
+  plus its weights, batch normalisation folded, every shape a constant; no
+  model file reader, and none planned
+- The first target network's weights are non-commercial and do not ship; the
+  kernels and the converter are alwan's own and MIT
 
 ### Picture Formation (spatial)
 Spatial view transforms that turn open-domain scene light into a formed
