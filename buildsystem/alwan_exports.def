@@ -429,10 +429,6 @@ EXPORTS
     alwan_css_gamut_f32_map_planar
     alwan_css_gamut_f64_map_interleave
     alwan_css_gamut_f64_map_planar
-    alwan_css_gamut_map_f32_map_interleave
-    alwan_css_gamut_map_f32_map_planar
-    alwan_css_gamut_map_f64_map_interleave
-    alwan_css_gamut_map_f64_map_planar
     alwan_css_gamut_map_interleave_ex
     alwan_css_gamut_map_planar_ex
     alwan_css_gamut_space_f32
@@ -712,10 +708,6 @@ EXPORTS
     alwan_gamma_eotf_f64
     alwan_gamma_oetf_f32
     alwan_gamma_oetf_f64
-    alwan_gamut_clip_f32_map_interleave
-    alwan_gamut_clip_f32_map_planar
-    alwan_gamut_clip_f64_map_interleave
-    alwan_gamut_clip_f64_map_planar
     alwan_gamut_coverage_f32
     alwan_gamut_coverage_f64
     alwan_gamut_f32_map_interleave

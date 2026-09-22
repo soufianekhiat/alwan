@@ -409,6 +409,16 @@
   cameras through the built library: the in-sample figure the docs quoted becomes a
   held-out one. `docs/api/spectral.md`.
 
+- **Eight more internal helpers leave the export table.** `alwan_gamut_clip_{T}_map_*` and
+  `alwan_css_gamut_map_{T}_map_*` were exported under public-looking names and declared in no
+  header: they are the SIMD tier behind `ALWAN_GAMUT_MAP_CLIP`, the `_ex` forms and the
+  documented `alwan_css_gamut_{T}_map_*`, which are unchanged. They now carry the `alwan__`
+  prefix like the other kernels (2,171 to 2,163 exports), and the export gate's list of
+  ordinary public names with no declaration is empty; what remains exported and undeclared
+  is the twenty illuminant getters `reference-data.md` documents without a header on
+  purpose. A caller who had written their own prototype for one of the eight has the
+  documented entry point, which forwards to the same code.
+
 - **The DLL no longer exports eight internal helpers.** `alwan__resolve_oetf_{T}`,
   `alwan__resolve_eotf_{T}`, `alwan__gamut_clip_kernel_{T}` and
   `alwan__css_gamut_map_kernel_{T}` are external so one translation unit can call

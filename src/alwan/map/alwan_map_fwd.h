@@ -262,8 +262,8 @@ alwan_status alwan_white_balance_apply_f64_map_interleave(double *out, size_t ou
 /* Gamut operations (no extra param)                                        */
 /* ======================================================================== */
 
-ALWAN_PFWD_IFWD(alwan_gamut_clip);
-ALWAN_PFWD_IFWD(alwan_css_gamut_map);
+ALWAN_PFWD_IFWD(alwan__gamut_clip);   /* internal: the SIMD tier behind ALWAN_GAMUT_MAP_CLIP and the _ex forms */
+ALWAN_PFWD_IFWD(alwan__css_gamut_map);   /* internal: behind alwan_css_gamut_{T}_map_* and the _ex forms */
 
 /* Undef helper macros */
 #undef ALWAN_PFWD
