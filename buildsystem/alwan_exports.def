@@ -1326,7 +1326,11 @@ EXPORTS
     alwan_osa_ucs_to_xyz_f64_map_planar
     alwan_osa_ucs_to_xyz_map_interleave_ex
     alwan_osa_ucs_to_xyz_map_planar_ex
+    alwan_palette_apply_f32
+    alwan_palette_apply_f64
     alwan_palette_entry_at
+    alwan_palette_extract_f32
+    alwan_palette_extract_f64
     alwan_palette_find
     alwan_palette_nearest_f32
     alwan_palette_nearest_f64

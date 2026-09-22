@@ -427,3 +427,53 @@ alwan_status alwan_pattern_render_planar_f64(alwan_f64 *r_out, size_t row_stride
                                              alwan_pattern_params const *params) {
     return alwan__pattern_render(r_out, g_out, b_out, row_stride, 0, 1, width, height, pattern, params);
 }
+
+
+/* ---------------------------------------------------------------- palette */
+
+/* Flat artwork as a palette: the distinct colours, exactly compared, and the
+ * pass that writes converted entries back per pixel. Both precisions from
+ * one template; the scan is O(pixels x colours) and stops at max_colors + 1. */
+#define ALWAN_PALETTE_IMPL(T, TN)                                                                          \
+alwan_status alwan_palette_extract_##TN(T *palette_out, size_t max_colors, size_t *count_out, T const *rgb, \
+                                        size_t stride, size_t count) {                                   \
+    size_t i, k, n = 0;                                                                                  \
+    if (!palette_out || !count_out || !rgb || max_colors == 0) return ALWAN_E_INVALID;                   \
+    if (stride == 0) stride = 3 * sizeof(T);                                                             \
+    *count_out = 0;                                                                                      \
+    for (i = 0; i < count; i++) {                                                                        \
+        T const *px = (T const *)((char const *)rgb + i * stride);                                       \
+        if (px[0] != px[0] || px[1] != px[1] || px[2] != px[2]) return ALWAN_E_INVALID;                  \
+        for (k = 0; k < n; k++) {                                                                        \
+            if (palette_out[3 * k] == px[0] && palette_out[3 * k + 1] == px[1] && palette_out[3 * k + 2] == px[2]) break; \
+        }                                                                                                \
+        if (k == n) {                                                                                    \
+            if (n == max_colors) { *count_out = max_colors + 1; return ALWAN_E_RANGE; }                  \
+            palette_out[3 * n] = px[0]; palette_out[3 * n + 1] = px[1]; palette_out[3 * n + 2] = px[2];  \
+            n++;                                                                                         \
+        }                                                                                                \
+    }                                                                                                    \
+    *count_out = n;                                                                                      \
+    return ALWAN_OK;                                                                                     \
+}                                                                                                        \
+                                                                                                         \
+alwan_status alwan_palette_apply_##TN(T *out, size_t out_stride, T const *rgb, size_t in_stride, size_t count, \
+                                      T const *palette, size_t palette_count, T const *values, size_t channels) { \
+    size_t i, k, c;                                                                                      \
+    if (!out || !rgb || !palette || !values || palette_count == 0 || channels == 0) return ALWAN_E_INVALID; \
+    if (in_stride == 0) in_stride = 3 * sizeof(T);                                                       \
+    if (out_stride == 0) out_stride = channels * sizeof(T);                                              \
+    for (i = 0; i < count; i++) {                                                                        \
+        T const *px = (T const *)((char const *)rgb + i * in_stride);                                    \
+        T *dst = (T *)((char *)out + i * out_stride);                                                    \
+        for (k = 0; k < palette_count; k++) {                                                            \
+            if (palette[3 * k] == px[0] && palette[3 * k + 1] == px[1] && palette[3 * k + 2] == px[2]) break; \
+        }                                                                                                \
+        if (k == palette_count) return ALWAN_E_RANGE;                                                    \
+        for (c = 0; c < channels; c++) dst[c] = values[k * channels + c];                                \
+    }                                                                                                    \
+    return ALWAN_OK;                                                                                     \
+}
+
+ALWAN_PALETTE_IMPL(alwan_f64, f64)
+ALWAN_PALETTE_IMPL(alwan_f32, f32)

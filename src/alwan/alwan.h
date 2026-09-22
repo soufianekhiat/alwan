@@ -1874,6 +1874,29 @@ alwan_status alwan_pattern_render_planar_f64(alwan_f64 *r_out, size_t row_stride
                                              size_t width, size_t height, alwan_pattern pattern,
                                              alwan_pattern_params const *params);
 
+/* Flat artwork as a palette. A rendered pattern, a chart or any flat design is a
+ * handful of colours, and a conversion that is expensive per pixel (the CMYK
+ * inverse, a spectral upsampling) is cheap per colour: extract the palette,
+ * convert its entries, apply the converted entries back.
+ *
+ * alwan_palette_extract collects the distinct colours of count RGB pixels, in
+ * order of first appearance, comparing exactly; count_out receives how many.
+ * More than max_colors is ALWAN_E_RANGE with count_out = max_colors + 1 and
+ * the first max_colors in palette_out: a sweep or a photograph is not a
+ * palette and the scan stops there rather than growing quadratically.
+ * A NaN pixel is ALWAN_E_INVALID.
+ *
+ * alwan_palette_apply writes, for every pixel, the `channels` values of
+ * `values` at the index the pixel's colour has in `palette` (values holds
+ * palette_count x channels, entry-major), so a CMYK conversion of the
+ * palette becomes a CMYK image in one pass. A pixel whose colour is not in
+ * the palette is ALWAN_E_RANGE and the output before it is written.
+ * Strides in bytes, 0 packed, in the pattern family's sense. */
+alwan_status alwan_palette_extract_f64(alwan_f64 *palette_out, size_t max_colors, size_t *count_out, alwan_f64 const *rgb, size_t stride, size_t count);
+alwan_status alwan_palette_extract_f32(alwan_f32 *palette_out, size_t max_colors, size_t *count_out, alwan_f32 const *rgb, size_t stride, size_t count);
+alwan_status alwan_palette_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *rgb, size_t in_stride, size_t count, alwan_f64 const *palette, size_t palette_count, alwan_f64 const *values, size_t channels);
+alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *rgb, size_t in_stride, size_t count, alwan_f32 const *palette, size_t palette_count, alwan_f32 const *values, size_t channels);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics

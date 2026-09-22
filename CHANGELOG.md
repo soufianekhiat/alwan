@@ -360,6 +360,14 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **Flat artwork as a palette.** `alwan_palette_extract_{T}` collects an image's distinct
+  colours in order of first appearance (exact comparison, `ALWAN_E_RANGE` past
+  `max_colors`, so a sweep is refused rather than scanned quadratically) and
+  `alwan_palette_apply_{T}` writes converted per-colour values back per pixel, any
+  channel count. This is the route the roadmap named for a pattern to print: extract,
+  convert the eight entries of a colour bar through the CMYK inverse, apply. Suite 138,
+  `docs/api/patterns.md`.
+
 - **Film looks scored as picture-formation operators.** Four looks (5219 through 2383,
   Portra 400 through Endura Premier, Velvia 50, Ektachrome 100D) are rows of alwan_dev's
   suite 99, the fifteen-constraint formation matrix, rendered by `alwan_film_render_rgb`
