@@ -179,6 +179,40 @@ All `_ex` variants, including every `_map_planar_ex` entry, use the
 canonical `(out_fmt, in_fmt)` order; the pre-2.0 legacy `(in_fmt, out_fmt)`
 block has been fully migrated.
 
+Planar is a fixed three-channel convention: six pointers, and one stride
+shared by the three planes on each side. The extra arguments after `count`
+are the interleave form's, in its order. Every operation whose scalar takes
+three channels in and gives three out has a planar twin as of 3.0.0 (suites
+174 and 175 assert planar against interleave per pixel, both precisions, over
+a plane stride that is not the interleave stride). The ones that have an
+interleave form and no planar twin are the shapes the convention cannot
+take, and they are not owed one:
+
+| shape of the scalar | operations | why |
+|---|---|---|
+| nine-field correlates out or in | the appearance models' forward and inverse | a correlates struct is not three planes |
+| one scalar out | the sixteen colour-difference metrics, relative luminance | three in, three in, one out is a different shape |
+| a spectrum in or out | the RGB and XYZ upsamplers, `alwan_spectral_to_tristimulus`, `alwan_film_render` | 36 to 85 bands would need a pointer per band |
+| several images in | `alwan_hdr_merge`, the gain maps | more than one input buffer |
+
+Two implementations sit behind the planar twins, and a caller cannot tell
+them apart. Where the interleave form is a loop over a scalar function, the
+planar twin is the same loop reading three planes. Where the interleave body
+is inline in the loop or a SIMD kernel (the ACES output transforms, BT.2408,
+PU21, the film look stages, AgX, JP2499, the view transform, the matrix
+transform, among others), the planar twin gathers a 256-pixel tile out of the
+planes into packed triples, runs the interleave form on the tile, and
+scatters back (`src/alwan/api/alwan_planar_maps.c`). Both are bit-identical
+to the interleave form; the second is so by construction, kernels included.
+
+Planar is a convenience of shape, not of speed. Measured on the fast build:
+for a heavy operation, packing three planes, calling the interleave form and
+unpacking costs the same as the planar call to within noise, because the
+packing is free next to the work. For a cheap operation the strided planar
+loop costs more than pack, call, unpack (about 57 against 51 ns a pixel for
+IPT to IPTch): six strided accesses a pixel against three contiguous ones
+plus a vectorised copy. Use planar because your data is planar.
+
 ### 5. Image-level helpers
 
 These are not implemented in `src/alwan/map/`, but they belong to the same
