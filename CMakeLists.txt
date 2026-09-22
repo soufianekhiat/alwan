@@ -200,6 +200,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_cam_maps.c
   src/alwan/api/alwan_delta_e_maps.c
   src/alwan/api/alwan_apply_maps.c
+src/alwan/api/alwan_planar_maps.c
   # Table readers + the single home for float-indexed embedded data.
   # Split by measured compile weight, not taste: see the head comment of
   # src/alwan/data/alwan_data_tables.c.

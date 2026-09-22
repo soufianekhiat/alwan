@@ -257,6 +257,9 @@ alwan_f64 alwan_mat3_det_f64(alwan_mat3x3_f64 const *m);
  * Returns ALWAN_OK on success */
 alwan_status alwan_mat3_transform_f32_map_interleave(alwan_f32 *vec_out, size_t out_stride, alwan_f32 const *vec_in, size_t in_stride, size_t count, alwan_mat3x3_f32 const *matrix);
 alwan_status alwan_mat3_transform_f64_map_interleave(alwan_f64 *vec_out, size_t out_stride, alwan_f64 const *vec_in, size_t in_stride, size_t count, alwan_mat3x3_f64 const *matrix);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_mat3_transform_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_mat3x3_f32 const *matrix);
+alwan_status alwan_mat3_transform_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_mat3x3_f64 const *matrix);
 
 /* Typed mat3 transform: accepts void* buffers with pixel format */
 alwan_status alwan_mat3_transform_map_interleave_ex(void *vec_out, size_t out_stride, void const *vec_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_mat3x3_f64 const *matrix);
@@ -1155,6 +1158,9 @@ alwan_status alwan_view_transform_apply_unclamped_f32(alwan_f32 *rgb_out, size_t
  * typed (u8/u16/f16/f32/f64) I/O for the image pipeline. */
 alwan_status alwan_view_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 alwan_status alwan_view_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_view_transform_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
+alwan_status alwan_view_transform_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 alwan_status alwan_view_transform_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_view_transform vt, alwan_ctx *ctx);
 
 /* JP2499 -- Juan Pablo Zambrano's "2499" picture formation, a purely analytical
@@ -1191,6 +1197,9 @@ alwan_status alwan_jp2499_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32
 /* Interleaved bulk (map) variants -- byte-identical to the apply loop. */
 alwan_status alwan_jp2499_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_jp2499_params_f64 const *params);
 alwan_status alwan_jp2499_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_jp2499_params_f32 const *params);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_jp2499_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_jp2499_params_f32 const *params);
+alwan_status alwan_jp2499_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_jp2499_params_f64 const *params);
 /* Typed (u8/u16/f16/f32/f64) variant for the image pipeline (f64 params). */
 alwan_status alwan_jp2499_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_jp2499_params_f64 const *params);
 
@@ -1252,6 +1261,9 @@ alwan_status alwan_agx_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 co
 /* Interleaved bulk (map) variants -- byte-identical to the apply loop. */
 alwan_status alwan_agx_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_agx_params_f64 const *params);
 alwan_status alwan_agx_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_agx_params_f32 const *params);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_agx_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_agx_params_f32 const *params);
+alwan_status alwan_agx_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_agx_params_f64 const *params);
 /* Typed (u8/u16/f16/f32/f64) variant for the image pipeline (f64 params). */
 alwan_status alwan_agx_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_agx_params_f64 const *params);
 
@@ -2415,6 +2427,9 @@ alwan_status alwan_cat_zhai2018_f32_map_interleave(alwan_f32 *out, size_t out_st
 alwan_status alwan_cat_zhai2018_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count,
                            alwan_xyz_f64 const *xyz_src, alwan_xyz_f64 const *xyz_dst, alwan_f64 D_src, alwan_f64 D_dst,
                            alwan_xyz_f64 const *xyz_baseline, alwan_cat_method transform);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_cat_zhai2018_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_xyz_f32 const *xyz_src, alwan_xyz_f32 const *xyz_dst, alwan_f32 D_src, alwan_f32 D_dst, alwan_xyz_f32 const *xyz_baseline, alwan_cat_method transform);
+alwan_status alwan_cat_zhai2018_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_xyz_f64 const *xyz_src, alwan_xyz_f64 const *xyz_dst, alwan_f64 D_src, alwan_f64 D_dst, alwan_xyz_f64 const *xyz_baseline, alwan_cat_method transform);
 
 /* CIE 1994 chromatic adaptation model (CIE 109-1994).
  *
@@ -2983,6 +2998,9 @@ alwan_status alwan_camera_sensitivities_from_chart_f32(alwan_spd_f32 *spd_r, alw
  * an 18 % grey at 0.18). colour.camera_RGB_to_ACES2065_1. */
 alwan_status alwan_camera_rgb_to_aces2065_1_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_mat3x3_f64 const *idt, alwan_rgb_f64 const *white_balance, alwan_f64 exposure, int clip);
 alwan_status alwan_camera_rgb_to_aces2065_1_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_mat3x3_f32 const *idt, alwan_rgb_f32 const *white_balance, alwan_f32 exposure, int clip);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_camera_rgb_to_aces2065_1_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_mat3x3_f32 const *idt, alwan_rgb_f32 const *white_balance, alwan_f32 exposure, int clip);
+alwan_status alwan_camera_rgb_to_aces2065_1_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_mat3x3_f64 const *idt, alwan_rgb_f64 const *white_balance, alwan_f64 exposure, int clip);
 
 /* Spectral radiance (or a reflectance, with the illuminant it is lit by) to ACES2065-1
  * relative exposure values through the Academy's Reference Input Capture Device, with
@@ -3042,6 +3060,9 @@ alwan_status alwan_dng_camera_to_xyz_matrix_f32(alwan_mat3x3_f32 *matrix_out, al
  * magenta. threshold 0 reads as 0.99. */
 alwan_status alwan_highlights_recovery_blend_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_rgb_f64 const *multipliers, alwan_f64 threshold);
 alwan_status alwan_highlights_recovery_blend_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_rgb_f32 const *multipliers, alwan_f32 threshold);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_highlights_recovery_blend_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_rgb_f32 const *multipliers, alwan_f32 threshold);
+alwan_status alwan_highlights_recovery_blend_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_rgb_f64 const *multipliers, alwan_f64 threshold);
 
 /* ----------------------------------------------------------------
  * Bayer demosaicing
@@ -4421,6 +4442,9 @@ alwan_status alwan_film_look_default(alwan_film_look *look, alwan_film_stock neg
  * coefficient cubes are compiled out. */
 alwan_status alwan_film_render_rgb_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_render_rgb_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_film_render_rgb_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_render_rgb_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 
 /* The look in two halves, for a spatial operator between them. alwan_film_look_expose
  * stops at the negative's linear layer exposures, three per pixel, calibrated and
@@ -4431,8 +4455,14 @@ alwan_status alwan_film_render_rgb_f32_map_interleave(alwan_f32 *xyz_out, size_t
  * came back from the base. */
 alwan_status alwan_film_look_expose_f64_map_interleave(alwan_f64 *exposure_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_look_expose_f32_map_interleave(alwan_f32 *exposure_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_film_look_expose_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_expose_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_look_finish_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_look_finish_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_film_look_finish_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_finish_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 
 /* finish in two, for an operator on the developed negative: alwan_film_look_develop
  * takes linear exposures to the negative's layer activations (the log, the masking
@@ -4441,8 +4471,14 @@ alwan_status alwan_film_look_finish_f32_map_interleave(alwan_f32 *xyz_out, size_
  * alwan_film_grain_density between them they are the grainy negative printed. */
 alwan_status alwan_film_look_develop_f64_map_interleave(alwan_f64 *density_out, size_t out_stride, alwan_f64 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_look_develop_f32_map_interleave(alwan_f32 *density_out, size_t out_stride, alwan_f32 const *exposure_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_film_look_develop_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_develop_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_look_print_f64_map_interleave(alwan_f64 *xyz_out, size_t out_stride, alwan_f64 const *density_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 alwan_status alwan_film_look_print_f32_map_interleave(alwan_f32 *xyz_out, size_t out_stride, alwan_f32 const *density_in, size_t in_stride, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_film_look_print_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
+alwan_status alwan_film_look_print_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_film_look const *look, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
  * EXPERIMENTAL: film halation (src/alwan/experimental/alwan_film_halation.c)
@@ -7424,6 +7460,9 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
  * its scalar twin agree to the bit. Same status codes. */
 alwan_status alwan_aces1_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces1_output output);
 alwan_status alwan_aces1_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces1_output output);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_aces1_output_transform_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_aces1_output output);
+alwan_status alwan_aces1_output_transform_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_aces1_output output);
 
 /**
  * ACES 1.x Output Transform (Inverse)
@@ -7642,6 +7681,9 @@ alwan_status alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f6
  */
 alwan_status alwan_aces2_output_transform_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces2_output output);
 alwan_status alwan_aces2_output_transform_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces2_output output);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_aces2_output_transform_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_aces2_output output);
+alwan_status alwan_aces2_output_transform_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_aces2_output output);
 
 /* ----------------------------------------------------------------
  * HDR Pipeline Utilities
@@ -7946,21 +7988,33 @@ alwan_status alwan_tonemap_mantiuk2006_f32(alwan_f32 *rgb_out, size_t out_row_st
 /* HLG to PQ: the HLG EOTF of the reference display, then the PQ inverse EOTF. */
 alwan_status alwan_bt2408_hlg_to_pq_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 hlg_peak_nits);
 alwan_status alwan_bt2408_hlg_to_pq_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 hlg_peak_nits);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_bt2408_hlg_to_pq_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_f32 hlg_peak_nits);
+alwan_status alwan_bt2408_hlg_to_pq_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_f64 hlg_peak_nits);
 
 /* PQ to HLG: the PQ EOTF, then the HLG inverse EOTF of the reference display. PQ can
  * carry light above that display's peak: clip_to_peak non-zero limits it to the peak
  * first, as BT.2408 describes; zero keeps it, as an HLG signal above 1. */
 alwan_status alwan_bt2408_pq_to_hlg_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 hlg_peak_nits, int clip_to_peak);
 alwan_status alwan_bt2408_pq_to_hlg_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 hlg_peak_nits, int clip_to_peak);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_bt2408_pq_to_hlg_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_f32 hlg_peak_nits, int clip_to_peak);
+alwan_status alwan_bt2408_pq_to_hlg_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_f64 hlg_peak_nits, int clip_to_peak);
 
 /* SDR display light (linear, 1 = SDR reference white) placed at sdr_white_nits and
  * PQ-encoded. Apply the SDR EOTF (BT.1886, sRGB) first. */
 alwan_status alwan_bt2408_sdr_to_pq_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 sdr_white_nits);
 alwan_status alwan_bt2408_sdr_to_pq_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 sdr_white_nits);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_bt2408_sdr_to_pq_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_f32 sdr_white_nits);
+alwan_status alwan_bt2408_sdr_to_pq_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_f64 sdr_white_nits);
 
 /* The same placement for HLG, through the HLG inverse EOTF of the reference display. */
 alwan_status alwan_bt2408_sdr_to_hlg_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 sdr_white_nits, alwan_f64 hlg_peak_nits);
 alwan_status alwan_bt2408_sdr_to_hlg_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 sdr_white_nits, alwan_f32 hlg_peak_nits);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_bt2408_sdr_to_hlg_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_f32 sdr_white_nits, alwan_f32 hlg_peak_nits);
+alwan_status alwan_bt2408_sdr_to_hlg_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_f64 sdr_white_nits, alwan_f64 hlg_peak_nits);
 
 /* ----------------------------------------------------------------
  * PU21: perceptually uniform encoding of HDR luminance
@@ -7988,8 +8042,14 @@ alwan_status alwan_pu21_decode_f32(alwan_f32 *out, alwan_f32 value, alwan_pu21_v
 /* Each of R, G and B encoded or decoded alone, as pu21_metric treats colour images. */
 alwan_status alwan_pu21_encode_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
 alwan_status alwan_pu21_encode_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_pu21_encode_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_pu21_variant variant);
+alwan_status alwan_pu21_encode_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_pu21_variant variant);
 alwan_status alwan_pu21_decode_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
 alwan_status alwan_pu21_decode_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_pu21_variant variant);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_pu21_decode_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_pu21_variant variant);
+alwan_status alwan_pu21_decode_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_pu21_variant variant);
 
 /* PU-PSNR in dB, pu21_metric's PSNR: count pixels of channels values each (1 for
  * luminance, 3 for RGB), rows of values stride bytes apart, every value limited to
@@ -9461,6 +9521,9 @@ alwan_status alwan_clf_apply_f64_map_interleave(alwan_f64 *out, size_t out_strid
 alwan_status alwan_clf_apply_f32_map_interleave(alwan_f32 *out, size_t out_stride,
                                                 alwan_f32 const *in, size_t in_stride,
                                                 size_t count, alwan_clf const *clf);
+/* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
+alwan_status alwan_clf_apply_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_clf const *clf);
+alwan_status alwan_clf_apply_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_clf const *clf);
 
 /* ----------------------------------------------------------------
  * Color Interop Forum -- Interop ID Strings

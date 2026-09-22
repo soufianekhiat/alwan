@@ -339,6 +339,22 @@
 
 ### Added
 
+- **Planar buffer forms for the twenty-one operations whose interleave form has no
+  scalar behind it.** The ACES 1 and 2 output transforms, camera RGB to ACES2065-1, the
+  Zhai 2018 adaptation, CLF apply, the DNG highlight blend, the four BT.2408 conversions,
+  PU21 encode and decode, the four film look stages and `alwan_film_render_rgb`, AgX,
+  JP2499, the view transform and the matrix transform each gain a `_map_planar` twin in
+  both precisions (`api/alwan_planar_maps.c`, 42 exports). Their interleave bodies are
+  either inline in the loop or a SIMD kernel, so a planar loop over a scalar could not be
+  bit-identical to them. Each twin instead gathers a 256-pixel tile out of the three
+  planes into packed triples, runs the interleave form on the tile and scatters back,
+  which is identical by construction, kernels included. Suite 175 asserts it per pixel
+  over 300 pixels, so a tile boundary is crossed, with a plane stride that is not the
+  interleave stride, and that the verdict on an empty buffer is the interleave form's own
+  (CLF says `ALWAN_E_INVALID`, the rest `ALWAN_OK`). With the eleven below, every
+  operation that fits the planar convention now has one. `alwan_film_render` does not:
+  it takes a spectrum per pixel, not three channels.
+
 - **Planar buffer forms for the eleven operations that had only an interleaved one.**
   `alwan_ipt_to_iptch_{T}`, `alwan_iptch_to_ipt_{T}`, `alwan_hdr_gamut_map_jzczhz_{T}`,
   `alwan_colour_correct_cheung2004_{T}`, `alwan_colour_correct_finlayson2015_{T}`,
