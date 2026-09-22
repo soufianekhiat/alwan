@@ -360,6 +360,18 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **CLF's parametric curves without a file.** `alwan_clf_exponent_apply_{T}` and
+  `alwan_clf_log_apply_{T}` evaluate the Exponent (basic, monCurve) and Log (plain,
+  linToLog, cameraLinToLog) ProcessNodes from their parameters, forward or reverse, so a
+  curve published as CLF or OpenColorIO parameters is reachable without writing the
+  file: ACEScct is cameraLinToLog in base 2 with a break at 0.0078125, LogC3 the same
+  shape in base 10. The entry points build the reader's own node and call its evaluator,
+  and suite 178 holds the two bit for bit, holds the curves to OpenColorIO's
+  `ExponentTransform`, `ExponentWithLinearTransform`, `LogTransform`,
+  `LogAffineTransform` and `LogCameraTransform` over 28 cases (worst 2.4e-5 of
+  max(|value|, 1), OCIO's float32), and holds ACEScct built from its parameters to
+  S-2016-001's formula at 3e-15. `docs/api/luts.md`.
+
 - **A PyTorch model becomes a generated C function (roadmap 3.10, step three).**
   `alwan_dev/gendata/nn_convert.py` walks a `torch.nn.Sequential` and emits an `.inc`:
   the weights as static `float` arrays and a `<name>_forward(out, in, arena)` that calls

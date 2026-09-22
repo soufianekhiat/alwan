@@ -634,6 +634,70 @@ approximation. The Matrix, Range and LUT cases sit at 1e-8.
 
 ---
 
+## CLF's parametric curves, without a file
+
+```c
+typedef enum { ALWAN_CLF_EXPONENT_BASIC, ALWAN_CLF_EXPONENT_MONCURVE } alwan_clf_exponent_style;
+typedef struct { alwan_clf_exponent_style style; alwan_f64 gamma, offset; } alwan_clf_exponent_params;
+
+typedef enum { ALWAN_CLF_LOG_PLAIN, ALWAN_CLF_LOG_LIN_TO_LOG, ALWAN_CLF_LOG_CAMERA } alwan_clf_log_style;
+typedef struct {
+    alwan_clf_log_style style;
+    alwan_f64 base;
+    alwan_f64 log_side_slope, log_side_offset, lin_side_slope, lin_side_offset;
+    alwan_f64 lin_side_break, linear_slope;
+} alwan_clf_log_params;
+
+void alwan_clf_exponent_params_init(alwan_clf_exponent_params *params);
+void alwan_clf_log_params_init(alwan_clf_log_params *params);
+
+alwan_status alwan_clf_exponent_apply_{T}(alwan_{T} *out, size_t out_stride, alwan_{T} const *in, size_t in_stride,
+                                          size_t count, alwan_clf_exponent_params const *params, int inverse);
+alwan_status alwan_clf_log_apply_{T}(alwan_{T} *out, size_t out_stride, alwan_{T} const *in, size_t in_stride,
+                                     size_t count, alwan_clf_log_params const *params, int inverse);
+```
+
+The Exponent and Log ProcessNodes are two families of curve with a handful of
+parameters each, and most camera encodings are one of them. These evaluate a
+curve from its parameters, forward or with `inverse` non-zero in the Rev /
+logToLin direction, with exactly the arithmetic the reader gives the same node
+in a file: the entry points build the reader's own node and call its
+evaluator, and suite 178 holds the two bit for bit. So a curve published as
+CLF or OpenColorIO parameters is reachable without writing the file. The
+values are single channels, `count` of them, strides in bytes with 0 meaning
+packed as for `alwan_clf_apply`; evaluation runs in double on both paths.
+
+The curves, as the reader defines them (see "What the nodes mean" above):
+
+| style | forward | reverse |
+|---|---|---|
+| `EXPONENT_BASIC` | max(x, 0)^g | max(x, 0)^(1/g) |
+| `EXPONENT_MONCURVE` | a linear segment below x_b = a / (g - 1), joined in value and slope to ((x + a) / (1 + a))^g; negatives stay on the segment | the same with the axes exchanged |
+| `LOG_PLAIN` | log_base(x), the input floored at the smallest normal float32 as OCIO floors it | base^x |
+| `LOG_LIN_TO_LOG` | log_side_slope log_base(lin_side_slope x + lin_side_offset) + log_side_offset, the same floor | solved for x |
+| `LOG_CAMERA` | `LIN_TO_LOG` with a linear segment below `lin_side_break`, of slope `linear_slope`, or the curve's own slope at the break when that is 0 | the same with the axes exchanged |
+
+ACEScct is `LOG_CAMERA` in base 2 with `log_side_slope` 1/17.52,
+`log_side_offset` 9.72/17.52, unit `lin_side_slope`, zero `lin_side_offset`
+and `lin_side_break` 0.0078125; the derived slope is the standard's
+10.5402377416545, and suite 178 holds that curve to S-2016-001's formula at
+3e-15 over 401 points. LogC3 EI 800 is the same shape in base 10 with ARRI's
+published five parameters.
+
+`ALWAN_E_INVALID` for a NULL, a style outside the enum, or parameters the
+curve cannot be built from: gamma not above 0, a `MONCURVE` gamma not above 1
+or a negative offset (the segment ends at a / (g - 1)), a base not above 0 or
+equal to 1, a zero slope on either side, or a `CAMERA` break where the log's
+argument is not positive.
+
+Measured against OpenColorIO 2.5's `ExponentTransform`,
+`ExponentWithLinearTransform`, `LogTransform`, `LogAffineTransform` and
+`LogCameraTransform`, 28 cases of 12 probes, forward and inverse: worst
+2.4e-5 of max(|value|, 1), which is OCIO's float32 (its logarithm puts log2(1)
+at 1.3e-5); the f32 path is the f64 one rounded once (5.7e-8).
+
+---
+
 ## Choosing a size
 
 | what is baked | size that holds up |

@@ -9592,6 +9592,68 @@ alwan_status alwan_clf_apply_f32_map_planar(alwan_f32 *out_ch0, size_t out_strid
 alwan_status alwan_clf_apply_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_clf const *clf);
 
 /* ----------------------------------------------------------------
+ * CLF's parametric curves, without a file
+ *
+ * The Exponent and Log ProcessNodes are two families of curve with a handful
+ * of parameters each, and most camera encodings are one of them: ACEScct is
+ * cameraLinToLog in base 2 with a linear segment below 0.0078125, LogC3 is
+ * the same shape in base 10. These evaluate a curve from its parameters,
+ * forward or reverse, with exactly the arithmetic the reader gives the same
+ * node in a file, so a curve published as CLF (or OpenColorIO) parameters is
+ * reachable without writing the file. Measured against OpenColorIO's
+ * ExponentTransform, ExponentWithLinearTransform, LogTransform,
+ * LogAffineTransform and LogCameraTransform, suite 178, which also holds the
+ * parametric form to the reader bit for bit. Evaluation runs in double on
+ * both paths. Strides are in bytes; 0 means tightly packed, as for the CLF
+ * apply above.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_CLF_EXPONENT_BASIC = 0,      /* max(x, 0)^g; the reverse is the 1/g power */
+    ALWAN_CLF_EXPONENT_MONCURVE = 1    /* a linear segment below a / (g - 1), joined in value and
+                                          slope to ((x + a) / (1 + a))^g; negatives stay on the segment */
+} alwan_clf_exponent_style;
+
+typedef struct {
+    alwan_clf_exponent_style style;
+    alwan_f64 gamma;    /* g, above 0; MONCURVE needs g above 1 */
+    alwan_f64 offset;   /* a, MONCURVE only, 0 or above (sRGB is g 2.4, a 0.055) */
+} alwan_clf_exponent_params;
+
+typedef enum {
+    ALWAN_CLF_LOG_PLAIN = 0,        /* log_base(x), the input floored at the smallest normal float32
+                                       as OpenColorIO floors it; the reverse is base^x */
+    ALWAN_CLF_LOG_LIN_TO_LOG = 1,   /* log_side_slope * log_base(lin_side_slope * x + lin_side_offset)
+                                       + log_side_offset, the same floor; the reverse solves it */
+    ALWAN_CLF_LOG_CAMERA = 2        /* LIN_TO_LOG with a linear segment below lin_side_break */
+} alwan_clf_log_style;
+
+typedef struct {
+    alwan_clf_log_style style;
+    alwan_f64 base;                 /* above 0 and not 1; CLF's log2 and log10 styles are PLAIN in base 2 or 10 */
+    alwan_f64 log_side_slope;       /* LIN_TO_LOG and CAMERA; not 0 */
+    alwan_f64 log_side_offset;
+    alwan_f64 lin_side_slope;       /* not 0 */
+    alwan_f64 lin_side_offset;
+    alwan_f64 lin_side_break;       /* CAMERA: where the segment ends, in linear units; the log
+                                       curve's argument there must be positive */
+    alwan_f64 linear_slope;         /* CAMERA: the segment's slope, or 0 for the curve's own slope
+                                       at the break, which is what a file without linearSlope means */
+} alwan_clf_log_params;
+
+/* Defaults: BASIC with gamma 1; LIN_TO_LOG in base 2 with unit slopes and zero offsets. */
+void alwan_clf_exponent_params_init(alwan_clf_exponent_params *params);
+void alwan_clf_log_params_init(alwan_clf_log_params *params);
+
+/* Apply to count values. inverse non-zero applies the Rev / logToLin direction.
+ * ALWAN_E_INVALID for a NULL, a style outside the enum, or parameters the curve
+ * cannot be built from (see the fields). */
+alwan_status alwan_clf_exponent_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_clf_exponent_params const *params, int inverse);
+alwan_status alwan_clf_exponent_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_clf_exponent_params const *params, int inverse);
+alwan_status alwan_clf_log_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_clf_log_params const *params, int inverse);
+alwan_status alwan_clf_log_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_clf_log_params const *params, int inverse);
+
+/* ----------------------------------------------------------------
  * Color Interop Forum -- Interop ID Strings
  *
  * Bidirectional lookup between alwan_rgb_space enum values and

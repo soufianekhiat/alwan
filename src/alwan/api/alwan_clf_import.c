@@ -54,6 +54,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <float.h>
 #include <ctype.h>
 #include <locale.h>
 #include <math.h>
@@ -898,6 +899,149 @@ alwan_status alwan_clf_apply_f32_map_interleave(alwan_f32 *out, size_t out_strid
         v[0] = (double)src[0]; v[1] = (double)src[1]; v[2] = (double)src[2];
         for (k = 0; k < clf->count; k++) clf_apply_op(&clf->ops[k], v);
         dst[0] = (alwan_f32)v[0]; dst[1] = (alwan_f32)v[1]; dst[2] = (alwan_f32)v[2];
+    }
+    return ALWAN_OK;
+}
+
+
+/* ---------------------------------------------------------------- parametric */
+
+/* The Exponent and Log nodes from their parameters, without a file. These build the
+ * same clf_op the reader builds and evaluate it through the same functions, so the
+ * two paths cannot drift: suite 178 holds them bit for bit. */
+
+void alwan_clf_exponent_params_init(alwan_clf_exponent_params *params) {
+    if (!params) return;
+    params->style = ALWAN_CLF_EXPONENT_BASIC;
+    params->gamma = 1.0;
+    params->offset = 0.0;
+}
+
+void alwan_clf_log_params_init(alwan_clf_log_params *params) {
+    if (!params) return;
+    params->style = ALWAN_CLF_LOG_LIN_TO_LOG;
+    params->base = 2.0;
+    params->log_side_slope = 1.0;
+    params->log_side_offset = 0.0;
+    params->lin_side_slope = 1.0;
+    params->lin_side_offset = 0.0;
+    params->lin_side_break = 0.0;
+    params->linear_slope = 0.0;
+}
+
+/* Returns the internal style, or -1 for parameters the curve cannot be built from. */
+static int clf_exponent_style_of(alwan_clf_exponent_params const *p, int inverse) {
+    if (!clf_finite(p->gamma) || !clf_finite(p->offset) || !(p->gamma > 0.0)) return -1;
+    switch (p->style) {
+        case ALWAN_CLF_EXPONENT_BASIC:
+            return inverse ? CLF_BASIC_REV : CLF_BASIC_FWD;
+        case ALWAN_CLF_EXPONENT_MONCURVE:
+            if (!(p->gamma > 1.0) || !(p->offset >= 0.0)) return -1;
+            return inverse ? CLF_MON_REV : CLF_MON_FWD;
+        default:
+            return -1;
+    }
+}
+
+/* Fills op from the parameters. Returns 0 for parameters the curve cannot be built from. */
+static int clf_log_op_of(clf_op *op, alwan_clf_log_params const *p, int inverse) {
+    memset(op, 0, sizeof *op);
+    op->type = ALWAN_CLF_NODE_LOG;
+    if (!clf_finite(p->base) || !(p->base > 0.0) || p->base == 1.0) return 0;
+    if (!clf_finite(p->log_side_slope) || !clf_finite(p->log_side_offset) ||
+        !clf_finite(p->lin_side_slope) || !clf_finite(p->lin_side_offset) ||
+        !clf_finite(p->lin_side_break) || !clf_finite(p->linear_slope)) return 0;
+    op->log_base = p->base;
+    switch (p->style) {
+        case ALWAN_CLF_LOG_PLAIN:
+            /* CLF's own styles for the two bases the file format names, so the file
+             * path and this one are the same arithmetic; any other base is the affine
+             * form with unit parameters, which is the same curve. */
+            if (p->base == 2.0)  { op->style = inverse ? CLF_LOG_ANTILOG2  : CLF_LOG_LOG2;  return 1; }
+            if (p->base == 10.0) { op->style = inverse ? CLF_LOG_ANTILOG10 : CLF_LOG_LOG10; return 1; }
+            op->ls_slope = 1.0; op->lin_slope = 1.0;
+            op->style = inverse ? CLF_LOG_LOG_TO_LIN : CLF_LOG_LIN_TO_LOG;
+            return 1;
+        case ALWAN_CLF_LOG_LIN_TO_LOG:
+        case ALWAN_CLF_LOG_CAMERA:
+            if (p->log_side_slope == 0.0 || p->lin_side_slope == 0.0) return 0;
+            op->ls_slope = p->log_side_slope;
+            op->ls_offset = p->log_side_offset;
+            op->lin_slope = p->lin_side_slope;
+            op->lin_offset = p->lin_side_offset;
+            if (p->style == ALWAN_CLF_LOG_LIN_TO_LOG) {
+                op->style = inverse ? CLF_LOG_LOG_TO_LIN : CLF_LOG_LIN_TO_LOG;
+                return 1;
+            }
+            if (!(p->lin_side_slope * p->lin_side_break + p->lin_side_offset > 0.0)) return 0;
+            op->lin_break = p->lin_side_break;
+            op->has_linear_slope = p->linear_slope != 0.0;
+            op->linear_slope = p->linear_slope;
+            op->style = inverse ? CLF_LOG_CAM_LOG_TO_LIN : CLF_LOG_CAM_LIN_TO_LOG;
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+alwan_status alwan_clf_exponent_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride,
+                                          size_t count, alwan_clf_exponent_params const *params, int inverse) {
+    int style;
+    size_t i;
+    if (!out || !in || !params) return ALWAN_E_INVALID;
+    style = clf_exponent_style_of(params, inverse);
+    if (style < 0) return ALWAN_E_INVALID;
+    if (out_stride == 0) out_stride = sizeof(alwan_f64);
+    if (in_stride == 0) in_stride = sizeof(alwan_f64);
+    for (i = 0; i < count; i++) {
+        double const x = *(alwan_f64 const *)((char const *)in + i * in_stride);
+        *(alwan_f64 *)((char *)out + i * out_stride) = clf_exponent_channel(x, style, params->gamma, params->offset);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_clf_exponent_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride,
+                                          size_t count, alwan_clf_exponent_params const *params, int inverse) {
+    int style;
+    size_t i;
+    if (!out || !in || !params) return ALWAN_E_INVALID;
+    style = clf_exponent_style_of(params, inverse);
+    if (style < 0) return ALWAN_E_INVALID;
+    if (out_stride == 0) out_stride = sizeof(alwan_f32);
+    if (in_stride == 0) in_stride = sizeof(alwan_f32);
+    for (i = 0; i < count; i++) {
+        double const x = *(alwan_f32 const *)((char const *)in + i * in_stride);
+        *(alwan_f32 *)((char *)out + i * out_stride) = (alwan_f32)clf_exponent_channel(x, style, params->gamma, params->offset);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_clf_log_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride,
+                                     size_t count, alwan_clf_log_params const *params, int inverse) {
+    clf_op op;
+    size_t i;
+    if (!out || !in || !params) return ALWAN_E_INVALID;
+    if (!clf_log_op_of(&op, params, inverse)) return ALWAN_E_INVALID;
+    if (out_stride == 0) out_stride = sizeof(alwan_f64);
+    if (in_stride == 0) in_stride = sizeof(alwan_f64);
+    for (i = 0; i < count; i++) {
+        double const x = *(alwan_f64 const *)((char const *)in + i * in_stride);
+        *(alwan_f64 *)((char *)out + i * out_stride) = clf_log_channel(&op, x);
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_clf_log_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride,
+                                     size_t count, alwan_clf_log_params const *params, int inverse) {
+    clf_op op;
+    size_t i;
+    if (!out || !in || !params) return ALWAN_E_INVALID;
+    if (!clf_log_op_of(&op, params, inverse)) return ALWAN_E_INVALID;
+    if (out_stride == 0) out_stride = sizeof(alwan_f32);
+    if (in_stride == 0) in_stride = sizeof(alwan_f32);
+    for (i = 0; i < count; i++) {
+        double const x = *(alwan_f32 const *)((char const *)in + i * in_stride);
+        *(alwan_f32 *)((char *)out + i * out_stride) = (alwan_f32)clf_log_channel(&op, x);
     }
     return ALWAN_OK;
 }
