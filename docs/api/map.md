@@ -524,12 +524,19 @@ alwan_status alwan_xyz_to_lab_map_planar_ex(void *out0, size_t out_stride,
                                             alwan_xyz_f64 const *white_xyz);
 ```
 
-> **Legacy ordering caveat.** A small block of `_map_planar_ex` helpers near the
-> end of `alwan.h` (around lines 4117-4156: the `alwan_srgb_to_*`,
-> `alwan_lab_to_lch` / `alwan_lch_to_lab`, `alwan_luv_to_lchuv` /
-> `alwan_lchuv_to_luv` planar variants) still ship with the older
-> `(in_fmt, out_fmt)` argument order. Read the specific declaration before
-> wiring one up; these will migrate to `(out_fmt, in_fmt)` in a future release.
+Every `_ex` declaration in `alwan.h` takes `(out_fmt, in_fmt)`; the pre-2.0
+block that took them the other way round is gone (0 of 209 declarations,
+counted 2026-09-22).
+
+Every operation whose scalar takes three channels in and gives three out has
+a `_map_planar` twin in both precisions, bit-identical to its
+`_map_interleave` form (suites 174 and 175). The operations with an interleave
+form and no planar twin are the shapes six pointers cannot express: the
+appearance models' nine-field correlates, the colour-difference metrics' one
+scalar out, a spectrum in or out, several images in. [map.md](../map.md)
+lists them, and says what planar costs: it is a convenience of shape, and for
+a cheap operation the strided loop is slower than packing and calling the
+interleave form.
 
 ---
 
