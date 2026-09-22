@@ -1056,6 +1056,8 @@ EXPORTS
     alwan_jzczhz_to_jzazbz_f64_map_planar
     alwan_jzczhz_to_jzazbz_map_interleave_ex
     alwan_jzczhz_to_jzazbz_map_planar_ex
+    alwan_key_chroma_f32
+    alwan_key_chroma_f64
     alwan_kim2009_forward_f32
     alwan_kim2009_forward_f32_map_interleave
     alwan_kim2009_forward_f64
@@ -1636,6 +1638,15 @@ EXPORTS
     alwan_scatter3_f64
     alwan_scotopic_luminance_f32
     alwan_scotopic_luminance_f64
+    alwan_select_distance_f32
+    alwan_select_distance_f64
+    alwan_select_example_f32
+    alwan_select_example_f64
+    alwan_select_example_fit_f32
+    alwan_select_example_fit_f64
+    alwan_select_qualifier_f32
+    alwan_select_qualifier_f64
+    alwan_select_qualifier_params_init
     alwan_sigma_barten1999_f32
     alwan_sigma_barten1999_f64
     alwan_simulate_cvd_ex_f32

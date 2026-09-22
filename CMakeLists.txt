@@ -126,6 +126,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_chart.c
   src/alwan/api/alwan_color_correction.c
   src/alwan/api/alwan_tonescale_grade.c
+  src/alwan/api/alwan_select.c
   src/alwan/api/alwan_colorspace.c
   src/alwan/map/alwan_color_correction_map.c
   src/alwan/map/alwan_colorspace_map.c

@@ -406,6 +406,17 @@
 
 ### Added
 
+- **Colour selection: `alwan_select_qualifier`, `_distance`, `_example` and `alwan_key_chroma`.**
+  Soft masks in [0, 1] saying how much each pixel belongs to a chosen set of colours, by
+  four approaches: a qualifier (hue, chroma and lightness ranges with soft edges, the
+  secondary-grading "HSL qualifier", in HSV, OkLCh or CIE LCh), nearness to a key colour
+  (Oklab, CIE 1976 or CIEDE2000), select by example (a Gaussian fitted to sampled pixels
+  in Oklab, keyed on Mahalanobis distance), and the green / blue screen difference matte
+  with despill (Vlahos; Smith and Blinn 1996). Hue is a fraction of a turn and lightness
+  is in [0, 1] in every build, the normalised units. Both precisions, byte strides.
+  Suite 181 holds the conversions and differences to colour-science and the fit to numpy,
+  1.6e-14 worst; docs/api/selection.md.
+
 - **Thin-plate spline colour correction, `alwan_tps3d_fit_{T}` / `alwan_tps3d_apply_{T}`
   and its maps.** A smooth RGB warp through every control pair (Menesatti 2012 on
   Bookstein 1989), the non-polynomial alternative to the Cheung and Finlayson fits: without

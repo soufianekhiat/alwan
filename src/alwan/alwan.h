@@ -1883,6 +1883,115 @@ alwan_status alwan_pattern_render_planar_f64(alwan_f64 *r_out, size_t row_stride
                                              size_t width, size_t height, alwan_pattern pattern,
                                              alwan_pattern_params const *params);
 
+/* ----------------------------------------------------------------
+ * Colour selection
+ *
+ * A soft mask per pixel, 1 where the pixel belongs to the chosen colours, 0 where
+ * it does not, and the edge in between, by four approaches:
+ *
+ *   qualifier   hue, chroma and lightness ranges with soft edges (the secondary-
+ *               grading "HSL qualifier"), evaluated in HSV, OkLCh or CIE LCh(ab)
+ *   distance    nearness to one key colour: Oklab Euclidean, CIE 1976 or CIEDE2000
+ *   example     a Gaussian fitted to sample pixels in Oklab, keyed on Mahalanobis
+ *               distance: pick a few pixels of the thing and select its kind
+ *   chroma key  the green / blue screen difference matte, with despill
+ *
+ * Pixels are the space's ENCODED values, as an image arrives; each approach
+ * decodes with the space's EOTF where it needs linear light. HSV is taken on the
+ * encoded values, as alwan_rgb_to_hsv does. Oklab is evaluated on the space's
+ * XYZ without adaptation, so it is meant for D65 spaces; CIE Lab uses the space's
+ * own white. The units are the same in every build, and are the normalised ones:
+ * hue is a fraction of a turn in [0, 1) measured from the +a axis (HSV's own
+ * convention), lightness is in [0, 1] (HSV V, Oklab L, L* / 100), and chroma keeps
+ * its scale, which ALWAN_NORMALIZE_RANGES leaves alone too (HSV S in 0..1, Oklab C
+ * about 0..0.4, C*ab about 0..150). Note that the library's normalised OkLCh hue
+ * is (h + pi) / 2pi, half a turn from this and from normalised CIE LCh, h / 360.
+ *
+ * Soft edges are linear: 1 inside the range (or below the tolerance), falling to
+ * 0 over `softness` outside it; softness 0 is a hard edge. Strides are bytes and
+ * must be at least one element (a mask value, or three channels) wide. The work
+ * is done in double; the f32 forms widen and narrow. No published reference
+ * defines these masks: suite 181 holds the conversions to colour-science and the
+ * masks to the definitions stated here.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_SELECT_HSV = 0,     /* hue, saturation, value of the encoded RGB */
+    ALWAN_SELECT_OKLCH = 1,   /* Oklab L, C, h */
+    ALWAN_SELECT_CIELCH = 2   /* CIE L*, C*ab, h_ab under the space's white */
+} alwan_select_model;
+
+typedef struct {
+    alwan_select_model model;
+    alwan_f64 hue_center;       /* turns, [0, 1) */
+    alwan_f64 hue_width;        /* turns, the full width of the range; 1 or more is every hue */
+    alwan_f64 hue_softness;     /* turns of fall-off either side */
+    alwan_f64 chroma_min, chroma_max, chroma_softness;   /* HSV S, Oklab C or C*ab */
+    alwan_f64 light_min, light_max, light_softness;      /* [0, 1]: HSV V, Oklab L or L* / 100 */
+    int invert;                 /* nonzero: 1 - mask */
+} alwan_select_qualifier_params;
+
+/* Every hue, chroma and lightness, in OkLCh, hard edges: a mask of 1 everywhere
+ * until ranges are narrowed. */
+void alwan_select_qualifier_params_init(alwan_select_qualifier_params *params);
+
+/* The mask is the smallest of the hue, chroma and lightness weights. A neutral
+ * pixel has no hue (HSV reports 0, the LCh forms atan2 of zeros, also 0), so a
+ * hue range near red also takes greys unless chroma_min excludes them.
+ * ALWAN_E_INVALID for a NULL, a stride too small, a model outside the enum, a
+ * non-finite or negative width or softness, or a min above its max. */
+alwan_status alwan_select_qualifier_f32(alwan_f32 *mask_out, size_t mask_stride, alwan_f32 const *rgb, size_t rgb_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_select_qualifier_params const *params);
+alwan_status alwan_select_qualifier_f64(alwan_f64 *mask_out, size_t mask_stride, alwan_f64 const *rgb, size_t rgb_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_select_qualifier_params const *params);
+
+typedef enum {
+    ALWAN_SELECT_METRIC_OKLAB = 0,   /* Euclidean in Oklab (about 0.02 is a just-noticeable step) */
+    ALWAN_SELECT_METRIC_DE76 = 1,    /* CIE 1976 Delta E, Lab under the space's white */
+    ALWAN_SELECT_METRIC_DE2000 = 2   /* CIEDE2000 */
+} alwan_select_metric;
+
+/* 1 for pixels within `tolerance` of key_rgb (encoded, the same space) under the
+ * metric, falling to 0 at tolerance + softness. */
+alwan_status alwan_select_distance_f32(alwan_f32 *mask_out, size_t mask_stride, alwan_f32 const *rgb, size_t rgb_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_f32 const key_rgb[3], alwan_select_metric metric, alwan_f32 tolerance, alwan_f32 softness);
+alwan_status alwan_select_distance_f64(alwan_f64 *mask_out, size_t mask_stride, alwan_f64 const *rgb, size_t rgb_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_f64 const key_rgb[3], alwan_select_metric metric, alwan_f64 tolerance, alwan_f64 softness);
+
+/* Select by example. The fit takes sample pixels (at least two, encoded, the
+ * same space), converts them to Oklab and keeps their mean and sample covariance
+ * (divided by n - 1) with `ridge` added to its diagonal; ridge > 0 is what lets
+ * a handful of near-identical samples fit, and about 1e-5 is a sensible floor in
+ * Oklab units. ALWAN_E_DIVZERO when the covariance is singular (samples on a
+ * line or a plane, ridge 0). The mask is 1 within `tolerance` Mahalanobis units
+ * of the mean (2 to 3 takes most of what the samples represent) and falls to 0
+ * over `softness`. */
+typedef struct {
+    alwan_f64 mean[3];             /* Oklab L, a, b */
+    alwan_f64 covariance[9];       /* row-major, ridge included */
+    alwan_f64 inv_covariance[9];
+} alwan_select_example;
+
+alwan_status alwan_select_example_fit_f32(alwan_select_example *model_out, alwan_f32 const *samples, size_t sample_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_f64 ridge);
+alwan_status alwan_select_example_fit_f64(alwan_select_example *model_out, alwan_f64 const *samples, size_t sample_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_f64 ridge);
+alwan_status alwan_select_example_f32(alwan_f32 *mask_out, size_t mask_stride, alwan_f32 const *rgb, size_t rgb_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_select_example const *model, alwan_f32 tolerance, alwan_f32 softness);
+alwan_status alwan_select_example_f64(alwan_f64 *mask_out, size_t mask_stride, alwan_f64 const *rgb, size_t rgb_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_select_example const *model, alwan_f64 tolerance, alwan_f64 softness);
+
+/* Chroma key: the difference matte of the Vlahos patents as Smith and Blinn,
+ * "Blue Screen Matting", SIGGRAPH 1996, write it. With S the screen channel and
+ * the reference R = balance * red + (1 - balance) * other (other = blue for a
+ * green screen, green for a blue one),
+ *     alpha = clamp(1 - gain * (S - R), 0, 1)
+ * so the screen is 0 and anything with no excess of the screen channel is 1.
+ * fg_out (optional) receives the pixels, and with `despill` the screen channel
+ * limited to R, which removes screen light spilled onto the subject. Values are
+ * taken as given (no decoding): key in the space the plate was shot in. balance
+ * in [0, 1], gain >= 0; ALWAN_E_INVALID otherwise. Not testable against a
+ * reference: no library implements this exact matte, so suite 181 checks the
+ * formula's properties. */
+typedef enum {
+    ALWAN_KEY_GREEN = 0,
+    ALWAN_KEY_BLUE = 1
+} alwan_key_screen;
+
+alwan_status alwan_key_chroma_f32(alwan_f32 *alpha_out, size_t alpha_stride, alwan_f32 *fg_out, size_t fg_stride, alwan_f32 const *rgb, size_t rgb_stride, size_t count, alwan_key_screen screen, alwan_f32 balance, alwan_f32 gain, int despill);
+alwan_status alwan_key_chroma_f64(alwan_f64 *alpha_out, size_t alpha_stride, alwan_f64 *fg_out, size_t fg_stride, alwan_f64 const *rgb, size_t rgb_stride, size_t count, alwan_key_screen screen, alwan_f64 balance, alwan_f64 gain, int despill);
+
 /* Flat artwork as a palette. A rendered pattern, a chart or any flat design is a
  * handful of colours, and a conversion that is expensive per pixel (the CMYK
  * inverse, a spectral upsampling) is cheap per colour: extract the palette,
