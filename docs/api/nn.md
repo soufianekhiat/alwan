@@ -153,9 +153,74 @@ The layers are the layer set of the first target network, a small
 convolution over a chromaticity histogram joined to a dense layer, and the
 few others the roadmap lists for the second. Attention arrives when a model in
 hand needs it. Quantised int8 inference is a later stage. There is no model
-file reader and there will not be one: gendata converts a trained model into a
-generated forward function plus its weights as an `.inc`, so shapes are static,
-which is what makes the shading-language backends possible at all.
+file reader and there will not be one: the converter below turns a trained
+model into a generated forward function plus its weights as an `.inc`, so
+shapes are static, which is what makes the shading-language backends possible
+at all.
+
+---
+
+## Converting a model
+
+`alwan_dev/gendata/nn_convert.py` takes a PyTorch model and writes C:
+
+```
+python gendata/nn_convert.py my_models:build_awb awb 64 64 2 awb_model.inc
+```
+
+`my_models.build_awb()` returns the model with its weights loaded; `64 64 2`
+is the input as H, W, C (channels-last, which is alwan's layout). The file it
+writes is included after `alwan.h` and holds:
+
+```c
+#define AWB_IN_H 64          /* and _IN_W, _IN_C, _OUT_H, _OUT_W, _OUT_C, _OUT_SIZE */
+#define AWB_ARENA_FLOATS 32768
+static const float awb_w0[...] = { ... };   /* one array per layer, bias as _b<n> */
+static alwan_status awb_forward(float *out, float const *in, float *arena);
+```
+
+`awb_forward` calls the `alwan_nn_*_f32` layers in the model's order with every
+shape a constant, ping-ponging between two halves of `arena`, which is the
+caller's and holds two copies of the largest activation. Nothing is allocated,
+nothing is transposed at run time, and the function is `static`, so a consumer
+includes the `.inc` in one translation unit and owns its symbols.
+
+What the converter does with the model, once, at conversion time:
+
+- Walks a `torch.nn.Sequential` (nested ones are flattened; a module with a
+  `forward` of its own is walked through its children, which must be
+  sequential). Accepted: `Conv2d` (equal stride and padding on both axes,
+  groups, optional bias), `BatchNorm2d` and `BatchNorm1d`, `ReLU`, `LeakyReLU`,
+  `Sigmoid`, `Tanh`, `GELU(approximate='tanh')`, `MaxPool2d`, `AvgPool2d`
+  (`count_include_pad=True`, PyTorch's default), `AdaptiveAvgPool2d((1, 1))`,
+  `Flatten`, `Linear`, `Softmax`, `Upsample` (integer factor, nearest or
+  bilinear with `align_corners=False`), `Identity` and `Dropout`. Anything
+  else raises, naming the module.
+- Folds each batch normalisation into the convolution or dense layer before
+  it, per output channel, in float64, then rounds once to float32.
+- Permutes convolution weights from OIHW to HWIO and dense weights to
+  `w[i * n_out + o]`. The columns of a `Linear` that follows a `Flatten` are
+  reordered from torch's `c * H * W + y * W + x` to `(y * W + x) * C + c`,
+  because torch flattens c-major and alwan's activation is one H x W x C run.
+  That permutation is applied exactly once, on the first `Linear` after the
+  `Flatten`.
+- Writes every weight as a float32 literal with nine significant digits,
+  which reads back to the same float.
+
+The generated function is exactly as faithful as those permutations, so the
+suite that proves the converter is an end-to-end one: suite 177 runs two
+models from `gendata/tests/nn_demo_reference.py` that between them use every
+accepted layer, with batch norm statistics that are not the identity, and
+holds the float32 forward to torch in float64 on the same float32 weights with
+batch norm applied as a layer. Worst 1.9e-8 and 4.6e-8 on outputs of order
+one; a permutation, fold or shape mistake is order one. The models are the
+repository's own because the first target network's weights are published
+under a non-commercial licence and cannot ship.
+
+The forward function is generated for the f32 API. A model trained in float64
+is converted through float32. A residual connection (a forward that is a
+graph rather than a sequence) is not emitted yet; `alwan_nn_add` exists for
+it.
 
 ---
 

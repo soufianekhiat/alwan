@@ -360,6 +360,23 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **A PyTorch model becomes a generated C function (roadmap 3.10, step three).**
+  `alwan_dev/gendata/nn_convert.py` walks a `torch.nn.Sequential` and emits an `.inc`:
+  the weights as static `float` arrays and a `<name>_forward(out, in, arena)` that calls
+  the `alwan_nn_*_f32` layers in order with every shape a compile-time constant, so
+  inference allocates nothing and the arena's size is a `#define`. Batch normalisation
+  (2d and 1d) is folded into the convolution or dense layer before it; Dropout and
+  Identity emit nothing; every weight is permuted once into channels-last / HWIO; and
+  the one permutation that is easy to get wrong, the columns of a Linear that follows a
+  Flatten (torch flattens c-major, alwan's activation is an H x W x C run), is applied
+  exactly once. There is no model file reader and there will not be one. Suite 177 runs
+  two models defined in `gendata/tests/nn_demo_reference.py` end to end, which between
+  them use every layer the converter accepts, against torch in float64 on the same
+  float32 weights with batch norm unfolded: worst 1.9e-8 and 4.6e-8 on outputs of order
+  one, where a permutation or fold mistake is order one. The first target network's
+  weights are non-commercial and cannot ship, which is why the converter is proven on
+  models the repository defines. `docs/api/nn.md`.
+
 - **Every public operation has a reference entry, and the count is a gate.**
   `alwan_dev/tools/check_doc_coverage.py` folds the precision and buffer-form suffixes
   and asks which base operations appear nowhere under `docs/`: 54 of 687 on the morning
