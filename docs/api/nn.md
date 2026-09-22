@@ -83,6 +83,18 @@ a dense layer) into an `ALWAN_DET_PRECISE` local, and touches no intrinsic that
 hides an expression. Zero padding is an out-of-range test on the index, not a
 read of a padded copy: the accessor is never evaluated outside the image.
 
+Measured, not assumed: `alwan_dev/hlsl_regression/run_nn_parity.py` binds
+these kernels exactly as above and runs them on the D3D12 WARP device under
+dxc and fxc against the pointer-bound C kernels, 1,616 outputs, with the
+reference built ordinary and deterministic. Every tensor kernel is bit-exact
+in all four runs; the activations and softmax that go through exp are
+bit-exact in the deterministic build, where both sides run the committed
+polynomial, and within 0.5 ULP of unity in an ordinary one. One hazard for a
+consumer's shader, found there: dxc's default fast-math folds a caller's
+arithmetic into a kernel's expression when the two share a statement. Compute
+the kernel's input into a variable of its own, or build with `-Gis`, if the
+bits matter.
+
 ---
 
 ## The whole-tensor forms

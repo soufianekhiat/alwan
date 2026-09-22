@@ -354,7 +354,11 @@
   a converted model carries them in that order. Suite 176 holds the f64 path to PyTorch
   in float64 on seeded random tensors (worst 9e-16), the f32 path to the f64 one (worst
   2e-7), and the whole-tensor forms to the per-element kernels bit for bit.
-  `docs/api/nn.md`.
+  `docs/api/nn.md`. On the GPU, `alwan_dev/hlsl_regression/run_nn_parity.py` binds the
+  kernels to StructuredBuffers and runs them on D3D12 WARP under dxc and fxc against the
+  pointer-bound C kernels: every tensor kernel is bit-exact in an ordinary build and in a
+  deterministic one, and the exp-based activations and softmax are bit-exact in the
+  deterministic build, which is the setting the claim is made in.
 
 - **Every public operation has a reference entry, and the count is a gate.**
   `alwan_dev/tools/check_doc_coverage.py` folds the precision and buffer-form suffixes
