@@ -189,9 +189,40 @@ ZCAM-based color difference: Euclidean distance in ZCAM UCS (Jzazbz) space.
 
 ---
 
+## Buffer Functions (`_map_interleave`)
+
+Every metric on this page has a buffer form, since 2026-09-22, with one shape:
+
+```c
+alwan_status alwan_delta_e_<name>_{T}_map_interleave(
+             alwan_{T} *out, size_t out_stride,
+             alwan_{T} const *a, size_t a_stride,
+             alwan_{T} const *b, size_t b_stride,
+             size_t count[, params]);
+```
+
+`a` and `b` are strided buffers of the metric's colour type, read as three scalars in
+struct order; `out` is a strided buffer of distances. Strides are in bytes and follow the
+buffer they describe. CMC and ITP take their params pointer after `count`, HyCH its
+`textiles` flag. Each is its scalar in a loop and agrees with it to the bit (suite 173,
+over a padded stride on every buffer). `ALWAN_E_INVALID` for a NULL buffer or NULL params.
+
+| Metric | Colour type | Trailing argument |
+|---|---|---|
+| `76`, `94`, `2000`, `hyab` | `alwan_lab_{T}` | none |
+| `cmc` | `alwan_lab_{T}` | `alwan_delta_e_cmc_params_{T} const *` |
+| `hych` | `alwan_lab_{T}` | `int textiles` |
+| `ok` | `alwan_oklab_{T}` | none |
+| `din99` | `alwan_din99_{T}` | none |
+| `itp` | `alwan_ictcp_{T}` | `alwan_delta_e_itp_params_{T} const *` |
+| `zcam` | `alwan_jzazbz_{T}` | none |
+| `cam02_ucs`, `cam02_lcd`, `cam02_scd`, `cam16_ucs`, `cam16_lcd`, `cam16_scd` | `alwan_cam_jab_{T}` | none |
+
 ## Batch Functions (`_batch`)
 
-Compare arrays of colors efficiently. Strides follow the memcpy convention -- each
+The older spelling of the same thing for four metrics, with a packed output and, for
+CMC, `l` and `c` as scalars. They stay; suite 173 checks that `_batch` and
+`_map_interleave` agree for dE2000. Compare arrays of colors efficiently. Strides follow the memcpy convention -- each
 `*_stride` is in **bytes** and immediately follows the buffer it describes (typically
 `3 * sizeof(alwan_{T})` for tightly packed Lab triplets). Batch variants are provided
 for dE76, dE00, dE94 and dE CMC, and each ships **both** precisions

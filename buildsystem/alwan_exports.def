@@ -479,49 +479,81 @@ EXPORTS
     alwan_delta_e_2000_batch_ex
     alwan_delta_e_2000_f32
     alwan_delta_e_2000_f32_batch
+    alwan_delta_e_2000_f32_map_interleave
     alwan_delta_e_2000_f64
     alwan_delta_e_2000_f64_batch
+    alwan_delta_e_2000_f64_map_interleave
     alwan_delta_e_76_batch_ex
     alwan_delta_e_76_f32
     alwan_delta_e_76_f32_batch
+    alwan_delta_e_76_f32_map_interleave
     alwan_delta_e_76_f64
     alwan_delta_e_76_f64_batch
+    alwan_delta_e_76_f64_map_interleave
     alwan_delta_e_94_batch_ex
     alwan_delta_e_94_f32
     alwan_delta_e_94_f32_batch
+    alwan_delta_e_94_f32_map_interleave
     alwan_delta_e_94_f64
     alwan_delta_e_94_f64_batch
+    alwan_delta_e_94_f64_map_interleave
     alwan_delta_e_cam02_lcd_f32
+    alwan_delta_e_cam02_lcd_f32_map_interleave
     alwan_delta_e_cam02_lcd_f64
+    alwan_delta_e_cam02_lcd_f64_map_interleave
     alwan_delta_e_cam02_scd_f32
+    alwan_delta_e_cam02_scd_f32_map_interleave
     alwan_delta_e_cam02_scd_f64
+    alwan_delta_e_cam02_scd_f64_map_interleave
     alwan_delta_e_cam02_ucs_f32
+    alwan_delta_e_cam02_ucs_f32_map_interleave
     alwan_delta_e_cam02_ucs_f64
+    alwan_delta_e_cam02_ucs_f64_map_interleave
     alwan_delta_e_cam16_lcd_f32
+    alwan_delta_e_cam16_lcd_f32_map_interleave
     alwan_delta_e_cam16_lcd_f64
+    alwan_delta_e_cam16_lcd_f64_map_interleave
     alwan_delta_e_cam16_scd_f32
+    alwan_delta_e_cam16_scd_f32_map_interleave
     alwan_delta_e_cam16_scd_f64
+    alwan_delta_e_cam16_scd_f64_map_interleave
     alwan_delta_e_cam16_ucs_f32
+    alwan_delta_e_cam16_ucs_f32_map_interleave
     alwan_delta_e_cam16_ucs_f64
+    alwan_delta_e_cam16_ucs_f64_map_interleave
     alwan_delta_e_cmc_batch_ex
     alwan_delta_e_cmc_f32
     alwan_delta_e_cmc_f32_batch
+    alwan_delta_e_cmc_f32_map_interleave
     alwan_delta_e_cmc_f64
     alwan_delta_e_cmc_f64_batch
+    alwan_delta_e_cmc_f64_map_interleave
     alwan_delta_e_cmc_params_default_f32
     alwan_delta_e_cmc_params_default_f64
     alwan_delta_e_din99_f32
+    alwan_delta_e_din99_f32_map_interleave
     alwan_delta_e_din99_f64
+    alwan_delta_e_din99_f64_map_interleave
     alwan_delta_e_hyab_f32
+    alwan_delta_e_hyab_f32_map_interleave
     alwan_delta_e_hyab_f64
+    alwan_delta_e_hyab_f64_map_interleave
     alwan_delta_e_hych_f32
+    alwan_delta_e_hych_f32_map_interleave
     alwan_delta_e_hych_f64
+    alwan_delta_e_hych_f64_map_interleave
     alwan_delta_e_itp_f32
+    alwan_delta_e_itp_f32_map_interleave
     alwan_delta_e_itp_f64
+    alwan_delta_e_itp_f64_map_interleave
     alwan_delta_e_ok_f32
+    alwan_delta_e_ok_f32_map_interleave
     alwan_delta_e_ok_f64
+    alwan_delta_e_ok_f64_map_interleave
     alwan_delta_e_zcam_f32
+    alwan_delta_e_zcam_f32_map_interleave
     alwan_delta_e_zcam_f64
+    alwan_delta_e_zcam_f64_map_interleave
     alwan_destroy
     alwan_din99_to_lab_f32
     alwan_din99_to_lab_f32_map_interleave

@@ -339,6 +339,13 @@
 
 ### Added
 
+- **Buffer forms of every colour-difference metric.** Sixteen `alwan_delta_e_<name>_{T}_map_interleave`
+  in `api/alwan_delta_e_maps.c`, one shape for all: two strided buffers of the metric's
+  colour type in, a strided buffer of distances out, params or `textiles` after `count`
+  where the scalar takes them. Each is its scalar in a loop; suite 173 holds every one to
+  bit equality with it over a padded stride. The four `_batch` forms are the older spelling
+  and stay.
+
 - **Buffer forms of nine appearance models.** Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95,
   Nayatani 95, RLAB, CAM18sl and CAM20u gain `_forward_{T}_map_interleave`, and the five
   with an inverse gain `_inverse_{T}_map_interleave`, in `api/alwan_cam_maps.c`. Each is

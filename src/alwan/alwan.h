@@ -2118,6 +2118,46 @@ alwan_f64 alwan_delta_e_zcam_f64(alwan_jzazbz_f64 const *jab1, alwan_jzazbz_f64 
 alwan_status alwan_delta_e_76_f32_batch(alwan_f32 *delta_e_out, alwan_f32 const *lab1_in, size_t in1_stride, alwan_f32 const *lab2_in, size_t in2_stride, size_t count);
 alwan_status alwan_delta_e_76_f64_batch(alwan_f64 *delta_e_out, alwan_f64 const *lab1_in, size_t in1_stride, alwan_f64 const *lab2_in, size_t in2_stride, size_t count);
 
+/* Every colour-difference metric over two buffers, one distance per pixel.
+ * a and b are strided buffers of the metric's colour type read as three scalars
+ * in struct order; out is a strided buffer of scalars. Each is its scalar in a
+ * loop and agrees with it to the bit (suite 173). ALWAN_E_INVALID for a NULL
+ * buffer, or NULL params where the scalar takes them. The four _batch forms
+ * below are the older spelling of the same thing for dE76, dE94, dE2000 and
+ * CMC, with a packed output; they stay. */
+alwan_status alwan_delta_e_76_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_76_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_94_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_94_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_2000_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_2000_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_hyab_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_hyab_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_ok_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_ok_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_din99_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_din99_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_zcam_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_zcam_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam02_ucs_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam02_ucs_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam02_lcd_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam02_lcd_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam02_scd_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam02_scd_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam16_ucs_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam16_ucs_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam16_lcd_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam16_lcd_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam16_scd_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cam16_scd_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count);
+alwan_status alwan_delta_e_cmc_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count, alwan_delta_e_cmc_params_f32 const *params);
+alwan_status alwan_delta_e_itp_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count, alwan_delta_e_itp_params_f32 const *params);
+alwan_status alwan_delta_e_hych_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *a, size_t a_stride, alwan_f32 const *b, size_t b_stride, size_t count, int textiles);
+alwan_status alwan_delta_e_cmc_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count, alwan_delta_e_cmc_params_f64 const *params);
+alwan_status alwan_delta_e_itp_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count, alwan_delta_e_itp_params_f64 const *params);
+alwan_status alwan_delta_e_hych_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *a, size_t a_stride, alwan_f64 const *b, size_t b_stride, size_t count, int textiles);
+
 /* Batch dE*00 - CIEDE2000 color difference
  * Strides in1_stride/in2_stride are in bytes (typically 3*sizeof(alwan_f32/alwan_f64)) */
 alwan_status alwan_delta_e_2000_f32_batch(alwan_f32 *delta_e_out, alwan_f32 const *lab1_in, size_t in1_stride, alwan_f32 const *lab2_in, size_t in2_stride, size_t count);
