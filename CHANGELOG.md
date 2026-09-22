@@ -427,6 +427,18 @@
 
 ### Added
 
+- **Illuminant estimation from an image: `alwan_illuminant_estimate` and
+  `alwan_illuminant_correct`.** The e(n, p, sigma) family of van de Weijer, Gevers and
+  Gijsenij, "Edge-Based Color Constancy" (IEEE TIP 2007): the Minkowski p-norm of the
+  image, its gradient or its second derivatives at Gaussian scale sigma, per channel and
+  scaled to unit length. One parameter struct names Grey World, White Patch (max-RGB),
+  Shades of Grey, general Grey World and first- and second-order Grey-Edge. Clipped
+  pixels (with their 3 x 3 neighbourhood), a sigma + 1 border and an optional caller mask
+  are left out; the correction is the von Kries division by e * sqrt(3). Suite 183 runs
+  the authors' MATLAB code (general_cc.m, unlicensed, fetched as an oracle and not
+  vendored) on 16 settings: 4.4e-16 worst, 3.3e-8 through the f32 forms, and the
+  corrected image bit for bit; docs/api/constancy.md.
+
 - **Colour selection: `alwan_select_qualifier`, `_distance`, `_example` and `alwan_key_chroma`.**
   Soft masks in [0, 1] saying how much each pixel belongs to a chosen set of colours, by
   four approaches: a qualifier (hue, chroma and lightness ranges with soft edges, the

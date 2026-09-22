@@ -1993,6 +1993,73 @@ typedef enum {
 alwan_status alwan_key_chroma_f32(alwan_f32 *alpha_out, size_t alpha_stride, alwan_f32 *fg_out, size_t fg_stride, alwan_f32 const *rgb, size_t rgb_stride, size_t count, alwan_key_screen screen, alwan_f32 balance, alwan_f32 gain, int despill);
 alwan_status alwan_key_chroma_f64(alwan_f64 *alpha_out, size_t alpha_stride, alwan_f64 *fg_out, size_t fg_stride, alwan_f64 const *rgb, size_t rgb_stride, size_t count, alwan_key_screen screen, alwan_f64 balance, alwan_f64 gain, int despill);
 
+/* ----------------------------------------------------------------
+ * Illuminant estimation from an image (colour constancy)
+ *
+ * The colour of the light, read off the picture itself, for images with no
+ * camera data to derive it from. One family covers the classic estimators, the
+ * framework of van de Weijer, Gevers and Gijsenij, "Edge-Based Color Constancy",
+ * IEEE TIP 16(9), 2007:
+ *
+ *     e(n, p, sigma) = ( sum over x of | d^n f_sigma / dx^n |^p ) ^ (1 / p)
+ *
+ * per channel, over the pixels that are not excluded, then scaled to unit length.
+ * f_sigma is the image smoothed by a Gaussian of sigma pixels. The parameters
+ * name the estimators the literature knows:
+ *
+ *     order  minkowski  sigma
+ *       0        1        0     Grey World (Buchsbaum 1980)
+ *       0        0        0     White Patch, max-RGB (p = infinity)
+ *       0        p        0     Shades of Grey (Finlayson and Trezzi 2004), p = 6 typical
+ *       0        p      > 0     general Grey World
+ *       1        p      > 0     first-order Grey-Edge
+ *       2        p      > 0     second-order Grey-Edge
+ *
+ * The first-order magnitude is sqrt(fx^2 + fy^2) and the second-order one
+ * sqrt(fxx^2 + 4 fxy^2 + fyy^2), each channel on its own. The Gaussian and its
+ * derivatives are sampled over +-floor(3 sigma + 0.5) pixels with the image edge
+ * replicated; the second-derivative kernel has its mean removed. Pixels within
+ * sigma + 1 of the border are left out, and so is every pixel whose largest
+ * channel reaches `saturation`, with its eight neighbours: a clipped highlight
+ * reports the sensor's limit, not the light. `exclude`, when given, is one byte a
+ * pixel, rows exclude_row_stride bytes apart, nonzero for a pixel to leave out
+ * as well (a known object, a region with a second light).
+ *
+ * The estimate is linear RGB in whatever space the image is in, unit length.
+ * alwan_illuminant_correct divides each channel by illuminant * sqrt(3), the
+ * von Kries correction that maps a light of equal channels to itself. rgb is
+ * three values a pixel, rows row_stride bytes apart; the work is done in double.
+ *
+ * ALWAN_E_INVALID for a NULL, a zero width or height, a row stride under three
+ * values a pixel, an order outside 0..2, a negative Minkowski power
+ * or one between 0 and 1, a negative or non-finite sigma, a sigma below 1/6 at
+ * order 1 or 2 (its kernel would be a single tap and has no derivative), or a
+ * non-finite pixel. ALWAN_E_RANGE when no pixel is left to estimate from, or all
+ * of them are zero.
+ *
+ * Reproduces the authors' MATLAB code (general_cc.m), run as an oracle, to 1e-12;
+ * see suite 183.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    int order;               /* 0 the pixels, 1 the gradient, 2 the second derivatives */
+    alwan_f64 minkowski;     /* p >= 1; 0 takes the maximum */
+    alwan_f64 sigma;         /* Gaussian scale in pixels; 0 is no smoothing (order 0 only) */
+    alwan_f64 saturation;    /* a pixel whose largest channel reaches this is left out; 0 leaves none out */
+} alwan_constancy_params;
+
+/* Grey World: order 0, Minkowski 1, sigma 0, no saturation limit. */
+void alwan_constancy_params_init(alwan_constancy_params *params);
+
+alwan_status alwan_illuminant_estimate_f32(alwan_f32 illuminant_out[3], alwan_f32 const *rgb, size_t row_stride, size_t width, size_t height, unsigned char const *exclude, size_t exclude_row_stride, alwan_constancy_params const *params);
+alwan_status alwan_illuminant_estimate_f64(alwan_f64 illuminant_out[3], alwan_f64 const *rgb, size_t row_stride, size_t width, size_t height, unsigned char const *exclude, size_t exclude_row_stride, alwan_constancy_params const *params);
+
+/* out = in / (illuminant * sqrt(3)) per channel, count pixels at byte strides.
+ * ALWAN_E_INVALID for a NULL, a stride under three values, or a channel of the
+ * illuminant that is not positive and finite. In place is allowed. */
+alwan_status alwan_illuminant_correct_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const illuminant[3]);
+alwan_status alwan_illuminant_correct_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const illuminant[3]);
+
 /* Flat artwork as a palette. A rendered pattern, a chart or any flat design is a
  * handful of colours, and a conversion that is expensive per pixel (the CMYK
  * inverse, a spectral upsampling) is cheap per colour: extract the palette,

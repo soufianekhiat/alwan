@@ -398,6 +398,7 @@ EXPORTS
     alwan_colour_solid_white_f64
     alwan_complementary_wavelength_f32
     alwan_complementary_wavelength_f64
+    alwan_constancy_params_init
     alwan_content_light_level_compute_f32
     alwan_content_light_level_compute_f64
     alwan_cqs_calculate_f32
@@ -971,6 +972,10 @@ EXPORTS
     alwan_ihls_to_rgb_map_planar_ex
     alwan_illuminance_to_exposure_value_f32
     alwan_illuminance_to_exposure_value_f64
+    alwan_illuminant_correct_f32_map_interleave
+    alwan_illuminant_correct_f64_map_interleave
+    alwan_illuminant_estimate_f32
+    alwan_illuminant_estimate_f64
     alwan_illuminant_white_point_f32
     alwan_illuminant_white_point_f64
     alwan_image_convert_data_f32
