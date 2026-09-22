@@ -165,11 +165,14 @@ at all.
 `alwan_dev/gendata/nn_convert.py` takes a PyTorch model and writes C:
 
 ```
-python gendata/nn_convert.py my_models:build_awb awb 64 64 2 awb_model.inc
+python gendata/nn_convert.py my_models:build_awb awb 64 64 2 awb_model.inc [awb.pt]
 ```
 
-`my_models.build_awb()` returns the model with its weights loaded; `64 64 2`
-is the input as H, W, C (channels-last, which is alwan's layout). The file it
+`my_models.build_awb()` returns the model (the working directory is on the
+import path); `awb.pt`, when given, is a `state_dict` or a checkpoint carrying
+one under `"state_dict"`, loaded into it; `64 64 2` is the input as H, W, C
+(channels-last, which is alwan's layout). A model that is not a Sequential is
+routed to the graph converter below. The file it
 writes is included after `alwan.h` and holds:
 
 ```c
