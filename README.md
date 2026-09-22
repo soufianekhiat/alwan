@@ -638,10 +638,10 @@ Re-run it against any checkout to reproduce the table.
 | What | Measured |
 |---|---|
 | Test suites | 171, all passing |
-| Test cases | 1,097 |
-| Checks executed per run | 213,715 |
-| Assertion sites in the tests | 4,977 |
-| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 442 |
+| Test cases | 1,098 |
+| Checks executed per run | 213,722 |
+| Assertion sites in the tests | 4,983 |
+| Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 432 |
 | Embedded data tables | 950 |
 | Exported symbols | 1,986 |
 | Internal symbols reached by a test or a public entry point | 244 of 252 (97%), [the other 8 listed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
@@ -651,9 +651,9 @@ Re-run it against any checkout to reproduce the table.
 
 Two of these deserve the emphasis:
 
-**213,715 checks per run** is what actually executes, not what is written. A
+**213,722 checks per run** is what actually executes, not what is written. A
 single assertion inside a sweep over a reference grid runs thousands of times,
-so counting the 4,977 assertion sites would undersell the suite more than
+so counting the 4,983 assertion sites would undersell the suite more than
 thirtyfold.
 The count comes from a counter in the test framework and is printed by the
 runner at the end of every run.
@@ -696,7 +696,7 @@ cmake --build build --config Release
 - **Authoritative fixtures:** reference values computed from Python's
   [colour-science](https://github.com/colour-science/colour) library
 - **Coverage:** canonical cases, edge cases, and sweeps for each
-  module: 171 suites, 1,097 cases, 213,715 checks executed per run
+  module: 171 suites, 1,098 cases, 213,722 checks executed per run
   (see [Validation](#validation))
 - **Precision-aware validation:** error thresholds adapt to build
   configuration (1e-12 for f64, 1e-5 for f32; looser in deterministic
