@@ -189,11 +189,65 @@ Returns the **exact** RGB gamut volume in linear XYZ (in XYZ units cubed). The R
 unit cube maps to a parallelepiped under the RGB->XYZ matrix `M`, whose volume is
 exactly `|det(M)|`, a closed-form result rather than a stochastic estimate.
 
-> A *perceptual* gamut volume (the gamut's image in a nonlinear space such as
-> Lab/Oklab) has no closed form and would require Monte Carlo sampling; that is a
-> separate, currently unimplemented operation. An earlier `alwan_gamut_volume_mc`
-> with `num_samples`/`seed` parameters advertised sampling it never performed;
-> it has been renamed to `alwan_gamut_volume` and the dead parameters removed.
+> An earlier `alwan_gamut_volume_mc` with `num_samples`/`seed` parameters
+> advertised sampling it never performed; it has been renamed to
+> `alwan_gamut_volume` and the dead parameters removed. This note used to add
+> that a perceptual volume "would require Monte Carlo sampling"; it does not,
+> see `alwan_gamut_volume_perceptual_{T}` below.
+
+---
+
+### alwan_gamut_volume_perceptual_{T}
+
+```c
+typedef enum {
+    ALWAN_GAMUT_VOLUME_LAB = 0,
+    ALWAN_GAMUT_VOLUME_OKLAB = 1,
+    ALWAN_GAMUT_VOLUME_XYZ = 2
+} alwan_gamut_volume_space;
+#define ALWAN_GAMUT_VOLUME_DEFAULT_N 64
+
+alwan_status alwan_gamut_volume_perceptual_{T}(alwan_{T} *volume,
+                                               alwan_rgb_space_desc_{T} const *space,
+                                               alwan_gamut_volume_space target,
+                                               size_t n, alwan_ctx *ctx);
+```
+
+The volume of the RGB unit cube's image in Lab, Oklab or XYZ, measured
+deterministically. The image of the cube under a smooth injective map has the
+volume of the integral of |det J| over the cube, and a mesh evaluates it: an
+n^3 lattice of RGB points is mapped into the target, each cell is cut into six
+tetrahedra along its diagonal (Kuhn's decomposition tiles the cell without gaps
+or overlaps), and their volumes are summed. There is no convex hull, so a
+boundary that bulges inward is measured as bulging inward, and no random
+numbers, so two calls agree to the bit.
+
+**Parameters:**
+- `volume` -- output, in the target's units cubed. sRGB is about 8.2e5 in Lab
+  and 0.054 in Oklab.
+- `space` -- the RGB space. Lab is taken relative to the space's own white, so
+  the answer is the space's coverage of Lab under its own illuminant, with no
+  adaptation involved.
+- `target` -- `ALWAN_GAMUT_VOLUME_LAB`, `_OKLAB`, or `_XYZ`, where it equals
+  `alwan_gamut_volume_{T}`.
+- `n` -- lattice cells per axis; 0 takes the default of 64, above 4096 is
+  `ALWAN_E_RANGE`. Cost is n^3 conversions; memory is two (n + 1)^2 slabs from
+  the context's allocator or the default one.
+- `ctx` -- the allocator to use, or NULL.
+
+Exactness and convergence, measured: for a linear target the mesh is exact at
+n = 1, where the six tetrahedra of one cell sum to |det M| to 1e-16; in Lab
+and Oklab it converges as a mesh does, sRGB moving 3e-3 from n = 32 to 64,
+5e-4 from 64 to 96 and 6.8e-4 from 64 to 128. Suite 18 pins the Lab volumes of
+four D65 spaces against colour-science's `RGB_colourspace_volume_MonteCarlo` at
+1e7 samples, within four of that sampler's own sigmas (sRGB: alwan 819,555 at
+n = 64, colour 821,006 +- 820), and the Oklab volumes against colour's
+conversion through an independent quadrature. The `_f32` twin is the `_f64`
+answer rounded; the gamut metrics stay f64-internal.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL argument or an unknown
+target; `ALWAN_E_RANGE` for n above 4096; `ALWAN_E_NOMEM` if the slabs cannot
+be had.
 
 **Example:**
 ```c
