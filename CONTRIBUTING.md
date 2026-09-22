@@ -226,6 +226,22 @@ use the `_v` suffix and return by value. All literals are wrapped in
 Branching uses `ALWAN_SELECT()` (branchless) instead of `if/else` where
 possible.
 
+### Iterative solvers
+
+The same split applies to anything that iterates (a fit, a search, an
+inverse with no closed form). The **update** is a core: one iteration as a
+`_v` function that takes the state by value and returns the next state, no
+pointers, no allocation, fixed operation order, so it compiles as a shader
+and a deterministic build gives the same iterate everywhere. The **loop**
+is API: the iteration budget, the convergence test, any scratch buffer,
+the `alwan_ctx`, and the status a caller reads. When a caller may want to
+drive the loop themselves (to interleave it with their own work, or to
+stop on their own criterion), expose the update as a `_step` entry point
+beside the `_solve` one; `alwan_rgb_fit_step_f64` / `alwan_rgb_fit_solve_f64`
+is the pattern. A solver's determinism-dump rows pin the converged result
+and a fixed-iteration-count result both, so a platform that converges in a
+different number of steps is seen rather than hidden by the tolerance.
+
 ---
 
 ## Generated data
