@@ -665,17 +665,17 @@ Re-run it against any checkout to reproduce the table.
 
 | What | Measured |
 |---|---|
-| Test suites | 174, all passing |
+| Test suites | 179, all passing |
 | Test cases | 1,110 |
 | Checks executed per run | 218,242 |
 | Assertion sites in the tests | 5,147 |
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 432 |
 | Embedded data tables | 950 |
-| Exported symbols | 2,092 |
+| Exported symbols | 2,163 |
 | Internal symbols reached by a test or a public entry point | 258 of 266 (97%), [the other 8 listed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
-| Cores that compile as HLSL, under dxc and under fxc | 43 of 43 |
+| Cores that compile as HLSL, under dxc and under fxc | 45 of 45 |
 
 Two of these deserve the emphasis:
 
@@ -715,7 +715,7 @@ git clone --recursive https://github.com/soufianekhiat/alwan_dev.git
 cd alwan_dev
 cmake -S . -B build     # -DALWAN_DEV_BUILD_IMAGE_GEN=OFF to skip the C++ image tooling
 cmake --build build --config Release
-./build/tests/Release/alwan_tests   # 171 test suites, single binary
+./build/tests/Release/alwan_tests   # 179 test suites, single binary
 ```
 
 (single-config generators put the binary at `build/tests/alwan_tests`)
