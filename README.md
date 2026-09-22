@@ -672,7 +672,7 @@ Re-run it against any checkout to reproduce the table.
 | Reference datasets (colour-science, OCIO, ACES-dev, spectral_film_lut) | 432 |
 | Embedded data tables | 950 |
 | Exported symbols | 2,163 |
-| Internal symbols reached by a test or a public entry point | 258 of 266 (97%), [the other 8 listed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
+| Internal symbols reached by a test or a public entry point | 265 of 265, [how the last eight were closed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
 | Cores that compile as HLSL, under dxc and under fxc | 45 of 45 |

@@ -3490,49 +3490,11 @@ static void init_GamutCompressParams_f32(float peak_luminance,
 }
 
 /* ----------------------------------------------------------------
- * ACES 2.0: Lookup cusp with interpolation
- * ---------------------------------------------------------------- */
-
-static void lookup_cusp_f64(alwan_f64 h_deg, aces2_GamutCompressParams_f64 const *gcp,
-                         alwan_f64 *cusp_J, alwan_f64 *cusp_M,
-                         alwan_f64 *gamma_top_inv) {
-    /* Wrap hue to [0, 360) -- NaN-safe (NaN fails both while conditions) */
-    /* Guard NaN/+-Inf/huge first so the wrap terminates (the naive while-subtract
-     * never ends for +Inf or for |h| where h - 360 == h). */
-    if (!(h_deg > ALWAN_LITERAL(-1.0e6) && h_deg < ALWAN_LITERAL(1.0e6))) h_deg = ALWAN_LITERAL(0.0);
-    while (h_deg < ALWAN_LITERAL(0.0)) h_deg += ALWAN_LITERAL(360.0);
-    while (h_deg >= ALWAN_LITERAL(360.0)) h_deg -= ALWAN_LITERAL(360.0);
-
-    /* Linear interpolation */
-    int idx0 = (int)h_deg + 1;  /* +1 for offset due to wrap entry */
-    int idx1 = (idx0 + 1 < ACES2_CUSP_TABLE_SIZE) ? idx0 + 1 : 1;
-    alwan_f64 t = h_deg - (alwan_f64)(idx0 - 1);
-
-    *cusp_J = gcp->cusp_table[idx0].J * (ALWAN_LITERAL(1.0) - t)
-            + gcp->cusp_table[idx1].J * t;
-    *cusp_M = gcp->cusp_table[idx0].M * (ALWAN_LITERAL(1.0) - t)
-            + gcp->cusp_table[idx1].M * t;
-    *gamma_top_inv = gcp->cusp_table[idx0].gamma_top_inv * (ALWAN_LITERAL(1.0) - t)
-                   + gcp->cusp_table[idx1].gamma_top_inv * t;
-}
-
-/* ----------------------------------------------------------------
  * ACES 2.0: Initialize hue-dependent parameters
+ *
+ * The cusp and reach lookups are done inline below in f32, to match OCIO; the
+ * f64 lookup helpers that used to sit here had no caller left and are gone.
  * ---------------------------------------------------------------- */
-
-/* Lookup per-hue reach_m from the GamutCompressParams table */
-static alwan_f64 lookup_gamut_reach_m_f64(alwan_f64 h_deg, aces2_GamutCompressParams_f64 const *gcp) {
-    /* Guard NaN/+-Inf/huge first so the wrap terminates (the naive while-subtract
-     * never ends for +Inf or for |h| where h - 360 == h). */
-    if (!(h_deg > ALWAN_LITERAL(-1.0e6) && h_deg < ALWAN_LITERAL(1.0e6))) h_deg = ALWAN_LITERAL(0.0);
-    while (h_deg < ALWAN_LITERAL(0.0)) h_deg += ALWAN_LITERAL(360.0);
-    while (h_deg >= ALWAN_LITERAL(360.0)) h_deg -= ALWAN_LITERAL(360.0);
-    int idx0 = (int)h_deg;
-    int idx1 = (idx0 + 1) % ACES2_REACH_TABLE_SIZE;
-    alwan_f64 t = h_deg - (alwan_f64)idx0;
-    return gcp->reach_m_table[idx0] * (ALWAN_LITERAL(1.0) - t)
-         + gcp->reach_m_table[idx1] * t;
-}
 
 static void init_hue_dependent_params_f64(alwan_f64 h_deg,
                                        aces2_GamutCompressParams_f64 const *gcp,
