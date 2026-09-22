@@ -2263,6 +2263,16 @@
   behind `alwan_oetf_apply_f64` / `alwan_eotf_apply_f64` and the image convert carry
   the same guard.
 
+- **The CIECAM02 and CAM16 maps compute the viewing-condition terms once per call.** They
+  called the scalar entry point once a pixel, and the scalar resolves the surround and
+  recomputes D, FL, n, Nbb, Ncb, z and A_w (several powers and the white's matrix product)
+  every time. The maps now delegate to internal batch workers that do that once and run
+  the same `_v` core per pixel with the same arguments, so a map and its scalar still
+  agree to the bit: suite 172 now asserts it with `memcmp` for both models in both
+  precisions (one case under a dim surround with the illuminant discounted), and an A/B
+  against the previous library returned byte-identical correlates. Measured 2.0x to 2.6x
+  on the f64 maps, both directions. The determinism dump is byte-identical.
+
 - **`alwan_oetf_apply_f32` and `alwan_eotf_apply_f32` have a vector path.** They ran a
   scalar `powf` per value, half the speed of their f64 twins, which have had one since
   2.0.0. The map layer's transfer helpers are instantiated at f32 for them: sRGB, PQ and

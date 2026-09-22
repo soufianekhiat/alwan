@@ -130,6 +130,126 @@ alwan_status ALWAN_CORE_FNLIT(alwan_cam16_inverse)(ALWAN_CORE_XYZ *xyz_out,
     return ALWAN_OK;
 }
 
+/* ---- Batch workers behind the CIECAM02 / CAM16 maps ----
+ *
+ * The scalar entry points above resolve the surround and recompute the
+ * viewing-condition terms (D, FL, n, Nbb, Ncb, z, A_w: several powers and a
+ * matrix product of the white) on every call, and until 3.0.0 the maps called
+ * them once a pixel. These do it once per call and then run the same _v core
+ * with the same arguments per pixel, so a map and its scalar agree to the bit
+ * (suites 13, 14, 69). Internal: the maps in map/alwan_cam_map_kernels.inc
+ * delegate here; the checks are the scalar's, made once. */
+#define ALWAN__CAM_VC_CHECK(vc) \
+    if ((vc)->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) || \
+        (vc)->background_luminance <= ALWAN_CORE_LITERAL(0.0)) return ALWAN_E_DIVZERO;
+
+alwan_status ALWAN_CORE_FNLIT(alwan__ciecam02_forward_n)(ALWAN_CORE_CIECAM02_CORRELATES *out,
+        ALWAN_CORE_T const *xyz_in, size_t in_stride, ALWAN_CORE_CIECAM02_VIEWING_CONDITIONS const *vc, size_t count) {
+    ALWAN_CORE_T F, c, Nc;
+    size_t i;
+    if (!out || !xyz_in || !vc) return ALWAN_E_INVALID;
+    ALWAN__CAM_VC_CHECK(vc)
+    ALWAN_CORE_FN(get_surround_params)(vc->surround, &F, &c, &Nc);
+    {
+        ALWAN_CORE_FNLIT(alwan_cam_derived_params) const p = ALWAN_CORE_FNVLIT(cam_compute_derived_params)(
+            F, vc->adapting_luminance, vc->background_luminance,
+            vc->white_xyz.y, (ALWAN_CORE_T)vc->discount_illuminant,
+            vc->white_xyz, ALWAN_CORE_FNLIT(CAM_M_CAT02), ALWAN_CORE_FNLIT(CAM_M_CAT02_INV), ALWAN_CORE_FNLIT(CAM_M_HPE), 1);
+        for (i = 0; i < count; i++) {
+            ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)xyz_in + i * in_stride);
+            ALWAN_CORE_XYZ xyz;
+            ALWAN_CORE_FNLIT(alwan_ciecam02_v_correlates) r;
+            ALWAN_CORE_CIECAM02_CORRELATES *o = out + i;
+            xyz.x = s[0]; xyz.y = s[1]; xyz.z = s[2];
+            r = ALWAN_CORE_FNVLIT(alwan_ciecam02_forward)(
+                xyz, vc->white_xyz, F, c, Nc, p.D, p.FL, p.n, p.Nbb, p.Ncb, p.z, p.A_w);
+            o->J = r.J; o->C = r.C; o->h = r.h; o->s = r.s;
+            o->Q = r.Q; o->M = r.M; o->H = r.H;
+            ALWAN_NORM_CIECAM02(o);
+        }
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan__ciecam02_inverse_n)(ALWAN_CORE_T *xyz_out, size_t out_stride,
+        ALWAN_CORE_CIECAM02_CORRELATES const *in, ALWAN_CORE_CIECAM02_VIEWING_CONDITIONS const *vc, size_t count) {
+    ALWAN_CORE_T F, c, Nc;
+    size_t i;
+    if (!xyz_out || !in || !vc) return ALWAN_E_INVALID;
+    ALWAN__CAM_VC_CHECK(vc)
+    ALWAN_CORE_FN(get_surround_params)(vc->surround, &F, &c, &Nc);
+    {
+        ALWAN_CORE_FNLIT(alwan_cam_derived_params) const p = ALWAN_CORE_FNVLIT(cam_compute_derived_params)(
+            F, vc->adapting_luminance, vc->background_luminance,
+            vc->white_xyz.y, (ALWAN_CORE_T)vc->discount_illuminant,
+            vc->white_xyz, ALWAN_CORE_FNLIT(CAM_M_CAT02), ALWAN_CORE_FNLIT(CAM_M_CAT02_INV), ALWAN_CORE_FNLIT(CAM_M_HPE), 1);
+        for (i = 0; i < count; i++) {
+            ALWAN_CORE_T *d = (ALWAN_CORE_T *)((char *)xyz_out + i * out_stride);
+            ALWAN_CORE_CIECAM02_CORRELATES tmp = in[i];
+            ALWAN_CORE_XYZ xyz;
+            ALWAN_DENORM_CIECAM02(&tmp);
+            xyz = ALWAN_CORE_FNVLIT(alwan_ciecam02_inverse)(
+                tmp.J, tmp.C, tmp.h, vc->white_xyz, F, c, Nc, p.D, p.FL, p.n, p.Nbb, p.Ncb, p.z, p.A_w);
+            d[0] = xyz.x; d[1] = xyz.y; d[2] = xyz.z;
+        }
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan__cam16_forward_n)(ALWAN_CORE_CAM16_CORRELATES *out,
+        ALWAN_CORE_T const *xyz_in, size_t in_stride, ALWAN_CORE_CAM16_VIEWING_CONDITIONS const *vc, size_t count) {
+    ALWAN_CORE_T F, c, Nc;
+    size_t i;
+    if (!out || !xyz_in || !vc) return ALWAN_E_INVALID;
+    ALWAN__CAM_VC_CHECK(vc)
+    ALWAN_CORE_FN(get_cam16_surround_params)(vc->surround, &F, &c, &Nc);
+    {
+        ALWAN_CORE_FNLIT(alwan_cam_derived_params) const p = ALWAN_CORE_FNVLIT(cam_compute_derived_params)(
+            F, vc->adapting_luminance, vc->background_luminance,
+            vc->white_xyz.y, (ALWAN_CORE_T)vc->discount_illuminant,
+            vc->white_xyz, ALWAN_CORE_FNLIT(CAM_M_CAT16), ALWAN_CORE_FNLIT(CAM_M_CAT16_INV), ALWAN_CORE_FNLIT(CAM_M_CAT16), 0);
+        for (i = 0; i < count; i++) {
+            ALWAN_CORE_T const *s = (ALWAN_CORE_T const *)((char const *)xyz_in + i * in_stride);
+            ALWAN_CORE_XYZ xyz;
+            ALWAN_CORE_FNLIT(alwan_cam16_v_correlates) r;
+            ALWAN_CORE_CAM16_CORRELATES *o = out + i;
+            xyz.x = s[0]; xyz.y = s[1]; xyz.z = s[2];
+            r = ALWAN_CORE_FNVLIT(alwan_cam16_forward)(
+                xyz, vc->white_xyz, F, c, Nc, p.D, p.FL, p.n, p.Nbb, p.Ncb, p.z, p.A_w);
+            o->J = r.J; o->C = r.C; o->h = r.h; o->s = r.s;
+            o->Q = r.Q; o->M = r.M; o->H = r.H;
+            ALWAN_NORM_CAM16(o);
+        }
+    }
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan__cam16_inverse_n)(ALWAN_CORE_T *xyz_out, size_t out_stride,
+        ALWAN_CORE_CAM16_CORRELATES const *in, ALWAN_CORE_CAM16_VIEWING_CONDITIONS const *vc, size_t count) {
+    ALWAN_CORE_T F, c, Nc;
+    size_t i;
+    if (!xyz_out || !in || !vc) return ALWAN_E_INVALID;
+    ALWAN__CAM_VC_CHECK(vc)
+    ALWAN_CORE_FN(get_cam16_surround_params)(vc->surround, &F, &c, &Nc);
+    {
+        ALWAN_CORE_FNLIT(alwan_cam_derived_params) const p = ALWAN_CORE_FNVLIT(cam_compute_derived_params)(
+            F, vc->adapting_luminance, vc->background_luminance,
+            vc->white_xyz.y, (ALWAN_CORE_T)vc->discount_illuminant,
+            vc->white_xyz, ALWAN_CORE_FNLIT(CAM_M_CAT16), ALWAN_CORE_FNLIT(CAM_M_CAT16_INV), ALWAN_CORE_FNLIT(CAM_M_CAT16), 0);
+        for (i = 0; i < count; i++) {
+            ALWAN_CORE_T *d = (ALWAN_CORE_T *)((char *)xyz_out + i * out_stride);
+            ALWAN_CORE_CAM16_CORRELATES tmp = in[i];
+            ALWAN_CORE_XYZ xyz;
+            ALWAN_DENORM_CAM16(&tmp);
+            xyz = ALWAN_CORE_FNVLIT(alwan_cam16_inverse)(
+                tmp.J, tmp.C, tmp.h, vc->white_xyz, F, c, Nc, p.D, p.FL, p.n, p.Nbb, p.Ncb, p.z, p.A_w);
+            d[0] = xyz.x; d[1] = xyz.y; d[2] = xyz.z;
+        }
+    }
+    return ALWAN_OK;
+}
+#undef ALWAN__CAM_VC_CHECK
+
 /* ----------------------------------------------------------------
  * CIECAM16 (CIE 248:2022)
  *

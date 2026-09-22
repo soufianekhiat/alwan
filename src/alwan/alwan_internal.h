@@ -29,6 +29,22 @@ struct alwan_ctx {
     /* Future: data cache, registry, etc. */
 };
 
+/* Batch workers behind the CIECAM02 / CAM16 maps (api/alwan_cam_impl.inc): the
+ * viewing-condition terms once, the scalar's _v core per pixel, bit-identical to
+ * the scalar. The maps check count and delegate. */
+#if ALWAN_WITH_F32
+alwan_status alwan__ciecam02_forward_n_f32(alwan_ciecam02_correlates_f32 *out, alwan_f32 const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan__ciecam02_inverse_n_f32(alwan_f32 *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f32 const *in, alwan_ciecam02_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan__cam16_forward_n_f32(alwan_cam16_correlates_f32 *out, alwan_f32 const *xyz_in, size_t in_stride, alwan_cam16_viewing_conditions_f32 const *vc, size_t count);
+alwan_status alwan__cam16_inverse_n_f32(alwan_f32 *xyz_out, size_t out_stride, alwan_cam16_correlates_f32 const *in, alwan_cam16_viewing_conditions_f32 const *vc, size_t count);
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_status alwan__ciecam02_forward_n_f64(alwan_ciecam02_correlates_f64 *out, alwan_f64 const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan__ciecam02_inverse_n_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f64 const *in, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan__cam16_forward_n_f64(alwan_cam16_correlates_f64 *out, alwan_f64 const *xyz_in, size_t in_stride, alwan_cam16_viewing_conditions_f64 const *vc, size_t count);
+alwan_status alwan__cam16_inverse_n_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_cam16_correlates_f64 const *in, alwan_cam16_viewing_conditions_f64 const *vc, size_t count);
+#endif
+
 /* ----------------------------------------------------------------
  * Safe allocation helper (overflow protection)
  * ---------------------------------------------------------------- */
