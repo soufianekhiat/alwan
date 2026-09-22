@@ -340,6 +340,25 @@ the header.
 a shipped profile regenerates bit for bit, so a change in the model's profiling cannot
 land a mixed set.
 
+### As a picture-formation operator
+
+alwan_dev's suite 99 scores every formation method against fifteen numerically
+testable constraints (carrier monotonicity, gamut, neutral axis, purity to white,
+black reads black, C2, hue agnosticism, surround invariance, span, negative input,
+rails, gradient gain, hue ratio, and two veil readings). Since 2026-09-22 four film
+looks are rows of that matrix, rendered by `alwan_film_render_rgb` and brought to
+display-linear sRGB from the projected XYZ. A film look honours seven (purity, C2,
+surround invariance, span, gradient gain, the two veil readings) and violates the
+eight that make it film: the dyes' crosstalk reorders the carrier and rotates hue,
+the projected XYZ leaves sRGB, a grey ramp is not grey to 2e-3 away from the
+calibration grey, print black is not 2 % of paper white, a channel permutation is a
+different picture, and more than 2 % of a sweep sits on the rails. Every cell is
+pinned as measured, so a change in the film pipeline that moves a cell trips the
+suite. This is the answer to the roadmap's question of whether an H&D curve is a
+formation operator: in the sense AgX's per-channel curve is, which fails the same
+three for the same reason, and not in the sense the constraint-complete operators
+are.
+
 ### A second reading of the same sheets
 
 `OwlMightyCh/film-scan-calibration` (data CC-BY-4.0, registered in

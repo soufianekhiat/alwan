@@ -360,6 +360,13 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **Film looks scored as picture-formation operators.** Four looks (5219 through 2383,
+  Portra 400 through Endura Premier, Velvia 50, Ektachrome 100D) are rows of alwan_dev's
+  suite 99, the fifteen-constraint formation matrix, rendered by `alwan_film_render_rgb`
+  and read in display-linear sRGB. Film honours seven constraints and violates the eight
+  that make it film (carrier order, hue, gamut, neutral axis, black level, rails); every
+  cell is pinned as measured. No library change; `docs/api/film.md` carries the reading.
+
 - **Tonescale-region grading (roadmap 3.9).** `alwan_tonescale_grade_{T}` and its
   interleave and planar maps: Canham, Punnappurath and Brown's four overlapping tonescale
   regions by the pixel's intensity, each with a CIELAB a*b* offset, applied in sequence on
