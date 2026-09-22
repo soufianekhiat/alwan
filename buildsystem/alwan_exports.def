@@ -5,14 +5,6 @@ EXPORTS
     alwan_3dl_export_f64
     alwan_3dl_import_f32
     alwan_3dl_import_f64
-    alwan__css_gamut_map_kernel_f32
-    alwan__css_gamut_map_kernel_f64
-    alwan__gamut_clip_kernel_f32
-    alwan__gamut_clip_kernel_f64
-    alwan__resolve_eotf_f32
-    alwan__resolve_eotf_f64
-    alwan__resolve_oetf_f32
-    alwan__resolve_oetf_f64
     alwan_aces1_output_transform_f32
     alwan_aces1_output_transform_f32_map_interleave
     alwan_aces1_output_transform_f32_map_planar

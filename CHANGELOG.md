@@ -360,6 +360,15 @@
   deterministic one, and the exp-based activations and softmax are bit-exact in the
   deterministic build, which is the setting the claim is made in.
 
+- **The DLL no longer exports eight internal helpers.** `alwan__resolve_oetf_{T}`,
+  `alwan__resolve_eotf_{T}`, `alwan__gamut_clip_kernel_{T}` and
+  `alwan__css_gamut_map_kernel_{T}` are external so one translation unit can call
+  another's, and `tools/gen_exports_def.py` took every external function, so they sat in
+  the export table of every Sharpmake DLL build. The generator now leaves the `alwan__`
+  prefix out (2,164 to 2,156 exports) and `alwan_dev/tools/check_declared_exported.py`
+  fails on a recurrence. Nothing declared in a header changed. A CMake DLL built with
+  `WINDOWS_EXPORT_ALL_SYMBOLS` still carries them, since that mechanism cannot filter.
+
 - **CLF's parametric curves without a file.** `alwan_clf_exponent_apply_{T}` and
   `alwan_clf_log_apply_{T}` evaluate the Exponent (basic, monCurve) and Log (plain,
   linToLog, cameraLinToLog) ProcessNodes from their parameters, forward or reverse, so a

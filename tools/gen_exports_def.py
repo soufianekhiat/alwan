@@ -5,7 +5,8 @@ alwan* symbol, so the Sharpmake/MSVC *_Dll configurations export the full API.
 This mirrors CMake's WINDOWS_EXPORT_ALL_SYMBOLS: it dumps the actual *compiled*
 object symbols (via dumpbin) rather than parsing the header, so the export set
 matches the build exactly -- no phantom symbols (declared-but-not-compiled
-facades) and no missing ones. Run as a Sharpmake EventPreLink step with the
+facades) and no missing ones. Names with the alwan__ internal prefix are left
+out; CMake's WINDOWS_EXPORT_ALL_SYMBOLS cannot filter and still exports them. Run as a Sharpmake EventPreLink step with the
 intermediate object directory.
 
 Usage: python gen_exports_def.py <obj_dir> <out.def>
@@ -45,8 +46,15 @@ def dump_symbols(objs):
             if 'notype ()' not in line:
                 continue
             m = re.search(r'\|\s+(alwan\w+)\s*$', line)
-            if m:
-                names.add(m.group(1))
+            if not m:
+                continue
+            # A double underscore is the library's internal prefix: helpers one
+            # translation unit defines for another (alwan__resolve_eotf, the
+            # gamut map kernels). They are external for the linker's sake, not
+            # the caller's, and were leaking into the DLL's ABI until 2026-09-22.
+            if m.group(1).startswith('alwan__'):
+                continue
+            names.add(m.group(1))
     return names
 
 
