@@ -627,10 +627,10 @@ EXPORTS
     alwan_dng_xy_to_camera_neutral_f64
     alwan_dng_xyz_to_camera_matrix_f32
     alwan_dng_xyz_to_camera_matrix_f64
-    alwan_domain_transform_filter_f32
-    alwan_domain_transform_filter_f64
     alwan_dominant_wavelength_f32
     alwan_dominant_wavelength_f64
+    alwan_edge_filter_f32
+    alwan_edge_filter_f64
     alwan_ellipse_canonical_f32
     alwan_ellipse_canonical_f64
     alwan_ellipse_fit_halir1998_f32
@@ -651,8 +651,6 @@ EXPORTS
     alwan_exposure_value_100_f64
     alwan_extrapolate_f32
     alwan_extrapolate_f64
-    alwan_fast_global_smoother_f32
-    alwan_fast_global_smoother_f64
     alwan_film_calibrate_f32
     alwan_film_calibrate_f64
     alwan_film_develop_f32
@@ -774,8 +772,6 @@ EXPORTS
     alwan_grading_tone_f32_map_interleave
     alwan_grading_tone_f64_map_interleave
     alwan_grading_tone_init
-    alwan_guided_filter_f32
-    alwan_guided_filter_f64
     alwan_h273_color_primaries_f32
     alwan_h273_color_primaries_f64
     alwan_h273_color_primaries_from_space
@@ -1069,8 +1065,6 @@ EXPORTS
     alwan_izazbz_to_xyz_f64
     alwan_jakob2019_coeff_sample_f32
     alwan_jakob2019_coeff_sample_f64
-    alwan_joint_bilateral_filter_f32
-    alwan_joint_bilateral_filter_f64
     alwan_jp2499_apply_f32
     alwan_jp2499_apply_f64
     alwan_jp2499_default_params_f32
@@ -1679,8 +1673,6 @@ EXPORTS
     alwan_rlab_inverse_f32_map_interleave
     alwan_rlab_inverse_f64
     alwan_rlab_inverse_f64_map_interleave
-    alwan_rolling_guidance_filter_f32
-    alwan_rolling_guidance_filter_f64
     alwan_saturation_based_speed_focal_plane_exposure_f32
     alwan_saturation_based_speed_focal_plane_exposure_f64
     alwan_scam_forward_f32

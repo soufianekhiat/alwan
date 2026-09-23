@@ -166,6 +166,26 @@ typedef struct {
     ALWAN_T drago_bias;           /* Drago 2003 b, the bias of the log base; 0 reads as 0.85 */
 } ALWAN_TN(alwan_tonemap_params);
 
+/* Parameters of alwan_edge_filter_{T}. Each method reads its own fields; a zero field is
+ * that method's default, so a zero-initialised struct (or NULL) is every method at its
+ * paper's settings for values in 0..1. */
+typedef struct {
+    size_t radius;               /* GUIDED, JOINT_BILATERAL, ROLLING_GUIDANCE: window radius in pixels;
+                                  * 0 reads as 4 for GUIDED, round(1.5 sigma_space) for the others */
+    ALWAN_T eps;                 /* GUIDED: regularisation, squared data units; 0 reads as 0.01 */
+    ALWAN_T sigma_color;         /* range sigma in guide units. JOINT_BILATERAL, ROLLING_GUIDANCE (L1 over the
+                                  * channels): 0 reads as 0.1. DOMAIN_TRANSFORM_*: 0 reads as 0.4.
+                                  * FAST_GLOBAL_SMOOTHER (Euclidean): 0 reads as 0.03 */
+    ALWAN_T sigma_space;         /* JOINT_BILATERAL, ROLLING_GUIDANCE: spatial sigma, 0 reads as 3.
+                                  * DOMAIN_TRANSFORM_*: 0 reads as 60 */
+    ALWAN_T lambda;              /* FAST_GLOBAL_SMOOTHER: smoothness weight; 0 reads as 900 */
+    ALWAN_T lambda_attenuation;  /* FAST_GLOBAL_SMOOTHER: lambda's factor per iteration; 0 reads as 0.25 */
+    size_t iterations;           /* ROLLING_GUIDANCE: 0 reads as 4. DOMAIN_TRANSFORM_*, FAST_GLOBAL_SMOOTHER:
+                                  * 0 reads as 3 */
+    int start_from_source;       /* ROLLING_GUIDANCE: non-zero starts from the source (OpenCV's
+                                  * rollingGuidanceFilter); 0 from its Gaussian (the paper) */
+} ALWAN_TN(alwan_edge_filter_params);
+
 /* Parameters of the local tone mapping operators. A zero field is its default. */
 typedef struct {
     ALWAN_T luminance_weights[3]; /* zero is the sRGB primaries' Y row */

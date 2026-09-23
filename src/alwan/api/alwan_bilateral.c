@@ -44,9 +44,9 @@ static double alwan_bf_get(void const *base, size_t row_stride, size_t ch_count,
     return is_f32 ? (double)((alwan_f32 const *)row)[x * ch_count + c] : (double)((alwan_f64 const *)row)[x * ch_count + c];
 }
 
-static alwan_status alwan_bf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t src_ch,
-                                 void const *joint, size_t joint_row_stride, size_t joint_ch, size_t w, size_t h,
-                                 size_t radius, double sigma_color, double sigma_space, int is_f32) {
+alwan_status alwan__bf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t src_ch,
+                           void const *joint, size_t joint_row_stride, size_t joint_ch, size_t w, size_t h,
+                           size_t radius, double sigma_color, double sigma_space, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     size_t const n = w * h;
     long const r = (long)radius;
@@ -118,9 +118,9 @@ static alwan_status alwan_bf_run(void *out, size_t out_row_stride, void const *s
  * constant guide), which removes structures smaller than sigma_space, and the iterations
  * then bring large edges back; OpenCV's ximgproc::rollingGuidanceFilter starts from the
  * source itself. from_gaussian picks: 1 the paper, 0 OpenCV. */
-static alwan_status alwan_rgf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t ch,
-                                  size_t w, size_t h, size_t radius, double sigma_color, double sigma_space,
-                                  size_t iterations, int from_gaussian, int is_f32) {
+alwan_status alwan__rgf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t ch,
+                            size_t w, size_t h, size_t radius, double sigma_color, double sigma_space,
+                            size_t iterations, int from_gaussian, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     size_t const row = w * ch * elem;
     char *copy;
@@ -143,50 +143,16 @@ static alwan_status alwan_rgf_run(void *out, size_t out_row_stride, void const *
         /* a constant joint image: every colour weight is 1, which leaves the spatial Gaussian */
         char *flat = copy + h * row;
         for (k = 0; k < w * h * elem; k++) flat[k] = 0;   /* all-zero bits: 0.0 in either precision */
-        st = alwan_bf_run(out, out_row_stride, copy, row, ch, flat, w * elem, 1, w, h, radius,
+        st = alwan__bf_run(out, out_row_stride, copy, row, ch, flat, w * elem, 1, w, h, radius,
                           sigma_color, sigma_space, is_f32);
     } else {
-        st = alwan_bf_run(out, out_row_stride, copy, row, ch, copy, row, ch, w, h, radius,
+        st = alwan__bf_run(out, out_row_stride, copy, row, ch, copy, row, ch, w, h, radius,
                           sigma_color, sigma_space, is_f32);
     }
     for (k = 1; k < iterations && st == ALWAN_OK; k++) {
-        st = alwan_bf_run(out, out_row_stride, copy, row, ch, out, out_row_stride, ch, w, h, radius,
+        st = alwan__bf_run(out, out_row_stride, copy, row, ch, out, out_row_stride, ch, w, h, radius,
                           sigma_color, sigma_space, is_f32);
     }
     ALWAN_FREE(copy);
     return st;
 }
-
-#if ALWAN_WITH_F64_FACADE
-alwan_status alwan_joint_bilateral_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src,
-                                              size_t src_row_stride, size_t src_channels, alwan_f64 const *joint,
-                                              size_t joint_row_stride, size_t joint_channels, size_t width,
-                                              size_t height, size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space) {
-    return alwan_bf_run(out, out_row_stride, src, src_row_stride, src_channels, joint, joint_row_stride, joint_channels,
-                        width, height, radius, (double)sigma_color, (double)sigma_space, 0);
-}
-alwan_status alwan_rolling_guidance_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src,
-                                               size_t src_row_stride, size_t channels, size_t width, size_t height,
-                                               size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space,
-                                               size_t iterations, int from_gaussian) {
-    return alwan_rgf_run(out, out_row_stride, src, src_row_stride, channels, width, height, radius,
-                         (double)sigma_color, (double)sigma_space, iterations, from_gaussian != 0, 0);
-}
-#endif
-
-#if ALWAN_WITH_F32
-alwan_status alwan_joint_bilateral_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src,
-                                              size_t src_row_stride, size_t src_channels, alwan_f32 const *joint,
-                                              size_t joint_row_stride, size_t joint_channels, size_t width,
-                                              size_t height, size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space) {
-    return alwan_bf_run(out, out_row_stride, src, src_row_stride, src_channels, joint, joint_row_stride, joint_channels,
-                        width, height, radius, (double)sigma_color, (double)sigma_space, 1);
-}
-alwan_status alwan_rolling_guidance_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src,
-                                               size_t src_row_stride, size_t channels, size_t width, size_t height,
-                                               size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space,
-                                               size_t iterations, int from_gaussian) {
-    return alwan_rgf_run(out, out_row_stride, src, src_row_stride, channels, width, height, radius,
-                         (double)sigma_color, (double)sigma_space, iterations, from_gaussian != 0, 1);
-}
-#endif

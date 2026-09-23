@@ -75,10 +75,10 @@ static size_t alwan_gf_sym(int i, int j) {
     return (size_t)(i * (i + 1) / 2 + j);
 }
 
-static alwan_status alwan_gf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride,
-                                 size_t src_channels, void const *guide, size_t guide_row_stride,
-                                 size_t guide_channels, size_t w, size_t h, size_t radius, double eps,
-                                 int is_f32) {
+alwan_status alwan__gf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride,
+                           size_t src_channels, void const *guide, size_t guide_row_stride,
+                           size_t guide_channels, size_t w, size_t h, size_t radius, double eps,
+                           int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     size_t const n = w * h;
     int const gc = (int)guide_channels;
@@ -107,7 +107,7 @@ static alwan_status alwan_gf_run(void *out, size_t out_row_stride, void const *s
         for (x = 0; x < w; x++) {
             for (c = 0; c < gc; c++) {
                 double const v = is_f32 ? (double)((alwan_f32 const *)row)[x * guide_channels + (size_t)c]
-                                        : (double)((alwan_f64 const *)row)[x * guide_channels + (size_t)c];
+                                  : (double)((alwan_f64 const *)row)[x * guide_channels + (size_t)c];
                 if (!alwan_gf_finite(v)) { ALWAN_FREE(pool); return ALWAN_E_INVALID; }
                 I[(size_t)c * n + y * w + x] = v;
             }
@@ -137,7 +137,7 @@ static alwan_status alwan_gf_run(void *out, size_t out_row_stride, void const *s
             for (k = 0; k < 3; k++) {
                 for (l = 0; l <= k; l++) {
                     adj[alwan_gf_sym(k, l)] = cv[(k + 1) % 3][(l + 1) % 3] * cv[(k + 2) % 3][(l + 2) % 3]
-                                            - cv[(k + 1) % 3][(l + 2) % 3] * cv[(k + 2) % 3][(l + 1) % 3];
+                                      - cv[(k + 1) % 3][(l + 2) % 3] * cv[(k + 2) % 3][(l + 1) % 3];
                 }
             }
             for (k = 0; k < 3; k++) det += cv[k][0] * adj[alwan_gf_sym(k, 0)];
@@ -151,7 +151,7 @@ static alwan_status alwan_gf_run(void *out, size_t out_row_stride, void const *s
             char const *row = (char const *)src + y * src_row_stride;
             for (x = 0; x < w; x++) {
                 double const v = is_f32 ? (double)((alwan_f32 const *)row)[x * src_channels + s]
-                                        : (double)((alwan_f64 const *)row)[x * src_channels + s];
+                                  : (double)((alwan_f64 const *)row)[x * src_channels + s];
                 if (!alwan_gf_finite(v)) { ALWAN_FREE(pool); return ALWAN_E_INVALID; }
                 p[y * w + x] = v;
             }
@@ -191,21 +191,3 @@ static alwan_status alwan_gf_run(void *out, size_t out_row_stride, void const *s
     ALWAN_FREE(pool);
     return ALWAN_OK;
 }
-
-#if ALWAN_WITH_F64_FACADE
-alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride,
-                                     size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride,
-                                     size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f64 eps) {
-    return alwan_gf_run(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
-                        guide_channels, width, height, radius, (double)eps, 0);
-}
-#endif
-
-#if ALWAN_WITH_F32
-alwan_status alwan_guided_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride,
-                                     size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride,
-                                     size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f32 eps) {
-    return alwan_gf_run(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
-                        guide_channels, width, height, radius, (double)eps, 1);
-}
-#endif

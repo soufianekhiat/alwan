@@ -70,6 +70,7 @@ Key entry points:
 - [`docs/api/constancy.md`](api/constancy.md)
 - [`docs/api/grading-ocio.md`](api/grading-ocio.md)
 - [`docs/api/patterns.md`](api/patterns.md)
+- [`docs/api/image-tools.md`](api/image-tools.md)
 - [`docs/api/chromatic-adaptation.md`](api/chromatic-adaptation.md)
 - [`docs/api/transfer-functions.md`](api/transfer-functions.md)
 - [`docs/api/gamut.md`](api/gamut.md)

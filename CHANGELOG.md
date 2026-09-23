@@ -438,6 +438,14 @@
   Fatemi model, channel by channel, as scikit-image's `denoise_tv_chambolle` computes it;
   suite 200 agrees with scikit-image exactly in f64.
 
+- **Edge-aware smoothing: `alwan_edge_filter`.** One entry point with a method enum and a
+  parameter struct whose zero fields are each paper's defaults: the guided filter (He et al.
+  2010, suite 190, 1.8e-7 against OpenCV), the joint bilateral filter (suite 194, 4.8e-7),
+  the rolling guidance filter (Zhang et al. 2014, from the paper's Gaussian start or
+  OpenCV's, 7.7e-7), the domain transform in its NC and RF modes (Gastal and Oliveira 2011,
+  suite 195, 1.9e-6 and 1.5e-7) and the fast global smoother (Min et al. 2014, suite 196,
+  7.8e-6), each following its OpenCV ximgproc function. A NULL guide is the source itself.
+
 - **The local Laplacian filter: `alwan_local_laplacian_filter`.** Paris et al. 2011 in the
   fast form of Aubry et al. 2014: detail boost or smoothing and tonal range compression
   without halos, following MATLAB's `locallapfilt`; suite 198 agrees with MATLAB to 1.5e-6.
@@ -445,25 +453,6 @@
 - **CLAHE: `alwan_clahe_u8`, `alwan_clahe_u16`.** Contrast-limited adaptive histogram
   equalisation on 8-bit and 16-bit single-channel images, reproducing OpenCV's
   `cv::createCLAHE` bit for bit (suite 197), padding of non-dividing sizes included.
-
-- **The fast global smoother: `alwan_fast_global_smoother`.** Min et al. 2014, weighted
-  least squares smoothing along a guide solved as exact tridiagonal systems on rows and
-  columns, as OpenCV's `ximgproc::fastGlobalSmootherFilter` computes it with the solve in
-  double; suite 196 agrees with OpenCV to 7.8e-6.
-
-- **The domain transform: `alwan_domain_transform_filter`.** Gastal and Oliveira 2011,
-  edge-aware smoothing along a guide in time independent of the spatial sigma, in the
-  normalized-convolution and recursive-filtering modes of OpenCV's `ximgproc::dtFilter`;
-  suite 195 agrees with OpenCV to 1.9e-6 (NC) and 1.5e-7 (RF).
-
-- **The rolling guidance filter: `alwan_rolling_guidance_filter`.** Zhang et al. 2014, the joint
-  bilateral filter iterated on its own output, from the paper's Gaussian start or OpenCV's
-  start from the source; suite 194 holds the OpenCV start to OpenCV to 7.7e-7.
-
-- **The joint bilateral filter: `alwan_joint_bilateral_filter`.** Bilateral smoothing with its
-  edges taken from a second image (flash / no-flash denoising, edge-aware mask smoothing), as
-  OpenCV's ximgproc computes it with the colour Gaussian evaluated exactly; suite 194 agrees to
-  4.8e-7.
 
 - **Colour transfer: `alwan_color_transfer_reinhard`.** Reinhard et al. 2001, mean and
   deviation matched per channel in Ruderman's l alpha beta; suite 193 checks the result's
@@ -476,11 +465,6 @@
 
 - **Histogram matching: `alwan_histogram_match`.** Per-channel CDF matching of one image to
   another, as scikit-image's `match_histograms`; suite 191 equals it bit for bit.
-
-- **The guided filter: `alwan_guided_filter`.** He, Sun and Tang's edge-aware filter with a
-  grey or colour guide and one to four source channels, radius-independent cost, as
-  OpenCV's ximgproc computes it (reflected borders, cofactor inverse, its small-determinant
-  guard). Suite 190: 1.8e-7 against OpenCV with a colour guide.
 
 - **The colour cube: `alwan_histogram3d`.** Counts of RGB values over a `bins^3` lattice,
   binned as `numpy.histogramdd` bins (linspace edges, the upper bound in the last cell,

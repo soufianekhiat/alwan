@@ -29,6 +29,25 @@ struct alwan_ctx {
     /* Future: data cache, registry, etc. */
 };
 
+/* Edge-aware filter workers (api/alwan_guided_filter.c, alwan_bilateral.c,
+ * alwan_domain_transform.c, alwan_fast_global_smoother.c), behind alwan_edge_filter_{T}.
+ * Pixels are f32 when is_f32 is non-zero, f64 otherwise; strides in bytes. */
+alwan_status alwan__gf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t src_channels,
+                           void const *guide, size_t guide_row_stride, size_t guide_channels, size_t w, size_t h,
+                           size_t radius, double eps, int is_f32);
+alwan_status alwan__bf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t src_ch,
+                           void const *joint, size_t joint_row_stride, size_t joint_ch, size_t w, size_t h,
+                           size_t radius, double sigma_color, double sigma_space, int is_f32);
+alwan_status alwan__rgf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t ch,
+                            size_t w, size_t h, size_t radius, double sigma_color, double sigma_space,
+                            size_t iterations, int from_gaussian, int is_f32);
+alwan_status alwan__dt_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
+                           void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
+                           double sigma_s, double sigma_r, int mode, size_t iterations, int is_f32);
+alwan_status alwan__fgs_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
+                            void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
+                            double lambda, double sigma_color, double attenuation, size_t iterations, int is_f32);
+
 /* Batch workers behind the CIECAM02 / CAM16 maps (api/alwan_cam_impl.inc): the
  * viewing-condition terms once, the scalar's _v core per pixel, bit-identical to
  * the scalar. The maps check count and delegate. */

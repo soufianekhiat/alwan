@@ -145,8 +145,8 @@ static alwan_status alwan_dh_run(void *out, size_t out_row_stride, void *t_out, 
     alwan_dh_min_filter(t, tmp, w, h, p->patch_radius, tr);
     for (i = 0; i < n; i++) t[i] = 1.0 - p->omega * t[i];
     if (p->guide_radius > 0) {
-        st = alwan_guided_filter_f64(tr, w * sizeof(double), t, w * sizeof(double), 1, img, 3 * w * sizeof(double), 3,
-                                     w, h, p->guide_radius, p->guide_eps);
+        st = alwan__gf_run(tr, w * sizeof(double), t, w * sizeof(double), 1, img, 3 * w * sizeof(double), 3, w, h,
+                           p->guide_radius, p->guide_eps, 0);
         if (st != ALWAN_OK) goto done;
     } else {
         for (i = 0; i < n; i++) tr[i] = t[i];

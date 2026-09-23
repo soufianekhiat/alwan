@@ -32,6 +32,9 @@
 #include <float.h>
 #include <math.h>
 
+#define ALWAN_DT_NC 0
+#define ALWAN_DT_RF 2
+
 static int alwan_dt_finite(double v) {
     return v == v && v <= DBL_MAX && v >= -DBL_MAX;
 }
@@ -58,9 +61,9 @@ static void alwan_dt_nc_pass(double *dst, double const *src, float const *idist,
     }
 }
 
-static alwan_status alwan_dt_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
-                                 void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
-                                 double sigma_s, double sigma_r, int mode, size_t iterations, int is_f32) {
+alwan_status alwan__dt_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
+                           void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
+                           double sigma_s, double sigma_r, int mode, size_t iterations, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     size_t const n = w * h;
     float const ss = (float)sigma_s, sr = (float)sigma_r;
@@ -198,25 +201,3 @@ invalid:
     ALWAN_FREE(isum);
     return ALWAN_E_INVALID;
 }
-
-#if ALWAN_WITH_F64_FACADE
-alwan_status alwan_domain_transform_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src,
-                                               size_t src_row_stride, size_t src_channels, alwan_f64 const *guide,
-                                               size_t guide_row_stride, size_t guide_channels, size_t width,
-                                               size_t height, alwan_f64 sigma_spatial, alwan_f64 sigma_color,
-                                               alwan_domain_transform_mode mode, size_t iterations) {
-    return alwan_dt_run(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride, guide_channels,
-                        width, height, (double)sigma_spatial, (double)sigma_color, (int)mode, iterations, 0);
-}
-#endif
-
-#if ALWAN_WITH_F32
-alwan_status alwan_domain_transform_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src,
-                                               size_t src_row_stride, size_t src_channels, alwan_f32 const *guide,
-                                               size_t guide_row_stride, size_t guide_channels, size_t width,
-                                               size_t height, alwan_f32 sigma_spatial, alwan_f32 sigma_color,
-                                               alwan_domain_transform_mode mode, size_t iterations) {
-    return alwan_dt_run(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride, guide_channels,
-                        width, height, (double)sigma_spatial, (double)sigma_color, (int)mode, iterations, 1);
-}
-#endif

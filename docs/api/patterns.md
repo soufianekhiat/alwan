@@ -318,31 +318,6 @@ channel outside `[lo, hi]` or NaN is not counted. `bins` runs from 1 to 1024; th
 holds `bins^3` counts. Suite 189 matches `numpy.histogramdd` cell for cell over five
 binnings, with values on edges, on both bounds, outside every range, and a NaN.
 
-## Edge-aware smoothing: the guided filter
-
-```c
-alwan_status alwan_guided_filter_{T}(alwan_{T} *out, size_t out_row_stride,
-                                     alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
-                                     alwan_{T} const *guide, size_t guide_row_stride, size_t guide_channels,
-                                     size_t width, size_t height, size_t radius, alwan_{T} eps);
-```
-
-He, Sun and Tang's guided filter (ECCV 2010, TPAMI 2013): in every window of side
-`2 radius + 1` the output is a linear function of the guide, `q = a . I + b`, with `a` and
-`b` fitted to `src` by least squares with ridge `eps` and then averaged over the windows
-covering each pixel. The image as its own guide smooths within regions and keeps edges;
-a colour guide with a one-channel source (a matte, a haze transmission map, a mask from
-`alwan_select_*`) snaps the source to the guide's edges. The cost does not depend on the
-radius. `eps` is in the square of the guide's units: for a guide in [0, 1], 1e-3 keeps
-fine edges and 0.1 smooths strongly.
-
-It follows OpenCV's `cv::ximgproc::guidedFilter`: box means with the border reflected (the
-edge pixel repeated), the colour guide's 3 x 3 covariance inverted by cofactors, and, for
-`eps` below 0.01, a determinant under 1e-6 replaced by 1. It computes in double; `out`
-may be `src`. Suite 190: the colour-guide cases agree with OpenCV to 1.8e-7, float
-rounding; the grey-guide case to 6.1e-6, because OpenCV's SSE build takes the reciprocal
-of the variance with a 12-bit approximation.
-
 ## Matching one shot to another: histogram matching
 
 ```c
@@ -384,7 +359,7 @@ He, Sun and Tang (CVPR 2009, TPAMI 2011) model a hazy image as `I = J t + A (1 -
 observe that in most patches of a clear outdoor image some channel is near zero. So the
 patch minimum of `I / A` measures the haze: the airlight `A` is taken among the brightest
 0.1 % of the dark channel (the pixel with the largest channel mean), the transmission is
-`t = 1 - omega min_patch min_c I_c / A_c`, refined here by `alwan_guided_filter` with the
+`t = 1 - omega min_patch min_c I_c / A_c`, refined here by the guided filter (`alwan_edge_filter`, `ALWAN_EDGE_FILTER_GUIDED`) with the
 image as the colour guide (the authors' own replacement for soft matting), and the scene
 is `J = (I - A) / max(t, t0) + A`. Work on linear light; scale the radii with the image.
 
@@ -415,106 +390,6 @@ carries the whole distribution, and so keeps the source's own shape.
 No implementation of the paper's own space exists to compare with; suite 193 checks the
 property that defines it: the result's l alpha beta means and standard deviations equal
 the reference's, to 3e-15, and an image transferred onto itself comes back unchanged.
-
-## Edges from another image: the joint bilateral filter
-
-```c
-alwan_status alwan_joint_bilateral_filter_{T}(alwan_{T} *out, size_t out_row_stride,
-                                              alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
-                                              alwan_{T} const *joint, size_t joint_row_stride, size_t joint_channels,
-                                              size_t width, size_t height, size_t radius,
-                                              alwan_{T} sigma_color, alwan_{T} sigma_space);
-```
-
-The bilateral filter (Tomasi and Manduchi 1998) with its range weight taken from a second,
-joint image (Petschnigg et al. and Eisemann and Durand, 2004): each output is a mean of
-`src` over a disc, weighted by distance and by how close the joint image's value there is
-to its value at the centre. It denoises a no-flash photograph along a flash photograph's
-edges, or smooths a mask or depth map along a picture's; with `src` as its own joint it is
-the ordinary bilateral filter. The colour distance is the L1 sum of channel differences, the
-window a disc and the border reflected without repeating the edge pixel, as in OpenCV's
-`ximgproc::jointBilateralFilter`; the colour Gaussian is evaluated exactly where OpenCV reads
-a 4096-bin table, and a flat joint image is not replaced by a square Gaussian blur as
-OpenCV does. Cost grows with the square of the radius, unlike the guided filter's. Suite
-194 agrees with OpenCV to 4.8e-7.
-
-### The rolling guidance filter
-
-```c
-alwan_status alwan_rolling_guidance_filter_{T}(alwan_{T} *out, size_t out_row_stride,
-                                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
-                                               size_t width, size_t height, size_t radius,
-                                               alwan_{T} sigma_color, alwan_{T} sigma_space,
-                                               size_t iterations, int from_gaussian);
-```
-
-Zhang, Shen, Xu and Jia (ECCV 2014): the joint bilateral filter iterated with its own last
-output as the joint image. Starting from the source's Gaussian (`from_gaussian = 1`, the
-paper), structures smaller than `sigma_space` are removed first and the iterations then
-bring the large edges back, a scale-aware smoother that keeps the outlines of what it keeps.
-OpenCV's `ximgproc::rollingGuidanceFilter` starts from the source itself
-(`from_gaussian = 0`), which keeps small structures that the paper's start removes; suite
-194 holds that start to OpenCV to 7.7e-7 over four iterations and checks the paper's first
-step is the constant-guide filter.
-
-## Edge-aware smoothing in linear time: the domain transform
-
-```c
-typedef enum { ALWAN_DT_NC = 0, ALWAN_DT_RF = 2 } alwan_domain_transform_mode;
-
-alwan_status alwan_domain_transform_filter_{T}(alwan_{T} *out, size_t out_row_stride,
-                                               alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
-                                               alwan_{T} const *guide, size_t guide_row_stride, size_t guide_channels,
-                                               size_t width, size_t height,
-                                               alwan_{T} sigma_spatial, alwan_{T} sigma_color,
-                                               alwan_domain_transform_mode mode, size_t iterations);
-```
-
-Gastal and Oliveira (SIGGRAPH 2011) replace a 2D edge-aware filter with 1D filters along
-rows and columns in a transformed coordinate: each step between neighbours is
-`1 + sigma_spatial / sigma_color * |guide difference|` (L1 over the guide's channels) long,
-so an edge in the guide becomes a long gap that the 1D filter barely crosses. Rows and
-columns alternate `iterations` times with a shrinking spatial sigma, which removes the
-stripes a single pass leaves. The cost does not depend on `sigma_spatial`.
-
-`ALWAN_DT_NC` (normalized convolution) averages a box in the transformed coordinate;
-`ALWAN_DT_RF` (recursive filtering) runs a first-order recursive filter forward and back,
-which leaks further across weak edges and costs less. The interpolated-convolution mode of
-the paper is not offered.
-
-The filter follows OpenCV's `ximgproc::dtFilter`: the transformed coordinate is built in
-float as OpenCV builds it, so NC boxes hold the same pixels, and the data is filtered in
-double. Suite 195 agrees with OpenCV to 1.9e-6 in NC mode (OpenCV's float running sum) and
-1.5e-7 in RF mode, along a colour and a one-channel guide. `sigma_spatial` below 1 or
-`sigma_color` below 0.01 returns `ALWAN_E_RANGE` where OpenCV clamps silently; `iterations`
-runs from 1 to 30. `out` may alias `src`; `guide` may be `src` itself.
-
-## Global smoothing in linear time: the fast global smoother
-
-```c
-alwan_status alwan_fast_global_smoother_{T}(alwan_{T} *out, size_t out_row_stride,
-                                            alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
-                                            alwan_{T} const *guide, size_t guide_row_stride, size_t guide_channels,
-                                            size_t width, size_t height,
-                                            alwan_{T} lambda, alwan_{T} sigma_color,
-                                            alwan_{T} lambda_attenuation, size_t iterations);
-```
-
-Min, Choi, Lu, Ham, Sohn and Do (IEEE TIP 2014) solve the weighted least squares
-smoother, `sum (u - f)^2 + lambda sum w_pq (u_p - u_q)^2` with
-`w_pq = exp(-|g_p - g_q| / sigma_color)`, as exact 1D problems along every row and then
-every column. Each is tridiagonal and costs one forward and one backward sweep. Where
-the filters above average a window, this one solves for the whole line at once, so a
-region bounded by guide edges flattens however large it is. Larger `lambda` smooths
-further; `iterations` repeat the row and column passes with `lambda` multiplied by
-`lambda_attenuation` each time (OpenCV's defaults are 3 and 0.25).
-
-The distance `|g_p - g_q|` is Euclidean over the guide's channels and `sigma_color` is in
-the guide's units. OpenCV's `ximgproc::fastGlobalSmootherFilter` takes an 8-bit guide and
-`sigma_color` in 0..255 steps; divide both by 255 to use its numbers with a guide in
-0..1. Suite 196 does that and agrees with OpenCV to 7.8e-6 at `lambda` 1000 and to
-4.5e-7 at `lambda` 10, the difference being OpenCV's float solve; a constant source stays
-constant to 1e-14. `out` may alias `src` or the guide.
 
 ## Local contrast: CLAHE
 

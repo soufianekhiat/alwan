@@ -55,9 +55,9 @@ static void alwan_fgs_solve(double *x, size_t step, double const *wt, size_t wst
     for (i = n - 1; i-- > 0;) x[i * step] -= scratch[i] * x[(i + 1) * step];
 }
 
-static alwan_status alwan_fgs_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
-                                  void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
-                                  double lambda, double sigma_color, double attenuation, size_t iterations, int is_f32) {
+alwan_status alwan__fgs_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
+                            void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
+                            double lambda, double sigma_color, double attenuation, size_t iterations, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     size_t const n = w * h;
     double *data, *wh, *wv, *scratch;
@@ -134,25 +134,3 @@ invalid:
     ALWAN_FREE(scratch);
     return ALWAN_E_INVALID;
 }
-
-#if ALWAN_WITH_F64_FACADE
-alwan_status alwan_fast_global_smoother_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src,
-                                            size_t src_row_stride, size_t src_channels, alwan_f64 const *guide,
-                                            size_t guide_row_stride, size_t guide_channels, size_t width, size_t height,
-                                            alwan_f64 lambda, alwan_f64 sigma_color, alwan_f64 lambda_attenuation,
-                                            size_t iterations) {
-    return alwan_fgs_run(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride, guide_channels,
-                         width, height, (double)lambda, (double)sigma_color, (double)lambda_attenuation, iterations, 0);
-}
-#endif
-
-#if ALWAN_WITH_F32
-alwan_status alwan_fast_global_smoother_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src,
-                                            size_t src_row_stride, size_t src_channels, alwan_f32 const *guide,
-                                            size_t guide_row_stride, size_t guide_channels, size_t width, size_t height,
-                                            alwan_f32 lambda, alwan_f32 sigma_color, alwan_f32 lambda_attenuation,
-                                            size_t iterations) {
-    return alwan_fgs_run(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride, guide_channels,
-                         width, height, (double)lambda, (double)sigma_color, (double)lambda_attenuation, iterations, 1);
-}
-#endif

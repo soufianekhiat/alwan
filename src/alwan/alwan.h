@@ -2108,96 +2108,48 @@ alwan_status alwan_palette_median_cut_u8(unsigned char *palette_out, size_t *cou
 alwan_status alwan_histogram3d_f32(unsigned int *counts_out, size_t bins, alwan_f32 const *rgb, size_t stride, size_t count, alwan_f32 const lo[3], alwan_f32 const hi[3]);
 alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_f64 const *rgb, size_t stride, size_t count, alwan_f64 const lo[3], alwan_f64 const hi[3]);
 
-/* The guided filter (He, Sun and Tang, ECCV 2010 / TPAMI 2013): an edge-preserving
- * smoother whose output is, in every window of side 2 radius + 1, a linear function of
- * a guide: q = a . I + b, a and b fitted to src by least squares with ridge eps, then
- * averaged over the windows covering each pixel. The image as its own guide smooths
- * within regions and keeps edges; a colour guide with a one-channel src (a matte, a
- * transmission map) snaps src to the guide's edges. Cost is independent of radius.
+/* Edge-aware smoothing: each method smooths src while keeping the edges of a guide image
+ * (src itself when guide is NULL), the base layer of a base-and-detail edit, a matte
+ * refinement, or flash / no-flash denoising.
  *
- * src has src_channels (1 to 4) values a pixel, the guide 1 or 3, rows the given byte
- * strides apart; out has src_channels. eps is in the square of the guide's units
- * (1e-2 to 1e-1 for a guide in [0, 1] is a gentle to strong smoothing). Windows reflect
- * at the border, the edge pixel repeated. It follows OpenCV's ximgproc::guidedFilter,
- * including its cofactor inverse and, for eps below 0.01, its replacement of a
- * determinant under 1e-6 by 1; it computes in double. out may be src. Scratch is
- * width * height * (4 guide_channels + 5 + covariances) doubles, covariances 6 for a
- * colour guide and 1 for grey. ALWAN_E_INVALID for a NULL, a zero size, a channel count
- * out of range, a stride too small, a negative or non-finite eps or a non-finite pixel.
- * Suite 190 holds it to OpenCV. */
-alwan_status alwan_guided_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f32 eps);
-alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f64 eps);
-
-/* The joint (cross) bilateral filter (Petschnigg et al. and Eisemann and Durand, 2004;
- * Tomasi and Manduchi 1998): each output is a mean of src over a disc of the given radius,
- * weighted by exp(-dist^2 / (2 sigma_space^2)) exp(-d^2 / (2 sigma_color^2)), with d the
- * L1 distance between the JOINT image's value there and at the centre, so edges come from
- * the joint image (with src as its own joint it is the ordinary bilateral filter). src has
- * 1 to 4 channels, joint 1 to 4; sigma_color is in joint units summed over its channels.
- * The border is reflected without repeating the edge pixel. It follows OpenCV's
- * ximgproc::jointBilateralFilter for float images, but evaluates the colour Gaussian
- * exactly where OpenCV reads a 4096-bin table, and does not fall back to a square
- * GaussianBlur when the joint image is flat as OpenCV does. out may be src or joint.
- * Cost is width * height * radius^2. ALWAN_E_INVALID for a NULL, a zero size, a channel
- * count out of range, a stride too small, a sigma not positive and finite, or a
- * non-finite pixel; ALWAN_E_RANGE for radius 0 or above 4096. Suite 194. */
-alwan_status alwan_joint_bilateral_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *joint, size_t joint_row_stride, size_t joint_channels, size_t width, size_t height, size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space);
-alwan_status alwan_joint_bilateral_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *joint, size_t joint_row_stride, size_t joint_channels, size_t width, size_t height, size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space);
-
-/* The rolling guidance filter (Zhang, Shen, Xu and Jia, ECCV 2014): the joint bilateral
- * filter above iterated `iterations` times with its own last output as the joint image,
- * removing structures smaller than sigma_space while keeping large edges. from_gaussian 1
- * starts as the paper does, from the source's spatial Gaussian (a constant guide);
- * from_gaussian 0 starts from the source itself, as OpenCV's
- * ximgproc::rollingGuidanceFilter does. src and out share `channels` (1 to 4); out may be
- * src. Errors as for the joint bilateral filter, and ALWAN_E_RANGE for iterations 0 or
- * above 1000. Suite 194 holds the OpenCV start to OpenCV. */
-alwan_status alwan_rolling_guidance_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space, size_t iterations, int from_gaussian);
-alwan_status alwan_rolling_guidance_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space, size_t iterations, int from_gaussian);
-
-/* The domain transform (Gastal and Oliveira, SIGGRAPH 2011): an edge-aware filter of 1D
- * passes along rows and columns in a transformed coordinate where neighbours are
- * 1 + (sigma_spatial / sigma_color) sum_c |I_c(x + 1) - I_c(x)| apart, so the guide's
- * edges stop the smoothing. `iterations` (1 to 30; 3 is the paper's) alternate the
- * passes with shrinking widths that add up to sigma_spatial. Cost is linear in pixels
- * whatever sigma_spatial, the fastest of the edge-aware filters here.
+ *   ALWAN_EDGE_FILTER_GUIDED               He, Sun and Tang, ECCV 2010: a local linear
+ *                                          model of the guide in every window; guide 1 or 3
+ *                                          channels (OpenCV ximgproc::guidedFilter)
+ *   ALWAN_EDGE_FILTER_JOINT_BILATERAL      Tomasi and Manduchi 1998, joint form of
+ *                                          Petschnigg et al. and Eisemann and Durand 2004:
+ *                                          weights from distance and guide likeness (L1)
+ *                                          (ximgproc::jointBilateralFilter)
+ *   ALWAN_EDGE_FILTER_ROLLING_GUIDANCE     Zhang, Shen, Xu and Jia, ECCV 2014: the joint
+ *                                          bilateral filter iterated on its own output;
+ *                                          the guide is not used (ximgproc::rollingGuidanceFilter)
+ *   ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_NC  Gastal and Oliveira, SIGGRAPH 2011, normalized
+ *                                          convolution (ximgproc::dtFilter DTF_NC)
+ *   ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_RF  the same, recursive filtering (DTF_RF)
+ *   ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER Min et al., IEEE TIP 2014: weighted least squares
+ *                                          solved row by row and column by column
+ *                                          (ximgproc::fastGlobalSmootherFilter)
  *
- *   ALWAN_DT_NC  normalized convolution: a box in the transformed coordinate
- *   ALWAN_DT_RF  recursive filtering: a first-order recursive filter, forward and back
- *
- * src has 1 to 4 channels, the guide 1 to 4 (the image itself, or another), rows at the
- * given byte strides; sigma_color is in guide units summed over its channels. It follows
- * OpenCV's ximgproc::dtFilter (NC and RF; its interpolated-convolution mode is not
- * provided), accumulating the transformed coordinate in float as OpenCV does. out may be
- * src or the guide. ALWAN_E_INVALID for a NULL, a zero size, a channel count or mode out
- * of range, a stride too small or a non-finite value; ALWAN_E_RANGE for sigma_spatial
- * below 1, sigma_color below 0.01 or iterations out of range. Suite 195. */
+ * src has src_channels (1 to 4) values a pixel and the guide guide_channels (1 to 4; 1 or
+ * 3 for GUIDED), rows at the given byte strides; out has src's layout and may be src.
+ * params NULL is every default (alwan_edge_filter_params_{T} lists them). Each method
+ * follows the OpenCV function named: GUIDED to 1.8e-7 (suite 190), JOINT_BILATERAL to
+ * 4.8e-7 with the colour Gaussian evaluated exactly where OpenCV reads a 4096-bin table,
+ * ROLLING_GUIDANCE (from the source) to 7.7e-7 (suite 194), DOMAIN_TRANSFORM to 1.9e-6 (NC)
+ * and 1.5e-7 (RF) (suite 195), FAST_GLOBAL_SMOOTHER to 7.8e-6, its guide in any units where
+ * OpenCV takes 8 bits (suite 196). ALWAN_E_INVALID for a NULL, a zero size, a channel count
+ * out of range, a stride too small, a non-finite value or an unknown method; ALWAN_E_RANGE
+ * for a parameter out of its method's range. */
 typedef enum {
-    ALWAN_DT_NC = 0,
-    ALWAN_DT_RF = 2
-} alwan_domain_transform_mode;
+    ALWAN_EDGE_FILTER_GUIDED = 0,
+    ALWAN_EDGE_FILTER_JOINT_BILATERAL = 1,
+    ALWAN_EDGE_FILTER_ROLLING_GUIDANCE = 2,
+    ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_NC = 3,
+    ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_RF = 4,
+    ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5
+} alwan_edge_filter_method;
 
-alwan_status alwan_domain_transform_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f32 sigma_spatial, alwan_f32 sigma_color, alwan_domain_transform_mode mode, size_t iterations);
-alwan_status alwan_domain_transform_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f64 sigma_spatial, alwan_f64 sigma_color, alwan_domain_transform_mode mode, size_t iterations);
-
-/* The fast global smoother (Min et al., IEEE TIP 2014): the weighted least squares
- * smoother, sum (u - f)^2 + lambda sum w_pq (u_p - u_q)^2 with
- * w_pq = exp(-|g_p - g_q| / sigma_color), solved as exact 1D tridiagonal problems along
- * every row and then every column. `iterations` repeat the pair on the last result with
- * lambda multiplied by lambda_attenuation after each (OpenCV's defaults: 3 and 0.25).
- * Larger lambda smooths further; the result flattens regions and keeps the guide's edges,
- * the base layer of a tone or detail edit. Cost is linear in pixels.
- *
- * src has 1 to 4 channels, filtered each alone; the guide 1 to 4 (the image itself or
- * another), rows at the given byte strides; |g_p - g_q| is the Euclidean distance over
- * the guide's channels, in the guide's own units, and sigma_color is in the same units.
- * It follows OpenCV's ximgproc::fastGlobalSmootherFilter, which takes an 8-bit guide and
- * sigma_color in 0..255 steps. out may be src or the guide. ALWAN_E_INVALID for a NULL, a
- * zero size, a channel count out of range, a stride too small or a non-finite value;
- * ALWAN_E_RANGE for a negative lambda or lambda_attenuation, sigma_color not above 0, or
- * iterations 0 or above 100. Suite 196. */
-alwan_status alwan_fast_global_smoother_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f32 lambda, alwan_f32 sigma_color, alwan_f32 lambda_attenuation, size_t iterations);
-alwan_status alwan_fast_global_smoother_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f64 lambda, alwan_f64 sigma_color, alwan_f64 lambda_attenuation, size_t iterations);
+alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f32 const *params);
+alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f64 const *params);
 
 /* Contrast-limited adaptive histogram equalisation, CLAHE (Zuiderveld, Graphics Gems IV,
  * 1994): the image cut into tiles_x x tiles_y tiles, each tile's histogram clipped at
@@ -2321,7 +2273,7 @@ alwan_status alwan_color_transfer_reinhard_f32(alwan_f32 *out, size_t out_stride
 alwan_status alwan_color_transfer_reinhard_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count);
 
 /* Haze removal by the dark channel prior (He, Sun and Tang, CVPR 2009 / TPAMI 2011), the
- * transmission refined by alwan_guided_filter as in their Guided Image Filtering paper.
+ * transmission refined by the guided filter (alwan_edge_filter, ALWAN_EDGE_FILTER_GUIDED) as in their Guided Image Filtering paper.
  * A hazy image is I = J t + A (1 - t); in most patches of a clear outdoor image some
  * channel is near zero, so the patch minimum of I / A measures the haze:
  *
