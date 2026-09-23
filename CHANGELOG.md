@@ -439,6 +439,9 @@
 - **Sharpening: `alwan_sharpen`.** One entry point with a method enum, first the unsharp mask,
   as scikit-image's `filters.unsharp_mask` computes it (suite 203, 9e-16), clipping only when
   asked. scikit-image 0.26 sharpens rows instead of channels when given `channel_axis=-1`.
+  `ALWAN_SHARPEN_UNSHARP_MASK_BOX` with the new `alwan_sharpen_u8` adds Pillow's
+  `ImageFilter.UnsharpMask`: a three-pass extended box blur in fixed point and a threshold
+  that leaves small differences alone, value for value with Pillow (suite 212).
 
 - **Denoising: `alwan_denoise`.** One entry point, float and 8-bit, with a method enum:
   total variation (Chambolle 2004, exact to scikit-image, suite 200), non-local means

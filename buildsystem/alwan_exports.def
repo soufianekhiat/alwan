@@ -1676,6 +1676,7 @@ EXPORTS
     alwan_select_qualifier_params_init
     alwan_sharpen_f32
     alwan_sharpen_f64
+    alwan_sharpen_u8
     alwan_sigma_barten1999_f32
     alwan_sigma_barten1999_f64
     alwan_simulate_cvd_ex_f32

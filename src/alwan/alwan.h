@@ -2346,28 +2346,42 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
  *   ALWAN_SHARPEN_UNSHARP_MASK  out = in + amount (in - Gaussian(in)), the detail a Gaussian
  *                               of standard deviation radius removes added back amount
  *                               times; scikit-image's filters.unsharp_mask (suite 203)
+ *   ALWAN_SHARPEN_UNSHARP_MASK_BOX the unsharp mask as Pillow's ImageFilter.UnsharpMask, on
+ *                               8-bit data: the Gaussian approximated by three passes of
+ *                               an extended box blur each way in 24-bit fixed point, and
+ *                               only differences over `threshold` levels sharpened, so
+ *                               noise and smooth gradients are left alone (suite 212)
  *
- * src has 1 to 4 channels, each sharpened on its own, rows at the given byte strides; out
- * may be src. Sharpening R, G and B apart can fringe colour at edges; sharpen a lightness
- * channel for a gentler result. params NULL is every default. ALWAN_E_INVALID for a NULL,
- * a zero size, a channel count out of range, a stride too small, a non-finite value or an
- * unknown method; ALWAN_E_RANGE for a radius not above 0 or above 1000. */
+ * alwan_sharpen_{T} runs UNSHARP_MASK and alwan_sharpen_u8 UNSHARP_MASK_BOX; each refuses
+ * the other with ALWAN_E_INVALID. src has 1 to 4 channels, each sharpened on its own, rows
+ * at the given byte strides; out may be src. Sharpening R, G and B apart can fringe colour
+ * at edges; sharpen a lightness channel for a gentler result. params NULL is every
+ * default. ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride
+ * too small, a non-finite value or an unknown method; ALWAN_E_RANGE for a radius not above
+ * 0 (UNSHARP_MASK_BOX: below 0) or above 1000, or an amount above 1000 in magnitude
+ * (UNSHARP_MASK_BOX). */
 typedef enum {
-    ALWAN_SHARPEN_UNSHARP_MASK = 0
+    ALWAN_SHARPEN_UNSHARP_MASK = 0,
+    ALWAN_SHARPEN_UNSHARP_MASK_BOX = 1
 } alwan_sharpen_method;
 
 /* Each method reads its own fields; a zero field is its default. */
 typedef struct {
-    double radius; /* UNSHARP_MASK: the Gaussian's standard deviation in pixels; 0 reads as 1 */
-    double amount; /* UNSHARP_MASK: how many times the detail is added back (may be negative);
-                    * 0 reads as 1 */
-    int clip;      /* UNSHARP_MASK: non-zero clips to [0, 1], or [-1, 1] when the image has a
-                    * negative value, as scikit-image does by default; 0 leaves values as they
-                    * come (scikit-image's preserve_range) */
+    double radius;  /* the Gaussian's standard deviation in pixels. UNSHARP_MASK: 0 reads as 1.
+                     * UNSHARP_MASK_BOX: 0 reads as Pillow's 2 */
+    double amount;  /* how many times the detail is added back (may be negative). UNSHARP_MASK:
+                     * 0 reads as 1. UNSHARP_MASK_BOX: in hundredths, Pillow's percent; 0 reads
+                     * as 1.5 */
+    int clip;       /* UNSHARP_MASK: non-zero clips to [0, 1], or [-1, 1] when the image has a
+                     * negative value, as scikit-image does by default; 0 leaves values as they
+                     * come (scikit-image's preserve_range) */
+    int threshold;  /* UNSHARP_MASK_BOX: differences of at most this many levels are left alone;
+                     * 0 reads as Pillow's 3, a negative value as 0 (every difference) */
 } alwan_sharpen_params;
 
 alwan_status alwan_sharpen_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
 alwan_status alwan_sharpen_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
+alwan_status alwan_sharpen_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
 
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a

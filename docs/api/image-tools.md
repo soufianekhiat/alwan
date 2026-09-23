@@ -459,24 +459,29 @@ float32 and blend cases.
 
 ```c
 typedef enum {
-    ALWAN_SHARPEN_UNSHARP_MASK = 0
+    ALWAN_SHARPEN_UNSHARP_MASK = 0,
+    ALWAN_SHARPEN_UNSHARP_MASK_BOX = 1
 } alwan_sharpen_method;
 
 alwan_status alwan_sharpen_{T}(alwan_{T} *out, size_t out_row_stride,
                                alwan_{T} const *src, size_t src_row_stride, size_t channels,
                                size_t width, size_t height,
                                alwan_sharpen_method method, alwan_sharpen_params const *params);
+alwan_status alwan_sharpen_u8(...);   /* same, unsigned char pixels */
 ```
 
 The detail of an image amplified. 1 to 4 channels, each sharpened on its own; `out` may be
 `src`. Sharpening R, G and B apart can fringe colour at edges; sharpen a lightness channel
-for a gentler result.
+for a gentler result. The float entry points run `UNSHARP_MASK` and `alwan_sharpen_u8`
+runs `UNSHARP_MASK_BOX`; each refuses the other, since each follows a reference that
+works in that type.
 
 | Field of `alwan_sharpen_params` | Method | 0 reads as |
 |---|---|---|
-| `radius` | `UNSHARP_MASK` | 1, the Gaussian's standard deviation in pixels |
-| `amount` | `UNSHARP_MASK` | 1 (it may be negative, which softens) |
+| `radius` | `UNSHARP_MASK` / `UNSHARP_MASK_BOX` | 1 / 2, the Gaussian's standard deviation in pixels |
+| `amount` | `UNSHARP_MASK` / `UNSHARP_MASK_BOX` | 1 / 1.5 (it may be negative, which softens) |
 | `clip` | `UNSHARP_MASK` | 0: no clipping; non-zero clips as scikit-image does |
+| `threshold` | `UNSHARP_MASK_BOX` | 3 levels; a negative value is 0, every difference |
 
 ### `UNSHARP_MASK`
 
@@ -491,6 +496,29 @@ silently. Suite 203 agrees with scikit-image to 9e-16 over seven cases, clipped 
 scikit-image 0.26's `unsharp_mask` mishandles `channel_axis=-1`: it passes the axis to
 `slice_at_axis` without taking it modulo the dimension count, so it sharpens rows 0, 1 and 2
 in turn instead of the three channels. Suite 203's reference passes `channel_axis=2`.
+
+### `UNSHARP_MASK_BOX`
+
+The unsharp mask as Pillow's `ImageFilter.UnsharpMask(radius, percent, threshold)`
+computes it, on 8-bit data, with the defaults Pillow's are (radius 2, 150 %, threshold 3).
+Two things set it apart from `UNSHARP_MASK`.
+
+The blur is not a sampled Gaussian but Gwosdek et al.'s extended box blur (SSVM 2011):
+three passes along the rows and three down the columns of a box whose radius `l + a` has a
+whole part `l` and a fractional weight `a` for the two end pixels, chosen so the three
+passes have the Gaussian's variance, `radius^2`. It costs the same at any radius. Each pass
+weighs in 24-bit fixed point, replicates the border and rounds back to 8 bits, as Pillow's
+does.
+
+A difference between a pixel and its blur of at most `threshold` levels is left alone; a
+larger one is added back `amount` times (`percent / 100` in integer arithmetic, truncated
+toward zero) and clamped to 0..255. The threshold keeps noise, film grain and smooth
+gradients from being sharpened with the edges; photographers' unsharp-mask dialogs have
+it for that.
+
+Suite 212 is equal to Pillow 12.0, value for value, on grey and colour images at radii 0.3
+to 12, 50 to 300 %, thresholds 0 to 10, and on an image narrower than the box, which takes
+the blur's other branch.
 
 ## Haze removal
 
