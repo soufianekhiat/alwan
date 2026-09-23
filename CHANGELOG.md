@@ -446,17 +446,15 @@
   form of Aubry et al. 2014, following MATLAB's `locallapfilt` to 1.5e-6, suite 198) and
   CLAHE (Zuiderveld 1994, bit for bit with OpenCV's `createCLAHE`, suite 197).
 
-- **Colour transfer: `alwan_color_transfer_reinhard`.** Reinhard et al. 2001, mean and
-  deviation matched per channel in Ruderman's l alpha beta; suite 193 checks the result's
-  statistics equal the reference's to 3e-15.
+- **Colour transfer: `alwan_color_transfer`.** One entry point with a method enum and a
+  blend amount: histogram matching as scikit-image's `match_histograms` (bit for bit, suite
+  191) and Reinhard et al. 2001's l alpha beta statistics transfer (suite 193 checks the
+  result's statistics equal the reference's to 3e-15).
 
 - **Haze removal: `alwan_dehaze`.** The dark channel prior (He, Sun and Tang 2009) with the
   transmission refined by the guided filter; the transmission and airlight are returned
   too. No reference implementation exists; suite 192 recovers a known synthetic haze
   (airlight within 0.017, transmission median 0.029, scene 0.032).
-
-- **Histogram matching: `alwan_histogram_match`.** Per-channel CDF matching of one image to
-  another, as scikit-image's `match_histograms`; suite 191 equals it bit for bit.
 
 - **The colour cube: `alwan_histogram3d`.** Counts of RGB values over a `bins^3` lattice,
   binned as `numpy.histogramdd` bins (linspace edges, the upper bound in the last cell,

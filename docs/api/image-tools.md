@@ -276,3 +276,48 @@ With 65536 bins, a tile of fewer than `65536 / clip_limit` pixels clips at one c
 whatever `clip_limit` says, so on 16-bit data clip limits of 2 and 4 give the same image
 unless the tiles are large. OpenCV behaves the same way. For photographic clip limits on
 an image of ordinary size, equalise an 8-bit lightness channel.
+
+## Colour transfer
+
+```c
+typedef enum {
+    ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH = 0,
+    ALWAN_COLOR_TRANSFER_REINHARD2001 = 1
+} alwan_color_transfer_method;
+
+alwan_status alwan_color_transfer_{T}(alwan_{T} *out, size_t out_stride,
+                                      alwan_{T} const *src, size_t src_stride, size_t src_count,
+                                      alwan_{T} const *ref, size_t ref_stride, size_t ref_count,
+                                      size_t channels, alwan_color_transfer_method method,
+                                      alwan_color_transfer_params const *params);
+```
+
+The look of a reference image carried onto a source. The two need not be the same size,
+and pixels are passed as counts, since neither method looks at neighbours. `out` may be
+`src`. `params.amount` blends the result with the source,
+`source + amount (transfer - source)`; 0 (or NULL params) reads as 1, the full transfer.
+
+### `HISTOGRAM_MATCH`
+
+Each of 1 to 4 channels is remapped so that its cumulative distribution matches the
+reference's: every distinct source value's quantile, `cumsum(counts) / n`, is looked up
+in the reference's quantiles, as scikit-image's `exposure.match_histograms` does (its float
+path, `numpy.interp` branch for branch). Channels are matched independently, so in RGB the
+channels drift apart; matching in a decorrelated space (Oklab, CIELAB) carries a look more
+gently. Suite 191 is bit for bit against scikit-image: all three channels, one alone, and a
+single-value reference.
+
+### `REINHARD2001`
+
+Reinhard, Ashikhmin, Gooch and Shirley (IEEE CG&A 2001): the mean and standard deviation of
+each channel are matched to the reference's in Ruderman's l alpha beta space, a log LMS
+space whose channels are nearly decorrelated for natural images, so a per-channel shift and
+scale moves the look without the cross-talk the same operation causes in RGB. Three
+channels of linear RGB. It uses the paper's RGB to LMS matrix and the exact inverse of it
+(the paper prints the inverse rounded), floors LMS at 1e-6 before the logarithm, and does
+not clamp. Compared with `HISTOGRAM_MATCH` it carries two moments where that carries the
+whole distribution, and so keeps the source's own shape.
+
+No implementation of the paper's own space exists to compare with; suite 193 checks the
+property that defines it: the result's l alpha beta means and standard deviations equal the
+reference's, to 3e-15, and an image transferred onto itself comes back unchanged.

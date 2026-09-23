@@ -123,16 +123,71 @@ static alwan_status alwan_ct_run(void *out, size_t out_stride, void const *src, 
     return ALWAN_OK;
 }
 
+/* ---- the family: alwan_color_transfer_{T} ---- */
+
+static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
+                                  void const *ref, size_t ref_stride, size_t ref_count, size_t channels,
+                                  alwan_color_transfer_method method, alwan_color_transfer_params const *params,
+                                  int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    double const amount = params && params->amount != 0.0 ? params->amount : 1.0;
+    double *keep = NULL;
+    alwan_status st;
+    size_t i, c;
+    if (!out || !src || !ref || src_count == 0 || channels == 0 || channels > 4) return ALWAN_E_INVALID;
+    if (!(amount == amount) || amount < 0.0 || amount > 1.0) return ALWAN_E_RANGE;
+    if (method == ALWAN_COLOR_TRANSFER_REINHARD2001 && channels != 3) return ALWAN_E_INVALID;
+    if (method != ALWAN_COLOR_TRANSFER_REINHARD2001 && method != ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH) {
+        return ALWAN_E_INVALID;
+    }
+    if (src_stride / elem < channels || out_stride / elem < channels) return ALWAN_E_INVALID;
+    if (amount != 1.0) { /* out may be src: keep the source for the blend */
+        keep = (double *)ALWAN_ALLOC(alwan_safe_array_size(src_count, channels * sizeof(double)), sizeof(double));
+        if (!keep) return ALWAN_E_NOMEM;
+        for (i = 0; i < src_count; i++) {
+            char const *px = (char const *)src + i * src_stride;
+            for (c = 0; c < channels; c++) {
+                keep[i * channels + c] = is_f32 ? (double)((alwan_f32 const *)px)[c] : ((alwan_f64 const *)px)[c];
+            }
+        }
+    }
+    if (method == ALWAN_COLOR_TRANSFER_REINHARD2001) {
+        st = alwan_ct_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, is_f32);
+    } else {
+        st = alwan__hm_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, is_f32);
+    }
+    if (st == ALWAN_OK && keep) {
+        for (i = 0; i < src_count; i++) {
+            char *px = (char *)out + i * out_stride;
+            for (c = 0; c < channels; c++) {
+                double const s0 = keep[i * channels + c];
+                double const t = is_f32 ? (double)((alwan_f32 *)px)[c] : ((alwan_f64 *)px)[c];
+                double const v = s0 + amount * (t - s0);
+                if (is_f32) ((alwan_f32 *)px)[c] = (alwan_f32)v;
+                else ((alwan_f64 *)px)[c] = v;
+            }
+        }
+    }
+    if (keep) ALWAN_FREE(keep);
+    return st;
+}
+
 #if ALWAN_WITH_F64_FACADE
-alwan_status alwan_color_transfer_reinhard_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride,
-                                               size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count) {
-    return alwan_ct_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, 0);
+alwan_status alwan_color_transfer_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride,
+                                      size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count,
+                                      size_t channels, alwan_color_transfer_method method,
+                                      alwan_color_transfer_params const *params) {
+    return alwan_ctf_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, method,
+                         params, 0);
 }
 #endif
 
 #if ALWAN_WITH_F32
-alwan_status alwan_color_transfer_reinhard_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride,
-                                               size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count) {
-    return alwan_ct_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, 1);
+alwan_status alwan_color_transfer_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride,
+                                      size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count,
+                                      size_t channels, alwan_color_transfer_method method,
+                                      alwan_color_transfer_params const *params) {
+    return alwan_ctf_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, method,
+                         params, 1);
 }
 #endif

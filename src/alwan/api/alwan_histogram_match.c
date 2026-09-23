@@ -56,8 +56,8 @@ static double alwan_hm_interp(double x, double const *xp, double const *fp, size
     return (fp[lo + 1] - fp[lo]) / (xp[lo + 1] - xp[lo]) * (x - xp[lo]) + fp[lo];
 }
 
-static alwan_status alwan_hm_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
-                                 void const *ref, size_t ref_stride, size_t ref_count, size_t channels, int is_f32) {
+alwan_status alwan__hm_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
+                           void const *ref, size_t ref_stride, size_t ref_count, size_t channels, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     alwan_hm_item *items;
     double *rv, *rq;
@@ -119,19 +119,3 @@ invalid:
     ALWAN_FREE(rq);
     return ALWAN_E_INVALID;
 }
-
-#if ALWAN_WITH_F64_FACADE
-alwan_status alwan_histogram_match_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride,
-                                       size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count,
-                                       size_t channels) {
-    return alwan_hm_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, 0);
-}
-#endif
-
-#if ALWAN_WITH_F32
-alwan_status alwan_histogram_match_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride,
-                                       size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count,
-                                       size_t channels) {
-    return alwan_hm_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, 1);
-}
-#endif

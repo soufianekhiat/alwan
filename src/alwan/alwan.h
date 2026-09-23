@@ -2242,29 +2242,38 @@ alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 
 alwan_status alwan_denoise_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
 alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
 
-/* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
- * so its cumulative distribution matches that of ref_count reference pixels, carrying one
- * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every
- * distinct source value's quantile, cumsum(counts) / n, is looked up in the reference's
- * quantiles by numpy.interp. Pixels are `channels` values at the given byte strides; out
- * may be src. Values are matched per channel, so a colour image's channels drift apart
- * unless the space decorrelates them (match in Oklab or CIELAB for a gentler transfer).
- * ALWAN_E_INVALID for a NULL, no pixels, a channel count out of range, a stride too small
- * or a non-finite value. Suite 191 holds it to scikit-image. */
-alwan_status alwan_histogram_match_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
-alwan_status alwan_histogram_match_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
+/* Colour transfer: the look of a reference image carried onto a source. The two need not
+ * be the same size; pixels are `channels` values at the given byte strides (a count, not a
+ * width and height, since neither method looks at neighbours). out may be src.
+ *
+ *   ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH  each of 1 to 4 channels remapped so its cumulative
+ *                                         distribution matches the reference's, as
+ *                                         scikit-image's match_histograms (bit for bit,
+ *                                         suite 191). Channels are matched apart, so a colour
+ *                                         image's drift unless the space decorrelates them:
+ *                                         match in Oklab or CIELAB for a gentler transfer
+ *   ALWAN_COLOR_TRANSFER_REINHARD2001     Reinhard, Ashikhmin, Gooch and Shirley 2001: mean
+ *                                         and standard deviation of each channel matched in
+ *                                         Ruderman's l alpha beta (log LMS). Three channels of
+ *                                         linear RGB; LMS floored at 1e-6 before the log; a
+ *                                         source channel with no spread is shifted, not
+ *                                         scaled; not clamped (suite 193)
+ *
+ * params NULL is the full transfer. ALWAN_E_INVALID for a NULL, no pixels, a channel count
+ * out of range (REINHARD2001 takes 3), a stride too small, a non-finite value or an unknown
+ * method; ALWAN_E_RANGE for an amount outside 0..1. */
+typedef enum {
+    ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH = 0,
+    ALWAN_COLOR_TRANSFER_REINHARD2001 = 1
+} alwan_color_transfer_method;
 
-/* Colour transfer (Reinhard, Ashikhmin, Gooch and Shirley, IEEE CG&A 2001): the look of
- * ref carried onto src by matching the mean and standard deviation of each channel in
- * Ruderman's l alpha beta space (log LMS, near-decorrelated for natural images), with the
- * paper's RGB -> LMS matrix and the exact inverse of it. Both images are linear RGB,
- * three values a pixel at the given byte strides; they need not be the same size. LMS is
- * floored at 1e-6 before the logarithm; standard deviations are population ones; a source
- * channel with zero spread is shifted, not scaled; the output is not clamped. out may be
- * src. ALWAN_E_INVALID for a NULL, no pixels, a stride under three values or a non-finite
- * value. Suite 193 checks that the result's l alpha beta statistics equal ref's. */
-alwan_status alwan_color_transfer_reinhard_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count);
-alwan_status alwan_color_transfer_reinhard_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count);
+typedef struct {
+    double amount; /* the result blended with the source, source + amount (transfer - source), in
+                    * 0..1; 0 reads as 1, the full transfer */
+} alwan_color_transfer_params;
+
+alwan_status alwan_color_transfer_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count, size_t channels, alwan_color_transfer_method method, alwan_color_transfer_params const *params);
+alwan_status alwan_color_transfer_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count, size_t channels, alwan_color_transfer_method method, alwan_color_transfer_params const *params);
 
 /* Haze removal by the dark channel prior (He, Sun and Tang, CVPR 2009 / TPAMI 2011), the
  * transmission refined by the guided filter (alwan_edge_filter, ALWAN_EDGE_FILTER_GUIDED) as in their Guided Image Filtering paper.

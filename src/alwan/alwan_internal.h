@@ -57,6 +57,10 @@ alwan_status alwan__llf_run(void *out, size_t out_row_stride, void const *src, s
                             size_t w, size_t h, double sigma, double alpha, double beta, size_t levels_in,
                             int mode, int is_f32);
 
+/* Histogram matching worker (api/alwan_histogram_match.c), behind alwan_color_transfer_{T}. */
+alwan_status alwan__hm_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
+                           void const *ref, size_t ref_stride, size_t ref_count, size_t channels, int is_f32);
+
 /* Batch workers behind the CIECAM02 / CAM16 maps (api/alwan_cam_impl.inc): the
  * viewing-condition terms once, the scalar's _v core per pixel, bit-identical to
  * the scalar. The maps check count and delegate. */
