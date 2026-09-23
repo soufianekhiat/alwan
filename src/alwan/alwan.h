@@ -2128,6 +2128,18 @@ alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_
 alwan_status alwan_guided_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f32 eps);
 alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f64 eps);
 
+/* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
+ * so its cumulative distribution matches that of ref_count reference pixels, carrying one
+ * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every
+ * distinct source value's quantile, cumsum(counts) / n, is looked up in the reference's
+ * quantiles by numpy.interp. Pixels are `channels` values at the given byte strides; out
+ * may be src. Values are matched per channel, so a colour image's channels drift apart
+ * unless the space decorrelates them (match in Oklab or CIELAB for a gentler transfer).
+ * ALWAN_E_INVALID for a NULL, no pixels, a channel count out of range, a stride too small
+ * or a non-finite value. Suite 191 holds it to scikit-image. */
+alwan_status alwan_histogram_match_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
+alwan_status alwan_histogram_match_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics

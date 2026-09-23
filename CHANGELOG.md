@@ -427,6 +427,9 @@
 
 ### Added
 
+- **Histogram matching: `alwan_histogram_match`.** Per-channel CDF matching of one image to
+  another, as scikit-image's `match_histograms`; suite 191 equals it bit for bit.
+
 - **The guided filter: `alwan_guided_filter`.** He, Sun and Tang's edge-aware filter with a
   grey or colour guide and one to four source channels, radius-independent cost, as
   OpenCV's ximgproc computes it (reflected borders, cofactor inverse, its small-determinant

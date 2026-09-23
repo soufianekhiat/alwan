@@ -342,3 +342,20 @@ edge pixel repeated), the colour guide's 3 x 3 covariance inverted by cofactors,
 may be `src`. Suite 190: the colour-guide cases agree with OpenCV to 1.8e-7, float
 rounding; the grey-guide case to 6.1e-6, because OpenCV's SSE build takes the reciprocal
 of the variance with a 12-bit approximation.
+
+## Matching one shot to another: histogram matching
+
+```c
+alwan_status alwan_histogram_match_{T}(alwan_{T} *out, size_t out_stride,
+                                       alwan_{T} const *src, size_t src_stride, size_t src_count,
+                                       alwan_{T} const *ref, size_t ref_stride, size_t ref_count,
+                                       size_t channels);
+```
+
+Each channel of `src` is remapped so that its cumulative distribution matches the
+reference's: every distinct source value's quantile, `cumsum(counts) / n`, is looked up
+in the reference's quantiles, as scikit-image's `exposure.match_histograms` does (its float
+path, `numpy.interp` branch for branch). The images need not be the same size. Channels
+are matched independently, so in RGB the channels drift apart; matching in a decorrelated
+space (Oklab, CIELAB) carries a look more gently. `out` may be `src`. Suite 191 is bit for
+bit against scikit-image: all three channels, one alone, and a single-value reference.
