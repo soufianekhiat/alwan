@@ -2108,6 +2108,26 @@ alwan_status alwan_palette_median_cut_u8(unsigned char *palette_out, size_t *cou
 alwan_status alwan_histogram3d_f32(unsigned int *counts_out, size_t bins, alwan_f32 const *rgb, size_t stride, size_t count, alwan_f32 const lo[3], alwan_f32 const hi[3]);
 alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_f64 const *rgb, size_t stride, size_t count, alwan_f64 const lo[3], alwan_f64 const hi[3]);
 
+/* The guided filter (He, Sun and Tang, ECCV 2010 / TPAMI 2013): an edge-preserving
+ * smoother whose output is, in every window of side 2 radius + 1, a linear function of
+ * a guide: q = a . I + b, a and b fitted to src by least squares with ridge eps, then
+ * averaged over the windows covering each pixel. The image as its own guide smooths
+ * within regions and keeps edges; a colour guide with a one-channel src (a matte, a
+ * transmission map) snaps src to the guide's edges. Cost is independent of radius.
+ *
+ * src has src_channels (1 to 4) values a pixel, the guide 1 or 3, rows the given byte
+ * strides apart; out has src_channels. eps is in the square of the guide's units
+ * (1e-2 to 1e-1 for a guide in [0, 1] is a gentle to strong smoothing). Windows reflect
+ * at the border, the edge pixel repeated. It follows OpenCV's ximgproc::guidedFilter,
+ * including its cofactor inverse and, for eps below 0.01, its replacement of a
+ * determinant under 1e-6 by 1; it computes in double. out may be src. Scratch is
+ * width * height * (4 guide_channels + 5 + covariances) doubles, covariances 6 for a
+ * colour guide and 1 for grey. ALWAN_E_INVALID for a NULL, a zero size, a channel count
+ * out of range, a stride too small, a negative or non-finite eps or a non-finite pixel.
+ * Suite 190 holds it to OpenCV. */
+alwan_status alwan_guided_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f32 eps);
+alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f64 eps);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics

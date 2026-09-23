@@ -317,3 +317,28 @@ last edge at or below it, a value equal to `hi` counts in the last cell, and a p
 channel outside `[lo, hi]` or NaN is not counted. `bins` runs from 1 to 1024; the caller
 holds `bins^3` counts. Suite 189 matches `numpy.histogramdd` cell for cell over five
 binnings, with values on edges, on both bounds, outside every range, and a NaN.
+
+## Edge-aware smoothing: the guided filter
+
+```c
+alwan_status alwan_guided_filter_{T}(alwan_{T} *out, size_t out_row_stride,
+                                     alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
+                                     alwan_{T} const *guide, size_t guide_row_stride, size_t guide_channels,
+                                     size_t width, size_t height, size_t radius, alwan_{T} eps);
+```
+
+He, Sun and Tang's guided filter (ECCV 2010, TPAMI 2013): in every window of side
+`2 radius + 1` the output is a linear function of the guide, `q = a . I + b`, with `a` and
+`b` fitted to `src` by least squares with ridge `eps` and then averaged over the windows
+covering each pixel. The image as its own guide smooths within regions and keeps edges;
+a colour guide with a one-channel source (a matte, a haze transmission map, a mask from
+`alwan_select_*`) snaps the source to the guide's edges. The cost does not depend on the
+radius. `eps` is in the square of the guide's units: for a guide in [0, 1], 1e-3 keeps
+fine edges and 0.1 smooths strongly.
+
+It follows OpenCV's `cv::ximgproc::guidedFilter`: box means with the border reflected (the
+edge pixel repeated), the colour guide's 3 x 3 covariance inverted by cofactors, and, for
+`eps` below 0.01, a determinant under 1e-6 replaced by 1. It computes in double; `out`
+may be `src`. Suite 190: the colour-guide cases agree with OpenCV to 1.8e-7, float
+rounding; the grey-guide case to 6.1e-6, because OpenCV's SSE build takes the reciprocal
+of the variance with a 12-bit approximation.

@@ -427,6 +427,11 @@
 
 ### Added
 
+- **The guided filter: `alwan_guided_filter`.** He, Sun and Tang's edge-aware filter with a
+  grey or colour guide and one to four source channels, radius-independent cost, as
+  OpenCV's ximgproc computes it (reflected borders, cofactor inverse, its small-determinant
+  guard). Suite 190: 1.8e-7 against OpenCV with a colour guide.
+
 - **The colour cube: `alwan_histogram3d`.** Counts of RGB values over a `bins^3` lattice,
   binned as `numpy.histogramdd` bins (linspace edges, the upper bound in the last cell,
   outliers and NaN dropped); suite 189 matches it cell for cell.
