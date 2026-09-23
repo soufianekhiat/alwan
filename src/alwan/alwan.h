@@ -2267,6 +2267,21 @@ alwan_status alwan_local_laplacian_filter_f64(alwan_f64 *out, size_t out_row_str
 alwan_status alwan_exposure_fusion_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *const *images, size_t image_row_stride, size_t image_count, size_t channels, size_t width, size_t height, alwan_f32 contrast_weight, alwan_f32 saturation_weight, alwan_f32 exposure_weight);
 alwan_status alwan_exposure_fusion_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *const *images, size_t image_row_stride, size_t image_count, size_t channels, size_t width, size_t height, alwan_f64 contrast_weight, alwan_f64 saturation_weight, alwan_f64 exposure_weight);
 
+/* Total-variation denoising (Chambolle 2004, the Rudin, Osher and Fatemi model): each
+ * channel is replaced by the image u minimising sum (u - f)^2 / 2 + weight sum |grad u|,
+ * found by Chambolle's dual fixed-point iterations. Flat regions go flat, edges stay
+ * sharp, fine texture goes with the noise; a larger weight removes more (0.05 to 0.2 on
+ * values in 0..1). The iterations stop when the energy changes by less than eps times its
+ * first value (scikit-image's default 2e-4) or after max_iterations (200).
+ *
+ * src has 1 to 4 channels, each denoised on its own, rows at the given byte strides; out
+ * may be src. It follows scikit-image's denoise_tv_chambolle with channel_axis set,
+ * including which iteration's image it returns. ALWAN_E_INVALID for a NULL, a zero size, a
+ * channel count out of range, a stride too small or a non-finite value; ALWAN_E_RANGE for
+ * weight not above 0, a negative eps, or max_iterations 0 or above 100000. Suite 200. */
+alwan_status alwan_denoise_tv_chambolle_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 weight, alwan_f32 eps, size_t max_iterations);
+alwan_status alwan_denoise_tv_chambolle_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 weight, alwan_f64 eps, size_t max_iterations);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every

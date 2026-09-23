@@ -621,6 +621,28 @@ difference. Where every exposure's weight is the 1e-12 floor, as in a flat neutr
 alwan returns the plain average. OpenCV's float arithmetic gives a neutral pixel a
 saturation of about 1e-8 instead of 0, and rounding then picks the blend.
 
+## Denoising: total variation
+
+```c
+alwan_status alwan_denoise_tv_chambolle_{T}(alwan_{T} *out, size_t out_row_stride,
+                                            alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                            size_t width, size_t height,
+                                            alwan_{T} weight, alwan_{T} eps, size_t max_iterations);
+```
+
+The Rudin, Osher and Fatemi model: each channel becomes the image `u` minimising
+`sum (u - f)^2 / 2 + weight sum |grad u|`, solved by Chambolle's dual iterations (J. Math.
+Imaging and Vision, 2004). Total variation charges for every change between neighbours,
+not for its size, so noise and fine texture go while edges stay sharp; flat regions go
+flat, which reads as a painted look at high `weight`. On values in 0..1, `weight` 0.05 to
+0.2 covers light to strong denoising. The iterations stop when the energy changes by less
+than `eps` times its first value, or after `max_iterations`; scikit-image's defaults are
+2e-4 and 200.
+
+The function follows scikit-image's `denoise_tv_chambolle` with `channel_axis` set, down
+to which iteration's image it returns. Suite 200 agrees with it exactly in f64 over seven
+cases, including runs cut after 1, 2 and 7 iterations. `out` may alias `src`.
+
 The functions reproduce OpenCV's `cv::createCLAHE` bit for bit, and suite 197 holds every
 pixel of ten cases equal. An image that does not divide into tiles is extended at the
 bottom and right by reflection, by `tiles - size % tiles` in each direction, so an image

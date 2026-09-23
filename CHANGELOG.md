@@ -427,6 +427,10 @@
 
 ### Added
 
+- **TV denoising: `alwan_denoise_tv_chambolle`.** Chambolle 2004 for the Rudin, Osher and
+  Fatemi model, channel by channel, as scikit-image's `denoise_tv_chambolle` computes it;
+  suite 200 agrees with scikit-image exactly in f64.
+
 - **Exposure fusion: `alwan_exposure_fusion`.** Mertens et al. 2007, a bracket blended into
   one picture by contrast, saturation and well-exposedness through Laplacian pyramids, as
   OpenCV's `cv::MergeMertens` computes it; suite 199 agrees with OpenCV to 1.5e-6, and a
