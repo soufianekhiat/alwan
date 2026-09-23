@@ -283,8 +283,6 @@ EXPORTS
     alwan_ciecam16_forward_f64
     alwan_ciecam16_inverse_f32
     alwan_ciecam16_inverse_f64
-    alwan_clahe_u16
-    alwan_clahe_u8
     alwan_clf_apply_f32_map_interleave
     alwan_clf_apply_f32_map_planar
     alwan_clf_apply_f64_map_interleave
@@ -1195,8 +1193,10 @@ EXPORTS
     alwan_llab_forward_f32_map_interleave
     alwan_llab_forward_f64
     alwan_llab_forward_f64_map_interleave
-    alwan_local_laplacian_filter_f32
-    alwan_local_laplacian_filter_f64
+    alwan_local_contrast_f32
+    alwan_local_contrast_f64
+    alwan_local_contrast_u16
+    alwan_local_contrast_u8
     alwan_luminance_from_lightness_f32
     alwan_luminance_from_lightness_f64
     alwan_luminance_from_munsell_value_f32

@@ -34,9 +34,9 @@
  *     reference ref, delta the spacing; the coarsest level is the input's own;
  *   - `levels` 0 picks MATLAB's count from alpha: 50 below 0.1, 16 from 0.9, linear in
  *     between; one level remaps the whole image around its mid-range;
- *   - colour, ALWAN_LLF_LUMINANCE: the filter runs on
+ *   - colour, luminance (the default): the filter runs on
  *     Y = 0.298936021293776 R + 0.587043074451121 G + 0.114020904255103 B and every channel
- *     is scaled by filtered Y / (Y + FLT_EPSILON); ALWAN_LLF_SEPARATE filters each channel;
+ *     is scaled by filtered Y / (Y + FLT_EPSILON); separate_channels filters each channel;
  *   - alpha = beta = 1, or sigma = 0 with beta = 1, returns the input.
  * MATLAB computes in single precision; this computes in double. MATLAB's remap is 0 / 0 at
  * d = 0 when sigma = 0; here it is the limit, g0.
@@ -49,6 +49,8 @@
 #include <string.h>
 
 #define ALWAN_LLF_MAX_LEVELS 64
+#define ALWAN_LLF_LUMINANCE 0
+#define ALWAN_LLF_SEPARATE 1
 #define ALWAN_LLF_NOISE 0.01 /* Paris et al.'s noise level, in the data's units */
 
 static double const alwan_llf_k[5] = { 0.05, 0.25, 0.4, 0.25, 0.05 };
@@ -188,7 +190,7 @@ static void alwan_llf_plane(double *plane, alwan_llf_pyr const *py, double *ing,
     memcpy(plane, outl, n0 * sizeof(double));
 }
 
-static alwan_status alwan_llf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t ch,
+alwan_status alwan__llf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t ch,
                                   size_t w, size_t h, double sigma, double alpha, double beta, size_t levels_in,
                                   int mode, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
@@ -296,23 +298,3 @@ invalid:
     ALWAN_FREE(tmp);
     return ALWAN_E_INVALID;
 }
-
-#if ALWAN_WITH_F64_FACADE
-alwan_status alwan_local_laplacian_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src,
-                                              size_t src_row_stride, size_t channels, size_t width, size_t height,
-                                              alwan_f64 sigma, alwan_f64 alpha, alwan_f64 beta, size_t intensity_levels,
-                                              alwan_llf_color_mode mode) {
-    return alwan_llf_run(out, out_row_stride, src, src_row_stride, channels, width, height, (double)sigma, (double)alpha,
-                         (double)beta, intensity_levels, (int)mode, 0);
-}
-#endif
-
-#if ALWAN_WITH_F32
-alwan_status alwan_local_laplacian_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src,
-                                              size_t src_row_stride, size_t channels, size_t width, size_t height,
-                                              alwan_f32 sigma, alwan_f32 alpha, alwan_f32 beta, size_t intensity_levels,
-                                              alwan_llf_color_mode mode) {
-    return alwan_llf_run(out, out_row_stride, src, src_row_stride, channels, width, height, (double)sigma, (double)alpha,
-                         (double)beta, intensity_levels, (int)mode, 1);
-}
-#endif

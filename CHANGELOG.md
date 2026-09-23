@@ -441,13 +441,10 @@
   suite 195, 1.9e-6 and 1.5e-7) and the fast global smoother (Min et al. 2014, suite 196,
   7.8e-6), each following its OpenCV ximgproc function. A NULL guide is the source itself.
 
-- **The local Laplacian filter: `alwan_local_laplacian_filter`.** Paris et al. 2011 in the
-  fast form of Aubry et al. 2014: detail boost or smoothing and tonal range compression
-  without halos, following MATLAB's `locallapfilt`; suite 198 agrees with MATLAB to 1.5e-6.
-
-- **CLAHE: `alwan_clahe_u8`, `alwan_clahe_u16`.** Contrast-limited adaptive histogram
-  equalisation on 8-bit and 16-bit single-channel images, reproducing OpenCV's
-  `cv::createCLAHE` bit for bit (suite 197), padding of non-dividing sizes included.
+- **Local contrast: `alwan_local_contrast`.** One entry point per data type (float,
+  8-bit, 16-bit) with a method enum: the local Laplacian filter (Paris et al. 2011, the fast
+  form of Aubry et al. 2014, following MATLAB's `locallapfilt` to 1.5e-6, suite 198) and
+  CLAHE (Zuiderveld 1994, bit for bit with OpenCV's `createCLAHE`, suite 197).
 
 - **Colour transfer: `alwan_color_transfer_reinhard`.** Reinhard et al. 2001, mean and
   deviation matched per channel in Ruderman's l alpha beta; suite 193 checks the result's

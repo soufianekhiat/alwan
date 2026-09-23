@@ -51,7 +51,7 @@ static long alwan_clahe_round(float v) {
     return (long)f;
 }
 
-static alwan_status alwan_clahe_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t w,
+alwan_status alwan__clahe_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t w,
                                     size_t h, size_t tiles_x, size_t tiles_y, double clip_limit, int is16) {
     size_t const bins = is16 ? 65536u : 256u;
     size_t const elem = is16 ? 2u : 1u;
@@ -178,14 +178,4 @@ static alwan_status alwan_clahe_run(void *out, size_t out_row_stride, void const
     ALWAN_FREE(xi1);
     ALWAN_FREE(xa);
     return ALWAN_OK;
-}
-
-alwan_status alwan_clahe_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride,
-                            size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit) {
-    return alwan_clahe_run(out, out_row_stride, src, src_row_stride, width, height, tiles_x, tiles_y, clip_limit, 0);
-}
-
-alwan_status alwan_clahe_u16(unsigned short *out, size_t out_row_stride, unsigned short const *src, size_t src_row_stride,
-                             size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit) {
-    return alwan_clahe_run(out, out_row_stride, src, src_row_stride, width, height, tiles_x, tiles_y, clip_limit, 1);
 }

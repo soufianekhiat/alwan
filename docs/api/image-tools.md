@@ -194,3 +194,85 @@ one iteration: it refreshes the border with `copyMakeBorder` from a view into it
 buffer, which without `BORDER_ISOLATED` grows the view instead of replicating, so later
 iterations read a border that is stale or was never written. alwan replicates the border
 every iteration.
+
+## Local contrast
+
+```c
+typedef enum {
+    ALWAN_LOCAL_CONTRAST_LAPLACIAN = 0,
+    ALWAN_LOCAL_CONTRAST_CLAHE = 1
+} alwan_local_contrast_method;
+
+alwan_status alwan_local_contrast_{T}(alwan_{T} *out, size_t out_row_stride,
+                                      alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                      size_t width, size_t height,
+                                      alwan_local_contrast_method method,
+                                      alwan_local_contrast_params const *params);
+alwan_status alwan_local_contrast_u8(...);   /* same, unsigned char pixels */
+alwan_status alwan_local_contrast_u16(...);  /* same, unsigned short pixels */
+```
+
+Contrast that adapts to each neighbourhood. The 8- and 16-bit entry points run both
+methods, the local Laplacian through double in 0..1, rounded back as MATLAB rounds integer
+output. The float entry points run `LAPLACIAN` and refuse `CLAHE`, whose histogram bins
+need integer data. `out` may alias `src`.
+
+| Field of `alwan_local_contrast_params` | Method | 0 reads as |
+|---|---|---|
+| `sigma` | `LAPLACIAN` | 0.4 |
+| `alpha` | `LAPLACIAN` | 0.5 |
+| `beta` | `LAPLACIAN` | 1 |
+| `intensity_levels` | `LAPLACIAN` | MATLAB's count from `alpha`, 16 to 50 |
+| `separate_channels` | `LAPLACIAN` | 0: filter the luma of three channels |
+| `tiles_x`, `tiles_y` | `CLAHE` | 8 |
+| `clip_limit` | `CLAHE` | OpenCV's 40; a negative value turns clipping off |
+
+The `LAPLACIAN` defaults are MATLAB's documented example, `locallapfilt(I, 0.4, 0.5)`.
+
+### `LAPLACIAN`
+
+Paris, Hasinoff and Kautz (SIGGRAPH 2011) build the output's Laplacian pyramid one
+coefficient at a time, each from a copy of the image remapped around that pixel's own value
+`g0`. A difference `d` from `g0` up to `sigma` is detail and becomes
+`sigma (|d| / sigma)^alpha`; a larger one is an edge and becomes `beta (|d| - sigma) + sigma`.
+Because the pyramid, not a blur, separates the two, edges keep their shape and nothing
+halos.
+
+| Setting | Effect |
+|---|---|
+| `alpha` < 1 | more local detail, the "clarity" or texture look |
+| `alpha` > 1 | smoother detail, a skin or noise softener |
+| `beta` < 1 | compressed tonal range, a tone mapper that keeps detail |
+| `sigma` | the size of a difference that still counts as detail, in the data's units |
+
+With `alpha` < 1, differences under 0.01 are blended back to the identity so that grain
+is not amplified; that level is in the data's units, so scale an image to 0..1 before
+boosting its detail. This uses the fast form of Aubry et al. (ACM TOG 2014): the image is
+remapped at `intensity_levels` values across its range and the pyramids are blended per
+pixel. With three channels and `separate_channels` 0 the filter runs on the luma and
+scales the channels by it, which keeps their ratios and so the hues; otherwise each channel
+is filtered. The filter follows MATLAB's `locallapfilt`. Its compiled pyramid, remap and
+blend steps were read by probing them (the kernel `[.05 .25 .4 .25 .05]`, half-sample
+symmetric borders, `floor(log2(min(w, h))) + 1` levels, linear weights between intensity
+levels; gendata/tests/local_laplacian_probe.m in alwan_dev). Suite 198 agrees with MATLAB
+to 1.5e-6 over eight cases, the size of MATLAB's single precision.
+
+### `CLAHE`
+
+Contrast-limited adaptive histogram equalisation (Zuiderveld, Graphics Gems IV, 1994).
+The image is cut into `tiles_x` by `tiles_y` tiles. Each tile's histogram is clipped at
+`clip_limit` times its mean bin count, the excess is spread back over every bin, and the
+cumulative histogram becomes that tile's tone curve. Each pixel is mapped by the curves of
+its four nearest tiles, blended bilinearly. Flat regions gain contrast and `clip_limit`
+caps how much: 2 to 4 is the usual photographic range.
+
+One channel of 8-bit (256 bins) or 16-bit (65536 bins) values. For a colour image,
+equalise a lightness channel (CIELAB L*, Oklab L, or luma) and rebuild the colour from it;
+equalising R, G and B apart shifts hues. It reproduces OpenCV's `cv::createCLAHE` bit for
+bit, including its padding of an image that does not divide into tiles (suite 197).
+
+The clip level is counted per bin: `(int)(clip_limit * tile_area / bins)`, at least 1.
+With 65536 bins, a tile of fewer than `65536 / clip_limit` pixels clips at one count
+whatever `clip_limit` says, so on 16-bit data clip limits of 2 and 4 give the same image
+unless the tiles are large. OpenCV behaves the same way. For photographic clip limits on
+an image of ordinary size, equalise an 8-bit lightness channel.

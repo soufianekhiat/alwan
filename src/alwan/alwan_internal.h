@@ -48,6 +48,15 @@ alwan_status alwan__fgs_run(void *out, size_t out_row_stride, void const *src, s
                             void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
                             double lambda, double sigma_color, double attenuation, size_t iterations, int is_f32);
 
+/* Local contrast workers (api/alwan_clahe.c, alwan_local_laplacian.c), behind
+ * alwan_local_contrast. CLAHE: one channel of 8-bit (is16 0) or 16-bit data. The local
+ * Laplacian: f32 or f64 pixels, mode 0 luminance, 1 separate channels. */
+alwan_status alwan__clahe_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t w,
+                              size_t h, size_t tiles_x, size_t tiles_y, double clip_limit, int is16);
+alwan_status alwan__llf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t ch,
+                            size_t w, size_t h, double sigma, double alpha, double beta, size_t levels_in,
+                            int mode, int is_f32);
+
 /* Batch workers behind the CIECAM02 / CAM16 maps (api/alwan_cam_impl.inc): the
  * viewing-condition terms once, the scalar's _v core per pixel, bit-identical to
  * the scalar. The maps check count and delegate. */

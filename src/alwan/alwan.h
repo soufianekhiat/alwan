@@ -2151,54 +2151,52 @@ typedef enum {
 alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f32 const *params);
 alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f64 const *params);
 
-/* Contrast-limited adaptive histogram equalisation, CLAHE (Zuiderveld, Graphics Gems IV,
- * 1994): the image cut into tiles_x x tiles_y tiles, each tile's histogram clipped at
- * clip_limit times its mean bin count with the excess spread back over all bins, its
- * cumulative histogram used as that tile's tone curve, and every pixel mapped by the
- * curves of its four nearest tiles blended bilinearly. Local contrast rises where a
- * region is flat and clip_limit caps how far (OpenCV's default is 40 with 8 x 8 tiles;
- * 2 to 4 is the usual photographic range; 0 or below turns clipping off, which is plain
- * adaptive equalisation).
+/* Local contrast: contrast that adapts to each neighbourhood.
  *
- * One channel of 8-bit (256 bins) or 16-bit (65536 bins) data, rows at the given byte
- * strides; to equalise a colour image, run it on a lightness channel. The clip level is
- * counted per bin, (int)(clip_limit * tile_area / bins) and at least 1, so with 65536
- * bins a tile of fewer than 65536 / clip_limit pixels clips at one count whatever the
- * limit: 16-bit data needs large tiles (or clip_limit in the thousands) for the limit to
- * matter. It reproduces OpenCV's cv::createCLAHE bit for bit, including its padding of an
- * image that does not divide into tiles. out may be src. ALWAN_E_INVALID for a NULL, a zero size or tile
- * count, or a stride too small; ALWAN_E_RANGE for a NaN or huge clip_limit, more than
- * 4096 tiles, or tiles too large to count. Suite 197. */
-alwan_status alwan_clahe_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit);
-alwan_status alwan_clahe_u16(unsigned short *out, size_t out_row_stride, unsigned short const *src, size_t src_row_stride, size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit);
-
-/* The local Laplacian filter (Paris, Hasinoff and Kautz, SIGGRAPH 2011; the fast form of
- * Aubry et al., ACM TOG 2014): edge-aware detail and tone manipulation without halos.
- * Around every pixel's own value g0, differences up to sigma are treated as detail and
- * raised to alpha (alpha < 1 adds detail, the "clarity" look; alpha > 1 smooths it), and
- * larger differences as edges scaled by beta (beta < 1 compresses the tonal range, a tone
- * mapper; beta > 1 expands it). sigma is in the data's units (0.1 to 0.4 on display-encoded
- * values in 0..1). With alpha < 1, differences under 0.01 (the paper's noise level, in the
- * data's units) are left alone, so grain is not amplified. intensity_levels is the number of remapped copies blended per pixel; 0
- * picks MATLAB's count from alpha (16 to 50).
+ *   ALWAN_LOCAL_CONTRAST_LAPLACIAN  the local Laplacian filter (Paris, Hasinoff and Kautz,
+ *                                   SIGGRAPH 2011, the fast form of Aubry et al. 2014):
+ *                                   differences under sigma are detail, raised to alpha
+ *                                   (below 1 adds detail, the "clarity" look; above 1
+ *                                   smooths it), larger ones are edges, scaled by beta
+ *                                   (below 1 compresses the range), without halos. MATLAB's
+ *                                   locallapfilt, to 1.5e-6 (suite 198)
+ *   ALWAN_LOCAL_CONTRAST_CLAHE      contrast-limited adaptive histogram equalisation
+ *                                   (Zuiderveld 1994): each of tiles_x x tiles_y tiles gets
+ *                                   its clipped histogram's cumulative sum as a tone curve,
+ *                                   blended between the four nearest tiles. One channel;
+ *                                   OpenCV's createCLAHE bit for bit (suite 197)
  *
- *   ALWAN_LLF_LUMINANCE  3 channels: filter the luma 0.2989 R + 0.5870 G + 0.1140 B and
- *                        scale the channels by it, keeping their ratios (1 channel: as is)
- *   ALWAN_LLF_SEPARATE   filter each of 1 to 4 channels on its own
- *
- * Pixels are `channels` values at the given row byte strides; out may be src. It follows
- * MATLAB's locallapfilt (whose pyramid, remapping and blending were read by probing its
- * builtins), in double where MATLAB works in single. ALWAN_E_INVALID for a NULL, a zero
- * size, a channel count or mode out of range, a stride too small or a non-finite value;
- * ALWAN_E_RANGE for a negative sigma or beta, alpha not above 0, or intensity_levels above
- * 1000. Suite 198. */
+ * alwan_local_contrast_u8 and _u16 run both (the Laplacian through double in 0..1, rounded
+ * back as MATLAB rounds integer output); alwan_local_contrast_{T} runs LAPLACIAN and
+ * refuses CLAHE, whose histogram bins need integer data. Rows at the given byte strides;
+ * out may be src. params NULL is every default. ALWAN_E_INVALID for a NULL, a zero size, a
+ * channel count out of range (CLAHE takes 1), a stride too small, a non-finite value or an
+ * unknown method; ALWAN_E_RANGE for a parameter out of its range. */
 typedef enum {
-    ALWAN_LLF_LUMINANCE = 0,
-    ALWAN_LLF_SEPARATE = 1
-} alwan_llf_color_mode;
+    ALWAN_LOCAL_CONTRAST_LAPLACIAN = 0,
+    ALWAN_LOCAL_CONTRAST_CLAHE = 1
+} alwan_local_contrast_method;
 
-alwan_status alwan_local_laplacian_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 sigma, alwan_f32 alpha, alwan_f32 beta, size_t intensity_levels, alwan_llf_color_mode mode);
-alwan_status alwan_local_laplacian_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 sigma, alwan_f64 alpha, alwan_f64 beta, size_t intensity_levels, alwan_llf_color_mode mode);
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    double sigma;            /* LAPLACIAN: the largest difference that is detail, data units; 0 reads as 0.4 */
+    double alpha;            /* LAPLACIAN: detail exponent; 0 reads as 0.5. With alpha < 1, differences
+                              * under 0.01 are left alone (Paris et al.'s noise level) */
+    double beta;             /* LAPLACIAN: edge scale; 0 reads as 1 */
+    size_t intensity_levels; /* LAPLACIAN: remapped copies blended per pixel; 0 is MATLAB's count
+                              * from alpha (16 to 50) */
+    int separate_channels;   /* LAPLACIAN: 0 filters the luma of 3 channels and scales the channels
+                              * by it (MATLAB's 'luminance'); non-zero filters each channel */
+    size_t tiles_x, tiles_y; /* CLAHE: the tile grid; 0 reads as 8 */
+    double clip_limit;       /* CLAHE: clip level in mean bin counts; 0 reads as OpenCV's 40, a negative
+                              * value turns clipping off. With 65536 bins it floors to one count on
+                              * tiles under 65536 / clip_limit pixels, so 16-bit limits rarely differ */
+} alwan_local_contrast_params;
+
+alwan_status alwan_local_contrast_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_local_contrast_method method, alwan_local_contrast_params const *params);
+alwan_status alwan_local_contrast_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_local_contrast_method method, alwan_local_contrast_params const *params);
+alwan_status alwan_local_contrast_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_local_contrast_method method, alwan_local_contrast_params const *params);
+alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride, unsigned short const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_local_contrast_method method, alwan_local_contrast_params const *params);
 
 /* Denoising. Each method removes noise its own way; they fail differently (see
  * docs/api/image-tools.md).
