@@ -2390,6 +2390,43 @@ alwan_status alwan_sharpen_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 
 alwan_status alwan_sharpen_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
 alwan_status alwan_sharpen_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
 
+/* Deconvolution: an image blurred by a known point-spread function, sharpened back. Each
+ * of src's 1 to 4 channels is deconvolved on its own with the same psf, psf_width x
+ * psf_height values row by row, at most the image's size.
+ *
+ *   ALWAN_DECONVOLVE_WIENER           the Wiener filter with a Laplacian regulariser, in the
+ *                                     2D DFT domain on the image taken as periodic:
+ *                                     conj(H) / (|H|^2 + balance |L|^2). One pass; balance
+ *                                     trades sharpness for amplified noise. The image is at
+ *                                     least 3 x 3 (scikit-image restoration.wiener)
+ *   ALWAN_DECONVOLVE_RICHARDSON_LUCY  Richardson 1972 and Lucy 1974, the maximum-likelihood
+ *                                     estimate under Poisson noise: from 0.5 everywhere,
+ *                                     u *= (image / (u * psf)) * flip(psf), zero outside
+ *                                     the image (scikit-image restoration.richardson_lucy)
+ *
+ * Suite 214 holds both to scikit-image. out may be src. params NULL is every default.
+ * scikit-image clips to [-1, 1] by default; alwan clips only when params.clip asks.
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
+ * small, a non-finite value or an unknown method; ALWAN_E_RANGE for a psf larger than the
+ * image or a parameter out of its range. */
+typedef enum {
+    ALWAN_DECONVOLVE_WIENER = 0,
+    ALWAN_DECONVOLVE_RICHARDSON_LUCY = 1
+} alwan_deconvolve_method;
+
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    double balance;        /* WIENER: the regulariser's weight, not negative; 0 reads as 0.1 */
+    size_t iterations;     /* RICHARDSON_LUCY: 0 reads as 50 */
+    double filter_epsilon; /* RICHARDSON_LUCY: where the blurred estimate is below it the ratio is
+                            * taken as 0, not negative; 0 is off */
+    int clip;              /* both: non-zero clips the result to [-1, 1], as scikit-image does by
+                            * default; 0 leaves it as it comes */
+} alwan_deconvolve_params;
+
+alwan_status alwan_deconvolve_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 const *psf, size_t psf_width, size_t psf_height, alwan_deconvolve_method method, alwan_deconvolve_params const *params);
+alwan_status alwan_deconvolve_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 const *psf, size_t psf_width, size_t psf_height, alwan_deconvolve_method method, alwan_deconvolve_params const *params);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since no method looks at neighbours). out may be src.

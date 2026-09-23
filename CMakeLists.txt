@@ -135,6 +135,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_histogram3d.c
   src/alwan/api/alwan_fft.c
   src/alwan/api/alwan_l0_smooth.c
+  src/alwan/api/alwan_deconvolve.c
   src/alwan/api/alwan_edge_filter.c
   src/alwan/api/alwan_guided_filter.c
   src/alwan/api/alwan_histogram_match.c

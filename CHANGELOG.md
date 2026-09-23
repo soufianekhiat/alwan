@@ -466,6 +466,12 @@
   Bluestein), against the authors' MATLAB code to 3.3e-12 (suite 213); `kappa` joins the
   params.
 
+- **Deconvolution: `alwan_deconvolve`.** An image blurred by a known PSF, sharpened back:
+  `ALWAN_DECONVOLVE_WIENER` (Laplacian-regularised, in the DFT domain) and
+  `ALWAN_DECONVOLVE_RICHARDSON_LUCY` (Richardson 1972, Lucy 1974), each channel with the same
+  PSF, clipping only when asked. scikit-image's `restoration.wiener` and `richardson_lucy`
+  to 2.7e-15 (suite 214).
+
 - **Local contrast: `alwan_local_contrast`.** One entry point per data type (float,
   8-bit, 16-bit) with a method enum: the local Laplacian filter (Paris et al. 2011, the fast
   form of Aubry et al. 2014, following MATLAB's `locallapfilt` to 1.5e-6, suite 198) and

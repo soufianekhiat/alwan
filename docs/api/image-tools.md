@@ -409,6 +409,58 @@ strip, levels with gaps, two levels) and scikit-image exactly on five float64 on
 builds its bin edges in float32 and alwan in double, and 13 of 28800 values differ by one
 float32 step.
 
+## Deconvolution
+
+```c
+typedef enum {
+    ALWAN_DECONVOLVE_WIENER = 0,
+    ALWAN_DECONVOLVE_RICHARDSON_LUCY = 1
+} alwan_deconvolve_method;
+
+alwan_status alwan_deconvolve_{T}(alwan_{T} *out, size_t out_row_stride,
+                                  alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                  size_t width, size_t height,
+                                  alwan_{T} const *psf, size_t psf_width, size_t psf_height,
+                                  alwan_deconvolve_method method,
+                                  alwan_deconvolve_params const *params);
+```
+
+An image blurred by a known point-spread function (a lens's blur, a motion streak, a
+defocus disc) sharpened back. Each of 1 to 4 channels is deconvolved on its own with the
+same PSF, given row by row and at most the image's size; `out` may be `src`.
+
+| Field of `alwan_deconvolve_params` | Method | 0 reads as |
+|---|---|---|
+| `balance` | `WIENER` | 0.1 |
+| `iterations` | `RICHARDSON_LUCY` | 50 |
+| `filter_epsilon` | `RICHARDSON_LUCY` | off |
+| `clip` | both | 0: no clipping; non-zero clips to [-1, 1] as scikit-image does |
+
+### `WIENER`
+
+The Wiener filter with a Laplacian regulariser, in the 2D DFT domain:
+`conj(H) / (|H|^2 + balance |L|^2)`, `H` the transform of the PSF and `L` that of
+`[[0,-1,0],[-1,4,-1],[0,-1,0]]`, each with its element `(floor(h / 2), floor(w / 2))` at the
+origin. Dividing by `H` alone would restore the frequencies the blur weakened and blow up
+the noise at those it all but removed; the Laplacian term charges for high frequencies,
+and `balance` sets how much. One pass, and the image is taken as periodic, so a blur that
+crossed the frame's edge in the real scene rings there. At least 3 x 3.
+
+### `RICHARDSON_LUCY`
+
+Richardson (1972) and Lucy (1974): the maximum-likelihood image under Poisson noise, by
+`u *= (image / (u * psf)) * flip(psf)` from 0.5 everywhere, the convolutions with zeros
+outside the image and centred at `(P - 1) / 2`, `iterations` times. Each iteration
+sharpens further and amplifies noise further, so the count is the regulariser. With a
+non-negative image and PSF it stays non-negative, and a PSF summing to 1 conserves flux.
+`filter_epsilon` zeroes the ratio where the blurred estimate falls below it, which keeps
+dark noise from being divided up.
+
+Suite 214 holds both to scikit-image's `restoration.wiener` and `richardson_lucy` (with
+`clip=False`) on a blurred frame, grey and colour, with a Gaussian, a motion streak and an
+even-sized box PSF: 2.7e-15 in double, and 6e-7 in float32, where scikit-image computes in
+float32. The transforms are alwan's own (see `L0_SMOOTH`).
+
 ## Colour transfer
 
 ```c
