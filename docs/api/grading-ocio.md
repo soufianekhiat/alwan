@@ -7,11 +7,46 @@ OCIO grade and for the controls a grading panel exposes. The arithmetic follows 
 Each control is an `alwan_grading_rgbm`: red, green, blue and master. The channel's
 value is combined with the master, added for the additive controls (brightness, offset,
 exposure, lift) and multiplied for the multiplicative ones (contrast, gamma, gain).
-
 ```c
 typedef enum { ALWAN_GRADING_LOG = 0, ALWAN_GRADING_LIN = 1, ALWAN_GRADING_VIDEO = 2 } alwan_grading_style;
 typedef struct { alwan_f64 red, green, blue, master; } alwan_grading_rgbm;
 ```
+
+## The grading family
+
+```c
+typedef enum {
+    ALWAN_GRADING_PRIMARY = 0,           /* GradingPrimaryTransform */
+    ALWAN_GRADING_TONE = 1,              /* GradingToneTransform */
+    ALWAN_GRADING_RGB_CURVE = 2,         /* GradingRGBCurveTransform */
+    ALWAN_GRADING_HUE_CURVE = 3,         /* GradingHueCurveTransform */
+    ALWAN_GRADING_EXPOSURE_CONTRAST = 4  /* ExposureContrastTransform */
+} alwan_grading_op;
+
+typedef struct {
+    alwan_grading_primary primary;
+    alwan_grading_tone tone;
+    alwan_grading_rgb_curve rgb_curve;
+    alwan_grading_hue_curve hue_curve;
+    alwan_grading_exposure_contrast exposure_contrast;
+} alwan_grading_params;
+
+void alwan_grading_params_init(alwan_grading_params *params, alwan_grading_style style);
+alwan_status alwan_grading_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
+                                     alwan_grading_op op, alwan_grading_style style,
+                                     alwan_grading_params const *params, int inverse);
+alwan_status alwan_grading_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                              alwan_{T} const *in, size_t in_stride, size_t count,
+                                              alwan_grading_op op, alwan_grading_style style,
+                                              alwan_grading_params const *params, int inverse);
+```
+
+Every operation below is one `op` of these functions. `style` is the working space for all
+of them, and `op` reads its own block of `params`. `alwan_grading_params_init` fills every
+block with OCIO's defaults for the style, an identity grade, and `params` NULL is that
+identity. `inverse = 1` runs the operation backwards. The map form grades `count` pixels of
+three values, `stride` bytes apart; `out` may be `in`. A grade of several operations is
+several calls, in the order the grade applies them.
 
 ## Primary
 
@@ -23,7 +58,6 @@ style by saturation about Rec.709 luma and a clamp:
 | `ALWAN_GRADING_LOG` | log-encoded images | `+ brightness * 6.25 / 1023`, contrast about `0.5 + 0.5 * pivot`, gamma between the black and white pivots |
 | `ALWAN_GRADING_LIN` | scene-linear images | `+ offset`, `* 2^exposure`, contrast as a power about `0.18 * 2^pivot` |
 | `ALWAN_GRADING_VIDEO` | display-referred video | `+ offset + lift`, slope about the black pivot so that gain lands on the white one, gamma between the pivots |
-
 ```c
 typedef struct {
     alwan_grading_rgbm brightness;   /* log */
@@ -38,16 +72,6 @@ typedef struct {
     alwan_f64 pivot_black, pivot_white;
     alwan_f64 clamp_black, clamp_white;   /* -DBL_MAX and DBL_MAX: no clamp */
 } alwan_grading_primary;
-
-void alwan_grading_primary_init(alwan_grading_primary *params, alwan_grading_style style);
-alwan_status alwan_grading_primary_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
-                                             alwan_grading_style style,
-                                             alwan_grading_primary const *params, int inverse);
-alwan_status alwan_grading_primary_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
-                                                      alwan_{T} const *in, size_t in_stride,
-                                                      size_t count, alwan_grading_style style,
-                                                      alwan_grading_primary const *params,
-                                                      int inverse);
 ```
 
 `init` gives OCIO's defaults for the style, which are an identity grade. `inverse = 1`
@@ -77,22 +101,12 @@ OCIO's `GradingToneTransform`: five zones of the tonescale, each moved by its ow
 piecewise-quadratic curve, then an S-contrast. It is the zone-by-zone control a
 split-tone or a "tone wheels" panel gives: warm the shadows, cool the highlights, lift
 the blacks alone.
-
 ```c
 typedef struct { alwan_f64 red, green, blue, master, start, width; } alwan_grading_rgbmsw;
 typedef struct {
     alwan_grading_rgbmsw blacks, shadows, midtones, highlights, whites;
     alwan_f64 scontrast;
 } alwan_grading_tone;
-
-void alwan_grading_tone_init(alwan_grading_tone *tone, alwan_grading_style style);
-alwan_status alwan_grading_tone_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
-                                          alwan_grading_style style,
-                                          alwan_grading_tone const *params, int inverse);
-alwan_status alwan_grading_tone_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
-                                                   alwan_{T} const *in, size_t in_stride,
-                                                   size_t count, alwan_grading_style style,
-                                                   alwan_grading_tone const *params, int inverse);
 ```
 
 Each zone's red, green, blue and master sit around 1: the channel's curve is applied,
@@ -136,7 +150,6 @@ at 57 from that round trip alone. Forward then inverse closes to 1.1e-8.
 OCIO's `GradingRGBCurveTransform`: a curve per channel, then a master curve on all
 three, each a monotone B-spline through control points: the curves tab of a grading
 panel.
-
 ```c
 #define ALWAN_GRADING_CURVE_MAX_POINTS 32
 typedef struct { alwan_f64 x, y; } alwan_grading_point;
@@ -146,16 +159,6 @@ typedef struct {
     alwan_f64 slopes[ALWAN_GRADING_CURVE_MAX_POINTS];   /* all zero: estimated */
 } alwan_grading_curve;
 typedef struct { alwan_grading_curve red, green, blue, master; } alwan_grading_rgb_curve;
-
-void alwan_grading_rgb_curve_init(alwan_grading_rgb_curve *curves, alwan_grading_style style);
-alwan_status alwan_grading_rgb_curve_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
-                                               alwan_grading_style style,
-                                               alwan_grading_rgb_curve const *curves, int inverse);
-alwan_status alwan_grading_rgb_curve_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
-                                                        alwan_{T} const *in, size_t in_stride,
-                                                        size_t count, alwan_grading_style style,
-                                                        alwan_grading_rgb_curve const *curves,
-                                                        int inverse);
 ```
 
 The spline is OCIO's `GradingBSplineCurve`: each span between control points is one or
@@ -189,21 +192,10 @@ slopes through the getter after assignment and checks they arrived.
 OCIO's `GradingHueCurveTransform`: eight curves in OCIO's HSY space, the hue-selective
 controls of a grading panel (move one hue toward another, saturate or darken one range
 of hues, mute the shadows).
-
 ```c
 typedef struct {
     alwan_grading_curve hue_hue, hue_sat, hue_lum, lum_sat, sat_sat, lum_lum, sat_lum, hue_fx;
 } alwan_grading_hue_curve;
-
-void alwan_grading_hue_curve_init(alwan_grading_hue_curve *curves, alwan_grading_style style);
-alwan_status alwan_grading_hue_curve_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
-                                               alwan_grading_style style,
-                                               alwan_grading_hue_curve const *curves, int inverse);
-alwan_status alwan_grading_hue_curve_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
-                                                        alwan_{T} const *in, size_t in_stride,
-                                                        size_t count, alwan_grading_style style,
-                                                        alwan_grading_hue_curve const *curves,
-                                                        int inverse);
 ```
 
 HSY is OCIO's: hue in [0, 1) with **magenta at 0** (red near 1/6, green 1/2, blue 5/6),
@@ -240,3 +232,35 @@ cancelling terms of order 30: the magenta pixel (30, 0.001, 30), which the first
 leaves alone, comes back from OCIO as (30, 0.00125, 30) and from alwan as
 (30, 0.00100000016, 30). Building the reference also found that PyOpenColorIO 2.5.0's
 `getControlPoints()` is a one-shot iterator.
+
+## Exposure and contrast
+
+```c
+typedef struct {
+    alwan_f64 exposure;           /* stops; 0: none */
+    alwan_f64 contrast;           /* 1: none */
+    alwan_f64 gamma;              /* multiplies contrast; 1: none */
+    alwan_f64 pivot;              /* scene-linear value kept fixed; 0.18 */
+    alwan_f64 log_exposure_step;  /* LOG: code values a stop; 0.088 */
+    alwan_f64 log_mid_gray;       /* LOG: the code value of 0.18; 0.435 */
+} alwan_grading_exposure_contrast;
+```
+
+OCIO's `ExposureContrastTransform`, `ALWAN_GRADING_EXPOSURE_CONTRAST`: the exposure and
+contrast knobs of a viewer or a grade, about a pivot, in the three styles.
+
+| Style | Forward |
+|---|---|
+| `ALWAN_GRADING_LIN` | `pow(max(0, in 2^exposure / pivot), c) pivot`, `c = contrast gamma` |
+| `ALWAN_GRADING_VIDEO` | the same with `2^exposure` and the pivot raised to `1 / 1.83` first |
+| `ALWAN_GRADING_LOG` | `in c + (exposure step - p) c + p`, `p = log2(pivot / 0.18) step + mid_gray` |
+
+`c` and the pivot are floored at 0.001, and with `c` exactly 1 the lin and video styles
+only scale, so a negative value passes through, as OCIO does. Suite 205 holds all three
+styles, both directions, to PyOpenColorIO: to 1e-7 where no power is taken, and to 1.4e-5
+relative in the lin and video styles, where OCIO's SSE build approximates `pow`.
+
+OCIO's inverse log renderer takes its exposure step from a default of 0.088 and never from
+the transform, so at any other step it does not invert its own forward transform (0.038 off
+at exposure 1.2 and step 0.12). alwan's inverse uses the step it is given; suite 205 checks
+it undoes the forward to 2e-16 at step 0.12.

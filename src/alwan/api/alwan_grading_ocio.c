@@ -52,7 +52,7 @@ typedef struct {
     double saturation, clamp_black, clamp_white;
 } alwan_gp_render;
 
-void alwan_grading_primary_init(alwan_grading_primary *params, alwan_grading_style style) {
+static void alwan_gp_init(alwan_grading_primary *params, alwan_grading_style style) {
     alwan_grading_rgbm const zero = { 0.0, 0.0, 0.0, 0.0 }, one = { 1.0, 1.0, 1.0, 1.0 };
     if (!params) return;
     params->brightness = zero;
@@ -268,7 +268,7 @@ static double alwan_gt_clampd(double a, double lo, double hi) {
     return hi < m ? hi : m;
 }
 
-void alwan_grading_tone_init(alwan_grading_tone *tone, alwan_grading_style style) {
+static void alwan_gt_init(alwan_grading_tone *tone, alwan_grading_style style) {
     static double const sw[3][5][2] = {   /* start, width: blacks, shadows, midtones, highlights, whites */
         { { 0.4, 0.4 }, { 0.5, 0.0 }, { 0.4, 0.6 }, { 0.3, 1.0 }, { 0.4, 0.5 } },
         { { 0.0, 4.0 }, { 2.0, -7.0 }, { 0.0, 8.0 }, { -2.0, 9.0 }, { 0.0, 8.0 } },
@@ -950,7 +950,7 @@ typedef struct {
     alwan_gc_fit curve[4];   /* red, green, blue, master */
 } alwan_grc_render;
 
-void alwan_grading_rgb_curve_init(alwan_grading_rgb_curve *curves, alwan_grading_style style) {
+static void alwan_grc_init(alwan_grading_rgb_curve *curves, alwan_grading_style style) {
     alwan_grading_curve *c[4];
     int i, k;
     if (!curves) return;
@@ -1335,7 +1335,7 @@ static alwan_grading_curve const *alwan_gh_role(alwan_grading_hue_curve const *v
     return c[role];
 }
 
-void alwan_grading_hue_curve_init(alwan_grading_hue_curve *curves, alwan_grading_style style) {
+static void alwan_ghc_init(alwan_grading_hue_curve *curves, alwan_grading_style style) {
     int const lin = style == ALWAN_GRADING_LIN;
     int role, k;
     if (!curves) return;
@@ -1425,294 +1425,182 @@ static void alwan_ghc_pixel(double *p, alwan_ghc_render const *r) {
     alwan_gh_hsy_to_rgb(p, r->style);
 }
 
+/* ---- exposure and contrast ----
+ *
+ * OCIO's ExposureContrastTransform (ops/exposurecontrast/ExposureContrastOpCPU.cpp):
+ *
+ *   lin    out = pow(max(0, in 2^exposure / pivot), c) pivot,       c = contrast gamma
+ *   video  the same with 2^exposure and pivot raised to 1 / 1.83 first
+ *   log    out = in c + (exposure step - p) c + p,  p = log2(pivot / 0.18) step + mid_gray
+ *
+ * c and the pivot are floored at 0.001, and with c exactly 1 the lin and video styles
+ * only scale (a negative value passes through), as OCIO does. The inverse runs each
+ * backwards. OCIO's inverse log style reads the exposure step from a default of 0.088
+ * instead of the step it was given, so with any other step it does not invert its own
+ * forward transform (0.038 off at exposure 1.2 and step 0.12); this uses the step given.
+ */
+typedef struct {
+    int style, inverse;
+    double c, pivot, e;   /* e: 2^exposure (lin, video) or exposure step (log) */
+} alwan_gec_render;
+
+static void alwan_gec_init(alwan_grading_exposure_contrast *ec) {
+    ec->exposure = 0.0;
+    ec->contrast = 1.0;
+    ec->gamma = 1.0;
+    ec->pivot = 0.18;
+    ec->log_exposure_step = 0.088;
+    ec->log_mid_gray = 0.435;
+}
+
+static alwan_status alwan_gec_prepare(alwan_gec_render *r, alwan_grading_style style,
+                                      alwan_grading_exposure_contrast const *ec, int inverse) {
+    double const video_power = 0.54644808743169393; /* 1 / 1.83 */
+    double pivot;
+    if (!ec) return ALWAN_E_INVALID;
+    if (style != ALWAN_GRADING_LOG && style != ALWAN_GRADING_LIN && style != ALWAN_GRADING_VIDEO) return ALWAN_E_INVALID;
+    if (!alwan_gp_finite(ec->exposure) || !alwan_gp_finite(ec->contrast) || !alwan_gp_finite(ec->gamma) ||
+        !alwan_gp_finite(ec->pivot) || !alwan_gp_finite(ec->log_exposure_step) || !alwan_gp_finite(ec->log_mid_gray)) {
+        return ALWAN_E_INVALID;
+    }
+    r->style = (int)style;
+    r->inverse = inverse;
+    pivot = ec->pivot > 0.001 ? ec->pivot : 0.001;
+    if (style == ALWAN_GRADING_LOG) {
+        double const p = log2(pivot / 0.18) * ec->log_exposure_step + ec->log_mid_gray;
+        double const cg = ec->contrast * ec->gamma;
+        r->pivot = p > 0.0 ? p : 0.0;
+        r->e = ec->exposure * ec->log_exposure_step;
+        if (!inverse) r->c = cg > 0.001 ? cg : 0.001;
+        else r->c = 1.0 / cg > 0.001 ? 1.0 / cg : 0.001; /* OCIO floors the reciprocal */
+    } else {
+        double const cg = ec->contrast * ec->gamma;
+        r->c = cg > 0.001 ? cg : 0.001;
+        r->e = pow(2.0, ec->exposure);
+        r->pivot = pivot;
+        if (style == ALWAN_GRADING_VIDEO) {
+            r->e = pow(r->e, video_power);
+            r->pivot = pow(pivot, video_power);
+        }
+    }
+    return ALWAN_OK;
+}
+
+static void alwan_gec_pixel(double *p, alwan_gec_render const *r) {
+    int k;
+    if (r->style == ALWAN_GRADING_LOG) {
+        if (!r->inverse) {
+            double const off = (r->e - r->pivot) * r->c + r->pivot;
+            for (k = 0; k < 3; k++) p[k] = p[k] * r->c + off;
+        } else {
+            double const off = r->pivot - r->pivot * r->c - r->e;
+            for (k = 0; k < 3; k++) p[k] = p[k] * r->c + off;
+        }
+        return;
+    }
+    if (r->c == 1.0) {
+        for (k = 0; k < 3; k++) p[k] = r->inverse ? p[k] / r->e : p[k] * r->e;
+        return;
+    }
+    for (k = 0; k < 3; k++) {
+        if (!r->inverse) {
+            double const v = p[k] * (r->e / r->pivot);
+            p[k] = pow(v > 0.0 ? v : 0.0, r->c) * r->pivot;
+        } else {
+            double const v = p[k] / r->pivot;
+            p[k] = pow(v > 0.0 ? v : 0.0, 1.0 / r->c) * (r->pivot / r->e);
+        }
+    }
+}
+
+/* ---- the family ---- */
+
+void alwan_grading_params_init(alwan_grading_params *params, alwan_grading_style style) {
+    if (!params) return;
+    alwan_gp_init(&params->primary, style);
+    alwan_gt_init(&params->tone, style);
+    alwan_grc_init(&params->rgb_curve, style);
+    alwan_ghc_init(&params->hue_curve, style);
+    alwan_gec_init(&params->exposure_contrast);
+}
+
+typedef union {
+    alwan_gp_render gp;
+    alwan_gt_render gt;
+    alwan_grc_render grc;
+    alwan_ghc_render ghc;
+    alwan_gec_render gec;
+} alwan_grading_render;
+
+static alwan_status alwan_grading_run(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count,
+                                      alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params,
+                                      int inverse, int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    alwan_grading_params *defaults = NULL;
+    alwan_grading_render r;
+    alwan_status st;
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (out_stride < 3 * elem || in_stride < 3 * elem) return ALWAN_E_INVALID;
+    if (!params) { /* an identity grade: the defaults of the style */
+        defaults = (alwan_grading_params *)ALWAN_ALLOC(sizeof(alwan_grading_params), sizeof(double));
+        if (!defaults) return ALWAN_E_NOMEM;
+        alwan_grading_params_init(defaults, style);
+        params = defaults;
+    }
+    switch (op) {
+    case ALWAN_GRADING_PRIMARY: st = alwan_gp_prepare(&r.gp, style, &params->primary, inverse != 0); break;
+    case ALWAN_GRADING_TONE: st = alwan_gt_prepare(&r.gt, style, &params->tone, inverse != 0); break;
+    case ALWAN_GRADING_RGB_CURVE: st = alwan_grc_prepare(&r.grc, style, &params->rgb_curve, inverse != 0); break;
+    case ALWAN_GRADING_HUE_CURVE: st = alwan_ghc_prepare(&r.ghc, style, &params->hue_curve, inverse != 0); break;
+    case ALWAN_GRADING_EXPOSURE_CONTRAST: st = alwan_gec_prepare(&r.gec, style, &params->exposure_contrast, inverse != 0); break;
+    default: st = ALWAN_E_INVALID; break;
+    }
+    if (defaults) ALWAN_FREE(defaults);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        char const *s = (char const *)in + i * in_stride;
+        char *d = (char *)out + i * out_stride;
+        double p[3];
+        int k;
+        for (k = 0; k < 3; k++) p[k] = is_f32 ? (double)((alwan_f32 const *)s)[k] : ((alwan_f64 const *)s)[k];
+        switch (op) {
+        case ALWAN_GRADING_PRIMARY: alwan_gp_pixel(p, &r.gp); break;
+        case ALWAN_GRADING_TONE: alwan_gt_pixel(p, &r.gt); break;
+        case ALWAN_GRADING_RGB_CURVE: alwan_grc_pixel(p, &r.grc); break;
+        case ALWAN_GRADING_HUE_CURVE: alwan_ghc_pixel(p, &r.ghc); break;
+        default: alwan_gec_pixel(p, &r.gec); break;
+        }
+        for (k = 0; k < 3; k++) {
+            if (is_f32) ((alwan_f32 *)d)[k] = (alwan_f32)p[k];
+            else ((alwan_f64 *)d)[k] = p[k];
+        }
+    }
+    return ALWAN_OK;
+}
+
 #if ALWAN_WITH_F64_FACADE
-alwan_status alwan_grading_primary_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
-                                             alwan_grading_style style, alwan_grading_primary const *params,
-                                             int inverse) {
-    alwan_gp_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_gp_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_gp_pixel(p, &r);
-    rgb_out->r = (alwan_f64)p[0]; rgb_out->g = (alwan_f64)p[1]; rgb_out->b = (alwan_f64)p[2];
-    return ALWAN_OK;
+alwan_status alwan_grading_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_op op,
+                                     alwan_grading_style style, alwan_grading_params const *params, int inverse) {
+    return alwan_grading_run(rgb_out, sizeof(alwan_rgb_f64), rgb_in, sizeof(alwan_rgb_f64), 1, op, style, params, inverse, 0);
 }
 
-alwan_status alwan_grading_primary_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
-                                                      size_t in_stride, size_t count, alwan_grading_style style,
-                                                      alwan_grading_primary const *params, int inverse) {
-    alwan_gp_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f64) || in_stride < 3 * sizeof(alwan_f64)) return ALWAN_E_INVALID;
-    st = alwan_gp_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f64 const *s = (alwan_f64 const *)((char const *)in + i * in_stride);
-        alwan_f64 *d = (alwan_f64 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_gp_pixel(p, &r);
-        d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_tone_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
-                                          alwan_grading_style style, alwan_grading_tone const *params,
-                                          int inverse) {
-    alwan_gt_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_gt_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_gt_pixel(p, &r);
-    rgb_out->r = (alwan_f64)p[0]; rgb_out->g = (alwan_f64)p[1]; rgb_out->b = (alwan_f64)p[2];
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_tone_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
-                                                   size_t in_stride, size_t count, alwan_grading_style style,
-                                                   alwan_grading_tone const *params, int inverse) {
-    alwan_gt_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f64) || in_stride < 3 * sizeof(alwan_f64)) return ALWAN_E_INVALID;
-    st = alwan_gt_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f64 const *s = (alwan_f64 const *)((char const *)in + i * in_stride);
-        alwan_f64 *d = (alwan_f64 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_gt_pixel(p, &r);
-        d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_rgb_curve_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
-                                               alwan_grading_style style, alwan_grading_rgb_curve const *curves,
-                                               int inverse) {
-    alwan_grc_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_grc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_grc_pixel(p, &r);
-    rgb_out->r = (alwan_f64)p[0]; rgb_out->g = (alwan_f64)p[1]; rgb_out->b = (alwan_f64)p[2];
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_rgb_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
-                                                        size_t in_stride, size_t count, alwan_grading_style style,
-                                                        alwan_grading_rgb_curve const *curves, int inverse) {
-    alwan_grc_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f64) || in_stride < 3 * sizeof(alwan_f64)) return ALWAN_E_INVALID;
-    st = alwan_grc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f64 const *s = (alwan_f64 const *)((char const *)in + i * in_stride);
-        alwan_f64 *d = (alwan_f64 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_grc_pixel(p, &r);
-        d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_hue_curve_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
-                                               alwan_grading_style style, alwan_grading_hue_curve const *curves,
-                                               int inverse) {
-    alwan_ghc_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_ghc_pixel(p, &r);
-    rgb_out->r = (alwan_f64)p[0]; rgb_out->g = (alwan_f64)p[1]; rgb_out->b = (alwan_f64)p[2];
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_hue_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
-                                                        size_t in_stride, size_t count, alwan_grading_style style,
-                                                        alwan_grading_hue_curve const *curves, int inverse) {
-    alwan_ghc_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f64) || in_stride < 3 * sizeof(alwan_f64)) return ALWAN_E_INVALID;
-    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f64 const *s = (alwan_f64 const *)((char const *)in + i * in_stride);
-        alwan_f64 *d = (alwan_f64 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_ghc_pixel(p, &r);
-        d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
-    }
-    return ALWAN_OK;
+alwan_status alwan_grading_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride,
+                                              size_t count, alwan_grading_op op, alwan_grading_style style,
+                                              alwan_grading_params const *params, int inverse) {
+    return alwan_grading_run(out, out_stride, in, in_stride, count, op, style, params, inverse, 0);
 }
 #endif /* ALWAN_WITH_F64_FACADE */
 
 #if ALWAN_WITH_F32
-alwan_status alwan_grading_primary_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
-                                             alwan_grading_style style, alwan_grading_primary const *params,
-                                             int inverse) {
-    alwan_gp_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_gp_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_gp_pixel(p, &r);
-    rgb_out->r = (alwan_f32)p[0]; rgb_out->g = (alwan_f32)p[1]; rgb_out->b = (alwan_f32)p[2];
-    return ALWAN_OK;
+alwan_status alwan_grading_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_op op,
+                                     alwan_grading_style style, alwan_grading_params const *params, int inverse) {
+    return alwan_grading_run(rgb_out, sizeof(alwan_rgb_f32), rgb_in, sizeof(alwan_rgb_f32), 1, op, style, params, inverse, 1);
 }
 
-alwan_status alwan_grading_primary_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
-                                                      size_t in_stride, size_t count, alwan_grading_style style,
-                                                      alwan_grading_primary const *params, int inverse) {
-    alwan_gp_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f32) || in_stride < 3 * sizeof(alwan_f32)) return ALWAN_E_INVALID;
-    st = alwan_gp_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f32 const *s = (alwan_f32 const *)((char const *)in + i * in_stride);
-        alwan_f32 *d = (alwan_f32 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_gp_pixel(p, &r);
-        d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_tone_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
-                                          alwan_grading_style style, alwan_grading_tone const *params,
-                                          int inverse) {
-    alwan_gt_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_gt_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_gt_pixel(p, &r);
-    rgb_out->r = (alwan_f32)p[0]; rgb_out->g = (alwan_f32)p[1]; rgb_out->b = (alwan_f32)p[2];
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_tone_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
-                                                   size_t in_stride, size_t count, alwan_grading_style style,
-                                                   alwan_grading_tone const *params, int inverse) {
-    alwan_gt_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f32) || in_stride < 3 * sizeof(alwan_f32)) return ALWAN_E_INVALID;
-    st = alwan_gt_prepare(&r, style, params, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f32 const *s = (alwan_f32 const *)((char const *)in + i * in_stride);
-        alwan_f32 *d = (alwan_f32 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_gt_pixel(p, &r);
-        d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_rgb_curve_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
-                                               alwan_grading_style style, alwan_grading_rgb_curve const *curves,
-                                               int inverse) {
-    alwan_grc_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_grc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_grc_pixel(p, &r);
-    rgb_out->r = (alwan_f32)p[0]; rgb_out->g = (alwan_f32)p[1]; rgb_out->b = (alwan_f32)p[2];
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_rgb_curve_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
-                                                        size_t in_stride, size_t count, alwan_grading_style style,
-                                                        alwan_grading_rgb_curve const *curves, int inverse) {
-    alwan_grc_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f32) || in_stride < 3 * sizeof(alwan_f32)) return ALWAN_E_INVALID;
-    st = alwan_grc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f32 const *s = (alwan_f32 const *)((char const *)in + i * in_stride);
-        alwan_f32 *d = (alwan_f32 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_grc_pixel(p, &r);
-        d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_hue_curve_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
-                                               alwan_grading_style style, alwan_grading_hue_curve const *curves,
-                                               int inverse) {
-    alwan_ghc_render r;
-    double p[3];
-    alwan_status st;
-    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
-    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
-    alwan_ghc_pixel(p, &r);
-    rgb_out->r = (alwan_f32)p[0]; rgb_out->g = (alwan_f32)p[1]; rgb_out->b = (alwan_f32)p[2];
-    return ALWAN_OK;
-}
-
-alwan_status alwan_grading_hue_curve_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
-                                                        size_t in_stride, size_t count, alwan_grading_style style,
-                                                        alwan_grading_hue_curve const *curves, int inverse) {
-    alwan_ghc_render r;
-    alwan_status st;
-    size_t i;
-    if (!out || !in) return ALWAN_E_INVALID;
-    if (out_stride < 3 * sizeof(alwan_f32) || in_stride < 3 * sizeof(alwan_f32)) return ALWAN_E_INVALID;
-    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
-    if (st != ALWAN_OK) return st;
-    for (i = 0; i < count; i++) {
-        alwan_f32 const *s = (alwan_f32 const *)((char const *)in + i * in_stride);
-        alwan_f32 *d = (alwan_f32 *)((char *)out + i * out_stride);
-        double p[3];
-        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
-        alwan_ghc_pixel(p, &r);
-        d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
-    }
-    return ALWAN_OK;
+alwan_status alwan_grading_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride,
+                                              size_t count, alwan_grading_op op, alwan_grading_style style,
+                                              alwan_grading_params const *params, int inverse) {
+    return alwan_grading_run(out, out_stride, in, in_stride, count, op, style, params, inverse, 1);
 }
 #endif /* ALWAN_WITH_F32 */

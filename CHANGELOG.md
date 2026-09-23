@@ -427,6 +427,15 @@
 
 ### Added
 
+- **OCIO grading as one family: `alwan_grading_apply`, `alwan_grading_{T}_map_interleave`.**
+  An operation enum (primary, tone, RGB curves, hue curves, exposure and contrast), one
+  `alwan_grading_params` with a block per operation and `alwan_grading_params_init` for a
+  style's identity replace the per-operation init, apply and map functions.
+
+- **OpenColorIO's ExposureContrast: `ALWAN_GRADING_EXPOSURE_CONTRAST`.** Exposure and contrast
+  about a pivot in the lin, video and log styles, both directions, held to PyOpenColorIO
+  (suite 205); OCIO's inverse log ignores a non-default exposure step, this does not.
+
 - **Sharpening: `alwan_sharpen`.** One entry point with a method enum, first the unsharp mask,
   as scikit-image's `filters.unsharp_mask` computes it (suite 203, 9e-16), clipping only when
   asked. scikit-image 0.26 sharpens rows instead of channels when given `channel_axis=-1`.
@@ -472,7 +481,7 @@
   Suite 188 matches Pillow 12.0 exactly, palette bytes and every pixel's index;
   docs/api/patterns.md.
 
-- **OpenColorIO's GradingHueCurve: `alwan_grading_hue_curve_apply` and its map.** The eight
+- **OpenColorIO's GradingHueCurve: `alwan_grading` with `ALWAN_GRADING_HUE_CURVE`.** The eight
   hue-selective curves of OCIO's HSY space (hue to hue, saturation and luma; luma to
   saturation and luma; saturation to saturation and luma; a hue offset), each the spline
   type OCIO gives its role, periodic for the hue curves, forward and inverse in the three
@@ -480,21 +489,21 @@
   1.2e-6 relative in log and video; 3.8e-4 in lin, where OCIO's float32 HSY inverse
   cancels on extreme saturation and alwan's double does not.
 
-- **OpenColorIO's GradingRGBCurve: `alwan_grading_rgb_curve_apply` and its map.** A
+- **OpenColorIO's GradingRGBCurve: `alwan_grading` with `ALWAN_GRADING_RGB_CURVE`.** A
   monotone B-spline curve per channel and a master, as OCIO's GradingBSplineCurve fits
   them (slopes estimated or given, the refit that keeps a span from turning back, straight
   extrapolation), forward and inverse, in the three styles. The fit runs in float as
   OCIO's does, since it branches on float thresholds. Suite 186 holds five curve sets to
   PyOpenColorIO 2.5.0: 2.4e-7 relative in log and video, 8.8e-5 in lin.
 
-- **OpenColorIO's GradingTone: `alwan_grading_tone_apply` and its map.** Five zones of the
+- **OpenColorIO's GradingTone: `alwan_grading` with `ALWAN_GRADING_TONE`.** Five zones of the
   tonescale (blacks, shadows, midtones, highlights, whites), each a piecewise-quadratic
   curve set per channel and by master, and an S-contrast, in OCIO's log, lin and video
   styles, forward and inverse, with OCIO's defaults, bounds and 65504 clamp. Suite 185
   holds it to PyOpenColorIO 2.5.0: 5.7e-7 relative in log and video; 1.5e-4 in lin, where
   OCIO's own approximate log and pow round trip is 8.6e-5 off on an untouched channel.
 
-- **OpenColorIO's GradingPrimary: `alwan_grading_primary_apply` and its map.** The primary
+- **OpenColorIO's GradingPrimary: `alwan_grading` with `ALWAN_GRADING_PRIMARY`.** The primary
   controls of a grading panel in OCIO's three styles: log (brightness, contrast about a
   pivot, gamma between black and white pivots), lin (offset, exposure in stops, contrast
   as a power about 0.18 * 2^pivot) and video (offset, lift, gain, gamma), each followed by

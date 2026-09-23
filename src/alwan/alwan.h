@@ -7545,7 +7545,7 @@ alwan_status alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_
 /* ----------------------------------------------------------------
  * OpenColorIO grading: primary
  *
- * OCIO's GradingPrimaryTransform (OpenColorIO 2.x, BSD-3-Clause), the primary
+ * OCIO's GradingPrimaryTransform (OpenColorIO 2.x, BSD-3-Clause), ALWAN_GRADING_PRIMARY: the primary
  * controls of a grading panel in three styles, each a fixed chain:
  *
  *   ALWAN_GRADING_LOG    brightness (in units of 6.25 / 1023), contrast about
@@ -7563,7 +7563,7 @@ alwan_status alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_
  * log distance of every value from 0.2034 (OCIO's default pivot parameter is 0.18
  * STOPS above 0.18, and init reproduces it); set pivot = 0 to pivot at 0.18 itself.
  *
- * alwan_grading_primary_init gives OCIO's defaults for the style, an identity grade.
+ * alwan_grading_params_init gives OCIO's defaults for the style, an identity grade.
  * ALWAN_E_INVALID for a NULL, a style outside the enum, a non-finite control, a gamma
  * below 0.01 (log and video) or a lin contrast below 0.01, pivot_white less than 0.01
  * above pivot_black, or clamp_black above clamp_white. Computed in double; suite 184
@@ -7594,12 +7594,6 @@ typedef struct {
     alwan_f64 clamp_black, clamp_white;   /* -DBL_MAX and DBL_MAX: no clamp */
 } alwan_grading_primary;
 
-void alwan_grading_primary_init(alwan_grading_primary *params, alwan_grading_style style);
-
-alwan_status alwan_grading_primary_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
-alwan_status alwan_grading_primary_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
-alwan_status alwan_grading_primary_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
-alwan_status alwan_grading_primary_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
 
 /* ----------------------------------------------------------------
  * OpenColorIO grading: tone
@@ -7623,7 +7617,7 @@ alwan_status alwan_grading_primary_f64_map_interleave(alwan_f64 *out, size_t out
  * The result is clamped above at 65504, the half-float maximum, as OCIO does; an
  * identity grade is a pass-through with no clamp.
  *
- * alwan_grading_tone_init gives OCIO's defaults for the style, an identity grade.
+ * alwan_grading_params_init gives OCIO's defaults for the style, an identity grade.
  * ALWAN_E_INVALID for a NULL, a style outside the enum, a non-finite value, a value
  * outside the zone's range, a width below 0.01, shadows or highlights whose pivot
  * crosses their start, or an S-contrast outside [0.01, 1.99]. Computed in double;
@@ -7639,12 +7633,6 @@ typedef struct {
     alwan_f64 scontrast;
 } alwan_grading_tone;
 
-void alwan_grading_tone_init(alwan_grading_tone *tone, alwan_grading_style style);
-
-alwan_status alwan_grading_tone_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
-alwan_status alwan_grading_tone_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
-alwan_status alwan_grading_tone_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
-alwan_status alwan_grading_tone_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
 
 /* ----------------------------------------------------------------
  * OpenColorIO grading: RGB curves
@@ -7663,7 +7651,7 @@ alwan_status alwan_grading_tone_f64_map_interleave(alwan_f64 *out, size_t out_st
  * double. A curve holds up to ALWAN_GRADING_CURVE_MAX_POINTS points; OCIO also caps
  * the four curves together at 120 knots, which this does not.
  *
- * alwan_grading_rgb_curve_init sets OCIO's default, a three-point identity for every
+ * alwan_grading_params_init sets OCIO's default, a three-point identity for every
  * curve. An identity set is a pass-through. ALWAN_E_INVALID for a NULL, a style
  * outside the enum, a curve with fewer than two or more than the maximum points, a
  * non-finite value, or a decreasing x or y. Suite 186 holds it to PyOpenColorIO.
@@ -7685,12 +7673,6 @@ typedef struct {
     alwan_grading_curve red, green, blue, master;
 } alwan_grading_rgb_curve;
 
-void alwan_grading_rgb_curve_init(alwan_grading_rgb_curve *curves, alwan_grading_style style);
-
-alwan_status alwan_grading_rgb_curve_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
-alwan_status alwan_grading_rgb_curve_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
-alwan_status alwan_grading_rgb_curve_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
-alwan_status alwan_grading_rgb_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
 
 /* ----------------------------------------------------------------
  * OpenColorIO grading: hue curves
@@ -7714,7 +7696,7 @@ alwan_status alwan_grading_rgb_curve_f64_map_interleave(alwan_f64 *out, size_t o
  * by default, and the luma gains multiply rather than add. OCIO can skip the HSY
  * conversion; this always converts, OCIO's default.
  *
- * alwan_grading_hue_curve_init sets OCIO's defaults for the style, an identity. The
+ * alwan_grading_params_init sets OCIO's defaults for the style, an identity. The
  * points of a hue curve are wrapped into [0, 1), sorted and spaced as OCIO prepares
  * them; the other curves need non-decreasing x, and the diagonal ones (hue_hue,
  * sat_sat, lum_lum) non-decreasing y too, hue_hue with its x in [0, 1]. ALWAN_E_INVALID
@@ -7727,12 +7709,69 @@ typedef struct {
     alwan_grading_curve hue_hue, hue_sat, hue_lum, lum_sat, sat_sat, lum_lum, sat_lum, hue_fx;
 } alwan_grading_hue_curve;
 
-void alwan_grading_hue_curve_init(alwan_grading_hue_curve *curves, alwan_grading_style style);
 
-alwan_status alwan_grading_hue_curve_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
-alwan_status alwan_grading_hue_curve_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
-alwan_status alwan_grading_hue_curve_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
-alwan_status alwan_grading_hue_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
+/* ----------------------------------------------------------------
+ * OpenColorIO grading: exposure and contrast
+ *
+ * OCIO's ExposureContrastTransform, ALWAN_GRADING_EXPOSURE_CONTRAST: exposure in stops
+ * and contrast (times gamma) about a pivot, in the three styles:
+ *
+ *   ALWAN_GRADING_LIN    pow(in 2^exposure / pivot, contrast) pivot, negatives to 0
+ *   ALWAN_GRADING_VIDEO  the same with 2^exposure and the pivot raised to 1 / 1.83,
+ *                        for display-referred video
+ *   ALWAN_GRADING_LOG    in contrast + (exposure step - p) contrast + p, with
+ *                        p = log2(pivot / 0.18) step + mid_gray, for log-encoded images
+ *
+ * Contrast and pivot are floored at 0.001; a contrast of exactly 1 only scales. OCIO's
+ * inverse log style ignores the exposure step it is given (it uses 0.088), so it does not
+ * invert its own forward transform at any other step; this inverse uses the step given.
+ * ALWAN_E_INVALID for a style outside the enum or a non-finite value. Suite 205 holds it
+ * to PyOpenColorIO.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_f64 exposure;           /* stops; 0: none */
+    alwan_f64 contrast;           /* 1: none */
+    alwan_f64 gamma;              /* multiplies contrast; 1: none */
+    alwan_f64 pivot;              /* scene-linear value kept fixed; 0.18 */
+    alwan_f64 log_exposure_step;  /* LOG: code values a stop; 0.088 */
+    alwan_f64 log_mid_gray;       /* LOG: the code value of 0.18; 0.435 */
+} alwan_grading_exposure_contrast;
+
+/* ----------------------------------------------------------------
+ * OpenColorIO grading: the family
+ *
+ * One entry point for every grading operation above. `op` picks the operation and reads
+ * its block of params; `style` is the working space (log, lin or video) for all of them;
+ * inverse = 1 runs the operation backwards. alwan_grading_params_init gives every block
+ * OCIO's defaults for the style, an identity grade, and params NULL is that identity.
+ * The map form grades count pixels of three values, stride bytes apart; out may be in.
+ * ALWAN_E_INVALID for a NULL pixel pointer, a stride under three values, an unknown op,
+ * or anything the operation's own rules above refuse.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_GRADING_PRIMARY = 0,           /* GradingPrimaryTransform */
+    ALWAN_GRADING_TONE = 1,              /* GradingToneTransform */
+    ALWAN_GRADING_RGB_CURVE = 2,         /* GradingRGBCurveTransform */
+    ALWAN_GRADING_HUE_CURVE = 3,         /* GradingHueCurveTransform */
+    ALWAN_GRADING_EXPOSURE_CONTRAST = 4  /* ExposureContrastTransform */
+} alwan_grading_op;
+
+typedef struct {
+    alwan_grading_primary primary;
+    alwan_grading_tone tone;
+    alwan_grading_rgb_curve rgb_curve;
+    alwan_grading_hue_curve hue_curve;
+    alwan_grading_exposure_contrast exposure_contrast;
+} alwan_grading_params;
+
+void alwan_grading_params_init(alwan_grading_params *params, alwan_grading_style style);
+
+alwan_status alwan_grading_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
+alwan_status alwan_grading_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
+alwan_status alwan_grading_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
+alwan_status alwan_grading_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
 
 /* ----------------------------------------------------------------
  * Camera Profiling / Polynomial Color Correction
