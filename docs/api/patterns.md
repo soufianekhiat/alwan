@@ -359,3 +359,38 @@ path, `numpy.interp` branch for branch). The images need not be the same size. C
 are matched independently, so in RGB the channels drift apart; matching in a decorrelated
 space (Oklab, CIELAB) carries a look more gently. `out` may be `src`. Suite 191 is bit for
 bit against scikit-image: all three channels, one alone, and a single-value reference.
+
+## Haze removal: the dark channel prior
+
+```c
+typedef struct {
+    size_t patch_radius;      /* 7: the paper's 15 x 15 */
+    alwan_f64 omega;          /* 0.95: the haze kept for depth */
+    alwan_f64 t0;             /* 0.1: the transmission floor */
+    alwan_f64 top_fraction;   /* 0.001: of the dark channel searched for the airlight */
+    size_t guide_radius;      /* 30; 0 skips the refinement */
+    alwan_f64 guide_eps;      /* 1e-3 */
+} alwan_dehaze_params;
+
+void alwan_dehaze_params_init(alwan_dehaze_params *params);
+alwan_status alwan_dehaze_{T}(alwan_{T} *out, size_t out_row_stride,
+                              alwan_{T} *transmission_out, size_t t_row_stride,
+                              alwan_{T} airlight_out[3],
+                              alwan_{T} const *rgb, size_t row_stride,
+                              size_t width, size_t height, alwan_dehaze_params const *params);
+```
+
+He, Sun and Tang (CVPR 2009, TPAMI 2011) model a hazy image as `I = J t + A (1 - t)` and
+observe that in most patches of a clear outdoor image some channel is near zero. So the
+patch minimum of `I / A` measures the haze: the airlight `A` is taken among the brightest
+0.1 % of the dark channel (the pixel with the largest channel mean), the transmission is
+`t = 1 - omega min_patch min_c I_c / A_c`, refined here by `alwan_guided_filter` with the
+image as the colour guide (the authors' own replacement for soft matting), and the scene
+is `J = (I - A) / max(t, t0) + A`. Work on linear light; scale the radii with the image.
+
+There is no reference implementation to compare with, so suite 192 makes haze with a
+known answer: a scene that satisfies the prior, hazed with a known `A` and `t`. The
+airlight comes back within 0.017 (the sky it is read from is 2 % scene), the transmission
+to a median error of 0.029, the scene to a mean error of 0.032 (omega keeps 5 % of the
+haze on purpose). A clear image with a white patch changes by 0.0005 on average; one with
+no bright neutral at all has no airlight to find and returns `ALWAN_E_RANGE`.

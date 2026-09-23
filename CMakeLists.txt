@@ -133,6 +133,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_histogram3d.c
   src/alwan/api/alwan_guided_filter.c
   src/alwan/api/alwan_histogram_match.c
+  src/alwan/api/alwan_dehaze.c
   src/alwan/api/alwan_colorspace.c
   src/alwan/map/alwan_color_correction_map.c
   src/alwan/map/alwan_colorspace_map.c

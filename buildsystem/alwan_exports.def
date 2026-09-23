@@ -503,6 +503,9 @@ EXPORTS
     alwan_default_alloc
     alwan_default_free
     alwan_default_realloc
+    alwan_dehaze_f32
+    alwan_dehaze_f64
+    alwan_dehaze_params_init
     alwan_delta_e_2000_batch_ex
     alwan_delta_e_2000_f32
     alwan_delta_e_2000_f32_batch

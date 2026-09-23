@@ -2140,6 +2140,38 @@ alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwa
 alwan_status alwan_histogram_match_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
 alwan_status alwan_histogram_match_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
 
+/* Haze removal by the dark channel prior (He, Sun and Tang, CVPR 2009 / TPAMI 2011), the
+ * transmission refined by alwan_guided_filter as in their Guided Image Filtering paper.
+ * A hazy image is I = J t + A (1 - t); in most patches of a clear outdoor image some
+ * channel is near zero, so the patch minimum of I / A measures the haze:
+ *
+ *   A  = among the brightest top_fraction of the dark channel (the patch minimum of the
+ *        channel minimum), the pixel with the largest channel mean
+ *   t  = 1 - omega (patch minimum of min_c I_c / A_c), then guided by I
+ *   J  = (I - A) / max(t, t0) + A
+ *
+ * rgb is linear light, three values a pixel, rows row_stride bytes apart; out receives J
+ * (it may exceed 1). transmission_out (one value a pixel, may be NULL) receives the
+ * refined t, airlight_out (may be NULL) A. Patches are clipped at the border. init: the
+ * paper's patch radius 7 (15 x 15), omega 0.95, t0 0.1, top 0.1 %, guided filter radius
+ * 30 with eps 1e-3; scale the radii with the image. guide_radius 0 skips the refinement.
+ * ALWAN_E_INVALID for a NULL, a zero size, a stride too small, a parameter out of range
+ * or a non-finite pixel; ALWAN_E_RANGE when the airlight found has a channel at or
+ * below 0. There is no reference implementation to compare with; suite 192 hazes a scene
+ * with a known A and t and measures what is recovered. */
+typedef struct {
+    size_t patch_radius;
+    alwan_f64 omega;          /* the haze kept for depth, 0..1 */
+    alwan_f64 t0;             /* the transmission floor */
+    alwan_f64 top_fraction;   /* of the dark channel searched for the airlight */
+    size_t guide_radius;      /* 0: no refinement */
+    alwan_f64 guide_eps;
+} alwan_dehaze_params;
+
+void alwan_dehaze_params_init(alwan_dehaze_params *params);
+alwan_status alwan_dehaze_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 *transmission_out, size_t t_row_stride, alwan_f32 airlight_out[3], alwan_f32 const *rgb, size_t row_stride, size_t width, size_t height, alwan_dehaze_params const *params);
+alwan_status alwan_dehaze_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 *transmission_out, size_t t_row_stride, alwan_f64 airlight_out[3], alwan_f64 const *rgb, size_t row_stride, size_t width, size_t height, alwan_dehaze_params const *params);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics

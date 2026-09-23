@@ -427,6 +427,11 @@
 
 ### Added
 
+- **Haze removal: `alwan_dehaze`.** The dark channel prior (He, Sun and Tang 2009) with the
+  transmission refined by the guided filter; the transmission and airlight are returned
+  too. No reference implementation exists; suite 192 recovers a known synthetic haze
+  (airlight within 0.017, transmission median 0.029, scene 0.032).
+
 - **Histogram matching: `alwan_histogram_match`.** Per-channel CDF matching of one image to
   another, as scikit-image's `match_histograms`; suite 191 equals it bit for bit.
 
