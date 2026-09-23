@@ -2109,7 +2109,7 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  * their coarse cell; a coarse cell left empty frees its entry for another fine cell.
  * Entries are the coarse cells, most populated first, then the fine ones, each the
  * mean of its pixels in float, truncated; a pixel maps to its fine cell's entry, else
- * its coarse cell's. It runs in one pass over the pixels and does not search. Cells of
+ * its coarse cell's, through a table. Cells of
  * equal count are ordered by index; where max_colors is below the number of occupied
  * coarse cells, the pixels of a coarse cell without an entry map to the nearest entry
  * (Pillow maps them to entry 0). count_out counts entries that hold pixels, where
