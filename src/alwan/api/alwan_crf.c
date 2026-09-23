@@ -22,7 +22,7 @@
  * set by that row. The responses are then exp(g), extrapolated by a polynomial
  * where the weight is zero, and scaled so each channel peaks at 1.
  *
- * Robertson, Borman and Stevenson 2003 is the other recovery here, after OpenCV's
+ * Robertson, Borman and Stevenson 2003 is the other method of alwan_camera_response, after OpenCV's
  * CalibrateRobertson: it alternates between merging the bracket with the current
  * response and re-estimating the response from that merge, over every pixel.
  *
@@ -401,8 +401,8 @@ done:
 }
 
 static alwan_status alwan__crf_params(size_t *samples, size_t *bins, double *l_s, alwan_merge_weight *wf, int *degree,
-                                      int *keep, alwan_crf_debevec1997_params const *p) {
-    alwan_crf_debevec1997_params const zero = { 0, 0, 0.0, ALWAN_MERGE_WEIGHT_DEBEVEC1997, 0, 0 };
+                                      int *keep, alwan_camera_response_params const *p) {
+    static alwan_camera_response_params const zero = { 0 };
     if (!p) p = &zero;
     *samples = p->samples ? p->samples : 1000;
     *bins = p->bins ? p->bins : 256;
@@ -418,7 +418,7 @@ static alwan_status alwan__crf_params(size_t *samples, size_t *bins, double *l_s
 }
 
 static alwan_status alwan__debevec(double *out, void const *const *images, int f32, size_t stride, size_t count,
-                                   double const *B, size_t image_count, alwan_crf_debevec1997_params const *params) {
+                                   double const *B, size_t image_count, alwan_camera_response_params const *params) {
     size_t samples, bins, i;
     double l_s;
     alwan_merge_weight wf;
@@ -508,9 +508,9 @@ static void alwan__robertson_weights(double *w, size_t bins) {
 
 static alwan_status alwan__robertson(double *out, void const *const *images, int f32, size_t stride, size_t count,
                                      double const *e, size_t image_count,
-                                     alwan_crf_robertson2003_params const *params) {
-    alwan_crf_robertson2003_params const zero = { 0, 0, 0.0 };
-    alwan_crf_robertson2003_params const *pr = params ? params : &zero;
+                                     alwan_camera_response_params const *params) {
+    static alwan_camera_response_params const zero = { 0 };
+    alwan_camera_response_params const *pr = params ? params : &zero;
     size_t const bins = pr->bins ? pr->bins : 256;
     size_t const iterations = pr->iterations ? pr->iterations : 30;
     double const threshold = pr->threshold == 0.0 ? 0.01 : pr->threshold;
@@ -633,6 +633,33 @@ static alwan_status alwan__crf_exposures(double *e, double const *N, double cons
     return ALWAN_OK;
 }
 
+/* The camera response of a bracket by the given method, into bins values per channel. */
+static alwan_status alwan__crf_run(double *out, void const *const *images, int f32, size_t stride, size_t count,
+                                   double const *N, double const *t, double const *S, size_t image_count,
+                                   alwan_camera_response_method method, alwan_camera_response_params const *params) {
+    double *x;
+    alwan_status st;
+    if (method != ALWAN_CAMERA_RESPONSE_DEBEVEC1997 && method != ALWAN_CAMERA_RESPONSE_ROBERTSON2003) {
+        return ALWAN_E_INVALID;
+    }
+    x = (double *)ALWAN_ALLOC(image_count * sizeof(double), sizeof(double));
+    if (!x) return ALWAN_E_NOMEM;
+    if (method == ALWAN_CAMERA_RESPONSE_DEBEVEC1997) {
+        st = alwan__crf_log_exposures(x, N, t, S, image_count);
+        if (st == ALWAN_OK) st = alwan__debevec(out, images, f32, stride, count, x, image_count, params);
+    } else {
+        st = alwan__crf_exposures(x, N, t, S, image_count);
+        if (st == ALWAN_OK) st = alwan__robertson(out, images, f32, stride, count, x, image_count, params);
+    }
+    ALWAN_FREE(x);
+    return st;
+}
+
+/* The response's resolution, as the method reads it. */
+static size_t alwan__crf_bins(alwan_camera_response_params const *params) {
+    return params && params->bins ? params->bins : 256;
+}
+
 /* ================================================================
  * Public entry points
  * ================================================================ */
@@ -652,47 +679,23 @@ alwan_status alwan_crf_samples_grossberg2003_f64(size_t *bins_out, alwan_f64 con
     return alwan__grossberg(bins_out, (void const *const *)images, 0, in_stride, count, image_count, samples, bins);
 }
 
-alwan_status alwan_crf_debevec1997_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride,
+alwan_status alwan_camera_response_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride,
                                        size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count,
-                                       alwan_crf_debevec1997_params const *params) {
-    double *B, *N, *t, *S;
+                                       alwan_camera_response_method method, alwan_camera_response_params const *params) {
+    double *N, *t, *S;
     alwan_status st;
     size_t j;
     ALWAN__CRF_CHECK(images, image_count);
     if (!response_out || !settings) return ALWAN_E_INVALID;
-    B = (double *)ALWAN_ALLOC(4 * image_count * sizeof(double), sizeof(double));
-    if (!B) return ALWAN_E_NOMEM;
-    N = B + image_count; t = N + image_count; S = t + image_count;
+    N = (double *)ALWAN_ALLOC(3 * image_count * sizeof(double), sizeof(double));
+    if (!N) return ALWAN_E_NOMEM;
+    t = N + image_count; S = t + image_count;
     for (j = 0; j < image_count; j++) {
         N[j] = settings[j].f_number; t[j] = settings[j].exposure_time; S[j] = settings[j].iso;
     }
-    st = alwan__crf_log_exposures(B, N, t, S, image_count);
-    if (st == ALWAN_OK) {
-        st = alwan__debevec(response_out, (void const *const *)images, 0, in_stride, count, B, image_count, params);
-    }
-    ALWAN_FREE(B);
-    return st;
-}
-
-alwan_status alwan_crf_robertson2003_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride,
-                                         size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count,
-                                         alwan_crf_robertson2003_params const *params) {
-    double *e, *N, *t, *S;
-    alwan_status st;
-    size_t j;
-    ALWAN__CRF_CHECK(images, image_count);
-    if (!response_out || !settings) return ALWAN_E_INVALID;
-    e = (double *)ALWAN_ALLOC(4 * image_count * sizeof(double), sizeof(double));
-    if (!e) return ALWAN_E_NOMEM;
-    N = e + image_count; t = N + image_count; S = t + image_count;
-    for (j = 0; j < image_count; j++) {
-        N[j] = settings[j].f_number; t[j] = settings[j].exposure_time; S[j] = settings[j].iso;
-    }
-    st = alwan__crf_exposures(e, N, t, S, image_count);
-    if (st == ALWAN_OK) {
-        st = alwan__robertson(response_out, (void const *const *)images, 0, in_stride, count, e, image_count, params);
-    }
-    ALWAN_FREE(e);
+    st = alwan__crf_run(response_out, (void const *const *)images, 0, in_stride, count, N, t, S, image_count, method,
+                        params);
+    ALWAN_FREE(N);
     return st;
 }
 #endif /* ALWAN_WITH_F64 */
@@ -705,60 +708,27 @@ alwan_status alwan_crf_samples_grossberg2003_f32(size_t *bins_out, alwan_f32 con
     return alwan__grossberg(bins_out, (void const *const *)images, 1, in_stride, count, image_count, samples, bins);
 }
 
-alwan_status alwan_crf_debevec1997_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride,
+alwan_status alwan_camera_response_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride,
                                        size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count,
-                                       alwan_crf_debevec1997_params const *params) {
-    size_t samples, bins, j;
-    double l_s;
-    alwan_merge_weight wf;
-    int degree, keep;
-    double *B, *N, *t, *S, *wide;
-    alwan_status st;
-    ALWAN__CRF_CHECK(images, image_count);
-    if (!response_out || !settings) return ALWAN_E_INVALID;
-    st = alwan__crf_params(&samples, &bins, &l_s, &wf, &degree, &keep, params);
-    if (st != ALWAN_OK) return st;
-    B = (double *)ALWAN_ALLOC((4 * image_count + 3 * bins) * sizeof(double), sizeof(double));
-    if (!B) return ALWAN_E_NOMEM;
-    N = B + image_count; t = N + image_count; S = t + image_count; wide = S + image_count;
-    for (j = 0; j < image_count; j++) {
-        N[j] = (double)settings[j].f_number; t[j] = (double)settings[j].exposure_time; S[j] = (double)settings[j].iso;
-    }
-    st = alwan__crf_log_exposures(B, N, t, S, image_count);
-    if (st == ALWAN_OK) {
-        st = alwan__debevec(wide, (void const *const *)images, 1, in_stride, count, B, image_count, params);
-    }
-    if (st == ALWAN_OK) {
-        for (j = 0; j < 3 * bins; j++) response_out[j] = (alwan_f32)wide[j];
-    }
-    ALWAN_FREE(B);
-    return st;
-}
-
-alwan_status alwan_crf_robertson2003_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride,
-                                         size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count,
-                                         alwan_crf_robertson2003_params const *params) {
-    size_t const bins = params && params->bins ? params->bins : 256;
-    double *e, *N, *t, *S, *wide;
+                                       alwan_camera_response_method method, alwan_camera_response_params const *params) {
+    size_t const bins = alwan__crf_bins(params);
+    double *N, *t, *S, *wide;
     alwan_status st;
     size_t j;
     ALWAN__CRF_CHECK(images, image_count);
     if (!response_out || !settings) return ALWAN_E_INVALID;
     if (bins < 3 || bins > ALWAN__CRF_MAX_BINS) return ALWAN_E_INVALID;
-    e = (double *)ALWAN_ALLOC((4 * image_count + 3 * bins) * sizeof(double), sizeof(double));
-    if (!e) return ALWAN_E_NOMEM;
-    N = e + image_count; t = N + image_count; S = t + image_count; wide = S + image_count;
+    N = (double *)ALWAN_ALLOC((3 * image_count + 3 * bins) * sizeof(double), sizeof(double));
+    if (!N) return ALWAN_E_NOMEM;
+    t = N + image_count; S = t + image_count; wide = S + image_count;
     for (j = 0; j < image_count; j++) {
         N[j] = (double)settings[j].f_number; t[j] = (double)settings[j].exposure_time; S[j] = (double)settings[j].iso;
     }
-    st = alwan__crf_exposures(e, N, t, S, image_count);
-    if (st == ALWAN_OK) {
-        st = alwan__robertson(wide, (void const *const *)images, 1, in_stride, count, e, image_count, params);
-    }
+    st = alwan__crf_run(wide, (void const *const *)images, 1, in_stride, count, N, t, S, image_count, method, params);
     if (st == ALWAN_OK) {
         for (j = 0; j < 3 * bins; j++) response_out[j] = (alwan_f32)wide[j];
     }
-    ALWAN_FREE(e);
+    ALWAN_FREE(N);
     return st;
 }
 #endif /* ALWAN_WITH_F32 */

@@ -470,6 +470,12 @@
   for bit with OpenCV's `equalizeHist`, floats exactly as scikit-image's `equalize_hist`
   with a `bins` field (suite 210).
 
+- **Camera response: `alwan_camera_response`.** The two response recoveries are one entry
+  point with a method enum and one params struct, as the image-tool families are:
+  `ALWAN_CAMERA_RESPONSE_DEBEVEC1997` and `ALWAN_CAMERA_RESPONSE_ROBERTSON2003` replace
+  `alwan_crf_debevec1997_{T}` and `alwan_crf_robertson2003_{T}` and their two params
+  structs, with the same results (suites 119 and 123).
+
 - **Colour transfer: `alwan_color_transfer`.** One entry point with a method enum and a
   blend amount: histogram matching as scikit-image's `match_histograms` (bit for bit, suite
   191) and Reinhard et al. 2001's l alpha beta statistics transfer (suite 193 checks the
@@ -2052,7 +2058,8 @@
   The result matches scikit-learn's Ridge with sample weights on colour-science's
   expansions to 1.3e-13. The existing fits are these with no params, bit for bit.
 
-- **Robertson response recovery.** `alwan_crf_robertson2003_{T}` recovers a camera's
+- **Robertson response recovery.** `alwan_camera_response_{T}` with
+  `ALWAN_CAMERA_RESPONSE_ROBERTSON2003` recovers a camera's
   response from every pixel of a bracket by alternating merge and re-estimation,
   Robertson, Borman and Stevenson 2003, and matches OpenCV's CalibrateRobertson to
   5e-6. Values no pixel holds are filled from their neighbours where OpenCV leaves
@@ -2083,7 +2090,8 @@
   colour-demosaicing, and the results match it bit for bit. With the DNG model and
   the spectral IDT this completes a path from a Bayer buffer to ACES2065-1.
 
-- **Camera response recovery.** `alwan_crf_debevec1997_{T}` recovers a camera's
+- **Camera response recovery.** `alwan_camera_response_{T}` with
+  `ALWAN_CAMERA_RESPONSE_DEBEVEC1997` recovers a camera's
   response from an exposure bracket, Debevec and Malik 1997 over Grossberg and
   Nayar 2003 samples (`alwan_crf_samples_grossberg2003_{T}`), with the polynomial
   extrapolation and normalisation colour-hdri applies. The result is the response

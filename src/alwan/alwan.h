@@ -9266,18 +9266,6 @@ alwan_status alwan_hdr_merge_weight_f32(alwan_f32 *weight_out, alwan_f32 value, 
 alwan_status alwan_hdr_merge_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_merge_weight fn, alwan_f64 const *response, size_t response_size);
 alwan_status alwan_hdr_merge_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_merge_weight fn, alwan_f32 const *response, size_t response_size);
 
-/* Camera response recovery, Debevec and Malik 1997. The zero value of every field
- * is colour-hdri's default. */
-typedef struct {
-    size_t samples;            /* Grossberg 2003 samples per exposure and channel; 0 is 1000 */
-    size_t bins;               /* histogram bins and response resolution; 0 is 256 */
-    alwan_f64 smoothing;       /* Debevec's lambda; 0 is 30 */
-    alwan_merge_weight weight; /* weighting function; the zero value is Debevec 1997 */
-    int extrapolation_degree;  /* polynomial through the weighted values, evaluated where the
-                                * weight is 0; 0 is 7, negative leaves those values as solved */
-    int keep_scale;            /* non-zero: leave exp(g) unscaled instead of peaking at 1 */
-} alwan_crf_debevec1997_params;
-
 /* Grossberg and Nayar 2003: the pixel values to sample, chosen so that each sample
  * sits at the same point of every exposure's histogram. For each of samples points
  * u on [0, 1], the bin whose cumulative histogram is nearest u, per exposure and
@@ -9285,37 +9273,53 @@ typedef struct {
 alwan_status alwan_crf_samples_grossberg2003_f64(size_t *bins_out, alwan_f64 const *const *images, size_t in_stride, size_t count, size_t image_count, size_t samples, size_t bins);
 alwan_status alwan_crf_samples_grossberg2003_f32(size_t *bins_out, alwan_f32 const *const *images, size_t in_stride, size_t count, size_t image_count, size_t samples, size_t bins);
 
-/* The camera response of a bracket, Debevec and Malik 1997: per channel, the exposure
- * that each normalised pixel value records, solved by least squares over Grossberg
- * samples with a smoothness term. response_out receives bins values per channel,
- * planar, R then G then B, which is the response alwan_hdr_merge takes. The bracket
- * is given as for alwan_hdr_merge. params NULL is the defaults. Matches
- * colour_hdri.camera_response_functions_Debevec1997. */
-alwan_status alwan_crf_debevec1997_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
-alwan_status alwan_crf_debevec1997_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_crf_debevec1997_params const *params);
+/* The camera response of a bracket: per channel, the exposure each normalised pixel value
+ * records. response_out receives bins values per channel, planar, R then G then B, which
+ * is the response alwan_hdr_merge takes. The bracket is given as for alwan_hdr_merge.
+ *
+ *   ALWAN_CAMERA_RESPONSE_DEBEVEC1997    Debevec and Malik 1997: least squares over
+ *                                        Grossberg samples with a smoothness term, the
+ *                                        response extrapolated where the weight is zero
+ *                                        and scaled to peak at 1. colour-hdri's
+ *                                        camera_response_functions_Debevec1997 (suite 119)
+ *   ALWAN_CAMERA_RESPONSE_ROBERTSON2003  Robertson, Borman and Stevenson 2003: merge every
+ *                                        pixel with the current response, re-estimate the
+ *                                        response as the mean exposure each value records,
+ *                                        repeat from a linear response; only the ratios of
+ *                                        the exposures matter; normalised to 1 at the
+ *                                        middle value. A value no pixel holds is filled
+ *                                        from its neighbours (OpenCV leaves it NaN);
+ *                                        ALWAN_E_RANGE when no pixel holds the middle
+ *                                        value. OpenCV's CalibrateRobertson on 8-bit
+ *                                        brackets divided by 255 (suite 123). With no
+ *                                        smoothness term it needs exposures about a stop
+ *                                        apart or closer: 3 stops apart leaves a sawtooth
+ *                                        of half a stop, where DEBEVEC1997 does not
+ *
+ * params NULL is every default; an unknown method is ALWAN_E_INVALID. */
+typedef enum {
+    ALWAN_CAMERA_RESPONSE_DEBEVEC1997 = 0,
+    ALWAN_CAMERA_RESPONSE_ROBERTSON2003 = 1
+} alwan_camera_response_method;
 
-/* Camera response recovery, Robertson, Borman and Stevenson 2003. The zero value of
- * every field is OpenCV's default. */
+/* Each method reads its own fields; a zero field is its default (colour-hdri's for
+ * DEBEVEC1997, OpenCV's for ROBERTSON2003). */
 typedef struct {
-    size_t bins;         /* response resolution; 0 is 256 */
-    size_t iterations;   /* at most this many merge-and-re-estimate rounds; 0 is 30 */
-    alwan_f64 threshold; /* stop once the summed absolute change of the response, averaged over the
-                          * channels, falls below it; 0 is 0.01, a tiny value runs every round */
-} alwan_crf_robertson2003_params;
+    size_t bins;               /* both: histogram bins and response resolution, 3 to 65536; 0 is 256 */
+    size_t samples;            /* DEBEVEC1997: Grossberg samples per exposure and channel; 0 is 1000 */
+    double smoothing;          /* DEBEVEC1997: Debevec's lambda; 0 is 30 */
+    alwan_merge_weight weight; /* DEBEVEC1997: weighting function; the zero value is Debevec 1997 */
+    int extrapolation_degree;  /* DEBEVEC1997: polynomial through the weighted values, evaluated where
+                                * the weight is 0; 0 is 7, negative leaves those values as solved */
+    int keep_scale;            /* DEBEVEC1997: non-zero leaves exp(g) unscaled instead of peaking at 1 */
+    size_t iterations;         /* ROBERTSON2003: at most this many merge-and-re-estimate rounds; 0 is 30 */
+    double threshold;          /* ROBERTSON2003: stop once the summed absolute change of the response,
+                                * averaged over the channels, falls below it; 0 is 0.01, a tiny value
+                                * runs every round */
+} alwan_camera_response_params;
 
-/* The camera response of a bracket, Robertson, Borman and Stevenson 2003: merge every
- * pixel with the current response, re-estimate the response as the mean exposure each
- * pixel value records, and repeat, starting from a linear response. The bracket is
- * given as for alwan_hdr_merge, and only the ratios of the exposures matter.
- * response_out receives bins values per channel, planar, R then G then B, normalised
- * to 1 at the middle value, which is the response alwan_hdr_merge takes. A value that
- * no pixel holds is filled from its neighbours; OpenCV leaves it NaN. ALWAN_E_RANGE
- * when no pixel holds the middle value. params NULL is the defaults. Matches OpenCV's
- * CalibrateRobertson on 8-bit brackets divided by 255. With no smoothness term it
- * needs exposures about a stop apart or closer: 3 stops apart leaves a sawtooth of
- * half a stop, where alwan_crf_debevec1997 does not. */
-alwan_status alwan_crf_robertson2003_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_crf_robertson2003_params const *params);
-alwan_status alwan_crf_robertson2003_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_crf_robertson2003_params const *params);
+alwan_status alwan_camera_response_f64(alwan_f64 *response_out, alwan_f64 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f64 const *settings, size_t image_count, alwan_camera_response_method method, alwan_camera_response_params const *params);
+alwan_status alwan_camera_response_f32(alwan_f32 *response_out, alwan_f32 const *const *images, size_t in_stride, size_t count, alwan_exposure_settings_f32 const *settings, size_t image_count, alwan_camera_response_method method, alwan_camera_response_params const *params);
 
 /* Exposure fusion: a bracket of exposures blended straight into one displayable picture,
  * with no response curve, radiance map or tone curve in between.

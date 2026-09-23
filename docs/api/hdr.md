@@ -743,9 +743,39 @@ same number whenever the image holds a value at 0.5.
 ## Camera Response Recovery
 
 ```c
+typedef enum {
+    ALWAN_CAMERA_RESPONSE_DEBEVEC1997 = 0,
+    ALWAN_CAMERA_RESPONSE_ROBERTSON2003 = 1
+} alwan_camera_response_method;
+
+alwan_status alwan_camera_response_{T}(alwan_{T} *response_out, alwan_{T} const *const *images,
+                                       size_t in_stride, size_t count,
+                                       alwan_exposure_settings_{T} const *settings, size_t image_count,
+                                       alwan_camera_response_method method,
+                                       alwan_camera_response_params const *params);
+```
+
+The camera response of an exposure bracket, the curve that `alwan_hdr_merge` takes: per
+channel, the exposure each normalised pixel value records, `bins` values per channel,
+planar, R then G then B. One entry point with a method enum; each method reads its own
+fields of `alwan_camera_response_params`, and a zero field is its default (colour-hdri's
+for Debevec, OpenCV's for Robertson). `params` NULL is every default.
+
+| Field | Method | 0 reads as |
+|---|---|---|
+| `bins` | both | 256 |
+| `samples` | `DEBEVEC1997` | 1000 |
+| `smoothing` | `DEBEVEC1997` | 30 |
+| `weight` | `DEBEVEC1997` | `ALWAN_MERGE_WEIGHT_DEBEVEC1997` |
+| `extrapolation_degree` | `DEBEVEC1997` | 7; negative leaves the solved values |
+| `keep_scale` | `DEBEVEC1997` | 0: scaled to peak at 1 |
+| `iterations` | `ROBERTSON2003` | 30 |
+| `threshold` | `ROBERTSON2003` | 0.01 |
+
+```c
 alwan_f64 response[3 * 256];
-alwan_crf_debevec1997_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
-                          bracket, 3, NULL);
+alwan_camera_response_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
+                          bracket, 3, ALWAN_CAMERA_RESPONSE_DEBEVEC1997, NULL);
 alwan_hdr_merge_f64_map_interleave(radiance, 3 * sizeof(alwan_f64), images,
                                    3 * sizeof(alwan_f64), pixel_count, bracket, 3,
                                    ALWAN_MERGE_WEIGHT_DEBEVEC1997, response, 256);
@@ -756,12 +786,12 @@ the least-squares solution over sampled pixels of every exposure, with a smoothn
 term weighted by lambda (30) and the middle value pinned at 0. The samples are
 Grossberg and Nayar's 2003 histogram points, 1000 per exposure. Where the weight is
 zero the response is extrapolated with a degree 7 polynomial, and each channel is
-scaled to peak at 1. `alwan_crf_debevec1997_params` changes any of these; its zero
-value is colour-hdri's default, which the tests match.
+scaled to peak at 1. The params fields change any of these; their zero value is
+colour-hdri's default, which suite 119 matches.
 
 ```c
-alwan_crf_robertson2003_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
-                            bracket, 3, NULL);
+alwan_camera_response_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
+                          bracket, 3, ALWAN_CAMERA_RESPONSE_ROBERTSON2003, NULL);
 ```
 
 Robertson, Borman and Stevenson 2003 uses every pixel instead of samples. Starting
@@ -769,8 +799,8 @@ from a linear response, it merges the bracket with the current response, takes t
 new response at each value as the mean exposure of the pixels holding it, pins the
 middle value at 1, and repeats: 30 rounds, or fewer once the change is below 0.01.
 The weight is OpenCV's, a Gaussian over the values, 0 at both ends. Only the ratios
-of the exposures matter. `alwan_crf_robertson2003_params` sets the resolution, the
-rounds and the threshold; its zero value is OpenCV's default, and the result matches
+of the exposures matter. `bins`, `iterations` and `threshold` set the resolution, the
+rounds and the threshold; their zero value is OpenCV's default, and the result matches
 OpenCV's CalibrateRobertson to its float rounding, 5e-6.
 
 Robertson's estimate has no smoothness term. The response is tied down only where
