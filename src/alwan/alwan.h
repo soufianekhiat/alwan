@@ -2252,6 +2252,34 @@ alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 
 alwan_status alwan_denoise_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
 alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
 
+/* Sharpening: the detail of an image amplified.
+ *
+ *   ALWAN_SHARPEN_UNSHARP_MASK  out = in + amount (in - Gaussian(in)), the detail a Gaussian
+ *                               of standard deviation radius removes added back amount
+ *                               times; scikit-image's filters.unsharp_mask (suite 203)
+ *
+ * src has 1 to 4 channels, each sharpened on its own, rows at the given byte strides; out
+ * may be src. Sharpening R, G and B apart can fringe colour at edges; sharpen a lightness
+ * channel for a gentler result. params NULL is every default. ALWAN_E_INVALID for a NULL,
+ * a zero size, a channel count out of range, a stride too small, a non-finite value or an
+ * unknown method; ALWAN_E_RANGE for a radius not above 0 or above 1000. */
+typedef enum {
+    ALWAN_SHARPEN_UNSHARP_MASK = 0
+} alwan_sharpen_method;
+
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    double radius; /* UNSHARP_MASK: the Gaussian's standard deviation in pixels; 0 reads as 1 */
+    double amount; /* UNSHARP_MASK: how many times the detail is added back (may be negative);
+                    * 0 reads as 1 */
+    int clip;      /* UNSHARP_MASK: non-zero clips to [0, 1], or [-1, 1] when the image has a
+                    * negative value, as scikit-image does by default; 0 leaves values as they
+                    * come (scikit-image's preserve_range) */
+} alwan_sharpen_params;
+
+alwan_status alwan_sharpen_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
+alwan_status alwan_sharpen_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since neither method looks at neighbours). out may be src.

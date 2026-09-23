@@ -427,6 +427,10 @@
 
 ### Added
 
+- **Sharpening: `alwan_sharpen`.** One entry point with a method enum, first the unsharp mask,
+  as scikit-image's `filters.unsharp_mask` computes it (suite 203, 9e-16), clipping only when
+  asked. scikit-image 0.26 sharpens rows instead of channels when given `channel_axis=-1`.
+
 - **Denoising: `alwan_denoise`.** One entry point, float and 8-bit, with a method enum:
   total variation (Chambolle 2004, exact to scikit-image, suite 200), non-local means
   (Buades et al. 2005, bit for bit with OpenCV's `fastNlMeansDenoising`, suite 201) and

@@ -322,6 +322,43 @@ No implementation of the paper's own space exists to compare with; suite 193 che
 property that defines it: the result's l alpha beta means and standard deviations equal the
 reference's, to 3e-15, and an image transferred onto itself comes back unchanged.
 
+## Sharpening
+
+```c
+typedef enum {
+    ALWAN_SHARPEN_UNSHARP_MASK = 0
+} alwan_sharpen_method;
+
+alwan_status alwan_sharpen_{T}(alwan_{T} *out, size_t out_row_stride,
+                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                               size_t width, size_t height,
+                               alwan_sharpen_method method, alwan_sharpen_params const *params);
+```
+
+The detail of an image amplified. 1 to 4 channels, each sharpened on its own; `out` may be
+`src`. Sharpening R, G and B apart can fringe colour at edges; sharpen a lightness channel
+for a gentler result.
+
+| Field of `alwan_sharpen_params` | Method | 0 reads as |
+|---|---|---|
+| `radius` | `UNSHARP_MASK` | 1, the Gaussian's standard deviation in pixels |
+| `amount` | `UNSHARP_MASK` | 1 (it may be negative, which softens) |
+| `clip` | `UNSHARP_MASK` | 0: no clipping; non-zero clips as scikit-image does |
+
+### `UNSHARP_MASK`
+
+`out = in + amount (in - G * in)`: the detail a Gaussian of standard deviation `radius`
+removes is added back `amount` times. It follows scikit-image's `filters.unsharp_mask`:
+each channel alone, the Gaussian of `scipy.ndimage.gaussian_filter` in mode `reflect`
+(half-sample symmetric), truncated at `int(4 radius + 0.5)` taps a side. scikit-image clips
+the result to [0, 1], or [-1, 1] when the image has a negative value, unless
+`preserve_range` is set; alwan clips only when `clip` asks, as it clips nowhere else
+silently. Suite 203 agrees with scikit-image to 9e-16 over seven cases, clipped and not.
+
+scikit-image 0.26's `unsharp_mask` mishandles `channel_axis=-1`: it passes the axis to
+`slice_at_axis` without taking it modulo the dimension count, so it sharpens rows 0, 1 and 2
+in turn instead of the three channels. Suite 203's reference passes `channel_axis=2`.
+
 ## Haze removal
 
 ```c
