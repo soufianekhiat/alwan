@@ -427,6 +427,11 @@
 
 ### Added
 
+- **Exposure fusion: `alwan_exposure_fusion`.** Mertens et al. 2007, a bracket blended into
+  one picture by contrast, saturation and well-exposedness through Laplacian pyramids, as
+  OpenCV's `cv::MergeMertens` computes it; suite 199 agrees with OpenCV to 1.5e-6, and a
+  neutral bracket fuses to its exact average where OpenCV's float rounding decides.
+
 - **The local Laplacian filter: `alwan_local_laplacian_filter`.** Paris et al. 2011 in the
   fast form of Aubry et al. 2014: detail boost or smoothing and tonal range compression
   without halos, following MATLAB's `locallapfilt`; suite 198 agrees with MATLAB to 1.5e-6.

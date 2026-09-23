@@ -2248,6 +2248,25 @@ typedef enum {
 alwan_status alwan_local_laplacian_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 sigma, alwan_f32 alpha, alwan_f32 beta, size_t intensity_levels, alwan_llf_color_mode mode);
 alwan_status alwan_local_laplacian_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 sigma, alwan_f64 alpha, alwan_f64 beta, size_t intensity_levels, alwan_llf_color_mode mode);
 
+/* Exposure fusion (Mertens, Kautz and Van Reeth, Pacific Graphics 2007): a bracket of
+ * image_count exposures of one scene blended straight into one picture, with no radiance
+ * map and no tone mapping. Each pixel of each exposure is weighted by its contrast (the
+ * absolute Laplacian of its grey value), saturation (the spread of its channels) and
+ * well-exposedness (closeness of every channel to 0.5), each raised to its *_weight (1, 1,
+ * 1 in the paper; 0 ignores a measure), and the exposures' Laplacian pyramids are blended
+ * with the Gaussian pyramids of the normalised weights, which keeps the blend seamless.
+ *
+ * images holds image_count pointers to width x height images of `channels` (1 or 3)
+ * display-encoded values in 0..1, the first channel red, rows at image_row_stride bytes;
+ * the exposures must be aligned. out is the fused image in the same layout and is not
+ * clipped (a strongly weighted Laplacian can overshoot 0..1 slightly). It follows OpenCV's
+ * cv::MergeMertens (which divides 8-bit input by 255 first), in double where OpenCV works
+ * in float. ALWAN_E_INVALID for a NULL, a zero size or count, a channel count other than
+ * 1 or 3, a stride too small or a non-finite value; ALWAN_E_RANGE for a negative weight or
+ * more than 1024 images. Suite 199. */
+alwan_status alwan_exposure_fusion_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *const *images, size_t image_row_stride, size_t image_count, size_t channels, size_t width, size_t height, alwan_f32 contrast_weight, alwan_f32 saturation_weight, alwan_f32 exposure_weight);
+alwan_status alwan_exposure_fusion_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *const *images, size_t image_row_stride, size_t image_count, size_t channels, size_t width, size_t height, alwan_f64 contrast_weight, alwan_f64 saturation_weight, alwan_f64 exposure_weight);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every

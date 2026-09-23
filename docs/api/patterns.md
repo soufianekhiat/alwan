@@ -588,6 +588,39 @@ borders, `floor(log2(min(w, h))) + 1` levels, linear weights between intensity l
 Suite 198 agrees with MATLAB to 1.5e-6 over eight cases, the size of MATLAB's single
 precision. `out` may alias `src`.
 
+## Merging a bracket: exposure fusion
+
+```c
+alwan_status alwan_exposure_fusion_{T}(alwan_{T} *out, size_t out_row_stride,
+                                       alwan_{T} const *const *images, size_t image_row_stride,
+                                       size_t image_count, size_t channels,
+                                       size_t width, size_t height,
+                                       alwan_{T} contrast_weight, alwan_{T} saturation_weight,
+                                       alwan_{T} exposure_weight);
+```
+
+Mertens, Kautz and Van Reeth (Pacific Graphics 2007) blend a bracket of exposures straight
+into one picture, with no radiance map and no tone mapping. Each pixel of each exposure is
+weighted by three measures, each raised to its weight (1, 1, 1 in the paper; 0 ignores a
+measure):
+
+| Measure | Formula |
+|---|---|
+| contrast | the absolute 4-neighbour Laplacian of the grey value `0.299 R + 0.587 G + 0.114 B` |
+| saturation | the spread of the channels, `sqrt(sum (c - mean)^2)` |
+| well-exposedness | `prod exp(-(c - 0.5)^2 / 0.08)`, closeness of every channel to mid-grey |
+
+The weights are normalised per pixel, and the exposures' Laplacian pyramids are blended
+with the Gaussian pyramids of their weights, so the blend has no seams. The inputs are
+display-encoded values in 0..1, first channel red, one or three channels, already aligned.
+The output is not clipped.
+
+The function follows OpenCV's `cv::MergeMertens`, which divides its input by 255 first,
+and suite 199 agrees with it to 1.5e-6 over seven cases. There is one deliberate
+difference. Where every exposure's weight is the 1e-12 floor, as in a flat neutral region,
+alwan returns the plain average. OpenCV's float arithmetic gives a neutral pixel a
+saturation of about 1e-8 instead of 0, and rounding then picks the blend.
+
 The functions reproduce OpenCV's `cv::createCLAHE` bit for bit, and suite 197 holds every
 pixel of ten cases equal. An image that does not divide into tiles is extended at the
 bottom and right by reflection, by `tiles - size % tiles` in each direction, so an image
