@@ -427,6 +427,11 @@
 
 ### Added
 
+- **The joint bilateral filter: `alwan_joint_bilateral_filter`.** Bilateral smoothing with its
+  edges taken from a second image (flash / no-flash denoising, edge-aware mask smoothing), as
+  OpenCV's ximgproc computes it with the colour Gaussian evaluated exactly; suite 194 agrees to
+  4.8e-7.
+
 - **Colour transfer: `alwan_color_transfer_reinhard`.** Reinhard et al. 2001, mean and
   deviation matched per channel in Ruderman's l alpha beta; suite 193 checks the result's
   statistics equal the reference's to 3e-15.

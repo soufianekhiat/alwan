@@ -415,3 +415,25 @@ carries the whole distribution, and so keeps the source's own shape.
 No implementation of the paper's own space exists to compare with; suite 193 checks the
 property that defines it: the result's l alpha beta means and standard deviations equal
 the reference's, to 3e-15, and an image transferred onto itself comes back unchanged.
+
+## Edges from another image: the joint bilateral filter
+
+```c
+alwan_status alwan_joint_bilateral_filter_{T}(alwan_{T} *out, size_t out_row_stride,
+                                              alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
+                                              alwan_{T} const *joint, size_t joint_row_stride, size_t joint_channels,
+                                              size_t width, size_t height, size_t radius,
+                                              alwan_{T} sigma_color, alwan_{T} sigma_space);
+```
+
+The bilateral filter (Tomasi and Manduchi 1998) with its range weight taken from a second,
+joint image (Petschnigg et al. and Eisemann and Durand, 2004): each output is a mean of
+`src` over a disc, weighted by distance and by how close the joint image's value there is
+to its value at the centre. It denoises a no-flash photograph along a flash photograph's
+edges, or smooths a mask or depth map along a picture's; with `src` as its own joint it is
+the ordinary bilateral filter. The colour distance is the L1 sum of channel differences, the
+window a disc and the border reflected without repeating the edge pixel, as in OpenCV's
+`ximgproc::jointBilateralFilter`; the colour Gaussian is evaluated exactly where OpenCV reads
+a 4096-bin table, and a flat joint image is not replaced by a square Gaussian blur as
+OpenCV does. Cost grows with the square of the radius, unlike the guided filter's. Suite
+194 agrees with OpenCV to 4.8e-7.

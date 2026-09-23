@@ -1059,6 +1059,8 @@ EXPORTS
     alwan_izazbz_to_xyz_f64
     alwan_jakob2019_coeff_sample_f32
     alwan_jakob2019_coeff_sample_f64
+    alwan_joint_bilateral_filter_f32
+    alwan_joint_bilateral_filter_f64
     alwan_jp2499_apply_f32
     alwan_jp2499_apply_f64
     alwan_jp2499_default_params_f32

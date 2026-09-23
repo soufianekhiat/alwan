@@ -2128,6 +2128,22 @@ alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_
 alwan_status alwan_guided_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f32 eps);
 alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, size_t radius, alwan_f64 eps);
 
+/* The joint (cross) bilateral filter (Petschnigg et al. and Eisemann and Durand, 2004;
+ * Tomasi and Manduchi 1998): each output is a mean of src over a disc of the given radius,
+ * weighted by exp(-dist^2 / (2 sigma_space^2)) exp(-d^2 / (2 sigma_color^2)), with d the
+ * L1 distance between the JOINT image's value there and at the centre, so edges come from
+ * the joint image (with src as its own joint it is the ordinary bilateral filter). src has
+ * 1 to 4 channels, joint 1 to 4; sigma_color is in joint units summed over its channels.
+ * The border is reflected without repeating the edge pixel. It follows OpenCV's
+ * ximgproc::jointBilateralFilter for float images, but evaluates the colour Gaussian
+ * exactly where OpenCV reads a 4096-bin table, and does not fall back to a square
+ * GaussianBlur when the joint image is flat as OpenCV does. out may be src or joint.
+ * Cost is width * height * radius^2. ALWAN_E_INVALID for a NULL, a zero size, a channel
+ * count out of range, a stride too small, a sigma not positive and finite, or a
+ * non-finite pixel; ALWAN_E_RANGE for radius 0 or above 4096. Suite 194. */
+alwan_status alwan_joint_bilateral_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *joint, size_t joint_row_stride, size_t joint_channels, size_t width, size_t height, size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space);
+alwan_status alwan_joint_bilateral_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *joint, size_t joint_row_stride, size_t joint_channels, size_t width, size_t height, size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every
