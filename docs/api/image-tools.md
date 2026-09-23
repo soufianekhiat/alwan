@@ -132,7 +132,8 @@ typedef enum {
     ALWAN_DENOISE_NL_MEANS = 1,
     ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
     ALWAN_DENOISE_DCT = 3,
-    ALWAN_DENOISE_WAVELET = 4
+    ALWAN_DENOISE_WAVELET = 4,
+    ALWAN_DENOISE_MEDIAN = 5
 } alwan_denoise_method;
 
 alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -145,9 +146,9 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
                               alwan_denoise_method method, alwan_denoise_params const *params);
 ```
 
-Five classic denoisers that fail in different ways (plate 89 of the v3 plates shows them
-on one portrait). `alwan_denoise_u8` runs all five; `alwan_denoise_{T}` runs
-`TV_CHAMBOLLE`, `DCT` and `WAVELET`, and returns `ALWAN_E_INVALID` for the two whose references work
+Six classic denoisers that fail in different ways (plate 89 of the v3 plates shows five
+of them on one portrait). `alwan_denoise_u8` runs all six; `alwan_denoise_{T}` runs
+`TV_CHAMBOLLE`, `DCT`, `WAVELET` and `MEDIAN`, and returns `ALWAN_E_INVALID` for the two whose references work
 on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 
 | Field of `alwan_denoise_params` | Method | 0 reads as |
@@ -163,6 +164,7 @@ on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 | `wavelet` | `WAVELET` | `ALWAN_WAVELET_DB1` (Haar) |
 | `wavelet_levels` | `WAVELET` | the most the image holds, less 3, at least 1 |
 | `wavelet_visushrink`, `wavelet_hard` | `WAVELET` | BayesShrink, soft |
+| `kernel_size` | `MEDIAN` | 3 (odd, 3 to 255) |
 
 ### `TV_CHAMBOLLE`
 
@@ -245,6 +247,22 @@ double over nine cases of every option, to 1.8e-7 in float32 (PyWavelets transfo
 in float32) and within half a level in 8-bit. The published symlet coefficients are
 orthogonal to about 1e-12 only, so with no threshold a symlet round trip returns the image
 to 1e-11, as PyWavelets' own does.
+
+### `MEDIAN`
+
+Each value of each channel becomes the median of the `kernel_size` x `kernel_size` window
+around it, the border replicated. The window holds an odd count, so the median is one of
+its values: a lone outlier (a hot or dead pixel, salt-and-pepper noise) is removed
+outright rather than spread, as averaging would spread it, and a straight step edge stays
+exactly where it is. It rounds corners and removes lines thinner than half the window,
+and on Gaussian noise it does less than the methods above. Channels are filtered apart.
+
+8-bit data slides a 256-bin histogram along each row (Huang, Yang and Tang 1979), so the
+cost per pixel grows with the window's side, not its area; floats select the middle value
+of each window. Suite 211 is equal, value for value, to OpenCV's `medianBlur` on 8-bit
+grey and colour images at sizes 3 to 21, to `scipy.ndimage.median_filter` with
+`mode='nearest'` on float64 at 3 to 9, and to `medianBlur` on float32 at 3 and 5 (the sizes
+OpenCV takes float32 at).
 
 ## Local contrast
 

@@ -2272,9 +2272,14 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        VisuShrink (Donoho and Johnstone 1994), the noise
  *                                        estimated from the finest diagonal band unless given
  *                                        (scikit-image denoise_wavelet, suite 206)
+ *   ALWAN_DENOISE_MEDIAN                 the median of each kernel_size square window, per
+ *                                        channel, the border replicated: removes lone
+ *                                        outliers (hot pixels, salt and pepper) and keeps
+ *                                        step edges (OpenCV medianBlur, scipy.ndimage
+ *                                        median_filter, suite 211)
  *
  * alwan_denoise_u8 runs every method on 8-bit data (TV through double in 0..1, rounded
- * back); alwan_denoise_{T} runs TV_CHAMBOLLE, DCT and WAVELET, and ALWAN_E_INVALID for the two
+ * back); alwan_denoise_{T} runs TV_CHAMBOLLE, DCT, WAVELET and MEDIAN, and ALWAN_E_INVALID for the two
  * methods whose references are 8-bit. src has 1 to 4 channels, each denoised on its own
  * except that NL means and diffusion measure differences over all of them and DCT turns
  * three channels to an opponent space first; rows at the given byte strides. out may be
@@ -2284,7 +2289,8 @@ typedef enum {
     ALWAN_DENOISE_NL_MEANS = 1,
     ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
     ALWAN_DENOISE_DCT = 3,
-    ALWAN_DENOISE_WAVELET = 4
+    ALWAN_DENOISE_WAVELET = 4,
+    ALWAN_DENOISE_MEDIAN = 5
 } alwan_denoise_method;
 
 /* The orthogonal wavelets of ALWAN_DENOISE_WAVELET: Daubechies and symlets. */
@@ -2328,6 +2334,7 @@ typedef struct {
     size_t wavelet_levels;  /* WAVELET: decomposition levels; 0 reads as the maximum minus 3, at least 1 */
     int wavelet_visushrink; /* WAVELET: non-zero thresholds by VisuShrink; 0 by BayesShrink */
     int wavelet_hard;       /* WAVELET: non-zero thresholds hard; 0 soft */
+    size_t kernel_size;     /* MEDIAN: the window's side, odd, 3 to 255; 0 reads as 3 */
 } alwan_denoise_params;
 
 alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);

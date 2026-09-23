@@ -790,6 +790,137 @@ static alwan_status alwan_wv_run(void *out, size_t out_rs, void const *src, size
     return st;
 }
 
+/*
+ * The median filter: each value of each channel becomes the median of the kernel_size x
+ * kernel_size window around it, the border replicated, as OpenCV's medianBlur does it
+ * (and scipy.ndimage.median_filter with mode 'nearest'). The window holds an odd count, so
+ * the median is one of its values: a lone outlier, a hot pixel or salt-and-pepper noise,
+ * is removed outright, and a step edge stays where it is. 8-bit data slides a 256-bin
+ * histogram along each row (Huang, Yang and Tang 1979); floats select the middle value of
+ * each window.
+ */
+static size_t alwan_med_clamp(long i, size_t n) {
+    return i < 0 ? 0 : i >= (long)n ? n - 1 : (size_t)i;
+}
+
+static alwan_status alwan_med_u8(unsigned char *out, size_t out_rs, unsigned char const *src, size_t src_rs, size_t ch,
+                                 size_t w, size_t h, size_t k) {
+    long const r = (long)(k / 2);
+    size_t const half = k * k / 2;
+    unsigned char *buf;
+    size_t c, x, y;
+    long j;
+    if (!out || !src || w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
+    if (src_rs / ch < w || out_rs / ch < w) return ALWAN_E_INVALID;
+    buf = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size(w * ch, h), 1);   /* out may be src */
+    if (!buf) return ALWAN_E_NOMEM;
+    for (c = 0; c < ch; c++) {
+        for (y = 0; y < h; y++) {
+            size_t hist[256];
+            memset(hist, 0, sizeof(hist));
+            for (j = -r; j <= r; j++) {
+                unsigned char const *row = src + alwan_med_clamp((long)y + j, h) * src_rs;
+                long i;
+                for (i = -r; i <= r; i++) hist[row[alwan_med_clamp(i, w) * ch + c]]++;
+            }
+            for (x = 0; x < w; x++) {
+                size_t acc = 0;
+                int v = 0;
+                if (x > 0) { /* slide: the column leaving, the column entering */
+                    size_t const xo = alwan_med_clamp((long)x - r - 1, w), xi = alwan_med_clamp((long)x + r, w);
+                    for (j = -r; j <= r; j++) {
+                        unsigned char const *row = src + alwan_med_clamp((long)y + j, h) * src_rs;
+                        hist[row[xo * ch + c]]--;
+                        hist[row[xi * ch + c]]++;
+                    }
+                }
+                while (acc + hist[v] <= half) acc += hist[v++];
+                buf[(y * w + x) * ch + c] = (unsigned char)v;
+            }
+        }
+    }
+    for (y = 0; y < h; y++) memcpy(out + y * out_rs, buf + y * w * ch, w * ch);
+    ALWAN_FREE(buf);
+    return ALWAN_OK;
+}
+
+/* The k-th smallest of n values, Wirth's selection; the array is reordered. */
+static double alwan_med_select(double *a, size_t n, size_t k) {
+    long l = 0, m = (long)n - 1;
+    long const kk = (long)k;
+    while (l < m) {
+        double const x = a[kk];
+        long i = l, j = m;
+        do {
+            while (a[i] < x) i++;
+            while (x < a[j]) j--;
+            if (i <= j) {
+                double const t = a[i];
+                a[i] = a[j];
+                a[j] = t;
+                i++;
+                j--;
+            }
+        } while (i <= j);
+        if (j < kk) l = i;
+        if (kk < i) m = j;
+    }
+    return a[kk];
+}
+
+static alwan_status alwan_med_float(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w,
+                                    size_t h, size_t k, int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    long const r = (long)(k / 2);
+    double *img, *win;
+    size_t c, x, y;
+    if (!out || !src || w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
+    if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
+    img = (double *)ALWAN_ALLOC(alwan_safe_array_size(w * ch, h * sizeof(double)), sizeof(double));
+    win = (double *)ALWAN_ALLOC(k * k * sizeof(double), sizeof(double));
+    if (!img || !win) {
+        if (img) ALWAN_FREE(img);
+        if (win) ALWAN_FREE(win);
+        return ALWAN_E_NOMEM;
+    }
+    for (y = 0; y < h; y++) {
+        char const *row = (char const *)src + y * src_rs;
+        for (x = 0; x < w * ch; x++) {
+            double const v = is_f32 ? (double)((alwan_f32 const *)row)[x] : ((alwan_f64 const *)row)[x];
+            if (!alwan_dn_finite(v)) {
+                ALWAN_FREE(img);
+                ALWAN_FREE(win);
+                return ALWAN_E_INVALID;
+            }
+            img[y * w * ch + x] = v;
+        }
+    }
+    for (y = 0; y < h; y++) {
+        char *orow = (char *)out + y * out_rs;
+        for (x = 0; x < w; x++) {
+            for (c = 0; c < ch; c++) {
+                size_t m = 0;
+                long i, j;
+                double v;
+                for (j = -r; j <= r; j++) {
+                    double const *row = img + alwan_med_clamp((long)y + j, h) * w * ch;
+                    for (i = -r; i <= r; i++) win[m++] = row[alwan_med_clamp((long)x + i, w) * ch + c];
+                }
+                v = alwan_med_select(win, m, m / 2);
+                if (is_f32) ((alwan_f32 *)orow)[x * ch + c] = (alwan_f32)v;
+                else ((alwan_f64 *)orow)[x * ch + c] = v;
+            }
+        }
+    }
+    ALWAN_FREE(img);
+    ALWAN_FREE(win);
+    return ALWAN_OK;
+}
+
+static int alwan_med_size(size_t k) {
+    return k >= 3 && k <= 255 && (k & 1u);
+}
+
 /* ---- the family ---- */
 
 static double alwan_dn_or(double v, double def) {
@@ -842,6 +973,11 @@ static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const 
                              alwan_dn_or(p->sigma, 10.0 / 255.0), p->block_size == 0 ? 16 : p->block_size, is_f32 ? 1 : 0);
     case ALWAN_DENOISE_WAVELET:
         return alwan_wv_run(out, out_row_stride, src, src_row_stride, channels, width, height, p, is_f32 ? 1 : 0);
+    case ALWAN_DENOISE_MEDIAN: {
+        size_t const k = p->kernel_size == 0 ? 3 : p->kernel_size;
+        if (!alwan_med_size(k)) return ALWAN_E_RANGE;
+        return alwan_med_float(out, out_row_stride, src, src_row_stride, channels, width, height, k, is_f32);
+    }
     case ALWAN_DENOISE_NL_MEANS:
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION: /* 8-bit only, as their references are */
     default:
@@ -867,6 +1003,11 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
                              p->block_size == 0 ? 16 : p->block_size, 2);
     case ALWAN_DENOISE_WAVELET:
         return alwan_wv_run(out, out_row_stride, src, src_row_stride, channels, width, height, p, 2);
+    case ALWAN_DENOISE_MEDIAN: {
+        size_t const k = p->kernel_size == 0 ? 3 : p->kernel_size;
+        if (!alwan_med_size(k)) return ALWAN_E_RANGE;
+        return alwan_med_u8(out, out_row_stride, src, src_row_stride, channels, width, height, k);
+    }
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION:
         return alwan_ad_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->alpha, 0.15),
                             alwan_dn_or(p->k, 0.05), p->iterations == 0 ? 10 : p->iterations);
