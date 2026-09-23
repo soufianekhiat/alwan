@@ -427,6 +427,10 @@
 
 ### Added
 
+- **CLAHE: `alwan_clahe_u8`, `alwan_clahe_u16`.** Contrast-limited adaptive histogram
+  equalisation on 8-bit and 16-bit single-channel images, reproducing OpenCV's
+  `cv::createCLAHE` bit for bit (suite 197), padding of non-dividing sizes included.
+
 - **The fast global smoother: `alwan_fast_global_smoother`.** Min et al. 2014, weighted
   least squares smoothing along a guide solved as exact tridiagonal systems on rows and
   columns, as OpenCV's `ximgproc::fastGlobalSmootherFilter` computes it with the solve in

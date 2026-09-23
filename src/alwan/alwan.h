@@ -2199,6 +2199,24 @@ alwan_status alwan_domain_transform_filter_f64(alwan_f64 *out, size_t out_row_st
 alwan_status alwan_fast_global_smoother_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f32 lambda, alwan_f32 sigma_color, alwan_f32 lambda_attenuation, size_t iterations);
 alwan_status alwan_fast_global_smoother_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f64 lambda, alwan_f64 sigma_color, alwan_f64 lambda_attenuation, size_t iterations);
 
+/* Contrast-limited adaptive histogram equalisation, CLAHE (Zuiderveld, Graphics Gems IV,
+ * 1994): the image cut into tiles_x x tiles_y tiles, each tile's histogram clipped at
+ * clip_limit times its mean bin count with the excess spread back over all bins, its
+ * cumulative histogram used as that tile's tone curve, and every pixel mapped by the
+ * curves of its four nearest tiles blended bilinearly. Local contrast rises where a
+ * region is flat and clip_limit caps how far (OpenCV's default is 40 with 8 x 8 tiles;
+ * 2 to 4 is the usual photographic range; 0 or below turns clipping off, which is plain
+ * adaptive equalisation).
+ *
+ * One channel of 8-bit (256 bins) or 16-bit (65536 bins) data, rows at the given byte
+ * strides; to equalise a colour image, run it on a lightness channel. It reproduces
+ * OpenCV's cv::createCLAHE bit for bit, including its padding of an image that does not
+ * divide into tiles. out may be src. ALWAN_E_INVALID for a NULL, a zero size or tile
+ * count, or a stride too small; ALWAN_E_RANGE for a NaN or huge clip_limit, more than
+ * 4096 tiles, or tiles too large to count. Suite 197. */
+alwan_status alwan_clahe_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit);
+alwan_status alwan_clahe_u16(unsigned short *out, size_t out_row_stride, unsigned short const *src, size_t src_row_stride, size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every

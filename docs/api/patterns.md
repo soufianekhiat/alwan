@@ -515,3 +515,34 @@ the guide's units. OpenCV's `ximgproc::fastGlobalSmootherFilter` takes an 8-bit 
 0..1. Suite 196 does that and agrees with OpenCV to 7.8e-6 at `lambda` 1000 and to
 4.5e-7 at `lambda` 10, the difference being OpenCV's float solve; a constant source stays
 constant to 1e-14. `out` may alias `src` or the guide.
+
+## Local contrast: CLAHE
+
+```c
+alwan_status alwan_clahe_u8(unsigned char *out, size_t out_row_stride,
+                            unsigned char const *src, size_t src_row_stride,
+                            size_t width, size_t height, size_t tiles_x, size_t tiles_y,
+                            double clip_limit);
+alwan_status alwan_clahe_u16(unsigned short *out, size_t out_row_stride,
+                             unsigned short const *src, size_t src_row_stride,
+                             size_t width, size_t height, size_t tiles_x, size_t tiles_y,
+                             double clip_limit);
+```
+
+Contrast-limited adaptive histogram equalisation (Zuiderveld, Graphics Gems IV, 1994).
+The image is cut into `tiles_x` by `tiles_y` tiles. Each tile's histogram is clipped at
+`clip_limit` times its mean bin count, the excess is spread back over every bin, and the
+cumulative histogram becomes that tile's tone curve. Each pixel is mapped by the curves of
+its four nearest tiles, blended bilinearly. Flat regions gain contrast and `clip_limit`
+caps how much: 2 to 4 is the usual photographic range, OpenCV's default is 40, and 0 or
+below turns clipping off.
+
+The data is one channel of 8-bit (256 bins) or 16-bit (65536 bins) values. For a colour
+image, equalise a lightness channel (CIELAB L*, Oklab L, or luma) and rebuild the colour
+from it; equalising R, G and B apart shifts hues.
+
+The functions reproduce OpenCV's `cv::createCLAHE` bit for bit, and suite 197 holds every
+pixel of ten cases equal. An image that does not divide into tiles is extended at the
+bottom and right by reflection, by `tiles - size % tiles` in each direction, so an image
+that divides only across still gains a whole tile across; alwan keeps that, since it moves
+the tile grid. `out` may alias `src`.

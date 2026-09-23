@@ -283,6 +283,8 @@ EXPORTS
     alwan_ciecam16_forward_f64
     alwan_ciecam16_inverse_f32
     alwan_ciecam16_inverse_f64
+    alwan_clahe_u16
+    alwan_clahe_u8
     alwan_clf_apply_f32_map_interleave
     alwan_clf_apply_f32_map_planar
     alwan_clf_apply_f64_map_interleave
