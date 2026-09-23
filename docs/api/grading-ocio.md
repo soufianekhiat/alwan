@@ -183,3 +183,60 @@ agree to 2.4e-7 relative, float rounding; lin to 8.8e-5, OCIO's approximate log 
 Forward then inverse closes to 7.7e-9. PyOpenColorIO 2.5.0's `red`, `green`, `blue` and
 `master` setters copy a curve's control points and drop its slopes; the generator sets
 slopes through the getter after assignment and checks they arrived.
+
+## Hue curves
+
+OCIO's `GradingHueCurveTransform`: eight curves in OCIO's HSY space, the hue-selective
+controls of a grading panel (move one hue toward another, saturate or darken one range
+of hues, mute the shadows).
+
+```c
+typedef struct {
+    alwan_grading_curve hue_hue, hue_sat, hue_lum, lum_sat, sat_sat, lum_lum, sat_lum, hue_fx;
+} alwan_grading_hue_curve;
+
+void alwan_grading_hue_curve_init(alwan_grading_hue_curve *curves, alwan_grading_style style);
+alwan_status alwan_grading_hue_curve_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
+                                               alwan_grading_style style,
+                                               alwan_grading_hue_curve const *curves, int inverse);
+alwan_status alwan_grading_hue_curve_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                        alwan_{T} const *in, size_t in_stride,
+                                                        size_t count, alwan_grading_style style,
+                                                        alwan_grading_hue_curve const *curves,
+                                                        int inverse);
+```
+
+HSY is OCIO's: hue in [0, 1) with **magenta at 0** (red near 1/6, green 1/2, blue 5/6),
+a saturation scaled per style, and Rec.709 luma. The curves:
+
+| Curve | Maps | Identity | Spline |
+|---|---|---|---|
+| `hue_hue` | hue to hue | diagonal | periodic, x in [0, 1] |
+| `hue_sat` | hue to a saturation gain | 1 | periodic |
+| `hue_lum` | hue to a luma gain, less at low saturation | 1 | periodic |
+| `lum_sat` | luma to a saturation gain | 1 | |
+| `sat_sat` | saturation to saturation | diagonal | |
+| `lum_lum` | luma to luma | diagonal | |
+| `sat_lum` | saturation to a luma gain | 1 | |
+| `hue_fx` | hue to a hue offset, added last | 0 | periodic |
+
+The points of a periodic curve are wrapped into [0, 1), sorted and spaced as OCIO
+prepares them, and the curve repeats with period 1. The diagonal curves need
+non-decreasing y. In the lin style the luma curves see OCIO's log domain (default points
+from -7 to 7), and the luma gains multiply; in log and video they add. The inverse is
+OCIO's: it limits gains at 0.01 and clamps saturation at 0, so it is close to an exact
+inverse without being one. OCIO can skip the HSY conversion; alwan always converts,
+OCIO's default.
+
+**Errors:** `ALWAN_E_INVALID` for a NULL, a stride under three values, a style outside
+the enum, a curve with fewer than two or more than 32 points, a non-finite value, x that
+decreases, y that decreases on a diagonal curve, `hue_hue` x outside [0, 1], or a
+two-point periodic curve whose points are a period apart.
+
+**Testing:** suite 187 renders nine sets through PyOpenColorIO, three per style, forward
+and inverse. Log and video agree to 1.2e-6 relative. Lin agrees to 3.8e-4, all of it on
+extreme-saturation pixels, where OCIO's float32 HSY inverse rebuilds a small channel by
+cancelling terms of order 30: the magenta pixel (30, 0.001, 30), which the first set
+leaves alone, comes back from OCIO as (30, 0.00125, 30) and from alwan as
+(30, 0.00100000016, 30). Building the reference also found that PyOpenColorIO 2.5.0's
+`getControlPoints()` is a one-shot iterator.

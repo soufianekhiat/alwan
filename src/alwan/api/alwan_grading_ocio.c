@@ -1000,6 +1000,431 @@ static void alwan_grc_pixel(double *p, alwan_grc_render const *r) {
     if (r->style == ALWAN_GRADING_LIN) for (i = 0; i < 3; i++) p[i] = alwan_gt_loglin(p[i]);
 }
 
+/* ---- hue curves: GradingHueCurve.cpp, GradingHueCurveOpCPU.cpp, and the RGB_TO_HSY
+ * fixed functions of FixedFunctionOpCPU.cpp ---- */
+
+enum { ALWAN_GH_HUE_HUE = 0, ALWAN_GH_HUE_SAT, ALWAN_GH_HUE_LUM, ALWAN_GH_LUM_SAT, ALWAN_GH_SAT_SAT,
+       ALWAN_GH_LUM_LUM, ALWAN_GH_SAT_LUM, ALWAN_GH_HUE_FX };
+/* OCIO's BSplineType for each role */
+enum { ALWAN_GS_DIAGONAL, ALWAN_GS_HUE_HUE, ALWAN_GS_PERIODIC_1, ALWAN_GS_PERIODIC_0, ALWAN_GS_HORIZONTAL_1 };
+
+static int alwan_gh_type(int role) {
+    static int const t[8] = { ALWAN_GS_HUE_HUE, ALWAN_GS_PERIODIC_1, ALWAN_GS_PERIODIC_1, ALWAN_GS_HORIZONTAL_1,
+                              ALWAN_GS_DIAGONAL, ALWAN_GS_DIAGONAL, ALWAN_GS_HORIZONTAL_1, ALWAN_GS_PERIODIC_0 };
+    return t[role];
+}
+
+/* GradingBSplineCurveImpl::validate() for the hue-curve types. */
+static int alwan_gh_valid(alwan_grading_curve const *cv, int type) {
+    int const n = cv->count;
+    float lx = -FLT_MAX, ly;
+    int i;
+    if (n < 2 || n > ALWAN_GRADING_CURVE_MAX_POINTS) return 0;
+    for (i = 0; i < n; i++) {
+        float const x = (float)cv->points[i].x;
+        if (!alwan_gp_finite(cv->points[i].x) || !alwan_gp_finite(cv->points[i].y) || !alwan_gp_finite(cv->slopes[i])) return 0;
+        if (x < lx) return 0;
+        lx = x;
+    }
+    if (type == ALWAN_GS_HUE_HUE && ((float)cv->points[0].x < 0.f || (float)cv->points[n - 1].x > 1.f)) return 0;
+    if (type == ALWAN_GS_DIAGONAL || type == ALWAN_GS_HUE_HUE) {
+        ly = type == ALWAN_GS_HUE_HUE ? (float)cv->points[n - 1].y - 1.f : -FLT_MAX;
+        for (i = 0; i < n; i++) {
+            float const y = (float)cv->points[i].y;
+            if (y < ly) return 0;
+            ly = y;
+        }
+    }
+    if (n == 2 && (type == ALWAN_GS_PERIODIC_1 || type == ALWAN_GS_PERIODIC_0 || type == ALWAN_GS_HUE_HUE)) {
+        float const dx = (float)cv->points[1].x - (float)cv->points[0].x;
+        if (fabsf(1.f - dx) < 1e-3f) return 0;
+    }
+    return 1;
+}
+
+static int alwan_gh_identity(alwan_grading_curve const *cv, int type) {
+    int i;
+    if (!alwan_gc_slopes_default(cv)) return 0;
+    for (i = 0; i < cv->count; i++) {
+        float const x = (float)cv->points[i].x, y = (float)cv->points[i].y;
+        if (type == ALWAN_GS_DIAGONAL || type == ALWAN_GS_HUE_HUE) { if (x != y) return 0; }
+        else if (type == ALWAN_GS_PERIODIC_0) { if (y != 0.f) return 0; }
+        else if (y != 1.f) return 0;
+    }
+    return 1;
+}
+
+/* PrepHueCurveData: wrap, sort by x, keep a minimum spacing, extend a periodic curve by
+ * one point at each end. Returns the new count. */
+static int alwan_gh_prep(alwan_grading_curve const *cv, int periodic, int horizontal, float *x, float *y) {
+    int const n = cv->count;
+    float const tol = 2e-3f;
+    float xspan, yspan;
+    int i, j;
+    for (i = 0; i < n; i++) {
+        float const xv = (float)cv->points[i].x, yv = (float)cv->points[i].y;
+        if (periodic && xv < 0.f) { x[i] = xv + 1.f; y[i] = horizontal ? yv : yv + 1.f; }
+        else if (periodic && xv >= 1.f) { x[i] = xv - 1.f; y[i] = horizontal ? yv : yv - 1.f; }
+        else { x[i] = xv; y[i] = yv; }
+    }
+    for (i = 0; i < n; i++) {   /* selection sort, as OCIO's */
+        int mi = i;
+        float mv = x[i], t;
+        for (j = i + 1; j < n; j++) if (x[j] < mv) { mv = x[j]; mi = j; }
+        t = x[i]; x[i] = x[mi]; x[mi] = t;
+        t = y[i]; y[i] = y[mi]; y[mi] = t;
+    }
+    xspan = x[n - 1] - x[0];
+    for (i = 1; i < n; i++) if ((x[i] - x[i - 1]) < xspan * tol) x[i] = x[i - 1] + xspan * tol;
+    if (!horizontal) {
+        yspan = y[n - 1] - y[0];
+        for (i = 1; i < n; i++) if ((y[i] - y[i - 1]) < yspan * tol) y[i] = y[i - 1] + yspan * tol;
+    }
+    if (periodic) {
+        float const fx = x[n - 1] - 1.f, fy = horizontal ? y[n - 1] : y[n - 1] - 1.f;
+        float lxv, lyv;
+        for (i = n; i > 0; i--) { x[i] = x[i - 1]; y[i] = y[i - 1]; }
+        x[0] = fx; y[0] = fy;
+        lxv = x[1] + 1.f; lyv = horizontal ? y[1] : y[1] + 1.f;
+        x[n + 1] = lxv; y[n + 1] = lyv;
+        return n + 2;
+    }
+    return n;
+}
+
+static void alwan_gh_estimate_slopes(float const *x, float const *y, int n, float *slopes, int periodic, int horizontal) {
+    float secant[ALWAN_GRADING_CURVE_MAX_POINTS + 2], len[ALWAN_GRADING_CURVE_MAX_POINTS + 2];
+    int i, k;
+    for (i = 0; i < n - 1; i++) {
+        float const dx = x[i + 1] - x[i], dy = y[i + 1] - y[i];
+        secant[i] = dy / dx;
+        len[i] = sqrtf(dx * dx + dy * dy);
+    }
+    if (n == 2) { slopes[0] = slopes[1] = secant[0]; return; }
+    slopes[0] = 0.f;
+    if (horizontal) {
+        for (i = 1; i < n - 1; i++) {
+            float s, denom = secant[i] + secant[i - 1];
+            if (fabsf(denom) < 1e-3f) s = 2.f * secant[i] * secant[i - 1] / (denom < 0.f ? -1e-3f : 1e-3f);
+            else s = 2.f * secant[i] * secant[i - 1] / denom;
+            if (secant[i] * secant[i - 1] <= 0.f) s = 0.f;
+            slopes[i] = s;
+        }
+        slopes[n - 1] = 0.5f * (3.f * secant[n - 2] - slopes[n - 2]);
+        slopes[0] = 0.5f * (3.f * secant[0] - slopes[1]);
+    } else {
+        i = 0;
+        for (;;) {
+            int j = i;
+            float dl = len[i];
+            while (j < n - 2 && fabsf(secant[j + 1] - secant[j]) < 1e-6f) { dl += len[j + 1]; j++; }
+            for (k = i; k <= j; k++) len[k] = dl;
+            if (j >= n - 3) break;
+            i = j + 1;
+        }
+        for (k = 1; k < n - 1; k++) slopes[k] = (len[k] * secant[k] + len[k - 1] * secant[k - 1]) / (len[k] + len[k - 1]);
+        {
+            float const e = 0.5f * (3.f * secant[n - 2] - slopes[n - 2]);
+            slopes[n - 1] = e > 0.01f ? e : 0.01f;
+        }
+        {
+            float const s = 0.5f * (3.f * secant[0] - slopes[1]);
+            slopes[0] = s > 0.01f ? s : 0.01f;
+        }
+    }
+    for (i = 0; i < n - 1; i++) {   /* shape preservation */
+        float kk = 0.2f, near_min, scale = 1.f;
+        if (fabsf(slopes[i]) > fabsf(slopes[i + 1])) kk = 1.f - kk;
+        near_min = slopes[i] + kk * (slopes[i + 1] - slopes[i]);
+        if (near_min != 0.f) scale = 0.75f * 2.f * secant[i] / near_min;
+        if (scale < 1.f) { slopes[i] *= scale; slopes[i + 1] *= scale; }
+    }
+    if (periodic) { slopes[0] = slopes[n - 2]; slopes[n - 1] = slopes[1]; }
+}
+
+static float alwan_gh_ksi(int i, float const *x, float const *y, float const *slopes) {
+    float const k = 0.2f, dx = x[i + 1] - x[i];
+    float secant = (y[i + 1] - y[i]) / dx, m0 = slopes[i], m1 = slopes[i + 1];
+    float x_mid, left, right, top, bottom, m_min, m_max, dm, b, b_high, b_low, bbb, bb, rel, alpha;
+    if (secant < 0.f) { m0 = -slopes[i]; m1 = -slopes[i + 1]; secant = -secant; }
+    x_mid = x[i] + 0.5f * dx;
+    left = x[i] + dx * k;
+    right = x[i + 1] - dx * k;
+    top = left; bottom = right; m_min = m0; m_max = m1;
+    if (m0 > m1) { m_max = m0; m_min = m1; top = right; bottom = left; }
+    dm = m_max - m_min;
+    b = 1.f - 0.5f * k;
+    b_high = m_min + b * dm;
+    b_low = m_min + (1.f - b) * dm;
+    bbb = m_max * 4.f;
+    bb = m_max * 1.1f;
+    rel = dm / (m_max > 0.01f ? m_max : 0.01f);
+    alpha = (rel - 0.05f) / (0.75f - 0.05f);
+    alpha = alpha < 1.f ? alpha : 1.f;
+    alpha = alpha > 0.f ? alpha : 0.f;
+    top = x_mid + alpha * (top - x_mid);
+    bottom = x_mid + alpha * (bottom - x_mid);
+    if (secant >= bbb) return x_mid;
+    if (secant > bb) return top + (secant - bb) / (bbb - bb) * (x_mid - top);
+    if (secant >= b_high) return top;
+    if (secant > b_low && b_high != b_low) return bottom + (secant - b_low) / (b_high - b_low) * (top - bottom);
+    return bottom;
+}
+
+static void alwan_gh_fit(float const *x, float const *y, int n, float const *slopes, alwan_gc_fit *f) {
+    int i;
+    f->sets = 0;
+    f->nknots = 0;
+    f->knots[f->nknots++] = x[0];
+    for (i = 0; i < n - 1; i++) {
+        float const dx = x[i + 1] - x[i], sec = (y[i + 1] - y[i]) / dx;
+        if (fabsf((slopes[i] + slopes[i + 1]) - 2.f * sec) <= 1e-5f) {
+            alwan_gc_push(f, 0.5f * (slopes[i + 1] - slopes[i]) / dx, slopes[i], y[i]);
+        } else {
+            float const ksi = alwan_gh_ksi(i, x, y, slopes);
+            float const m_bar = (2.f * sec - slopes[i + 1]) + (slopes[i + 1] - slopes[i]) * (ksi - x[i]) / (x[i + 1] - x[i]);
+            float const eta = (m_bar - slopes[i]) / (ksi - x[i]);
+            alwan_gc_push(f, 0.5f * eta, slopes[i], y[i]);
+            alwan_gc_push(f, 0.5f * (slopes[i + 1] - m_bar) / (x[i + 1] - ksi), m_bar,
+                          y[i] + slopes[i] * (ksi - x[i]) + 0.5f * eta * (ksi - x[i]) * (ksi - x[i]));
+            f->knots[f->nknots++] = ksi;
+        }
+        f->knots[f->nknots++] = x[i + 1];
+    }
+}
+
+/* computeKnotsAndCoefsForHueCurve */
+static void alwan_gh_prepare_curve(alwan_grading_curve const *cv, int type, alwan_gc_fit *f) {
+    float x[ALWAN_GRADING_CURVE_MAX_POINTS + 2], y[ALWAN_GRADING_CURVE_MAX_POINTS + 2], s[ALWAN_GRADING_CURVE_MAX_POINTS + 2];
+    int const periodic = type == ALWAN_GS_PERIODIC_1 || type == ALWAN_GS_PERIODIC_0 || type == ALWAN_GS_HUE_HUE;
+    int horizontal = !(type == ALWAN_GS_DIAGONAL || type == ALWAN_GS_HUE_HUE);
+    int n, i;
+    f->sets = 0;
+    f->nknots = 0;
+    if (alwan_gh_identity(cv, type)) return;
+    n = alwan_gh_prep(cv, periodic, horizontal, x, y);
+    if (type == ALWAN_GS_HUE_HUE) horizontal = 1;
+    if (!alwan_gc_slopes_default(cv)) {
+        /* the caller's slopes, in the caller's order; a periodic curve takes the last
+         * slope at both new ends, as OCIO does */
+        int const m = cv->count;
+        if (periodic) {
+            s[0] = (float)cv->slopes[m - 1];
+            for (i = 0; i < m; i++) s[i + 1] = (float)cv->slopes[i];
+            s[m + 1] = s[0];
+        } else {
+            for (i = 0; i < m; i++) s[i] = (float)cv->slopes[i];
+        }
+    } else {
+        alwan_gh_estimate_slopes(x, y, n, s, periodic, horizontal);
+    }
+    alwan_gh_fit(x, y, n, s, f);
+}
+
+/* KnotsCoefs::evalCurveRevHue: inverts HUE_FX (is_fx) and HUE_HUE. */
+static double alwan_gh_eval_rev_hue(alwan_gc_fit const *f, double y, int is_fx) {
+    int const sets = f->sets, nk = f->nknots;
+    double kstart, kend, ystart, yend, a, b, c, kn, c0;
+    int i;
+    if (sets == 0) return y;
+    kstart = f->knots[0];
+    kend = f->knots[nk - 1];
+    ystart = f->c[0];
+    ystart = is_fx ? ystart + kstart : ystart;
+    {
+        double const aa = f->a[sets - 1], bb = f->b[sets - 1], cc = f->c[sets - 1];
+        double const t = kend - (double)f->knots[nk - 2];
+        yend = (aa * t + bb) * t + cc;
+        yend = is_fx ? yend + kend : yend;
+    }
+    if (y < ystart) y += ceil(ystart - y);
+    else if (y > yend) y -= ceil(y - yend);
+    for (i = 0; i < nk - 2; i++) {
+        double cy = f->c[i + 1];
+        cy = is_fx ? cy + (double)f->knots[i + 1] : cy;
+        if (y < cy) break;
+    }
+    a = f->a[i]; b = f->b[i]; c = f->c[i]; kn = f->knots[i];
+    if (is_fx) { c += kn; b += 1.; }
+    c0 = c - y;
+    return kn + (-2. * c0) / (sqrt(b * b - 4. * a * c0) + b);
+}
+
+/* applyRGBToHSY; style 0 log, 1 lin, 2 video */
+static void alwan_gh_rgb_to_hsy(double *p, int style) {
+    double const r = p[0], g = p[1], b = p[2];
+    double const mn = (r < g ? r : g) < b ? (r < g ? r : g) : b;
+    double const mx = (r > g ? r : g) > b ? (r > g ? r : g) : b;
+    double const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    double const dist = fabs(r - luma) + fabs(g - luma) + fabs(b - luma);
+    double sat, hue = 0.0;
+    if (style == ALWAN_GRADING_LIN) {
+        double const sum = r + g + b, k = 0.15;
+        double const lo = 0.07 * dist + 1e-6, den = k + sum;
+        double const hi = dist / (lo > den ? lo : den);
+        double const sat_lo = dist * 5.0;
+        double const alpha = alwan_gt_clampd((luma - 0.001) / (0.01 - 0.001), 0.0, 1.0);
+        sat = (sat_lo + alpha * (hi - sat_lo)) * 1.4;
+    } else {
+        sat = dist * (style == ALWAN_GRADING_LOG ? 4.0 : 1.25);
+    }
+    if (mn != mx) {
+        double const delta = mx - mn;
+        if (r == mx) hue = 1.0 + (g - b) / delta;
+        else if (g == mx) hue = 3.0 + (b - r) / delta;
+        else hue = 5.0 + (r - g) / delta;
+        hue *= 1.0 / 6.0;
+    }
+    p[0] = hue; p[1] = sat; p[2] = luma;
+}
+
+/* applyHSYToRGB */
+static void alwan_gh_hsy_to_rgb(double *p, int style) {
+    double hue = p[0] - 1.0 / 6.0, sat = p[1];
+    double const luma = p[2];
+    double red, grn, blu, cur, dist, gain = sat;
+    hue = luma < 0.0 ? hue + 0.5 : hue;
+    hue = (hue - floor(hue)) * 6.0;
+    red = alwan_gt_clampd(fabs(hue - 3.0) - 1.0, 0.0, 1.0);
+    grn = alwan_gt_clampd(2.0 - fabs(hue - 2.0), 0.0, 1.0);
+    blu = alwan_gt_clampd(2.0 - fabs(hue - 4.0), 0.0, 1.0);
+    cur = 0.2126 * red + 0.7152 * grn + 0.0722 * blu;
+    red *= luma / cur;
+    grn *= luma / cur;
+    blu *= luma / cur;
+    dist = fabs(red - luma) + fabs(grn - luma) + fabs(blu - luma);
+    if (style == ALWAN_GRADING_LIN) {
+        double const sum = red + grn + blu, k = 0.15, lo_gain = 5.0;
+        double tmp, s1, s0, alpha;
+        sat /= 1.4;
+        tmp = -sat * sum + sat * 3.0 * luma + dist;
+        tmp = tmp > 1e-6 ? tmp : 1e-6;
+        s1 = sat * (k + 3.0 * luma) / tmp;
+        s1 = s1 < 50.0 ? s1 : 50.0;
+        s0 = sat / (dist * lo_gain > 1e-10 ? dist * lo_gain : 1e-10);
+        alpha = alwan_gt_clampd((luma - 0.001) / (0.01 - 0.001), 0.0, 1.0);
+        if (alpha == 1.0) gain = s1;
+        else if (alpha == 0.0) gain = s0;
+        else {
+            double const a = dist * lo_gain * (1.0 - alpha) * (sum - 3.0 * luma);
+            double const b = dist * lo_gain * (1.0 - alpha) * (k + 3.0 * luma) + dist * alpha - sat * (sum - 3.0 * luma);
+            double const c = -sat * (k + 3.0 * luma);
+            double const disc = sqrt(b * b - 4.0 * a * c);
+            double const den = -disc - b;
+            gain = (2.0 * c) / den;
+            gain = gain >= 0.0 ? gain : (2.0 * c) / (den + disc * 2.0);
+        }
+    } else {
+        double const cs = dist * (style == ALWAN_GRADING_LOG ? 4.0 : 1.25);
+        gain = sat / (cs > 1e-10 ? cs : 1e-10);
+    }
+    p[0] = luma + gain * (red - luma);
+    p[1] = luma + gain * (grn - luma);
+    p[2] = luma + gain * (blu - luma);
+}
+
+typedef struct {
+    int style, inverse, identity;
+    alwan_gc_fit curve[8];
+} alwan_ghc_render;
+
+static alwan_grading_curve const *alwan_gh_role(alwan_grading_hue_curve const *v, int role) {
+    alwan_grading_curve const *c[8];
+    c[0] = &v->hue_hue; c[1] = &v->hue_sat; c[2] = &v->hue_lum; c[3] = &v->lum_sat;
+    c[4] = &v->sat_sat; c[5] = &v->lum_lum; c[6] = &v->sat_lum; c[7] = &v->hue_fx;
+    return c[role];
+}
+
+void alwan_grading_hue_curve_init(alwan_grading_hue_curve *curves, alwan_grading_style style) {
+    int const lin = style == ALWAN_GRADING_LIN;
+    int role, k;
+    if (!curves) return;
+    memset(curves, 0, sizeof *curves);
+    for (role = 0; role < 8; role++) {
+        alwan_grading_curve *c = (alwan_grading_curve *)alwan_gh_role(curves, role);
+        int const type = alwan_gh_type(role);
+        if (type == ALWAN_GS_HUE_HUE || type == ALWAN_GS_PERIODIC_1 || type == ALWAN_GS_PERIODIC_0) {
+            c->count = 6;
+            for (k = 0; k < 6; k++) {
+                c->points[k].x = (double)((float)k / 6.f);
+                c->points[k].y = type == ALWAN_GS_HUE_HUE ? c->points[k].x : type == ALWAN_GS_PERIODIC_1 ? 1.0 : 0.0;
+            }
+        } else {
+            double const lo = (lin && (role == ALWAN_GH_LUM_SAT || role == ALWAN_GH_LUM_LUM)) ? -7.0 : 0.0;
+            double const hi = (lin && (role == ALWAN_GH_LUM_SAT || role == ALWAN_GH_LUM_LUM)) ? 7.0 : 1.0;
+            c->count = 3;
+            for (k = 0; k < 3; k++) {
+                c->points[k].x = lo + (hi - lo) * 0.5 * k;
+                c->points[k].y = type == ALWAN_GS_DIAGONAL ? c->points[k].x : 1.0;
+            }
+        }
+    }
+}
+
+static alwan_status alwan_ghc_prepare(alwan_ghc_render *r, alwan_grading_style style,
+                                      alwan_grading_hue_curve const *v, int inverse) {
+    int role;
+    if (!v) return ALWAN_E_INVALID;
+    if (style != ALWAN_GRADING_LOG && style != ALWAN_GRADING_LIN && style != ALWAN_GRADING_VIDEO) {
+        return ALWAN_E_INVALID;
+    }
+    for (role = 0; role < 8; role++) if (!alwan_gh_valid(alwan_gh_role(v, role), alwan_gh_type(role))) return ALWAN_E_INVALID;
+    r->style = (int)style;
+    r->inverse = inverse;
+    r->identity = 1;
+    for (role = 0; role < 8; role++) {
+        alwan_gh_prepare_curve(alwan_gh_role(v, role), alwan_gh_type(role), &r->curve[role]);
+        if (r->curve[role].sets) r->identity = 0;
+    }
+    return ALWAN_OK;
+}
+
+static double alwan_gh_max0(double v) { return v > 0.0 ? v : 0.0; }
+
+static void alwan_ghc_pixel(double *p, alwan_ghc_render const *r) {
+    alwan_gc_fit const *cv = r->curve;
+    int const lin = r->style == ALWAN_GRADING_LIN;
+    if (r->identity) return;
+    alwan_gh_rgb_to_hsy(p, r->style);
+    if (!r->inverse) {
+        double const hue_sat = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_HUE_SAT], p[0], 1.0));
+        double hue_lum = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_HUE_LUM], p[0], 1.0));
+        double lum_sat, sat_lum;
+        if (lin) p[2] = alwan_gt_linlog(p[2]);
+        p[0] = alwan_gc_eval(&cv[ALWAN_GH_HUE_HUE], p[0], p[0]);
+        p[1] = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_SAT_SAT], p[1], p[1]));
+        lum_sat = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_LUM_SAT], p[2], 1.0));
+        p[1] *= lum_sat * hue_sat;
+        sat_lum = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_SAT_LUM], p[1], 1.0));
+        p[2] = alwan_gc_eval(&cv[ALWAN_GH_LUM_LUM], p[2], p[2]);
+        if (lin) p[2] = alwan_gt_loglin(p[2]);
+        hue_lum = 1.0 - (1.0 - hue_lum) * (p[1] < 1.0 ? p[1] : 1.0);
+        p[2] = lin ? p[2] * hue_lum * sat_lum : p[2] + (hue_lum + sat_lum - 2.0) * 0.1;
+        p[0] = p[0] - floor(p[0]);
+        p[0] = p[0] + alwan_gc_eval(&cv[ALWAN_GH_HUE_FX], p[0], 0.0);
+    } else {
+        double hue_sat, hue_lum, sat_lum, lum_gain, lum_sat, sat_gain;
+        p[0] = alwan_gh_eval_rev_hue(&cv[ALWAN_GH_HUE_FX], p[0], 1);
+        p[0] = alwan_gh_eval_rev_hue(&cv[ALWAN_GH_HUE_HUE], p[0], 0);
+        p[0] = p[0] - floor(p[0]);
+        hue_sat = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_HUE_SAT], p[0], 1.0));
+        hue_lum = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_HUE_LUM], p[0], 1.0));
+        p[1] = alwan_gh_max0(p[1]);
+        sat_lum = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_SAT_LUM], p[1], 1.0));
+        hue_lum = 1.0 - (1.0 - hue_lum) * (p[1] < 1.0 ? p[1] : 1.0);
+        lum_gain = hue_lum * sat_lum;
+        p[2] = lin ? p[2] / (lum_gain > 0.01 ? lum_gain : 0.01) : p[2] - (hue_lum + sat_lum - 2.0) * 0.1;
+        if (lin) p[2] = alwan_gt_linlog(p[2]);
+        p[2] = alwan_gc_eval_rev(&cv[ALWAN_GH_LUM_LUM], p[2]);
+        lum_sat = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_LUM_SAT], p[2], 1.0));
+        if (lin) p[2] = alwan_gt_loglin(p[2]);
+        sat_gain = lum_sat * hue_sat;
+        p[1] /= sat_gain > 0.01 ? sat_gain : 0.01;
+        p[1] = alwan_gh_max0(alwan_gc_eval_rev(&cv[ALWAN_GH_SAT_SAT], p[1]));
+    }
+    alwan_gh_hsy_to_rgb(p, r->style);
+}
+
 #if ALWAN_WITH_F64_FACADE
 alwan_status alwan_grading_primary_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
                                              alwan_grading_style style, alwan_grading_primary const *params,
@@ -1104,6 +1529,42 @@ alwan_status alwan_grading_rgb_curve_f64_map_interleave(alwan_f64 *out, size_t o
         double p[3];
         p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
         alwan_grc_pixel(p, &r);
+        d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_hue_curve_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+                                               alwan_grading_style style, alwan_grading_hue_curve const *curves,
+                                               int inverse) {
+    alwan_ghc_render r;
+    double p[3];
+    alwan_status st;
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
+    alwan_ghc_pixel(p, &r);
+    rgb_out->r = (alwan_f64)p[0]; rgb_out->g = (alwan_f64)p[1]; rgb_out->b = (alwan_f64)p[2];
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_hue_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
+                                                        size_t in_stride, size_t count, alwan_grading_style style,
+                                                        alwan_grading_hue_curve const *curves, int inverse) {
+    alwan_ghc_render r;
+    alwan_status st;
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (out_stride < 3 * sizeof(alwan_f64) || in_stride < 3 * sizeof(alwan_f64)) return ALWAN_E_INVALID;
+    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        alwan_f64 const *s = (alwan_f64 const *)((char const *)in + i * in_stride);
+        alwan_f64 *d = (alwan_f64 *)((char *)out + i * out_stride);
+        double p[3];
+        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
+        alwan_ghc_pixel(p, &r);
         d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
     }
     return ALWAN_OK;
@@ -1214,6 +1675,42 @@ alwan_status alwan_grading_rgb_curve_f32_map_interleave(alwan_f32 *out, size_t o
         double p[3];
         p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
         alwan_grc_pixel(p, &r);
+        d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_hue_curve_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+                                               alwan_grading_style style, alwan_grading_hue_curve const *curves,
+                                               int inverse) {
+    alwan_ghc_render r;
+    double p[3];
+    alwan_status st;
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
+    alwan_ghc_pixel(p, &r);
+    rgb_out->r = (alwan_f32)p[0]; rgb_out->g = (alwan_f32)p[1]; rgb_out->b = (alwan_f32)p[2];
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_hue_curve_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
+                                                        size_t in_stride, size_t count, alwan_grading_style style,
+                                                        alwan_grading_hue_curve const *curves, int inverse) {
+    alwan_ghc_render r;
+    alwan_status st;
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (out_stride < 3 * sizeof(alwan_f32) || in_stride < 3 * sizeof(alwan_f32)) return ALWAN_E_INVALID;
+    st = alwan_ghc_prepare(&r, style, curves, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        alwan_f32 const *s = (alwan_f32 const *)((char const *)in + i * in_stride);
+        alwan_f32 *d = (alwan_f32 *)((char *)out + i * out_stride);
+        double p[3];
+        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
+        alwan_ghc_pixel(p, &r);
         d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
     }
     return ALWAN_OK;

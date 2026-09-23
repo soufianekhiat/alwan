@@ -7409,6 +7409,48 @@ alwan_status alwan_grading_rgb_curve_f32_map_interleave(alwan_f32 *out, size_t o
 alwan_status alwan_grading_rgb_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
 
 /* ----------------------------------------------------------------
+ * OpenColorIO grading: hue curves
+ *
+ * OCIO's GradingHueCurveTransform: eight curves in OCIO's HSY space (hue with magenta
+ * at 0, a saturation scaled per style, Rec.709 luma), the hue-selective controls of a
+ * grading panel. Hue runs over [0, 1) and the hue curves repeat with that period:
+ *
+ *   hue_hue   hue -> hue           rotate chosen hues toward others (diagonal)
+ *   hue_sat   hue -> sat gain      saturate or mute chosen hues (1 = no change)
+ *   hue_lum   hue -> lum gain      brighten or darken chosen hues, less at low sat
+ *   lum_sat   lum -> sat gain      e.g. mute the shadows
+ *   sat_sat   sat -> sat           a saturation curve (diagonal)
+ *   lum_lum   lum -> lum           a luma curve (diagonal)
+ *   sat_lum   sat -> lum gain      brighten or darken by saturation
+ *   hue_fx    hue -> hue offset    a hue shift added last (0 = no change)
+ *
+ * applied in OCIO's order, and each a spline of the GradingBSplineCurve family with
+ * the type OCIO gives that role (periodic for the hue curves). In the lin style the
+ * luma curves see OCIO's log domain, so lum_sat and lum_lum points run from -7 to 7
+ * by default, and the luma gains multiply rather than add. OCIO can skip the HSY
+ * conversion; this always converts, OCIO's default.
+ *
+ * alwan_grading_hue_curve_init sets OCIO's defaults for the style, an identity. The
+ * points of a hue curve are wrapped into [0, 1), sorted and spaced as OCIO prepares
+ * them; the other curves need non-decreasing x, and the diagonal ones (hue_hue,
+ * sat_sat, lum_lum) non-decreasing y too, hue_hue with its x in [0, 1]. ALWAN_E_INVALID
+ * for a NULL, a style outside the enum, a curve with fewer than two or more than the
+ * maximum points, a non-finite value, or points that break those rules. Suite 187
+ * holds it to PyOpenColorIO.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_grading_curve hue_hue, hue_sat, hue_lum, lum_sat, sat_sat, lum_lum, sat_lum, hue_fx;
+} alwan_grading_hue_curve;
+
+void alwan_grading_hue_curve_init(alwan_grading_hue_curve *curves, alwan_grading_style style);
+
+alwan_status alwan_grading_hue_curve_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
+alwan_status alwan_grading_hue_curve_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
+alwan_status alwan_grading_hue_curve_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
+alwan_status alwan_grading_hue_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_hue_curve const *curves, int inverse);
+
+/* ----------------------------------------------------------------
  * Camera Profiling / Polynomial Color Correction
  * Reference: Cheung et al. (2004), Finlayson et al. (2015)
  * ---------------------------------------------------------------- */

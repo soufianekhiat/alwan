@@ -427,6 +427,14 @@
 
 ### Added
 
+- **OpenColorIO's GradingHueCurve: `alwan_grading_hue_curve_apply` and its map.** The eight
+  hue-selective curves of OCIO's HSY space (hue to hue, saturation and luma; luma to
+  saturation and luma; saturation to saturation and luma; a hue offset), each the spline
+  type OCIO gives its role, periodic for the hue curves, forward and inverse in the three
+  styles, with OCIO's HSY conversions. Suite 187 holds nine sets to PyOpenColorIO 2.5.0:
+  1.2e-6 relative in log and video; 3.8e-4 in lin, where OCIO's float32 HSY inverse
+  cancels on extreme saturation and alwan's double does not.
+
 - **OpenColorIO's GradingRGBCurve: `alwan_grading_rgb_curve_apply` and its map.** A
   monotone B-spline curve per channel and a master, as OCIO's GradingBSplineCurve fits
   them (slopes estimated or given, the refit that keeps a span from turning back, straight
