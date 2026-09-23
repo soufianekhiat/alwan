@@ -2227,9 +2227,15 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        averaged; three channels in an opponent space
  *                                        (OpenCV xphoto::dctDenoising, suite 204, whose last
  *                                        row and column come out 0 or NaN where these do not)
+ *   ALWAN_DENOISE_WAVELET                wavelet shrinkage: each detail sub-band of a
+ *                                        multilevel orthogonal wavelet transform soft- or
+ *                                        hard-thresholded, BayesShrink (Chang et al. 2000) or
+ *                                        VisuShrink (Donoho and Johnstone 1994), the noise
+ *                                        estimated from the finest diagonal band unless given
+ *                                        (scikit-image denoise_wavelet, suite 206)
  *
  * alwan_denoise_u8 runs every method on 8-bit data (TV through double in 0..1, rounded
- * back); alwan_denoise_{T} runs TV_CHAMBOLLE and DCT, and ALWAN_E_INVALID for the two
+ * back); alwan_denoise_{T} runs TV_CHAMBOLLE, DCT and WAVELET, and ALWAN_E_INVALID for the two
  * methods whose references are 8-bit. src has 1 to 4 channels, each denoised on its own
  * except that NL means and diffusion measure differences over all of them and DCT turns
  * three channels to an opponent space first; rows at the given byte strides. out may be
@@ -2238,8 +2244,28 @@ typedef enum {
     ALWAN_DENOISE_TV_CHAMBOLLE = 0,
     ALWAN_DENOISE_NL_MEANS = 1,
     ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
-    ALWAN_DENOISE_DCT = 3
+    ALWAN_DENOISE_DCT = 3,
+    ALWAN_DENOISE_WAVELET = 4
 } alwan_denoise_method;
+
+/* The orthogonal wavelets of ALWAN_DENOISE_WAVELET: Daubechies and symlets. */
+typedef enum {
+    ALWAN_WAVELET_DB1 = 0, /* Haar */
+    ALWAN_WAVELET_DB2 = 1,
+    ALWAN_WAVELET_DB3 = 2,
+    ALWAN_WAVELET_DB4 = 3,
+    ALWAN_WAVELET_DB5 = 4,
+    ALWAN_WAVELET_DB6 = 5,
+    ALWAN_WAVELET_DB7 = 6,
+    ALWAN_WAVELET_DB8 = 7,
+    ALWAN_WAVELET_SYM2 = 8,
+    ALWAN_WAVELET_SYM3 = 9,
+    ALWAN_WAVELET_SYM4 = 10,
+    ALWAN_WAVELET_SYM5 = 11,
+    ALWAN_WAVELET_SYM6 = 12,
+    ALWAN_WAVELET_SYM7 = 13,
+    ALWAN_WAVELET_SYM8 = 14
+} alwan_wavelet;
 
 /* Each method reads its own fields; a zero field is its default. */
 typedef struct {
@@ -2253,10 +2279,16 @@ typedef struct {
     double alpha;           /* ANISOTROPIC_DIFFUSION: step, 0.1 to 0.2 keeps it stable; 0 reads as 0.15 */
     double k;               /* ANISOTROPIC_DIFFUSION: edge threshold, a fraction of full scale per channel;
                              * 0 reads as 0.05 */
-    double sigma;           /* DCT: the noise's standard deviation in the data's units (0..255 for
-                             * 8-bit); 0 reads as 10 for 8-bit data, 10 / 255 for floats */
+    double sigma;           /* DCT, WAVELET: the noise's standard deviation in the data's units (0..255
+                             * for 8-bit). DCT: 0 reads as 10 for 8-bit data, 10 / 255 for floats.
+                             * WAVELET: 0 estimates it from the finest diagonal sub-band */
     size_t block_size;      /* DCT: the side of the DCT block, 2 to 64, at most the image's sides;
                              * 0 reads as 16 */
+    int wavelet;            /* WAVELET: an alwan_wavelet; 0 is ALWAN_WAVELET_DB1 (Haar), scikit-image's
+                             * default */
+    size_t wavelet_levels;  /* WAVELET: decomposition levels; 0 reads as the maximum minus 3, at least 1 */
+    int wavelet_visushrink; /* WAVELET: non-zero thresholds by VisuShrink; 0 by BayesShrink */
+    int wavelet_hard;       /* WAVELET: non-zero thresholds hard; 0 soft */
 } alwan_denoise_params;
 
 alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);

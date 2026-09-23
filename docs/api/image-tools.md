@@ -131,7 +131,8 @@ typedef enum {
     ALWAN_DENOISE_TV_CHAMBOLLE = 0,
     ALWAN_DENOISE_NL_MEANS = 1,
     ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
-    ALWAN_DENOISE_DCT = 3
+    ALWAN_DENOISE_DCT = 3,
+    ALWAN_DENOISE_WAVELET = 4
 } alwan_denoise_method;
 
 alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -144,9 +145,9 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
                               alwan_denoise_method method, alwan_denoise_params const *params);
 ```
 
-Four classic denoisers that fail in different ways (plate 89 of the v3 plates shows them
-on one portrait). `alwan_denoise_u8` runs all four; `alwan_denoise_{T}` runs
-`TV_CHAMBOLLE` and `DCT`, and returns `ALWAN_E_INVALID` for the two whose references work
+Five classic denoisers that fail in different ways (plate 89 of the v3 plates shows them
+on one portrait). `alwan_denoise_u8` runs all five; `alwan_denoise_{T}` runs
+`TV_CHAMBOLLE`, `DCT` and `WAVELET`, and returns `ALWAN_E_INVALID` for the two whose references work
 on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 
 | Field of `alwan_denoise_params` | Method | 0 reads as |
@@ -157,8 +158,11 @@ on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 | `h` | `NL_MEANS` | 10, in 0..255 units |
 | `template_window`, `search_window` | `NL_MEANS` | 7, 21 |
 | `alpha`, `k` | `ANISOTROPIC_DIFFUSION` | 0.15, 0.05 |
-| `sigma` | `DCT` | 10 for 8-bit data, 10 / 255 for floats |
+| `sigma` | `DCT` / `WAVELET` | 10 for 8-bit data, 10 / 255 for floats / estimated from the image |
 | `block_size` | `DCT` | 16 |
+| `wavelet` | `WAVELET` | `ALWAN_WAVELET_DB1` (Haar) |
+| `wavelet_levels` | `WAVELET` | the most the image holds, less 3, at least 1 |
+| `wavelet_visushrink`, `wavelet_hard` | `WAVELET` | BayesShrink, soft |
 
 ### `TV_CHAMBOLLE`
 
@@ -215,6 +219,32 @@ as the paper's own code does, so every pixel is covered. Suite 204 compares the 
 than one block from the right and bottom edges, where the two agree to 5e-7 in float and
 exactly in 8-bit but for one value in one case, a coefficient within rounding of the
 threshold; a constant image is unchanged at the border too.
+
+### `WAVELET`
+
+Wavelet shrinkage. Each channel goes through a multilevel 2D orthogonal wavelet transform,
+every detail sub-band is thresholded, and the transform is inverted. Noise spreads evenly
+over the detail coefficients while an image concentrates in a few large ones, so shrinking
+the small ones toward zero removes noise and keeps edges. `wavelet` picks one of the
+Daubechies `ALWAN_WAVELET_DB1` (Haar) to `DB8` or the symlets `SYM2` to `SYM8`; longer
+filters give smoother results and ring more near edges, Haar leaves blocks.
+
+The threshold is BayesShrink (Chang, Yu and Vetterli, IEEE TIP 2000) by default, one per
+sub-band, `sigma^2 / sqrt(max(mean(d^2) - sigma^2, eps))`, or VisuShrink (Donoho and
+Johnstone, Biometrika 1994) with `wavelet_visushrink`, the universal `sigma sqrt(2 ln n)`
+over the channel's `n` pixels, which removes more. Soft thresholding shrinks the kept
+coefficients by the threshold; `wavelet_hard` keeps them unchanged, sharper but with more
+artefacts. `sigma` 0 estimates the noise per channel as `median(|d|) / 0.6745` over the
+finest diagonal sub-band (Donoho and Johnstone); a given `sigma` is in the data's own units,
+0..255 for 8-bit.
+
+It follows scikit-image's `restoration.denoise_wavelet` with `channel_axis` set and
+`convert2ycbcr` off, over PyWavelets' `symmetric` border mode, and the filter banks are
+PyWavelets' own (`data/wavelets/wavelet_filters.csv`). Suite 206 agrees to 1.1e-15 in
+double over nine cases of every option, to 1.8e-7 in float32 (PyWavelets transforms float32
+in float32) and within half a level in 8-bit. The published symlet coefficients are
+orthogonal to about 1e-12 only, so with no threshold a symlet round trip returns the image
+to 1e-11, as PyWavelets' own does.
 
 ## Local contrast
 

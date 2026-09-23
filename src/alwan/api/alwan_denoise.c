@@ -30,6 +30,7 @@
 #include "../alwan_internal.h"
 #include <float.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int alwan_dn_finite(double v) {
@@ -533,6 +534,262 @@ static alwan_status alwan_dct_run(void *out, size_t out_rs, void const *src, siz
     return ALWAN_OK;
 }
 
+/*
+ * Wavelet denoising: Donoho and Johnstone's wavelet shrinkage (VisuShrink, Biometrika
+ * 1994) and Chang, Yu and Vetterli's BayesShrink (IEEE TIP 2000). Each channel goes through
+ * a multilevel 2D orthogonal wavelet transform; every detail sub-band is soft- or
+ * hard-thresholded; the transform is inverted. The noise level is sigma, or when sigma is 0
+ * the robust estimate median(|d|) / 0.6745 over the non-zero coefficients of the finest
+ * diagonal sub-band. BayesShrink thresholds each sub-band at sigma^2 / sqrt(max(mean(d^2) -
+ * sigma^2, eps)); VisuShrink everywhere at sigma sqrt(2 ln n), n the channel's pixel count.
+ *
+ * The reference is scikit-image's restoration.denoise_wavelet (channel_axis set,
+ * convert2ycbcr off) over PyWavelets, and this follows it: PyWavelets' 'symmetric' mode
+ * (half-sample symmetric extension), a level of n samples giving (n + F - 1) / 2
+ * coefficients from the odd positions of the full convolution, the inverse the middle
+ * 2 n - F + 2 samples of the upsampled convolution, each level's approximation cropped to
+ * its detail shape before the inverse, and levels = max(floor(log2(min(w, h) / (F - 1))) -
+ * 3, 1) by default. Hard thresholding zeroes |d| < t, as pywt.threshold does. The filter
+ * banks (data/wavelets/wavelet_filters.csv) are exported from PyWavelets by
+ * gendata/data/wavelet_filters.py.
+ */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const alwan_wv_table[] = {
+#include "../data/wavelets/wavelet_filters.csv"
+};
+ALWAN_DIAG_POP
+
+/* The filters of wavelet k: F, then dec_lo, dec_hi, rec_lo, rec_hi, each F long. */
+static int alwan_wv_find(int k, size_t *flen, alwan_f64 const **filters) {
+    int const count = (int)alwan_wv_table[0];
+    alwan_f64 const *p = alwan_wv_table + 1;
+    int i;
+    if (k < 0 || k >= count) return 0;
+    for (i = 0; i < k; i++) p += 1 + 4 * (size_t)p[0];
+    *flen = (size_t)p[0];
+    *filters = p + 1;
+    return 1;
+}
+
+static size_t alwan_wv_sym(long i, long n) {
+    while (i < 0 || i >= n) {
+        if (i < 0) i = -i - 1;
+        if (i >= n) i = 2 * n - 1 - i;
+    }
+    return (size_t)i;
+}
+
+/* One 1D step: n samples `step` apart into m = (n + F - 1) / 2 approximation and detail
+ * coefficients, `ostep` apart. */
+static void alwan_wv_dwt1(double *a, double *d, size_t ostep, double const *x, size_t step, size_t n,
+                          double const *lo, double const *hi, size_t F) {
+    size_t const m = (n + F - 1) / 2;
+    size_t o, j;
+    for (o = 0; o < m; o++) {
+        long const i = (long)(2 * o + 1);
+        double sa = 0.0, sd = 0.0;
+        for (j = 0; j < F; j++) {
+            double const v = x[alwan_wv_sym(i - (long)j, (long)n) * step];
+            sa += lo[j] * v;
+            sd += hi[j] * v;
+        }
+        a[o * ostep] = sa;
+        d[o * ostep] = sd;
+    }
+}
+
+/* One 1D inverse: n approximation and detail coefficients into 2 n - F + 2 samples. */
+static void alwan_wv_idwt1(double *out, size_t ostep, double const *a, double const *d, size_t step, size_t n,
+                           double const *rlo, double const *rhi, size_t F) {
+    size_t const L = 2 * n - F + 2;
+    size_t k, j;
+    for (k = 0; k < L; k++) {
+        long const t = (long)(k + F) - 2;
+        double s = 0.0;
+        long const j0 = t - (long)F + 1 > 0 ? (t - (long)F + 2) / 2 : 0;
+        for (j = (size_t)j0; j < n; j++) {
+            long const f = t - 2 * (long)j;
+            if (f < 0) break;
+            if (f < (long)F) s += rlo[f] * a[j * step] + rhi[f] * d[j * step];
+        }
+        out[k * ostep] = s;
+    }
+}
+
+static int alwan_wv_cmp(void const *x, void const *y) {
+    double const a = *(double const *)x, b = *(double const *)y;
+    return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/* Denoise one channel of w x h doubles in place. */
+static alwan_status alwan_wv_plane(double *img, size_t w, size_t h, alwan_f64 const *filt, size_t F, size_t levels,
+                                   double sigma, int visu, int hard) {
+    double const *dlo = filt, *dhi = filt + F, *rlo = filt + 2 * F, *rhi = filt + 3 * F;
+    size_t lw[40], lh[40], off[40]; /* level l: its four sub-bands of lw x lh at off */
+    size_t total = 0, l, i, x, y, k;
+    double *bands, *tmp, *cur;
+    size_t cw = w, ch = h;
+    for (l = 0; l < levels; l++) {
+        lw[l] = (cw + F - 1) / 2;
+        lh[l] = (ch + F - 1) / 2;
+        off[l] = total;
+        total += 4 * lw[l] * lh[l];
+        cw = lw[l];
+        ch = lh[l];
+    }
+    bands = (double *)ALWAN_ALLOC(alwan_safe_array_size(total + 2 * (2 * w + 2 * F) * (2 * h + 2 * F), sizeof(double)), sizeof(double));
+    if (!bands) return ALWAN_E_NOMEM;
+    tmp = bands + total;                              /* a column-pass buffer */
+    cur = tmp + (2 * w + 2 * F) * (2 * h + 2 * F); /* the current approximation / reconstruction */
+
+    /* forward: a x b image `src` (row stride sw) into the level's aa, ad, da, dd */
+    {
+        double const *src = img;
+        size_t sw = w, sh = h, sstride = w;
+        for (l = 0; l < levels; l++) {
+            size_t const bw = lw[l], bh = lh[l];
+            double *aa = bands + off[l], *ad = aa + bw * bh, *da = ad + bw * bh, *dd = da + bw * bh;
+            double *ta = tmp, *td = tmp + bh * sw; /* after the column pass: bh x sw each */
+            for (x = 0; x < sw; x++) alwan_wv_dwt1(ta + x, td + x, sw, src + x, sstride, sh, dlo, dhi, F);
+            for (y = 0; y < bh; y++) {
+                alwan_wv_dwt1(aa + y * bw, ad + y * bw, 1, ta + y * sw, 1, sw, dlo, dhi, F);
+                alwan_wv_dwt1(da + y * bw, dd + y * bw, 1, td + y * sw, 1, sw, dlo, dhi, F);
+            }
+            src = aa;
+            sw = bw;
+            sh = bh;
+            sstride = bw;
+        }
+    }
+
+    /* the noise level and the thresholds */
+    if (sigma == 0.0) {
+        double *dd = bands + off[0] + 3 * lw[0] * lh[0];
+        size_t const nd = lw[0] * lh[0];
+        size_t nz = 0;
+        double *v = tmp;
+        for (i = 0; i < nd; i++) if (dd[i] != 0.0) v[nz++] = fabs(dd[i]);
+        if (nz == 0) {
+            sigma = 0.0;
+        } else {
+            qsort(v, nz, sizeof(double), alwan_wv_cmp);
+            sigma = (nz & 1) ? v[nz / 2] : 0.5 * (v[nz / 2 - 1] + v[nz / 2]);
+            sigma /= 0.6744897501960817; /* the normal's 75th percentile */
+        }
+    }
+    for (l = 0; l < levels; l++) {
+        size_t const nb = lw[l] * lh[l];
+        for (k = 1; k < 4; k++) {
+            double *b = bands + off[l] + k * nb;
+            double t;
+            if (visu) {
+                t = sigma * sqrt(2.0 * log((double)(w * h)));
+            } else {
+                double m2 = 0.0, dv;
+                for (i = 0; i < nb; i++) m2 += b[i] * b[i];
+                m2 /= (double)nb;
+                dv = m2 - sigma * sigma;
+                t = sigma * sigma / sqrt(dv > DBL_EPSILON ? dv : DBL_EPSILON);
+            }
+            for (i = 0; i < nb; i++) {
+                double const a = fabs(b[i]);
+                if (hard) b[i] = a < t ? 0.0 : b[i];
+                else b[i] = a > t ? (b[i] > 0.0 ? a - t : t - a) : 0.0;
+            }
+        }
+    }
+
+    /* inverse: from the coarsest, the approximation cropped to each level's detail shape */
+    {
+        size_t aw = lw[levels - 1], ah = lh[levels - 1];
+        memcpy(cur, bands + off[levels - 1], aw * ah * sizeof(double));
+        for (l = levels; l-- > 0;) {
+            size_t const bw = lw[l], bh = lh[l];
+            double const *ad = bands + off[l] + bw * bh, *da = ad + bw * bh, *dd = da + bw * bh;
+            size_t const rw = 2 * bw - F + 2, rh = 2 * bh - F + 2;
+            double *ra = tmp, *rd2 = tmp + bh * rw;
+            /* crop the approximation to bw x bh (its row stride is aw) */
+            for (y = 0; y < bh; y++) {
+                alwan_wv_idwt1(ra + y * rw, 1, cur + y * aw, ad + y * bw, 1, bw, rlo, rhi, F);
+                alwan_wv_idwt1(rd2 + y * rw, 1, da + y * bw, dd + y * bw, 1, bw, rlo, rhi, F);
+            }
+            for (x = 0; x < rw; x++) alwan_wv_idwt1(cur + x, rw, ra + x, rd2 + x, rw, bh, rlo, rhi, F);
+            aw = rw;
+            ah = rh;
+        }
+        (void)ah;
+        for (y = 0; y < h; y++) for (x = 0; x < w; x++) img[y * w + x] = cur[y * aw + x];
+    }
+    ALWAN_FREE(bands);
+    return ALWAN_OK;
+}
+
+static alwan_status alwan_wv_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                                 alwan_denoise_params const *p, int kind /* 0 f64, 1 f32, 2 u8 */) {
+    size_t const elem = kind == 0 ? sizeof(alwan_f64) : kind == 1 ? sizeof(alwan_f32) : 1u;
+    size_t const n = w * h;
+    double const scale = kind == 2 ? 255.0 : 1.0;
+    double const sigma = p->sigma / scale;
+    alwan_f64 const *filt;
+    size_t F, levels, maxl, m, x, y, c;
+    double *plane;
+    alwan_status st = ALWAN_OK;
+    if (!out || !src) return ALWAN_E_INVALID;
+    if (w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
+    if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
+    if (!alwan_wv_find(p->wavelet, &F, &filt)) return ALWAN_E_INVALID;
+    if (!alwan_dn_finite(p->sigma) || p->sigma < 0.0 || n / w != h) return ALWAN_E_RANGE;
+    m = w < h ? w : h;
+    maxl = 0;
+    if (m >= F - 1) {
+        while (((size_t)1 << (maxl + 1)) * (F - 1) <= m) maxl++;
+    }
+    levels = p->wavelet_levels != 0 ? p->wavelet_levels : (maxl > 4 ? maxl - 3 : 1);
+    if (levels > 30 || (p->wavelet_levels != 0 && levels > (maxl > 0 ? maxl : 1))) return ALWAN_E_RANGE;
+
+    plane = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, ch * sizeof(double)), sizeof(double));
+    if (!plane) return ALWAN_E_NOMEM;
+    for (y = 0; y < h; y++) {
+        char const *row = (char const *)src + y * src_rs;
+        for (x = 0; x < w; x++) {
+            for (c = 0; c < ch; c++) {
+                double const v = kind == 0 ? ((alwan_f64 const *)row)[x * ch + c]
+                               : kind == 1 ? (double)((alwan_f32 const *)row)[x * ch + c]
+                                           : (double)((unsigned char const *)row)[x * ch + c] / 255.0;
+                if (!alwan_dn_finite(v)) {
+                    ALWAN_FREE(plane);
+                    return ALWAN_E_INVALID;
+                }
+                plane[c * n + y * w + x] = v;
+            }
+        }
+    }
+    for (c = 0; c < ch && st == ALWAN_OK; c++) {
+        st = alwan_wv_plane(plane + c * n, w, h, filt, F, levels, sigma, p->wavelet_visushrink != 0, p->wavelet_hard != 0);
+    }
+    if (st == ALWAN_OK) {
+        for (y = 0; y < h; y++) {
+            char *row = (char *)out + y * out_rs;
+            for (x = 0; x < w; x++) {
+                for (c = 0; c < ch; c++) {
+                    double const v = plane[c * n + y * w + x];
+                    if (kind == 0) {
+                        ((alwan_f64 *)row)[x * ch + c] = v;
+                    } else if (kind == 1) {
+                        ((alwan_f32 *)row)[x * ch + c] = (alwan_f32)v;
+                    } else {
+                        double f = floor(v * 255.0 + 0.5);
+                        ((unsigned char *)row)[x * ch + c] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
+                    }
+                }
+            }
+        }
+    }
+    ALWAN_FREE(plane);
+    return st;
+}
+
 /* ---- the family ---- */
 
 static double alwan_dn_or(double v, double def) {
@@ -583,6 +840,8 @@ static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const 
     case ALWAN_DENOISE_DCT:
         return alwan_dct_run(out, out_row_stride, src, src_row_stride, channels, width, height,
                              alwan_dn_or(p->sigma, 10.0 / 255.0), p->block_size == 0 ? 16 : p->block_size, is_f32 ? 1 : 0);
+    case ALWAN_DENOISE_WAVELET:
+        return alwan_wv_run(out, out_row_stride, src, src_row_stride, channels, width, height, p, is_f32 ? 1 : 0);
     case ALWAN_DENOISE_NL_MEANS:
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION: /* 8-bit only, as their references are */
     default:
@@ -606,6 +865,8 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
     case ALWAN_DENOISE_DCT:
         return alwan_dct_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->sigma, 10.0),
                              p->block_size == 0 ? 16 : p->block_size, 2);
+    case ALWAN_DENOISE_WAVELET:
+        return alwan_wv_run(out, out_row_stride, src, src_row_stride, channels, width, height, p, 2);
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION:
         return alwan_ad_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->alpha, 0.15),
                             alwan_dn_or(p->k, 0.05), p->iterations == 0 ? 10 : p->iterations);
