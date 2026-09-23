@@ -427,6 +427,11 @@
 
 ### Added
 
+- **The fast global smoother: `alwan_fast_global_smoother`.** Min et al. 2014, weighted
+  least squares smoothing along a guide solved as exact tridiagonal systems on rows and
+  columns, as OpenCV's `ximgproc::fastGlobalSmootherFilter` computes it with the solve in
+  double; suite 196 agrees with OpenCV to 7.8e-6.
+
 - **The domain transform: `alwan_domain_transform_filter`.** Gastal and Oliveira 2011,
   edge-aware smoothing along a guide in time independent of the spatial sigma, in the
   normalized-convolution and recursive-filtering modes of OpenCV's `ximgproc::dtFilter`;

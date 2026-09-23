@@ -2180,6 +2180,25 @@ typedef enum {
 alwan_status alwan_domain_transform_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f32 sigma_spatial, alwan_f32 sigma_color, alwan_domain_transform_mode mode, size_t iterations);
 alwan_status alwan_domain_transform_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f64 sigma_spatial, alwan_f64 sigma_color, alwan_domain_transform_mode mode, size_t iterations);
 
+/* The fast global smoother (Min et al., IEEE TIP 2014): the weighted least squares
+ * smoother, sum (u - f)^2 + lambda sum w_pq (u_p - u_q)^2 with
+ * w_pq = exp(-|g_p - g_q| / sigma_color), solved as exact 1D tridiagonal problems along
+ * every row and then every column. `iterations` repeat the pair on the last result with
+ * lambda multiplied by lambda_attenuation after each (OpenCV's defaults: 3 and 0.25).
+ * Larger lambda smooths further; the result flattens regions and keeps the guide's edges,
+ * the base layer of a tone or detail edit. Cost is linear in pixels.
+ *
+ * src has 1 to 4 channels, filtered each alone; the guide 1 to 4 (the image itself or
+ * another), rows at the given byte strides; |g_p - g_q| is the Euclidean distance over
+ * the guide's channels, in the guide's own units, and sigma_color is in the same units.
+ * It follows OpenCV's ximgproc::fastGlobalSmootherFilter, which takes an 8-bit guide and
+ * sigma_color in 0..255 steps. out may be src or the guide. ALWAN_E_INVALID for a NULL, a
+ * zero size, a channel count out of range, a stride too small or a non-finite value;
+ * ALWAN_E_RANGE for a negative lambda or lambda_attenuation, sigma_color not above 0, or
+ * iterations 0 or above 100. Suite 196. */
+alwan_status alwan_fast_global_smoother_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f32 lambda, alwan_f32 sigma_color, alwan_f32 lambda_attenuation, size_t iterations);
+alwan_status alwan_fast_global_smoother_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f64 lambda, alwan_f64 sigma_color, alwan_f64 lambda_attenuation, size_t iterations);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every

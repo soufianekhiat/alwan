@@ -645,6 +645,8 @@ EXPORTS
     alwan_exposure_value_100_f64
     alwan_extrapolate_f32
     alwan_extrapolate_f64
+    alwan_fast_global_smoother_f32
+    alwan_fast_global_smoother_f64
     alwan_film_calibrate_f32
     alwan_film_calibrate_f64
     alwan_film_develop_f32

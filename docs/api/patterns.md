@@ -488,3 +488,30 @@ double. Suite 195 agrees with OpenCV to 1.9e-6 in NC mode (OpenCV's float runnin
 1.5e-7 in RF mode, along a colour and a one-channel guide. `sigma_spatial` below 1 or
 `sigma_color` below 0.01 returns `ALWAN_E_RANGE` where OpenCV clamps silently; `iterations`
 runs from 1 to 30. `out` may alias `src`; `guide` may be `src` itself.
+
+## Global smoothing in linear time: the fast global smoother
+
+```c
+alwan_status alwan_fast_global_smoother_{T}(alwan_{T} *out, size_t out_row_stride,
+                                            alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
+                                            alwan_{T} const *guide, size_t guide_row_stride, size_t guide_channels,
+                                            size_t width, size_t height,
+                                            alwan_{T} lambda, alwan_{T} sigma_color,
+                                            alwan_{T} lambda_attenuation, size_t iterations);
+```
+
+Min, Choi, Lu, Ham, Sohn and Do (IEEE TIP 2014) solve the weighted least squares
+smoother, `sum (u - f)^2 + lambda sum w_pq (u_p - u_q)^2` with
+`w_pq = exp(-|g_p - g_q| / sigma_color)`, as exact 1D problems along every row and then
+every column. Each is tridiagonal and costs one forward and one backward sweep. Where
+the filters above average a window, this one solves for the whole line at once, so a
+region bounded by guide edges flattens however large it is. Larger `lambda` smooths
+further; `iterations` repeat the row and column passes with `lambda` multiplied by
+`lambda_attenuation` each time (OpenCV's defaults are 3 and 0.25).
+
+The distance `|g_p - g_q|` is Euclidean over the guide's channels and `sigma_color` is in
+the guide's units. OpenCV's `ximgproc::fastGlobalSmootherFilter` takes an 8-bit guide and
+`sigma_color` in 0..255 steps; divide both by 255 to use its numbers with a guide in
+0..1. Suite 196 does that and agrees with OpenCV to 7.8e-6 at `lambda` 1000 and to
+4.5e-7 at `lambda` 10, the difference being OpenCV's float solve; a constant source stays
+constant to 1e-14. `out` may alias `src` or the guide.
