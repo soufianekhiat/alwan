@@ -427,6 +427,13 @@
 
 ### Added
 
+- **OpenColorIO's GradingTone: `alwan_grading_tone_apply` and its map.** Five zones of the
+  tonescale (blacks, shadows, midtones, highlights, whites), each a piecewise-quadratic
+  curve set per channel and by master, and an S-contrast, in OCIO's log, lin and video
+  styles, forward and inverse, with OCIO's defaults, bounds and 65504 clamp. Suite 185
+  holds it to PyOpenColorIO 2.5.0: 5.7e-7 relative in log and video; 1.5e-4 in lin, where
+  OCIO's own approximate log and pow round trip is 8.6e-5 off on an untouched channel.
+
 - **OpenColorIO's GradingPrimary: `alwan_grading_primary_apply` and its map.** The primary
   controls of a grading panel in OCIO's three styles: log (brightness, contrast about a
   pivot, gamma between black and white pivots), lin (offset, exposure in stops, contrast

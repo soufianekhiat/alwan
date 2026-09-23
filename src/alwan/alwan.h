@@ -7318,6 +7318,51 @@ alwan_status alwan_grading_primary_f32_map_interleave(alwan_f32 *out, size_t out
 alwan_status alwan_grading_primary_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
 
 /* ----------------------------------------------------------------
+ * OpenColorIO grading: tone
+ *
+ * OCIO's GradingToneTransform: five zones of the tonescale, each moved by its own
+ * piecewise-quadratic curve, and an S-contrast. Every zone takes red, green, blue and
+ * master values around 1 (the channel's curve is applied, then the master's to all
+ * three), and a start and width that place it on the scale:
+ *
+ *   blacks, whites     0.1..1.9: the slope at the bottom and top ends (start, width)
+ *   shadows            0.2..1.8: start is where the zone ends, width is its PIVOT,
+ *                      which must sit at least 0.01 below start
+ *   highlights         0.2..1.8: start is where the zone begins, width its pivot,
+ *                      at least 0.01 above start
+ *   midtones           0.1..1.9: centre (start) and width of the bump
+ *   scontrast          0.01..1.99, about 0.4 (log, video) or 0 (lin, log domain)
+ *
+ * Applied in that order: midtones, highlights, whites, shadows, blacks, S-contrast;
+ * the inverse runs backwards. The lin style converts to OCIO's log domain first (a
+ * log2 of 0.18-relative values with a linear toe below 0.0041) and back at the end.
+ * The result is clamped above at 65504, the half-float maximum, as OCIO does; an
+ * identity grade is a pass-through with no clamp.
+ *
+ * alwan_grading_tone_init gives OCIO's defaults for the style, an identity grade.
+ * ALWAN_E_INVALID for a NULL, a style outside the enum, a non-finite value, a value
+ * outside the zone's range, a width below 0.01, shadows or highlights whose pivot
+ * crosses their start, or an S-contrast outside [0.01, 1.99]. Computed in double;
+ * suite 185 holds it to PyOpenColorIO.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_f64 red, green, blue, master, start, width;
+} alwan_grading_rgbmsw;
+
+typedef struct {
+    alwan_grading_rgbmsw blacks, shadows, midtones, highlights, whites;
+    alwan_f64 scontrast;
+} alwan_grading_tone;
+
+void alwan_grading_tone_init(alwan_grading_tone *tone, alwan_grading_style style);
+
+alwan_status alwan_grading_tone_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
+alwan_status alwan_grading_tone_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
+alwan_status alwan_grading_tone_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
+alwan_status alwan_grading_tone_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
+
+/* ----------------------------------------------------------------
  * Camera Profiling / Polynomial Color Correction
  * Reference: Cheung et al. (2004), Finlayson et al. (2015)
  * ---------------------------------------------------------------- */

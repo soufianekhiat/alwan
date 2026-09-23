@@ -744,6 +744,11 @@ EXPORTS
     alwan_grading_primary_f32_map_interleave
     alwan_grading_primary_f64_map_interleave
     alwan_grading_primary_init
+    alwan_grading_tone_apply_f32
+    alwan_grading_tone_apply_f64
+    alwan_grading_tone_f32_map_interleave
+    alwan_grading_tone_f64_map_interleave
+    alwan_grading_tone_init
     alwan_h273_color_primaries_f32
     alwan_h273_color_primaries_f64
     alwan_h273_color_primaries_from_space

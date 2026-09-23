@@ -231,6 +231,522 @@ static void alwan_gp_pixel(double *p, alwan_gp_render const *r) {
     }
 }
 
+/* ================================================================
+ * GRADING TONE: OCIO's GradingToneTransform (GradingTone.cpp for the pre-render,
+ * GradingToneOpCPU.cpp for the pixel). Five zones, each a piecewise-quadratic curve
+ * whose slopes the controls set, applied per channel and then by the master to all
+ * three: midtones, highlights, whites, shadows, blacks, then an S-contrast about the
+ * style's pivot. The lin style works in OCIO's log domain (its own lin-to-log with a
+ * linear toe) and returns to linear at the end.
+ *
+ * OCIO evaluates a single channel and the master slightly differently: the channel
+ * path compares with > and the master path with >= at the segment joins, and the
+ * channel path of the inverse midtones extrapolates above the top from the BOTTOM
+ * anchor (x0 + (t - y0) / m0, where the master path uses x5 and y5). The curve is built
+ * so the two agree to rounding, and both are reproduced as written.
+ * ================================================================ */
+
+enum { ALWAN_GT_R = 0, ALWAN_GT_G = 1, ALWAN_GT_B = 2, ALWAN_GT_M = 3 };
+
+typedef struct {
+    int style, inverse, identity;
+    double top, top_sc, bottom, pivot;
+    double hl_start, hl_width, wh_start, wh_width, sh_start, sh_width, bl_start, bl_width;
+    double mid_adj[4], mid_x[4][6], mid_y[4][6], mid_m[4][6];
+    double hs_val[2][4], hs_x[2][4][3], hs_y[2][4][3], hs_m[2][4][2];
+    double wb_val[2][4], wb_x[2][4][2], wb_y[2][4][2], wb_m[2][4][2], wb_gain[2][4];
+    double sc, sc_x[2][4], sc_y[2][4], sc_m[2][2];
+} alwan_gt_render;
+
+static double alwan_gt_channel(alwan_grading_rgbmsw const *v, int ch) {
+    return ch == ALWAN_GT_R ? v->red : ch == ALWAN_GT_G ? v->green : ch == ALWAN_GT_B ? v->blue : v->master;
+}
+
+static double alwan_gt_clampd(double a, double lo, double hi) {
+    double const m = a < lo ? lo : a;
+    return hi < m ? hi : m;
+}
+
+void alwan_grading_tone_init(alwan_grading_tone *tone, alwan_grading_style style) {
+    static double const sw[3][5][2] = {   /* start, width: blacks, shadows, midtones, highlights, whites */
+        { { 0.4, 0.4 }, { 0.5, 0.0 }, { 0.4, 0.6 }, { 0.3, 1.0 }, { 0.4, 0.5 } },
+        { { 0.0, 4.0 }, { 2.0, -7.0 }, { 0.0, 8.0 }, { -2.0, 9.0 }, { 0.0, 8.0 } },
+        { { 0.4, 0.4 }, { 0.6, 0.0 }, { 0.4, 0.7 }, { 0.2, 1.0 }, { 0.5, 0.5 } } };
+    alwan_grading_rgbmsw *z[5];
+    int s = style == ALWAN_GRADING_LIN ? 1 : style == ALWAN_GRADING_VIDEO ? 2 : 0, i;
+    if (!tone) return;
+    z[0] = &tone->blacks; z[1] = &tone->shadows; z[2] = &tone->midtones; z[3] = &tone->highlights; z[4] = &tone->whites;
+    for (i = 0; i < 5; i++) {
+        z[i]->red = z[i]->green = z[i]->blue = z[i]->master = 1.0;
+        z[i]->start = sw[s][i][0];
+        z[i]->width = sw[s][i][1];
+    }
+    tone->scontrast = 1.0;
+}
+
+static double alwan_gt_faux_fwd(double t, double x0, double x2, double y0, double y2, double m0, double m2, double x1) {
+    double const y1 = (0.5 / ((x2 - x1) + (x1 - x0))) *
+                      ((2. * y0 + m0 * (x1 - x0)) * (x2 - x1) + (2. * y2 - m2 * (x2 - x1)) * (x1 - x0));
+    double const tL = (t - x0) / (x1 - x0);
+    double const tR = (t - x1) / (x2 - x1);
+    double const fL = y0 * (1. - tL * tL) + y1 * tL * tL + m0 * (1. - tL) * tL * (x1 - x0);
+    double const fR = y1 * (1. - tR) * (1. - tR) + y2 * (2. - tR) * tR + m2 * (tR - 1.) * tR * (x2 - x1);
+    double res = (t < x1) ? fL : fR;
+    res = (t < x0) ? y0 + (t - x0) * m0 : res;
+    res = (t > x2) ? y2 + (t - x2) * m2 : res;
+    return res;
+}
+
+static double alwan_gt_faux_rev(double t, double x0, double x2, double y0, double y2, double m0, double m2, double x1) {
+    double const y1 = (0.5 / ((x2 - x1) + (x1 - x0))) *
+                      ((2. * y0 + m0 * (x1 - x0)) * (x2 - x1) + (2. * y2 - m2 * (x2 - x1)) * (x1 - x0));
+    double const cL = y0 - t, bL = m0 * (x1 - x0), aL = y1 - y0 - m0 * (x1 - x0);
+    double const outL = (2. * cL) / (-sqrt(bL * bL - 4. * aL * cL) - bL) * (x1 - x0) + x0;
+    double const cR = y1 - t, bR = 2. * y2 - 2. * y1 - m2 * (x2 - x1), aR = y1 - y2 + m2 * (x2 - x1);
+    double const outR = (2. * cR) / (-sqrt(bR * bR - 4. * aR * cR) - bR) * (x2 - x1) + x1;
+    double res = (t < y1) ? outL : outR;
+    res = (t < y0) ? x0 + (t - y0) / m0 : res;
+    res = (t > y2) ? x2 + (t - y2) / m2 : res;
+    return res;
+}
+
+static double alwan_gt_highlight_eval(double t, double start, double pivot, double val) {
+    double const x0 = start, x2 = pivot, x1 = x0 + (x2 - x0) * 0.5;
+    val = 2. - val;
+    if (val <= 1.) return alwan_gt_faux_fwd(t, x0, x2, x0, x2, 1., val < 0.01 ? 0.01 : val, x1);
+    return alwan_gt_faux_rev(t, x0, x2, x0, x2, 1., 2. - val < 0.01 ? 0.01 : 2. - val, x1);
+}
+
+static double alwan_gt_shadow_eval(double t, double start, double pivot, double val) {
+    double const x0 = start, x2 = pivot, x1 = x0 + (x2 - x0) * 0.5;
+    if (val <= 1.) return alwan_gt_faux_fwd(t, x0, x2, x0, x2, val < 0.01 ? 0.01 : val, 1., x1);
+    return alwan_gt_faux_rev(t, x0, x2, x0, x2, 2. - val < 0.01 ? 0.01 : 2. - val, 1., x1);
+}
+
+static int alwan_gt_zone_ok(alwan_grading_rgbmsw const *z, double lo, double hi) {
+    return alwan_gp_finite(z->red) && alwan_gp_finite(z->green) && alwan_gp_finite(z->blue)
+        && alwan_gp_finite(z->master) && alwan_gp_finite(z->start) && alwan_gp_finite(z->width)
+        && !(z->red < lo || z->green < lo || z->blue < lo || z->master < lo)
+        && !(z->red > hi || z->green > hi || z->blue > hi || z->master > hi);
+}
+
+static int alwan_gt_is_identity(alwan_grading_rgbmsw const *z) {
+    return z->red == 1. && z->green == 1. && z->blue == 1. && z->master == 1.;
+}
+
+/* OCIO's GradingTone::validate(), then GradingTonePreRender::update() in double. */
+static alwan_status alwan_gt_prepare(alwan_gt_render *r, alwan_grading_style style,
+                                     alwan_grading_tone const *v, int inverse) {
+    double const err = 0.000001, min_bmw = 0.1 - err, max_bmw = 1.9 + err;
+    double const min_sh = 0.2 - err, max_sh = 1.8 + err, min_wsc = 0.01 - err, max_sc = 1.99 - err;
+    int ch, k;
+    if (!v) return ALWAN_E_INVALID;
+    if (style != ALWAN_GRADING_LOG && style != ALWAN_GRADING_LIN && style != ALWAN_GRADING_VIDEO) {
+        return ALWAN_E_INVALID;
+    }
+    if (!alwan_gt_zone_ok(&v->blacks, min_bmw, max_bmw) || v->blacks.width < min_wsc) return ALWAN_E_INVALID;
+    if (!alwan_gt_zone_ok(&v->midtones, min_bmw, max_bmw) || v->midtones.width < min_wsc) return ALWAN_E_INVALID;
+    if (!alwan_gt_zone_ok(&v->whites, min_bmw, max_bmw) || v->whites.width < min_wsc) return ALWAN_E_INVALID;
+    if (!alwan_gt_zone_ok(&v->shadows, min_sh, max_sh) || v->shadows.start < v->shadows.width + min_wsc) return ALWAN_E_INVALID;
+    if (!alwan_gt_zone_ok(&v->highlights, min_sh, max_sh) || v->highlights.start > v->highlights.width - min_wsc) return ALWAN_E_INVALID;
+    if (!alwan_gp_finite(v->scontrast) || v->scontrast < min_wsc || v->scontrast > max_sc) return ALWAN_E_INVALID;
+
+    r->style = (int)style;
+    r->inverse = inverse;
+    r->identity = alwan_gt_is_identity(&v->blacks) && alwan_gt_is_identity(&v->shadows)
+               && alwan_gt_is_identity(&v->midtones) && alwan_gt_is_identity(&v->highlights)
+               && alwan_gt_is_identity(&v->whites) && v->scontrast == 1.;
+    if (style == ALWAN_GRADING_LIN) { r->top = 7.5; r->top_sc = 6.5; r->bottom = -5.5; r->pivot = 0.0; }
+    else { r->top = 1.0; r->top_sc = 1.0; r->bottom = 0.0; r->pivot = (double)0.4f; }
+    if (r->identity) return ALWAN_OK;
+
+    {   /* the whites follow the highlights, the blacks the shadows */
+        double const pivot = v->highlights.width, start = v->highlights.start;
+        double ns, ne;
+        r->hl_start = (start > pivot - 0.01) ? pivot - 0.01 : start;
+        r->hl_width = pivot;
+        ns = alwan_gt_highlight_eval(v->whites.start, r->hl_start, r->hl_width, v->highlights.master);
+        ne = alwan_gt_highlight_eval(v->whites.start + v->whites.width, r->hl_start, r->hl_width, v->highlights.master);
+        r->wh_start = ns;
+        r->wh_width = ne - ns;
+    }
+    {
+        double const pivot = v->shadows.width, start = v->shadows.start;
+        double ns, ne;
+        r->sh_start = (start < pivot + 0.01) ? pivot + 0.01 : start;
+        r->sh_width = pivot;
+        ns = alwan_gt_shadow_eval(v->blacks.start, r->sh_width, r->sh_start, v->shadows.master);
+        ne = alwan_gt_shadow_eval(v->blacks.start - v->blacks.width, r->sh_width, r->sh_start, v->shadows.master);
+        r->bl_start = ns;
+        r->bl_width = ns - ne;
+    }
+
+    for (ch = 0; ch < 4; ch++) {   /* midtones */
+        double *x = r->mid_x[ch], *y = r->mid_y[ch], *m = r->mid_m[ch];
+        double adj = alwan_gt_clampd(alwan_gt_channel(&v->midtones, ch), 0.01, 1.99);
+        r->mid_adj[ch] = adj;
+        if (adj != 1.) {
+            double const halo = 0.4, min_slope = 0.1;
+            double max_width, width, center;
+            x[0] = r->bottom;
+            x[5] = r->top;
+            max_width = (x[5] - x[0]) * 0.95;
+            width = alwan_gt_clampd(v->midtones.width, 0.01, max_width);
+            center = alwan_gt_clampd(v->midtones.start, x[0] + width * 0.51, x[5] - width * 0.51);
+            x[1] = center - width * 0.5;
+            x[4] = x[1] + width;
+            x[2] = x[1] + (x[4] - x[1]) * 0.25;
+            x[3] = x[1] + (x[4] - x[1]) * 0.75;
+            y[0] = x[0];
+            m[0] = 1.;
+            m[5] = 1.;
+            adj = (adj - 1.) * (1. - min_slope);
+            m[2] = 1. + adj;
+            m[3] = 1. - adj;
+            m[1] = 1. + adj * halo;
+            m[4] = 1. - adj * halo;
+            if (center <= (x[5] + x[0]) * 0.5) {
+                double const area = (x[1] - x[0]) * (m[1] - m[0]) * 0.5
+                                  + (x[2] - x[1]) * ((m[1] - m[0]) + (m[2] - m[1]) * 0.5)
+                                  + (center - x[2]) * (m[2] - m[0]) * 0.5;
+                m[4] = (-0.5 * (x[5] - x[4]) * m[5] + (x[4] - x[3]) * (0.5 * m[3] - m[5])
+                        + (x[3] - center) * (m[3] - m[5]) * 0.5 + area) / (-0.5 * (x[5] - x[3]));
+            } else {
+                double const area = (x[5] - x[4]) * (m[4] - m[5]) * 0.5
+                                  + (x[4] - x[3]) * ((m[4] - m[5]) + (m[3] - m[4]) * 0.5)
+                                  + (x[3] - center) * (m[3] - m[5]) * 0.5;
+                m[1] = (-0.5 * (x[1] - x[0]) * m[0] + (x[2] - x[1]) * (0.5 * m[2] - m[0])
+                        + (center - x[2]) * (m[2] - m[0]) * 0.5 + area) / (-0.5 * (x[2] - x[0]));
+            }
+            for (k = 1; k < 6; k++) y[k] = y[k - 1] + (m[k - 1] + m[k]) * (x[k] - x[k - 1]) * 0.5;
+        }
+    }
+
+    for (k = 0; k < 2; k++) {   /* 0 highlights, 1 shadows */
+        for (ch = 0; ch < 4; ch++) {
+            double *x = r->hs_x[k][ch], *y = r->hs_y[k][ch], *m = r->hs_m[k][ch];
+            double val = k ? alwan_gt_channel(&v->shadows, ch) : 2. - alwan_gt_channel(&v->highlights, ch);
+            r->hs_val[k][ch] = val;
+            if (val != 1.) {
+                double const start = k ? r->sh_start : r->hl_start, pivot = k ? r->sh_width : r->hl_width;
+                double const s = val < 1. ? val : 2. - val;
+                x[0] = k ? pivot : start;
+                x[2] = k ? start : pivot;
+                y[0] = x[0];
+                y[2] = x[2];
+                x[1] = x[0] + (x[2] - x[0]) * 0.5;
+                m[0] = k ? (s < 0.01 ? 0.01 : s) : 1.;
+                m[1] = k ? 1. : (s < 0.01 ? 0.01 : s);
+                y[1] = (0.5 / ((x[2] - x[1]) + (x[1] - x[0]))) * ((2. * y[0] + m[0] * (x[1] - x[0])) * (x[2] - x[1])
+                        + (2. * y[2] - m[1] * (x[2] - x[1])) * (x[1] - x[0]));
+            }
+        }
+    }
+
+    for (k = 0; k < 2; k++) {   /* 0 whites, 1 blacks */
+        for (ch = 0; ch < 4; ch++) {
+            double *x = r->wb_x[k][ch], *y = r->wb_y[k][ch], *m = r->wb_m[k][ch];
+            double const start = k ? r->bl_start : r->wh_start, width = k ? r->bl_width : r->wh_width;
+            double const val = k ? alwan_gt_channel(&v->blacks, ch) : alwan_gt_channel(&v->whites, ch);
+            double const mtest = k ? 2. - val : val;
+            r->wb_val[k][ch] = val;
+            x[0] = k ? start - width : start;
+            x[1] = k ? start : x[0] + width;
+            r->wb_gain[k][ch] = 1.;
+            if (mtest < 1.) {
+                if (!k) { m[0] = 1.; m[1] = val < 0.01 ? 0.01 : val; y[0] = x[0]; y[1] = y[0] + (m[0] + m[1]) * (x[1] - x[0]) * 0.5; }
+                else { m[0] = 2. - val < 0.01 ? 0.01 : 2. - val; m[1] = 1.; y[1] = x[1]; y[0] = y[1] - (m[0] + m[1]) * (x[1] - x[0]) * 0.5; }
+            } else if (mtest > 1.) {
+                if (!k) { m[0] = 1.; m[1] = 2. - val < 0.01 ? 0.01 : 2. - val; y[0] = x[0]; y[1] = 0.0; }
+                else { m[0] = val < 0.01 ? 0.01 : val; m[1] = 1.; y[1] = x[1]; y[0] = y[1] - (m[0] + m[1]) * (x[1] - x[0]) * 0.5; }
+                r->wb_gain[k][ch] = (m[0] + m[1]) * 0.5;
+            }
+        }
+    }
+
+    r->sc = v->scontrast;
+    if (r->sc != 1.) {
+        double const c = r->sc > 1. ? 1. / (1.8125 - 0.8125 * (r->sc < 1.99 ? r->sc : 1.99))
+                                    : 0.28125 + 0.71875 * (r->sc > 0.01 ? r->sc : 0.01);
+        double *x, *y, *m, min_width, center;
+        r->sc = c;
+        x = r->sc_x[0]; y = r->sc_y[0]; m = r->sc_m[0];   /* top end */
+        x[3] = r->top_sc;
+        y[3] = r->top_sc;
+        y[0] = r->pivot + (y[3] - r->pivot) * 0.25;
+        m[0] = c;
+        x[0] = r->pivot + (y[0] - r->pivot) / m[0];
+        min_width = (x[3] - x[0]) * 0.3;
+        m[1] = 1. / m[0];
+        center = (y[3] - y[0] - m[1] * x[3] + m[0] * x[0]) / (m[0] - m[1]);
+        x[1] = x[0];
+        x[2] = 2. * center - x[1];
+        if (x[2] > x[3]) {
+            x[2] = x[3];
+            x[1] = 2. * center - x[2];
+        } else if ((x[2] - x[1]) < min_width) {
+            double nc;
+            x[2] = x[1] + min_width;
+            nc = (x[2] + x[1]) * 0.5;
+            m[1] = (y[3] - y[0] + m[0] * x[0] - nc * m[0]) / (x[3] - nc);
+        }
+        y[1] = y[0];
+        y[2] = y[1] + (m[0] + m[1]) * (x[2] - x[1]) * 0.5;
+
+        x = r->sc_x[1]; y = r->sc_y[1]; m = r->sc_m[1];   /* bottom end */
+        x[0] = r->bottom;
+        y[0] = r->bottom;
+        y[3] = r->pivot - (r->pivot - y[0]) * 0.25;
+        m[1] = c;
+        x[3] = r->pivot - (r->pivot - y[3]) / m[1];
+        min_width = (x[3] - x[0]) * 0.3;
+        m[0] = 1. / m[1];
+        center = (y[3] - y[0] - m[1] * x[3] + m[0] * x[0]) / (m[0] - m[1]);
+        x[2] = x[3];
+        x[1] = 2. * center - x[2];
+        if (x[1] < x[0]) {
+            x[1] = x[0];
+            x[2] = 2. * center - x[1];
+        } else if ((x[2] - x[1]) < min_width) {
+            double nc;
+            x[1] = x[2] - min_width;
+            nc = (x[2] + x[1]) * 0.5;
+            m[0] = (y[3] - y[0] - m[1] * x[3] + nc * m[1]) / (nc - x[0]);
+        }
+        y[2] = y[3];
+        y[1] = y[2] - (m[0] + m[1]) * (x[2] - x[1]) * 0.5;
+    }
+    return ALWAN_OK;
+}
+
+/* ---- per zone, per value: master = 1 takes OCIO's float3 path, 0 its channel path ---- */
+
+static double alwan_gt_mid_fwd(alwan_gt_render const *r, int ch, double t, int master) {
+    double const *x = r->mid_x[ch], *y = r->mid_y[ch], *m = r->mid_m[ch];
+    double const tL = (t - x[0]) / (x[1] - x[0]), tM = (t - x[1]) / (x[2] - x[1]), tR = (t - x[2]) / (x[3] - x[2]);
+    double const tR2 = (t - x[3]) / (x[4] - x[3]), tR3 = (t - x[4]) / (x[5] - x[4]);
+    double const fL = tL * (x[1] - x[0]) * (tL * 0.5 * (m[1] - m[0]) + m[0]) + y[0];
+    double const fM = tM * (x[2] - x[1]) * (tM * 0.5 * (m[2] - m[1]) + m[1]) + y[1];
+    double const fR = tR * (x[3] - x[2]) * (tR * 0.5 * (m[3] - m[2]) + m[2]) + y[2];
+    double const fR2 = tR2 * (x[4] - x[3]) * (tR2 * 0.5 * (m[4] - m[3]) + m[3]) + y[3];
+    double const fR3 = tR3 * (x[5] - x[4]) * (tR3 * 0.5 * (m[5] - m[4]) + m[4]) + y[4];
+    double res = t < x[1] ? fL : fM;
+    if (!master) {
+        if (t > x[2]) res = fR;
+        if (t > x[3]) res = fR2;
+        if (t > x[4]) res = fR3;
+        if (t < x[0]) res = y[0] + (t - x[0]) * m[0];
+        if (t > x[5]) res = y[5] + (t - x[5]) * m[5];
+    } else {
+        res = t < x[2] ? res : fR;
+        res = t < x[3] ? res : fR2;
+        res = t < x[4] ? res : fR3;
+        res = t < x[0] ? (t - x[0]) * m[0] + y[0] : res;
+        res = t < x[5] ? res : (t - x[5]) * m[5] + y[5];
+    }
+    return res;
+}
+
+static double alwan_gt_mid_seg_rev(double t, double xa, double xb, double ya, double ma, double mb) {
+    double const c = ya - t, b = ma * (xb - xa), a = 0.5 * (mb - ma) * (xb - xa);
+    return (2. * c) / (-sqrt(b * b - 4. * a * c) - b) * (xb - xa) + xa;
+}
+
+static double alwan_gt_mid_rev(alwan_gt_render const *r, int ch, double t, int master) {
+    double const *x = r->mid_x[ch], *y = r->mid_y[ch], *m = r->mid_m[ch];
+    if (!master) {
+        if (t >= y[5]) return x[0] + (t - y[0]) / m[0];   /* OCIO's channel path, as written */
+        if (t >= y[4]) return alwan_gt_mid_seg_rev(t, x[4], x[5], y[4], m[4], m[5]);
+        if (t >= y[3]) return alwan_gt_mid_seg_rev(t, x[3], x[4], y[3], m[3], m[4]);
+        if (t >= y[2]) return alwan_gt_mid_seg_rev(t, x[2], x[3], y[2], m[2], m[3]);
+        if (t >= y[1]) return alwan_gt_mid_seg_rev(t, x[1], x[2], y[1], m[1], m[2]);
+        if (t >= y[0]) return alwan_gt_mid_seg_rev(t, x[0], x[1], y[0], m[0], m[1]);
+        return x[0] + (t - y[0]) / m[0];
+    } else {
+        double const outR4 = x[5] + (t - y[5]) / m[5];
+        double const outR3 = alwan_gt_mid_seg_rev(t, x[4], x[5], y[4], m[4], m[5]);
+        double const outR2 = alwan_gt_mid_seg_rev(t, x[3], x[4], y[3], m[3], m[4]);
+        double const outR = alwan_gt_mid_seg_rev(t, x[2], x[3], y[2], m[2], m[3]);
+        double const outM = alwan_gt_mid_seg_rev(t, x[1], x[2], y[1], m[1], m[2]);
+        double const outL = alwan_gt_mid_seg_rev(t, x[0], x[1], y[0], m[0], m[1]);
+        double const outL0 = x[0] + (t - y[0]) / m[0];
+        double res = t < y[1] ? outL : outM;
+        res = t < y[2] ? res : outR;
+        res = t < y[3] ? res : outR2;
+        res = t < y[4] ? res : outR3;
+        res = t < y[0] ? outL0 : res;
+        res = t < y[5] ? res : outR4;
+        return res;
+    }
+}
+
+static double alwan_gt_hs_fwd(double const *x, double const *y, double const *m, double t) {
+    double const tL = (t - x[0]) / (x[1] - x[0]), tR = (t - x[1]) / (x[2] - x[1]);
+    double const fL = y[0] * (1. - tL * tL) + y[1] * tL * tL + m[0] * (1. - tL) * tL * (x[1] - x[0]);
+    double const fR = y[1] * (1. - tR) * (1. - tR) + y[2] * (2. - tR) * tR + m[1] * (tR - 1.) * tR * (x[2] - x[1]);
+    double res = t < x[1] ? fL : fR;
+    res = t < x[0] ? (t - x[0]) * m[0] + y[0] : res;
+    res = t < x[2] ? res : (t - x[2]) * m[1] + y[2];
+    return res;
+}
+
+static double alwan_gt_hs_rev(double const *x, double const *y, double const *m, double t) {
+    double const bL = m[0] * (x[1] - x[0]), aL = y[1] - y[0] - m[0] * (x[1] - x[0]), cL = y[0] - t;
+    double const outL = (-2. * cL) / (sqrt(bL * bL - 4. * aL * cL) + bL) * (x[1] - x[0]) + x[0];
+    double const bR = 2. * y[2] - 2. * y[1] - m[1] * (x[2] - x[1]), aR = y[1] - y[2] + m[1] * (x[2] - x[1]), cR = y[1] - t;
+    double const outR = (-2. * cR) / (sqrt(bR * bR - 4. * aR * cR) + bR) * (x[2] - x[1]) + x[1];
+    double res = t < y[1] ? outL : outR;
+    res = t < y[0] ? (t - y[0]) / m[0] + x[0] : res;
+    res = t < y[2] ? res : (t - y[2]) / m[1] + x[2];
+    return res;
+}
+
+/* ComputeWBFwd / ComputeWBRev for one value; k = 0 whites, 1 blacks. */
+static double alwan_gt_wb(alwan_gt_render const *r, int k, int ch, double t, int fwd) {
+    double const *x = r->wb_x[k][ch], *y = r->wb_y[k][ch], *m = r->wb_m[k][ch];
+    double const val = r->wb_val[k][ch], gain = r->wb_gain[k][ch];
+    double const mtest = k ? 2. - val : val;
+    double const a = 0.5 * (m[1] - m[0]) * (x[1] - x[0]), b = m[0] * (x[1] - x[0]);
+    if (mtest == 1.) return t;
+    if ((mtest < 1.) == (fwd != 0)) {   /* the quadratic, forward */
+        double tl, res;
+        if (mtest > 1.) t = !k ? (t - x[0]) * gain + x[0] : (t - x[1]) * gain + x[1];
+        tl = (t - x[0]) / (x[1] - x[0]);
+        res = tl * (x[1] - x[0]) * (tl * 0.5 * (m[1] - m[0]) + m[0]) + y[0];
+        res = t < x[0] ? y[0] + (t - x[0]) * m[0] : res;
+        if (mtest < 1.) return t < x[1] ? res : y[1] + (t - x[1]) * m[1];
+        if (!k) {
+            double const new_y1 = (x[1] - x[0]) / gain + x[0], xd = x[0] + (x[1] - x[0]) * 0.99;
+            double md = 1. / (m[0] + (xd - x[0]) * (m[1] - m[0]) / (x[1] - x[0]));
+            double const aa = 0.5 * (1. / m[1] - md) / (x[1] - xd), bb = 1. / m[1] - 2. * aa * x[1];
+            double const cc = new_y1 - bb * x[1] - aa * x[1] * x[1];
+            double const brk = (aa * x[1] + bb) * x[1] + cc;
+            res = (res - x[0]) / gain + x[0];
+            t = (t - x[0]) / gain + x[0];
+            {
+                double const c = cc - t;
+                double const res1 = (-2. * c) / (sqrt(bb * bb - 4. * aa * c) + bb);
+                return t < brk ? res : res1;
+            }
+        }
+        res = t < x[1] ? res : y[1] + (t - x[1]) * m[1];
+        return (res - x[1]) / gain + x[1];
+    } else {                           /* the quadratic, inverted */
+        double c, res;
+        if (mtest > 1.) t = !k ? (t - x[0]) * gain + x[0] : (t - x[1]) * gain + x[1];
+        c = y[0] - t;
+        res = (-2. * c) / (sqrt(b * b - 4. * a * c) + b) * (x[1] - x[0]) + x[0];
+        res = t < y[0] ? x[0] + (t - y[0]) / m[0] : res;
+        if (mtest < 1.) return t < y[1] ? res : x[1] + (t - y[1]) / m[1];
+        if (!k) {
+            double const new_y1 = (x[1] - x[0]) / gain + x[0], xd = x[0] + (x[1] - x[0]) * 0.99;
+            double md = 1. / (m[0] + (xd - x[0]) * (m[1] - m[0]) / (x[1] - x[0]));
+            double const aa = 0.5 * (1. / m[1] - md) / (x[1] - xd), bb = 1. / m[1] - 2. * aa * x[1];
+            double const cc = new_y1 - bb * x[1] - aa * x[1] * x[1];
+            res = (res - x[0]) / gain + x[0];
+            t = (t - x[0]) / gain + x[0];
+            return t < x[1] ? res : (aa * t + bb) * t + cc;
+        }
+        res = t < y[1] ? res : x[1] + (t - y[1]) / m[1];
+        return (res - x[1]) / gain + x[1];
+    }
+}
+
+static double alwan_gt_sc(alwan_gt_render const *r, double t, int fwd) {
+    double const *xt = r->sc_x[0], *yt = r->sc_y[0], *mt = r->sc_m[0];
+    double const *xb = r->sc_x[1], *yb = r->sc_y[1], *mb = r->sc_m[1];
+    double out;
+    if (fwd) {
+        double tR = (t - xt[1]) / (xt[2] - xt[1]);
+        double res = tR * (xt[2] - xt[1]) * (tR * 0.5 * (mt[1] - mt[0]) + mt[0]) + yt[1];
+        out = (t - r->pivot) * r->sc + r->pivot;
+        out = t < xt[1] ? out : res;
+        out = t < xt[2] ? out : yt[2] + (t - xt[2]) * mt[1];
+        tR = (t - xb[1]) / (xb[2] - xb[1]);
+        res = tR * (xb[2] - xb[1]) * (tR * 0.5 * (mb[1] - mb[0]) + mb[0]) + yb[1];
+        out = t < xb[2] ? res : out;
+        out = t < xb[1] ? yb[1] + (t - xb[1]) * mb[0] : out;
+    } else {
+        double b = mt[0] * (xt[2] - xt[1]), a = (mt[1] - mt[0]) * 0.5 * (xt[2] - xt[1]), c = yt[1] - t;
+        double res = (xt[2] - xt[1]) * (-2. * c) / (sqrt(b * b - 4. * a * c) + b) + xt[1];
+        out = (t - r->pivot) / r->sc + r->pivot;
+        out = t < yt[1] ? out : res;
+        out = t < yt[2] ? out : xt[2] + (t - yt[2]) / mt[1];
+        b = mb[0] * (xb[2] - xb[1]); a = (mb[1] - mb[0]) * 0.5 * (xb[2] - xb[1]); c = yb[1] - t;
+        res = (xb[2] - xb[1]) * (-2. * c) / (sqrt(b * b - 4. * a * c) + b) + xb[1];
+        out = t < yb[2] ? res : out;
+        out = t < yb[1] ? xb[1] + (t - yb[1]) / mb[0] : out;
+    }
+    return out;
+}
+
+/* One zone on a pixel: the channel's own curve for ch < 3, the master on all three. */
+static void alwan_gt_mids(alwan_gt_render const *r, int ch, double *p, int fwd) {
+    int i;
+    if (r->mid_adj[ch] == 1.) return;
+    if (ch < 3) p[ch] = fwd ? alwan_gt_mid_fwd(r, ch, p[ch], 0) : alwan_gt_mid_rev(r, ch, p[ch], 0);
+    else for (i = 0; i < 3; i++) p[i] = fwd ? alwan_gt_mid_fwd(r, ch, p[i], 1) : alwan_gt_mid_rev(r, ch, p[i], 1);
+}
+
+static void alwan_gt_hs(alwan_gt_render const *r, int k, int ch, double *p, int fwd) {
+    double const val = r->hs_val[k][ch];
+    int const use_fwd = (val < 1.) == (fwd != 0);
+    int i;
+    if (val == 1.) return;
+    for (i = 0; i < 3; i++) {
+        if (ch < 3 && i != ch) continue;
+        p[i] = use_fwd ? alwan_gt_hs_fwd(r->hs_x[k][ch], r->hs_y[k][ch], r->hs_m[k][ch], p[i])
+                       : alwan_gt_hs_rev(r->hs_x[k][ch], r->hs_y[k][ch], r->hs_m[k][ch], p[i]);
+    }
+}
+
+static void alwan_gt_wbz(alwan_gt_render const *r, int k, int ch, double *p, int fwd) {
+    int i;
+    for (i = 0; i < 3; i++) {
+        if (ch < 3 && i != ch) continue;
+        p[i] = alwan_gt_wb(r, k, ch, p[i], fwd);
+    }
+}
+
+/* OCIO's LogLinConstants, float as OCIO has them. */
+#define ALWAN_GT_XBRK ((double)0.0041318374739483946f)
+#define ALWAN_GT_SHIFT ((double)-0.000157849851665374f)
+#define ALWAN_GT_GAIN ((double)363.034608563f)
+
+static double alwan_gt_linlog(double x) {
+    double const m = (double)(1.f / (0.18f + -0.000157849851665374f));
+    return x < ALWAN_GT_XBRK ? x * ALWAN_GT_GAIN + -7.0 : log2((x + ALWAN_GT_SHIFT) * m);
+}
+
+static double alwan_gt_loglin(double y) {
+    return y < -5.5 ? (y - -7.0) / ALWAN_GT_GAIN
+                    : pow(2.0, y) * (double)(0.18f + -0.000157849851665374f) - ALWAN_GT_SHIFT;
+}
+
+static void alwan_gt_pixel(double *p, alwan_gt_render const *r) {
+    int ch, i;
+    if (r->identity) return;
+    if (r->style == ALWAN_GRADING_LIN) for (i = 0; i < 3; i++) p[i] = alwan_gt_linlog(p[i]);
+    if (!r->inverse) {
+        for (ch = 0; ch < 4; ch++) alwan_gt_mids(r, ch, p, 1);
+        for (ch = 0; ch < 4; ch++) alwan_gt_hs(r, 0, ch, p, 1);
+        for (ch = 0; ch < 4; ch++) alwan_gt_wbz(r, 0, ch, p, 1);
+        for (ch = 0; ch < 4; ch++) alwan_gt_hs(r, 1, ch, p, 1);
+        for (ch = 0; ch < 4; ch++) alwan_gt_wbz(r, 1, ch, p, 1);
+        if (r->sc != 1.) for (i = 0; i < 3; i++) p[i] = alwan_gt_sc(r, p[i], 1);
+    } else {
+        static int const order[4] = { ALWAN_GT_M, ALWAN_GT_R, ALWAN_GT_G, ALWAN_GT_B };
+        if (r->sc != 1.) for (i = 0; i < 3; i++) p[i] = alwan_gt_sc(r, p[i], 0);
+        for (ch = 0; ch < 4; ch++) alwan_gt_wbz(r, 1, order[ch], p, 0);
+        for (ch = 0; ch < 4; ch++) alwan_gt_hs(r, 1, order[ch], p, 0);
+        for (ch = 0; ch < 4; ch++) alwan_gt_wbz(r, 0, order[ch], p, 0);
+        for (ch = 0; ch < 4; ch++) alwan_gt_hs(r, 0, order[ch], p, 0);
+        for (ch = 0; ch < 4; ch++) alwan_gt_mids(r, order[ch], p, 0);
+    }
+    if (r->style == ALWAN_GRADING_LIN) for (i = 0; i < 3; i++) p[i] = alwan_gt_loglin(p[i]);
+    for (i = 0; i < 3; i++) p[i] = 65504.0 < p[i] ? 65504.0 : p[i];   /* std::min: a NaN passes */
+}
+
 #if ALWAN_WITH_F64_FACADE
 alwan_status alwan_grading_primary_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
                                              alwan_grading_style style, alwan_grading_primary const *params,
@@ -263,6 +779,42 @@ alwan_status alwan_grading_primary_f64_map_interleave(alwan_f64 *out, size_t out
         double p[3];
         p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
         alwan_gp_pixel(p, &r);
+        d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_tone_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in,
+                                          alwan_grading_style style, alwan_grading_tone const *params,
+                                          int inverse) {
+    alwan_gt_render r;
+    double p[3];
+    alwan_status st;
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    st = alwan_gt_prepare(&r, style, params, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
+    alwan_gt_pixel(p, &r);
+    rgb_out->r = (alwan_f64)p[0]; rgb_out->g = (alwan_f64)p[1]; rgb_out->b = (alwan_f64)p[2];
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_tone_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
+                                                   size_t in_stride, size_t count, alwan_grading_style style,
+                                                   alwan_grading_tone const *params, int inverse) {
+    alwan_gt_render r;
+    alwan_status st;
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (out_stride < 3 * sizeof(alwan_f64) || in_stride < 3 * sizeof(alwan_f64)) return ALWAN_E_INVALID;
+    st = alwan_gt_prepare(&r, style, params, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        alwan_f64 const *s = (alwan_f64 const *)((char const *)in + i * in_stride);
+        alwan_f64 *d = (alwan_f64 *)((char *)out + i * out_stride);
+        double p[3];
+        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
+        alwan_gt_pixel(p, &r);
         d[0] = (alwan_f64)p[0]; d[1] = (alwan_f64)p[1]; d[2] = (alwan_f64)p[2];
     }
     return ALWAN_OK;
@@ -301,6 +853,42 @@ alwan_status alwan_grading_primary_f32_map_interleave(alwan_f32 *out, size_t out
         double p[3];
         p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
         alwan_gp_pixel(p, &r);
+        d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_tone_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
+                                          alwan_grading_style style, alwan_grading_tone const *params,
+                                          int inverse) {
+    alwan_gt_render r;
+    double p[3];
+    alwan_status st;
+    if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+    st = alwan_gt_prepare(&r, style, params, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    p[0] = (double)rgb_in->r; p[1] = (double)rgb_in->g; p[2] = (double)rgb_in->b;
+    alwan_gt_pixel(p, &r);
+    rgb_out->r = (alwan_f32)p[0]; rgb_out->g = (alwan_f32)p[1]; rgb_out->b = (alwan_f32)p[2];
+    return ALWAN_OK;
+}
+
+alwan_status alwan_grading_tone_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
+                                                   size_t in_stride, size_t count, alwan_grading_style style,
+                                                   alwan_grading_tone const *params, int inverse) {
+    alwan_gt_render r;
+    alwan_status st;
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (out_stride < 3 * sizeof(alwan_f32) || in_stride < 3 * sizeof(alwan_f32)) return ALWAN_E_INVALID;
+    st = alwan_gt_prepare(&r, style, params, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        alwan_f32 const *s = (alwan_f32 const *)((char const *)in + i * in_stride);
+        alwan_f32 *d = (alwan_f32 *)((char *)out + i * out_stride);
+        double p[3];
+        p[0] = (double)s[0]; p[1] = (double)s[1]; p[2] = (double)s[2];
+        alwan_gt_pixel(p, &r);
         d[0] = (alwan_f32)p[0]; d[1] = (alwan_f32)p[1]; d[2] = (alwan_f32)p[2];
     }
     return ALWAN_OK;
