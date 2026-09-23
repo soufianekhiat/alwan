@@ -541,6 +541,12 @@ The data is one channel of 8-bit (256 bins) or 16-bit (65536 bins) values. For a
 image, equalise a lightness channel (CIELAB L*, Oklab L, or luma) and rebuild the colour
 from it; equalising R, G and B apart shifts hues.
 
+The clip level is counted per bin: `(int)(clip_limit * tile_area / bins)`, at least 1.
+With 65536 bins, a tile of fewer than `65536 / clip_limit` pixels clips at one count
+whatever `clip_limit` says, so on 16-bit data clip limits of 2 and 4 give the same image
+unless the tiles are large. OpenCV behaves the same way. For photographic clip limits on
+an image of ordinary size, equalise an 8-bit lightness channel.
+
 The functions reproduce OpenCV's `cv::createCLAHE` bit for bit, and suite 197 holds every
 pixel of ten cases equal. An image that does not divide into tiles is extended at the
 bottom and right by reflection, by `tiles - size % tiles` in each direction, so an image

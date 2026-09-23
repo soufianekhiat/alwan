@@ -2209,9 +2209,12 @@ alwan_status alwan_fast_global_smoother_f64(alwan_f64 *out, size_t out_row_strid
  * adaptive equalisation).
  *
  * One channel of 8-bit (256 bins) or 16-bit (65536 bins) data, rows at the given byte
- * strides; to equalise a colour image, run it on a lightness channel. It reproduces
- * OpenCV's cv::createCLAHE bit for bit, including its padding of an image that does not
- * divide into tiles. out may be src. ALWAN_E_INVALID for a NULL, a zero size or tile
+ * strides; to equalise a colour image, run it on a lightness channel. The clip level is
+ * counted per bin, (int)(clip_limit * tile_area / bins) and at least 1, so with 65536
+ * bins a tile of fewer than 65536 / clip_limit pixels clips at one count whatever the
+ * limit: 16-bit data needs large tiles (or clip_limit in the thousands) for the limit to
+ * matter. It reproduces OpenCV's cv::createCLAHE bit for bit, including its padding of an
+ * image that does not divide into tiles. out may be src. ALWAN_E_INVALID for a NULL, a zero size or tile
  * count, or a stride too small; ALWAN_E_RANGE for a NaN or huge clip_limit, more than
  * 4096 tiles, or tiles too large to count. Suite 197. */
 alwan_status alwan_clahe_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit);
