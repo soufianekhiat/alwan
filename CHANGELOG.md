@@ -438,11 +438,6 @@
   Fatemi model, channel by channel, as scikit-image's `denoise_tv_chambolle` computes it;
   suite 200 agrees with scikit-image exactly in f64.
 
-- **Exposure fusion: `alwan_exposure_fusion`.** Mertens et al. 2007, a bracket blended into
-  one picture by contrast, saturation and well-exposedness through Laplacian pyramids, as
-  OpenCV's `cv::MergeMertens` computes it; suite 199 agrees with OpenCV to 1.5e-6, and a
-  neutral bracket fuses to its exact average where OpenCV's float rounding decides.
-
 - **The local Laplacian filter: `alwan_local_laplacian_filter`.** Paris et al. 2011 in the
   fast form of Aubry et al. 2014: detail boost or smoothing and tonal range compression
   without halos, following MATLAB's `locallapfilt`; suite 198 agrees with MATLAB to 1.5e-6.
@@ -2056,7 +2051,7 @@
   spaced exposures: 1/2 stop apart it merges to 0.009 stops, 3 stops apart it
   leaves a half-stop sawtooth that Debevec's smoothness term avoids.
 
-- **Exposure fusion.** `alwan_exposure_fusion_mertens2007_{T}` fuses a bracket of
+- **Exposure fusion.** `alwan_exposure_fusion_{T}` (method `ALWAN_EXPOSURE_FUSION_MERTENS2007`) fuses a bracket of
   display-encoded pictures into one, Mertens, Kautz and Van Reeth 2007: contrast,
   saturation and well-exposedness weights, blended through Laplacian pyramids.
   Native in both precisions. With OpenCV's borders and weighting, it matches

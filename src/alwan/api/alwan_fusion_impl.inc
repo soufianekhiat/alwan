@@ -145,11 +145,13 @@ static void ALWAN_CORE_FN(fu_weights)(ALWAN_CORE_T *wt, ALWAN_CORE_T const *img,
             ALWAN_CORE_T const g = gray[y * w + x];
             ALWAN_CORE_T const lap = gray[yu * w + x] + gray[y * w + xl] + gray[y * w + xr] + gray[yd * w + x]
                                    - g * ALWAN_CORE_LITERAL(4.0);
-            ALWAN_CORE_T const mean = (v[0] + v[1] + v[2]) / third;
-            ALWAN_CORE_T const d0 = v[0] - mean, d1 = v[1] - mean, d2 = v[2] - mean;
+            /* sum (v_c - mean)^2 from pairwise differences, exactly 0 on a neutral pixel,
+             * where (v + v + v) / 3 need not give back v: a bracket neutral in every
+             * exposure then ties at the 1e-12 floor and fuses to its plain average */
+            ALWAN_CORE_T const d01 = v[0] - v[1], d12 = v[1] - v[2], d20 = v[2] - v[0];
             ALWAN_CORE_T const e0 = v[0] - half, e1 = v[1] - half, e2 = v[2] - half;
             ALWAN_CORE_T const contrast = ALWAN_CORE_ABS(lap);
-            ALWAN_CORE_T const saturation = ALWAN_CORE_SQRT(d0 * d0 + d1 * d1 + d2 * d2);
+            ALWAN_CORE_T const saturation = ALWAN_CORE_SQRT((d01 * d01 + d12 * d12 + d20 * d20) / third);
             ALWAN_CORE_T const well = ALWAN_CORE_EXP(-(e0 * e0) / two_sigma2) * ALWAN_CORE_EXP(-(e1 * e1) / two_sigma2)
                                     * ALWAN_CORE_EXP(-(e2 * e2) / two_sigma2);
             wt[y * w + x] = ALWAN_CORE_FN(fu_raise)(contrast, expo[0], (ignore & ALWAN_FUSION_IGNORE_CONTRAST) != 0u)
@@ -168,11 +170,11 @@ static void ALWAN_CORE_FN(fu_load)(ALWAN_CORE_T *dst, ALWAN_CORE_T const *src, s
     }
 }
 
-alwan_status ALWAN_CORE_FNLIT(alwan_exposure_fusion_mertens2007)(ALWAN_CORE_T *rgb_out, size_t out_row_stride,
-                                                                 ALWAN_CORE_T const *const *images,
-                                                                 size_t in_row_stride, size_t image_count,
-                                                                 size_t width, size_t height,
-                                                                 alwan_exposure_fusion_params const *params) {
+alwan_status ALWAN_CORE_FNLIT(alwan_exposure_fusion)(ALWAN_CORE_T *rgb_out, size_t out_row_stride,
+                                                     ALWAN_CORE_T const *const *images, size_t in_row_stride,
+                                                     size_t image_count, size_t width, size_t height,
+                                                     alwan_exposure_fusion_method method,
+                                                     alwan_exposure_fusion_params const *params) {
     alwan_exposure_fusion_params const zero = { 0 };
     alwan_exposure_fusion_params const *pr = params ? params : &zero;
     size_t const n = width * height;
@@ -182,6 +184,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_exposure_fusion_mertens2007)(ALWAN_CORE_T *r
     ALWAN_CORE_T *buf, *res, *pyr, *wpyr, *wsum, *wcur, *gray, *ta, *tb;
 
     if (!rgb_out || !images || image_count == 0 || width == 0 || height == 0) return ALWAN_E_INVALID;
+    if (method != ALWAN_EXPOSURE_FUSION_MERTENS2007) return ALWAN_E_INVALID;
     if (n / width != height || n > ((size_t)-1) / (32u * sizeof(ALWAN_CORE_T))) return ALWAN_E_INVALID;
     for (i = 0; i < image_count; i++) {
         if (!images[i]) return ALWAN_E_INVALID;

@@ -799,9 +799,9 @@ returns `ALWAN_E_RANGE`.
 
 ```c
 alwan_f64 const *images[3] = { under, metered, over };   /* display-encoded RGB */
-alwan_exposure_fusion_mertens2007_f64(fused, 3 * width * sizeof(alwan_f64),
+alwan_exposure_fusion_f64(fused, 3 * width * sizeof(alwan_f64),
                                       images, 3 * width * sizeof(alwan_f64), 3,
-                                      width, height, NULL);
+                                      width, height, ALWAN_EXPOSURE_FUSION_MERTENS2007, NULL);
 ```
 
 Mertens, Kautz and Van Reeth 2007. Where merging recovers radiance and still needs a

@@ -140,7 +140,6 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_fast_global_smoother.c
   src/alwan/api/alwan_clahe.c
   src/alwan/api/alwan_local_laplacian.c
-  src/alwan/api/alwan_exposure_fusion.c
   src/alwan/api/alwan_denoise.c
   src/alwan/api/alwan_colorspace.c
   src/alwan/map/alwan_color_correction_map.c
