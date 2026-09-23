@@ -547,6 +547,47 @@ whatever `clip_limit` says, so on 16-bit data clip limits of 2 and 4 give the sa
 unless the tiles are large. OpenCV behaves the same way. For photographic clip limits on
 an image of ordinary size, equalise an 8-bit lightness channel.
 
+## Detail and tone without halos: the local Laplacian filter
+
+```c
+typedef enum { ALWAN_LLF_LUMINANCE = 0, ALWAN_LLF_SEPARATE = 1 } alwan_llf_color_mode;
+
+alwan_status alwan_local_laplacian_filter_{T}(alwan_{T} *out, size_t out_row_stride,
+                                              alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                              size_t width, size_t height,
+                                              alwan_{T} sigma, alwan_{T} alpha, alwan_{T} beta,
+                                              size_t intensity_levels, alwan_llf_color_mode mode);
+```
+
+Paris, Hasinoff and Kautz (SIGGRAPH 2011) build the output's Laplacian pyramid one
+coefficient at a time, each from a copy of the image remapped around that pixel's own value
+`g0`. A difference `d` from `g0` up to `sigma` is detail and becomes
+`sigma (|d| / sigma)^alpha`; a larger one is an edge and becomes `beta (|d| - sigma) + sigma`.
+Because the pyramid, not a blur, separates the two, edges keep their shape and nothing
+halos.
+
+| Setting | Effect |
+|---|---|
+| `alpha` < 1 | more local detail, the "clarity" or texture look |
+| `alpha` > 1 | smoother detail, a skin or noise softener |
+| `beta` < 1 | compressed tonal range, a tone mapper that keeps detail |
+| `sigma` | the size of a difference that still counts as detail, in the data's units |
+
+With `alpha` < 1, differences under 0.01 are blended back to the identity so that grain
+is not amplified; that level is in the data's units, so scale an image to 0..1 before
+boosting its detail. This uses the fast form of Aubry et al. (ACM TOG 2014): the image is
+remapped at `intensity_levels` values across its range and the pyramids are blended per
+pixel. `0` picks MATLAB's count from `alpha`, 16 at `alpha` 0.9 and above, rising to 50
+below 0.1.
+
+`ALWAN_LLF_LUMINANCE` filters the luma of a three-channel image and scales the channels
+by it, which keeps their ratios and so the hues; `ALWAN_LLF_SEPARATE` filters each channel.
+The filter follows MATLAB's `locallapfilt`. Its compiled pyramid, remap and blend steps
+were read by probing them (the kernel `[.05 .25 .4 .25 .05]`, half-sample symmetric
+borders, `floor(log2(min(w, h))) + 1` levels, linear weights between intensity levels).
+Suite 198 agrees with MATLAB to 1.5e-6 over eight cases, the size of MATLAB's single
+precision. `out` may alias `src`.
+
 The functions reproduce OpenCV's `cv::createCLAHE` bit for bit, and suite 197 holds every
 pixel of ten cases equal. An image that does not divide into tiles is extended at the
 bottom and right by reflection, by `tiles - size % tiles` in each direction, so an image

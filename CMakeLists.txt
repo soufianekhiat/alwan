@@ -139,6 +139,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_domain_transform.c
   src/alwan/api/alwan_fast_global_smoother.c
   src/alwan/api/alwan_clahe.c
+  src/alwan/api/alwan_local_laplacian.c
   src/alwan/api/alwan_colorspace.c
   src/alwan/map/alwan_color_correction_map.c
   src/alwan/map/alwan_colorspace_map.c

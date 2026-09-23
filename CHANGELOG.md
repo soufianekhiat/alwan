@@ -427,6 +427,10 @@
 
 ### Added
 
+- **The local Laplacian filter: `alwan_local_laplacian_filter`.** Paris et al. 2011 in the
+  fast form of Aubry et al. 2014: detail boost or smoothing and tonal range compression
+  without halos, following MATLAB's `locallapfilt`; suite 198 agrees with MATLAB to 1.5e-6.
+
 - **CLAHE: `alwan_clahe_u8`, `alwan_clahe_u16`.** Contrast-limited adaptive histogram
   equalisation on 8-bit and 16-bit single-channel images, reproducing OpenCV's
   `cv::createCLAHE` bit for bit (suite 197), padding of non-dividing sizes included.

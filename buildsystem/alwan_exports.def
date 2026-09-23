@@ -1198,6 +1198,8 @@ EXPORTS
     alwan_llab_forward_f32_map_interleave
     alwan_llab_forward_f64
     alwan_llab_forward_f64_map_interleave
+    alwan_local_laplacian_filter_f32
+    alwan_local_laplacian_filter_f64
     alwan_luminance_from_lightness_f32
     alwan_luminance_from_lightness_f64
     alwan_luminance_from_munsell_value_f32

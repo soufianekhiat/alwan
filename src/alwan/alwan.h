@@ -2220,6 +2220,34 @@ alwan_status alwan_fast_global_smoother_f64(alwan_f64 *out, size_t out_row_strid
 alwan_status alwan_clahe_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit);
 alwan_status alwan_clahe_u16(unsigned short *out, size_t out_row_stride, unsigned short const *src, size_t src_row_stride, size_t width, size_t height, size_t tiles_x, size_t tiles_y, double clip_limit);
 
+/* The local Laplacian filter (Paris, Hasinoff and Kautz, SIGGRAPH 2011; the fast form of
+ * Aubry et al., ACM TOG 2014): edge-aware detail and tone manipulation without halos.
+ * Around every pixel's own value g0, differences up to sigma are treated as detail and
+ * raised to alpha (alpha < 1 adds detail, the "clarity" look; alpha > 1 smooths it), and
+ * larger differences as edges scaled by beta (beta < 1 compresses the tonal range, a tone
+ * mapper; beta > 1 expands it). sigma is in the data's units (0.1 to 0.4 on display-encoded
+ * values in 0..1). With alpha < 1, differences under 0.01 (the paper's noise level, in the
+ * data's units) are left alone, so grain is not amplified. intensity_levels is the number of remapped copies blended per pixel; 0
+ * picks MATLAB's count from alpha (16 to 50).
+ *
+ *   ALWAN_LLF_LUMINANCE  3 channels: filter the luma 0.2989 R + 0.5870 G + 0.1140 B and
+ *                        scale the channels by it, keeping their ratios (1 channel: as is)
+ *   ALWAN_LLF_SEPARATE   filter each of 1 to 4 channels on its own
+ *
+ * Pixels are `channels` values at the given row byte strides; out may be src. It follows
+ * MATLAB's locallapfilt (whose pyramid, remapping and blending were read by probing its
+ * builtins), in double where MATLAB works in single. ALWAN_E_INVALID for a NULL, a zero
+ * size, a channel count or mode out of range, a stride too small or a non-finite value;
+ * ALWAN_E_RANGE for a negative sigma or beta, alpha not above 0, or intensity_levels above
+ * 1000. Suite 198. */
+typedef enum {
+    ALWAN_LLF_LUMINANCE = 0,
+    ALWAN_LLF_SEPARATE = 1
+} alwan_llf_color_mode;
+
+alwan_status alwan_local_laplacian_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 sigma, alwan_f32 alpha, alwan_f32 beta, size_t intensity_levels, alwan_llf_color_mode mode);
+alwan_status alwan_local_laplacian_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 sigma, alwan_f64 alpha, alwan_f64 beta, size_t intensity_levels, alwan_llf_color_mode mode);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every
