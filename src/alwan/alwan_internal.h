@@ -47,6 +47,14 @@ alwan_status alwan__dt_run(void *out, size_t out_row_stride, void const *src, si
 alwan_status alwan__fgs_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
                             void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
                             double lambda, double sigma_color, double attenuation, size_t iterations, int is_f32);
+/* alwan_l0_smooth.c: ALWAN_EDGE_FILTER_L0_SMOOTH */
+alwan_status alwan__l0_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                           double lambda, double kappa, int is_f32);
+/* alwan_fft.c: a DFT of any length in double, in place; the inverse is not scaled */
+typedef struct alwan__fft alwan__fft;
+alwan__fft *alwan__fft_create(size_t n);
+void alwan__fft_destroy(alwan__fft *f);
+void alwan__fft_run(alwan__fft const *f, double *re, double *im, int inverse);
 
 /* Local contrast workers (api/alwan_clahe.c, alwan_local_laplacian.c), behind
  * alwan_local_contrast. CLAHE: one channel of 8-bit (is16 0) or 16-bit data. The local

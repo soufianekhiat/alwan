@@ -461,6 +461,10 @@
   OpenCV's, 7.7e-7), the domain transform in its NC and RF modes (Gastal and Oliveira 2011,
   suite 195, 1.9e-6 and 1.5e-7) and the fast global smoother (Min et al. 2014, suite 196,
   7.8e-6), each following its OpenCV ximgproc function. A NULL guide is the source itself.
+  `ALWAN_EDGE_FILTER_L0_SMOOTH` adds L0 gradient minimisation (Xu et al. 2011), periodic
+  and solved in the DFT domain by a new internal transform of any length (radix-2 and
+  Bluestein), against the authors' MATLAB code to 3.3e-12 (suite 213); `kappa` joins the
+  params.
 
 - **Local contrast: `alwan_local_contrast`.** One entry point per data type (float,
   8-bit, 16-bit) with a method enum: the local Laplacian filter (Paris et al. 2011, the fast

@@ -2165,6 +2165,11 @@ alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_
  *   ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER Min et al., IEEE TIP 2014: weighted least squares
  *                                          solved row by row and column by column
  *                                          (ximgproc::fastGlobalSmootherFilter)
+ *   ALWAN_EDGE_FILTER_L0_SMOOTH            Xu, Lu, Xu and Jia, SIGGRAPH Asia 2011: L0
+ *                                          gradient minimisation, flat regions with sharp
+ *                                          steps between them; the image treated as
+ *                                          periodic, solved by 2D DFTs; the guide is not
+ *                                          used (the authors' MATLAB code, suite 213)
  *
  * src has src_channels (1 to 4) values a pixel and the guide guide_channels (1 to 4; 1 or
  * 3 for GUIDED), rows at the given byte strides; out has src's layout and may be src.
@@ -2173,7 +2178,8 @@ alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_
  * 4.8e-7 with the colour Gaussian evaluated exactly where OpenCV reads a 4096-bin table,
  * ROLLING_GUIDANCE (from the source) to 7.7e-7 (suite 194), DOMAIN_TRANSFORM to 1.9e-6 (NC)
  * and 1.5e-7 (RF) (suite 195), FAST_GLOBAL_SMOOTHER to 7.8e-6, its guide in any units where
- * OpenCV takes 8 bits (suite 196). ALWAN_E_INVALID for a NULL, a zero size, a channel count
+ * OpenCV takes 8 bits (suite 196), L0_SMOOTH to the authors' code in double (suite 213).
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count
  * out of range, a stride too small, a non-finite value or an unknown method; ALWAN_E_RANGE
  * for a parameter out of its method's range. */
 typedef enum {
@@ -2182,7 +2188,8 @@ typedef enum {
     ALWAN_EDGE_FILTER_ROLLING_GUIDANCE = 2,
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_NC = 3,
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_RF = 4,
-    ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5
+    ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5,
+    ALWAN_EDGE_FILTER_L0_SMOOTH = 6
 } alwan_edge_filter_method;
 
 alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f32 const *params);

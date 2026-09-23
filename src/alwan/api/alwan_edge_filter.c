@@ -5,7 +5,8 @@
  *
  * alwan_edge_filter_{T}: the edge-aware smoothing filters behind one entry point. Each
  * method's worker lives with its own references in api/alwan_guided_filter.c,
- * alwan_bilateral.c, alwan_domain_transform.c and alwan_fast_global_smoother.c; this file
+ * alwan_bilateral.c, alwan_domain_transform.c, alwan_fast_global_smoother.c and
+ * alwan_l0_smooth.c; this file
  * resolves the defaults of alwan_edge_filter_params_{T} and routes.
  */
 
@@ -15,7 +16,7 @@
 
 typedef struct {
     size_t radius, iterations;
-    double eps, sigma_color, sigma_space, lambda, attenuation;
+    double eps, sigma_color, sigma_space, lambda, attenuation, kappa;
     int start_from_source;
 } alwan_ef_resolved;
 
@@ -54,6 +55,9 @@ static alwan_status alwan_ef_route(void *out, size_t out_rs, void const *src, si
         return alwan__fgs_run(out, out_rs, src, src_rs, sch, guide, guide_rs, gch, w, h, alwan_ef_or(p->lambda, 900.0),
                               alwan_ef_or(p->sigma_color, 0.03), alwan_ef_or(p->attenuation, 0.25),
                               p->iterations == 0 ? 3 : p->iterations, is_f32);
+    case ALWAN_EDGE_FILTER_L0_SMOOTH: /* the guide is not used */
+        return alwan__l0_run(out, out_rs, src, src_rs, sch, w, h, alwan_ef_or(p->lambda, 0.02), alwan_ef_or(p->kappa, 2.0),
+                             is_f32);
     default:
         return ALWAN_E_INVALID;
     }
@@ -74,6 +78,7 @@ alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_
         r.lambda = (double)params->lambda;
         r.attenuation = (double)params->lambda_attenuation;
         r.start_from_source = params->start_from_source;
+        r.kappa = (double)params->kappa;
     }
     return alwan_ef_route(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
                           guide_channels, width, height, method, &r, 0);
@@ -95,6 +100,7 @@ alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_
         r.lambda = (double)params->lambda;
         r.attenuation = (double)params->lambda_attenuation;
         r.start_from_source = params->start_from_source;
+        r.kappa = (double)params->kappa;
     }
     return alwan_ef_route(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
                           guide_channels, width, height, method, &r, 1);

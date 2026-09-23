@@ -178,12 +178,14 @@ typedef struct {
                                   * FAST_GLOBAL_SMOOTHER (Euclidean): 0 reads as 0.03 */
     ALWAN_T sigma_space;         /* JOINT_BILATERAL, ROLLING_GUIDANCE: spatial sigma, 0 reads as 3.
                                   * DOMAIN_TRANSFORM_*: 0 reads as 60 */
-    ALWAN_T lambda;              /* FAST_GLOBAL_SMOOTHER: smoothness weight; 0 reads as 900 */
+    ALWAN_T lambda;              /* FAST_GLOBAL_SMOOTHER: smoothness weight; 0 reads as 900.
+                                  * L0_SMOOTH: the price of a gradient, squared data units; 0 reads as 0.02 */
     ALWAN_T lambda_attenuation;  /* FAST_GLOBAL_SMOOTHER: lambda's factor per iteration; 0 reads as 0.25 */
     size_t iterations;           /* ROLLING_GUIDANCE: 0 reads as 4. DOMAIN_TRANSFORM_*, FAST_GLOBAL_SMOOTHER:
                                   * 0 reads as 3 */
     int start_from_source;       /* ROLLING_GUIDANCE: non-zero starts from the source (OpenCV's
                                   * rollingGuidanceFilter); 0 from its Gaussian (the paper) */
+    ALWAN_T kappa;               /* L0_SMOOTH: beta's factor per round, above 1; 0 reads as 2 */
 } ALWAN_TN(alwan_edge_filter_params);
 
 /* Parameters of the local tone mapping operators. A zero field is its default. */

@@ -16,7 +16,8 @@ typedef enum {
     ALWAN_EDGE_FILTER_ROLLING_GUIDANCE = 2,
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_NC = 3,
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_RF = 4,
-    ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5
+    ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5,
+    ALWAN_EDGE_FILTER_L0_SMOOTH = 6
 } alwan_edge_filter_method;
 
 alwan_status alwan_edge_filter_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -39,10 +40,11 @@ layout and may be `src`.
 | `eps` | `GUIDED` | 0.01 |
 | `sigma_color` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` / `FAST_GLOBAL_SMOOTHER` | 0.1 / 0.4 / 0.03 |
 | `sigma_space` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` | 3 / 60 |
-| `lambda` | `FAST_GLOBAL_SMOOTHER` | 900 |
+| `lambda` | `FAST_GLOBAL_SMOOTHER` / `L0_SMOOTH` | 900 / 0.02 |
 | `lambda_attenuation` | `FAST_GLOBAL_SMOOTHER` | 0.25 |
 | `iterations` | `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*`, `FAST_GLOBAL_SMOOTHER` | 4 / 3 |
 | `start_from_source` | `ROLLING_GUIDANCE` | 0: start from the source's Gaussian (the paper) |
+| `kappa` | `L0_SMOOTH` | 2 (above 1) |
 
 The defaults are each paper's settings for values in 0..1.
 
@@ -123,6 +125,37 @@ units. OpenCV's `ximgproc::fastGlobalSmootherFilter` takes an 8-bit guide and
 Suite 196 does that and agrees with OpenCV to 7.8e-6 at `lambda` 1000 and 4.5e-7 at
 `lambda` 10, the difference being OpenCV's float solve; a constant source stays constant to
 1e-14.
+
+### `L0_SMOOTH`
+
+Xu, Lu, Xu and Jia (SIGGRAPH Asia 2011) minimise `sum (S - I)^2 + lambda #{p : grad S(p) != 0}`:
+the price is the number of pixels where the result changes at all, not how much it
+changes. The result is flat inside regions and steps between them at the edges strong
+enough to pay for themselves, which is the look of structure extraction, clip-art
+vectorisation and edge-preserving stylisation. `lambda` sets the price, in squared data
+units: 0.02 on values in 0..1 is the paper's, larger merges more.
+
+It is solved by half-quadratic splitting. Auxiliary gradients `(h, v)` stand in for `S`'s
+forward differences; each round keeps them where their squared magnitude, summed over the
+channels, reaches `lambda / beta` and zeroes them elsewhere, then solves for `S` given
+them. `beta` starts at `2 lambda` and grows by `kappa` until it reaches 1e5, about 22 rounds
+at `kappa` 2; a smaller `kappa` takes more rounds and gives sharper steps. The first
+round's threshold is 0.5 whatever `lambda` is, so a step of less than `sqrt(0.5)` is
+flattened there and has to be rebuilt by later rounds.
+
+The image is treated as periodic, as the paper and its code do: differences wrap from the
+last column to the first, and the `S` step is a division in the 2D DFT domain, two
+transforms per channel a round. The transform is alwan's own, radix-2 for powers of two and
+Bluestein's chirp-z for any other size, in double. The guide is not used. The result is not
+clamped.
+
+Suite 213 runs the authors' `L0Smoothing.m` in MATLAB (fetched into gendata's cache and
+checked against its hash; it is distributed for non-commercial use, so nothing of it is in
+alwan) on grey and colour images of power-of-two and other sizes, a 13 x 7 image and linear
+values past 1, and agrees to 3.3e-12. OpenCV's `ximgproc::l0Smooth` solves the same periodic
+system but takes the gradients with replicated and reflected borders that do not match it,
+and works in float32, where a hard threshold can decide a region differently; it is not the
+reference here.
 
 ## Denoising
 
