@@ -2090,6 +2090,8 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  *                              Image.quantize(method=MEDIANCUT) computes it
  *   ALWAN_QUANTIZE_FAST_OCTREE a two-level octree, as Pillow's
  *                              Image.quantize(method=FASTOCTREE) computes it
+ *   ALWAN_QUANTIZE_MAX_COVERAGE farthest-point sampling of the distinct colours, as
+ *                              Pillow's Image.quantize(method=MAXCOVERAGE) computes it
  *
  * MEDIAN_CUT: the distinct colours of count 8-bit
  * RGB pixels (pixel_stride bytes apart, at least 3) are split into at most max_colors
@@ -2115,10 +2117,19 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  * (Pillow maps them to entry 0). count_out counts entries that hold pixels, where
  * Pillow pads to max_colors with black. Suite 207 holds it to Pillow.
  *
+ * MAX_COVERAGE: the first entry is the distinct colour farthest from the mean pixel,
+ * each next one the colour farthest from its nearest entry so far, in squared RGB
+ * distance, ties to the first colour in the order Pillow's hash table walks them (which
+ * is reproduced); pixels map to the nearest entry. Entries are image colours, so the
+ * extremes are kept and the bulk of the image is served by few entries. count_out
+ * stops at the number of distinct colours, where Pillow repeats one. Suite 208 holds
+ * palette and index map to Pillow exactly.
+ *
  * An unknown method is ALWAN_E_INVALID. */
 typedef enum {
     ALWAN_QUANTIZE_MEDIAN_CUT = 0,
-    ALWAN_QUANTIZE_FAST_OCTREE = 1
+    ALWAN_QUANTIZE_FAST_OCTREE = 1,
+    ALWAN_QUANTIZE_MAX_COVERAGE = 2
 } alwan_quantize_method;
 
 alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors, alwan_quantize_method method);

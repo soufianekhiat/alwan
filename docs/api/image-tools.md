@@ -460,7 +460,8 @@ no bright neutral at all has no airlight to find and returns `ALWAN_E_RANGE`.
 ```c
 typedef enum {
     ALWAN_QUANTIZE_MEDIAN_CUT = 0,
-    ALWAN_QUANTIZE_FAST_OCTREE = 1
+    ALWAN_QUANTIZE_FAST_OCTREE = 1,
+    ALWAN_QUANTIZE_MAX_COVERAGE = 2
 } alwan_quantize_method;
 
 alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out,
@@ -527,6 +528,34 @@ images built so that no two occupied cells share a pixel count, where Pillow's r
 does not depend on its C library, at 12 to 256 colours; the pixels Pillow sends to
 entry 0 are checked to go to their nearest entry. On an SRIC crop, which ties, the
 error is Pillow's to two decimals, 3.64 at 256 colours and 5.07 at 64.
+
+### `MAX_COVERAGE`
+
+Farthest-point sampling of the image's distinct colours, as Pillow's
+`Image.quantize(method=MAXCOVERAGE)` computes it. The first entry is the colour farthest
+from the mean pixel (rounded per channel), and each next entry the colour farthest from
+its nearest entry so far, in squared RGB distance; pixels map to their nearest entry. The
+entries are colours of the image, and the extremes come first: a small palette covers the
+whole gamut of the image and leaves its bulk to few entries, the opposite trade from
+median cut.
+
+Squared distances are small integers and tie often, and Pillow keeps the first colour at
+the largest distance in the order its hash table walks them. That order is reproduced
+without a hash table: bucket `hash % L` for Pillow's pixel hash, then (r, g, b)
+ascending, as its chains are kept, where `L` is the table length Pillow reaches after that
+many distinct colours. Pillow grows the table with a `_findPrime` whose test reads
+`!start % t`, which is `(!start) % t`, so it never finds a factor; its lengths are
+reproduced as it computes them. The index map is Pillow's search, which finds the
+nearest entry and breaks ties by distance from entry 0, then by index.
+
+Two differences from Pillow: the mean is summed in 64 bits, where Pillow's 32-bit sums
+wrap above 16843009 pixels, and `count_out` stops at the number of distinct colours where
+Pillow repeats a colour up to `max_colors`.
+
+Suite 208 holds palette and index map to Pillow 12.0 exactly in twelve cases: the SRIC
+crop at 8 to 256 colours, the posterised gradient, four colours asked for 16, 12000
+random colours and a grey ramp. With the hash order replaced by plain colour order, ten
+of the twelve fail.
 
 ## The colour cube: a 3D histogram
 

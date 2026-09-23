@@ -63,6 +63,9 @@ alwan_status alwan__hm_run(void *out, size_t out_stride, void const *src, size_t
 /* alwan_quantize_octree.c: ALWAN_QUANTIZE_FAST_OCTREE of alwan_quantize_u8 */
 alwan_status alwan__quantize_octree(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
                                     unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors);
+/* alwan_quantize_max_coverage.c: ALWAN_QUANTIZE_MAX_COVERAGE of alwan_quantize_u8 */
+alwan_status alwan__quantize_max_coverage(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
+                                          unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors);
 
 /* Batch workers behind the CIECAM02 / CAM16 maps (api/alwan_cam_impl.inc): the
  * viewing-condition terms once, the scalar's _v core per pixel, bit-identical to

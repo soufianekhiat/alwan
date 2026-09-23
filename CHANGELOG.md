@@ -485,7 +485,10 @@
   (`method=FASTOCTREE`), exact to Pillow where no two colour cells tie on pixel count
   (suite 207). Tied cells are ordered by index, where Pillow's order depends on the C
   library's qsort, and a small palette's pixels without a coarse entry go to the nearest
-  entry instead of Pillow's entry 0.
+  entry instead of Pillow's entry 0. `ALWAN_QUANTIZE_MAX_COVERAGE` adds Pillow's
+  farthest-point method (`method=MAXCOVERAGE`), exact to Pillow in every case of suite
+  208, ties included: they follow the order Pillow's hash table walks the colours, which
+  is reproduced.
 
 - **OpenColorIO's GradingHueCurve: `alwan_grading` with `ALWAN_GRADING_HUE_CURVE`.** The eight
   hue-selective curves of OCIO's HSY space (hue to hue, saturation and luma; luma to
