@@ -2200,53 +2200,49 @@ typedef enum {
 alwan_status alwan_local_laplacian_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 sigma, alwan_f32 alpha, alwan_f32 beta, size_t intensity_levels, alwan_llf_color_mode mode);
 alwan_status alwan_local_laplacian_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 sigma, alwan_f64 alpha, alwan_f64 beta, size_t intensity_levels, alwan_llf_color_mode mode);
 
-/* Total-variation denoising (Chambolle 2004, the Rudin, Osher and Fatemi model): each
- * channel is replaced by the image u minimising sum (u - f)^2 / 2 + weight sum |grad u|,
- * found by Chambolle's dual fixed-point iterations. Flat regions go flat, edges stay
- * sharp, fine texture goes with the noise; a larger weight removes more (0.05 to 0.2 on
- * values in 0..1). The iterations stop when the energy changes by less than eps times its
- * first value (scikit-image's default 2e-4) or after max_iterations (200).
+/* Denoising. Each method removes noise its own way; they fail differently (see
+ * docs/api/image-tools.md).
  *
- * src has 1 to 4 channels, each denoised on its own, rows at the given byte strides; out
- * may be src. It follows scikit-image's denoise_tv_chambolle with channel_axis set,
- * including which iteration's image it returns. ALWAN_E_INVALID for a NULL, a zero size, a
- * channel count out of range, a stride too small or a non-finite value; ALWAN_E_RANGE for
- * weight not above 0, a negative eps, or max_iterations 0 or above 100000. Suite 200. */
-alwan_status alwan_denoise_tv_chambolle_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 weight, alwan_f32 eps, size_t max_iterations);
-alwan_status alwan_denoise_tv_chambolle_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 weight, alwan_f64 eps, size_t max_iterations);
+ *   ALWAN_DENOISE_TV_CHAMBOLLE           the Rudin, Osher and Fatemi model, sum (u - f)^2 / 2
+ *                                        + weight sum |grad u|, by Chambolle's 2004 dual
+ *                                        iterations; flat regions go flat, edges stay sharp
+ *                                        (scikit-image denoise_tv_chambolle, exact, suite 200)
+ *   ALWAN_DENOISE_NL_MEANS               Buades, Coll and Morel 2005: each pixel the mean of the
+ *                                        pixels whose surrounding patch looks like its own
+ *                                        (OpenCV fastNlMeansDenoising, bit for bit, suite 201)
+ *   ALWAN_DENOISE_ANISOTROPIC_DIFFUSION  Perona and Malik 1990: eight-neighbour diffusion that
+ *                                        slows across large differences (OpenCV
+ *                                        ximgproc::anisotropicDiffusion, bit for bit per
+ *                                        iteration, suite 202)
+ *
+ * alwan_denoise_u8 runs every method on 8-bit data (TV through double in 0..1, rounded
+ * back); alwan_denoise_{T} runs TV_CHAMBOLLE, and ALWAN_E_INVALID for the two methods whose
+ * references are 8-bit. src has 1 to 4 channels, each denoised on its own except that NL
+ * means and diffusion measure differences over all of them; rows at the given byte
+ * strides. out may be src, except for NL_MEANS. params NULL is every default. */
+typedef enum {
+    ALWAN_DENOISE_TV_CHAMBOLLE = 0,
+    ALWAN_DENOISE_NL_MEANS = 1,
+    ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2
+} alwan_denoise_method;
 
-/* Non-local means denoising (Buades, Coll and Morel, CVPR 2005) on 8-bit data: every
- * pixel becomes the weighted mean of the pixels in the search_window x search_window
- * window around it, each weighted by exp(-d / (h^2 channels)), d the mean squared
- * difference between the template_window x template_window patches around the two. Noise
- * averages away where structure repeats; h sets the strength (OpenCV suggests 10 for
- * clean detail, higher for more removal, in 0..255 units). OpenCV's defaults are template
- * 7 and search 21; even sizes are made odd by dropping one.
- *
- * 1 to 4 channels, one h for all, rows at the given byte strides. It reproduces OpenCV's
- * cv::fastNlMeansDenoising (NORM_L2) bit for bit. For a colour photograph, OpenCV's
- * fastNlMeansDenoisingColored runs this on CIELAB with a separate h for a and b; convert
- * first and denoise the channels you choose. out must not alias src. ALWAN_E_INVALID for a
- * NULL, a zero size, a channel count out of range or a stride too small; ALWAN_E_RANGE for
- * a negative or NaN h, a zero window, a template above 101 or a search above 201. Suite
- * 201. */
-alwan_status alwan_denoise_nl_means_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, double h, size_t template_window, size_t search_window);
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    double weight;          /* TV_CHAMBOLLE: fidelity against smoothness, values in 0..1; 0 reads as 0.1 */
+    double tolerance;       /* TV_CHAMBOLLE: stop when the energy changes by less than this times its first
+                             * value; 0 reads as 2e-4 (a tiny value runs every iteration) */
+    size_t iterations;      /* TV_CHAMBOLLE: at most, 0 reads as 200. ANISOTROPIC_DIFFUSION: 0 reads as 10 */
+    double h;               /* NL_MEANS: strength in 0..255 units; 0 reads as 10 */
+    size_t template_window; /* NL_MEANS: patch side, odd; 0 reads as 7 */
+    size_t search_window;   /* NL_MEANS: search side, odd; 0 reads as 21 */
+    double alpha;           /* ANISOTROPIC_DIFFUSION: step, 0.1 to 0.2 keeps it stable; 0 reads as 0.15 */
+    double k;               /* ANISOTROPIC_DIFFUSION: edge threshold, a fraction of full scale per channel;
+                             * 0 reads as 0.05 */
+} alwan_denoise_params;
 
-/* Anisotropic diffusion (Perona and Malik, IEEE PAMI 1990) on 8-bit data: `iterations`
- * steps, each moving every pixel toward its eight neighbours by alpha sum g(d) (I_n - I),
- * g(d) = exp(-(d / (k channels 255))^2), d the L1 difference over the channels. Noise and
- * fine texture diffuse, edges (differences well above k) stay. alpha is the step (0.1 to
- * 0.2 keeps it stable over eight neighbours), k the edge threshold as a fraction of full
- * scale per channel (0.02 to 0.1).
- *
- * 1 to 4 channels, rows at the given byte strides; out may be src. For three channels it
- * reproduces OpenCV's ximgproc::anisotropicDiffusion bit for bit for one iteration, and n
- * iterations equal n chained one-iteration calls; OpenCV's own multi-iteration loop reads
- * a border it never refreshes (and its table reads one past its end when black meets
- * white), where this does not. ALWAN_E_INVALID for a NULL, a zero
- * size, a channel count out of range or a stride too small; ALWAN_E_RANGE for alpha not
- * above 0, k 0, a NaN or huge value, or more than 100000 iterations. Suite 202. */
-alwan_status alwan_anisotropic_diffusion_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, double alpha, double k, size_t iterations);
+alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
+alwan_status alwan_denoise_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
+alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
 
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one

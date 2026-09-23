@@ -323,9 +323,9 @@ static long alwan_ad_round(float v) {
     return (long)f;
 }
 
-alwan_status alwan_anisotropic_diffusion_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src,
-                                            size_t src_row_stride, size_t channels, size_t width, size_t height,
-                                            double alpha, double k, size_t iterations) {
+static alwan_status alwan_ad_run(unsigned char *out, size_t out_row_stride, unsigned char const *src,
+                                 size_t src_row_stride, size_t channels, size_t width, size_t height, double alpha,
+                                 double k, size_t iterations) {
     size_t const ch = channels, w = width, h = height;
     size_t const pw = w + 2, ph = h + 2;
     float const af = (float)alpha;
@@ -397,27 +397,93 @@ alwan_status alwan_anisotropic_diffusion_u8(unsigned char *out, size_t out_row_s
     return ALWAN_OK;
 }
 
-alwan_status alwan_denoise_nl_means_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src,
-                                       size_t src_row_stride, size_t channels, size_t width, size_t height, double h,
-                                       size_t template_window, size_t search_window) {
-    return alwan_nlm_run(out, out_row_stride, src, src_row_stride, channels, width, height, h, template_window,
-                         search_window);
+/* ---- the family ---- */
+
+static double alwan_dn_or(double v, double def) {
+    return v == 0.0 ? def : v;
+}
+
+/* TV on 8-bit data: through double in 0..1, rounded back half to even (as the rest of the
+ * 8-bit paths here round). */
+static alwan_status alwan_tv_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src,
+                                size_t src_row_stride, size_t ch, size_t w, size_t h, double weight, double eps,
+                                size_t max_iter) {
+    size_t const n = w * h * ch;
+    double *buf;
+    size_t x, y;
+    alwan_status st;
+    if (!out || !src) return ALWAN_E_INVALID;
+    if (w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
+    if (src_row_stride / ch < w || out_row_stride / ch < w || n / w / ch != h) return ALWAN_E_INVALID;
+    buf = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
+    if (!buf) return ALWAN_E_NOMEM;
+    for (y = 0; y < h; y++) {
+        for (x = 0; x < w * ch; x++) buf[y * w * ch + x] = (double)src[y * src_row_stride + x] / 255.0;
+    }
+    st = alwan_tv_run(buf, w * ch * sizeof(double), buf, w * ch * sizeof(double), ch, w, h, weight, eps, max_iter, 0);
+    if (st == ALWAN_OK) {
+        for (y = 0; y < h; y++) {
+            for (x = 0; x < w * ch; x++) {
+                double v = buf[y * w * ch + x] * 255.0, f = floor(v);
+                double const d = v - f;
+                if (d > 0.5 || (d == 0.5 && fmod(f, 2.0) != 0.0)) f += 1.0;
+                out[y * out_row_stride + x] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
+            }
+        }
+    }
+    ALWAN_FREE(buf);
+    return st;
+}
+
+static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const *src, size_t src_row_stride,
+                                   size_t channels, size_t width, size_t height, alwan_denoise_method method,
+                                   alwan_denoise_params const *params, int is_f32) {
+    alwan_denoise_params const zero = { 0 };
+    alwan_denoise_params const *p = params ? params : &zero;
+    switch (method) {
+    case ALWAN_DENOISE_TV_CHAMBOLLE:
+        return alwan_tv_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->weight, 0.1),
+                            alwan_dn_or(p->tolerance, 2e-4), p->iterations == 0 ? 200 : p->iterations, is_f32);
+    case ALWAN_DENOISE_NL_MEANS:
+    case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION: /* 8-bit only, as their references are */
+    default:
+        return ALWAN_E_INVALID;
+    }
+}
+
+alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride,
+                              size_t channels, size_t width, size_t height, alwan_denoise_method method,
+                              alwan_denoise_params const *params) {
+    alwan_denoise_params const zero = { 0 };
+    alwan_denoise_params const *p = params ? params : &zero;
+    switch (method) {
+    case ALWAN_DENOISE_TV_CHAMBOLLE:
+        return alwan_tv_u8(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->weight, 0.1),
+                           alwan_dn_or(p->tolerance, 2e-4), p->iterations == 0 ? 200 : p->iterations);
+    case ALWAN_DENOISE_NL_MEANS:
+        return alwan_nlm_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->h, 10.0),
+                             p->template_window == 0 ? 7 : p->template_window,
+                             p->search_window == 0 ? 21 : p->search_window);
+    case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION:
+        return alwan_ad_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->alpha, 0.15),
+                            alwan_dn_or(p->k, 0.05), p->iterations == 0 ? 10 : p->iterations);
+    default:
+        return ALWAN_E_INVALID;
+    }
 }
 
 #if ALWAN_WITH_F64_FACADE
-alwan_status alwan_denoise_tv_chambolle_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src,
-                                            size_t src_row_stride, size_t channels, size_t width, size_t height,
-                                            alwan_f64 weight, alwan_f64 eps, size_t max_iterations) {
-    return alwan_tv_run(out, out_row_stride, src, src_row_stride, channels, width, height, (double)weight, (double)eps,
-                        max_iterations, 0);
+alwan_status alwan_denoise_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride,
+                               size_t channels, size_t width, size_t height, alwan_denoise_method method,
+                               alwan_denoise_params const *params) {
+    return alwan_dn_float(out, out_row_stride, src, src_row_stride, channels, width, height, method, params, 0);
 }
 #endif
 
 #if ALWAN_WITH_F32
-alwan_status alwan_denoise_tv_chambolle_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src,
-                                            size_t src_row_stride, size_t channels, size_t width, size_t height,
-                                            alwan_f32 weight, alwan_f32 eps, size_t max_iterations) {
-    return alwan_tv_run(out, out_row_stride, src, src_row_stride, channels, width, height, (double)weight, (double)eps,
-                        max_iterations, 1);
+alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride,
+                               size_t channels, size_t width, size_t height, alwan_denoise_method method,
+                               alwan_denoise_params const *params) {
+    return alwan_dn_float(out, out_row_stride, src, src_row_stride, channels, width, height, method, params, 1);
 }
 #endif

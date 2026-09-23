@@ -88,7 +88,6 @@ EXPORTS
     alwan_agx_f64_map_interleave
     alwan_agx_f64_map_planar
     alwan_agx_map_interleave_ex
-    alwan_anisotropic_diffusion_u8
     alwan_apca_contrast_f32
     alwan_apca_contrast_f64
     alwan_astm_e2022_weights_f32
@@ -589,9 +588,9 @@ EXPORTS
     alwan_delta_e_zcam_f32_map_interleave
     alwan_delta_e_zcam_f64
     alwan_delta_e_zcam_f64_map_interleave
-    alwan_denoise_nl_means_u8
-    alwan_denoise_tv_chambolle_f32
-    alwan_denoise_tv_chambolle_f64
+    alwan_denoise_f32
+    alwan_denoise_f64
+    alwan_denoise_u8
     alwan_destroy
     alwan_din99_to_lab_f32
     alwan_din99_to_lab_f32_map_interleave

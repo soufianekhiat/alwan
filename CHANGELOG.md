@@ -427,16 +427,11 @@
 
 ### Added
 
-- **Anisotropic diffusion: `alwan_anisotropic_diffusion_u8`.** Perona and Malik 1990 on 8-bit
-  data, bit for bit with OpenCV's `ximgproc::anisotropicDiffusion` per iteration (suite
-  202); OpenCV's own multi-iteration loop reads a border it never refreshes, this does not.
-
-- **Non-local means: `alwan_denoise_nl_means_u8`.** Buades et al. 2005 on 8-bit data of 1
-  to 4 channels, reproducing OpenCV's `cv::fastNlMeansDenoising` bit for bit (suite 201).
-
-- **TV denoising: `alwan_denoise_tv_chambolle`.** Chambolle 2004 for the Rudin, Osher and
-  Fatemi model, channel by channel, as scikit-image's `denoise_tv_chambolle` computes it;
-  suite 200 agrees with scikit-image exactly in f64.
+- **Denoising: `alwan_denoise`.** One entry point, float and 8-bit, with a method enum:
+  total variation (Chambolle 2004, exact to scikit-image, suite 200), non-local means
+  (Buades et al. 2005, bit for bit with OpenCV's `fastNlMeansDenoising`, suite 201) and
+  anisotropic diffusion (Perona and Malik 1990, bit for bit with OpenCV per iteration, suite
+  202; OpenCV's own multi-iteration loop reads a border it never refreshes, this does not).
 
 - **Edge-aware smoothing: `alwan_edge_filter`.** One entry point with a method enum and a
   parameter struct whose zero fields are each paper's defaults: the guided filter (He et al.

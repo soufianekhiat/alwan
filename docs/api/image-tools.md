@@ -123,3 +123,74 @@ units. OpenCV's `ximgproc::fastGlobalSmootherFilter` takes an 8-bit guide and
 Suite 196 does that and agrees with OpenCV to 7.8e-6 at `lambda` 1000 and 4.5e-7 at
 `lambda` 10, the difference being OpenCV's float solve; a constant source stays constant to
 1e-14.
+
+## Denoising
+
+```c
+typedef enum {
+    ALWAN_DENOISE_TV_CHAMBOLLE = 0,
+    ALWAN_DENOISE_NL_MEANS = 1,
+    ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2
+} alwan_denoise_method;
+
+alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
+                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                               size_t width, size_t height,
+                               alwan_denoise_method method, alwan_denoise_params const *params);
+alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
+                              unsigned char const *src, size_t src_row_stride, size_t channels,
+                              size_t width, size_t height,
+                              alwan_denoise_method method, alwan_denoise_params const *params);
+```
+
+Three classic denoisers that fail in different ways (plate 89 of the v3 plates shows them
+on one portrait). `alwan_denoise_u8` runs all three; `alwan_denoise_{T}` runs
+`TV_CHAMBOLLE`, and returns `ALWAN_E_INVALID` for the two whose references work on 8-bit
+data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
+
+| Field of `alwan_denoise_params` | Method | 0 reads as |
+|---|---|---|
+| `weight` | `TV_CHAMBOLLE` | 0.1 |
+| `tolerance` | `TV_CHAMBOLLE` | 2e-4 (a tiny value runs every iteration) |
+| `iterations` | `TV_CHAMBOLLE` / `ANISOTROPIC_DIFFUSION` | 200 (at most) / 10 |
+| `h` | `NL_MEANS` | 10, in 0..255 units |
+| `template_window`, `search_window` | `NL_MEANS` | 7, 21 |
+| `alpha`, `k` | `ANISOTROPIC_DIFFUSION` | 0.15, 0.05 |
+
+### `TV_CHAMBOLLE`
+
+The Rudin, Osher and Fatemi model: each channel becomes the image `u` minimising
+`sum (u - f)^2 / 2 + weight sum |grad u|`, solved by Chambolle's dual iterations (J. Math.
+Imaging and Vision, 2004). Total variation charges for every change between neighbours,
+not for its size, so noise and fine texture go while edges stay sharp; flat regions go
+flat, which reads as a painted look at high `weight`. On values in 0..1, `weight` 0.05 to
+0.2 covers light to strong denoising. The iterations stop when the energy changes by less
+than `tolerance` times its first value, or after `iterations`. It follows scikit-image's
+`denoise_tv_chambolle` with `channel_axis` set, down to which iteration's image it
+returns; suite 200 agrees exactly in f64, including runs cut after 1, 2 and 7 iterations.
+On 8-bit data it runs in double on values divided by 255 and rounds back.
+
+### `NL_MEANS`
+
+Buades, Coll and Morel (CVPR 2005). Each pixel becomes the weighted mean of the pixels in a
+`search_window` square around it, weighted by `exp(-d / (h^2 channels))`, where `d` is the
+mean squared difference between the `template_window` patches around the two pixels. A
+pixel draws on others with the same neighbourhood wherever they are in the window, so
+repeated structure survives and noise averages away. `h` about 10 keeps fine detail,
+higher values remove more. It reproduces OpenCV's `cv::fastNlMeansDenoising`
+(`NORM_L2`) bit for bit, fixed-point weight table included; suite 201 holds every value of
+ten cases equal. For a colour photograph, OpenCV's `fastNlMeansDenoisingColored` denoises
+CIELAB with a separate `h` for a and b: convert first and denoise the channels you choose.
+
+### `ANISOTROPIC_DIFFUSION`
+
+Perona and Malik (IEEE PAMI 1990). Each iteration moves every pixel toward its eight
+neighbours by `alpha sum g(d) (I_n - I)`, with `g(d) = exp(-(d / (k channels 255))^2)` and
+`d` the L1 difference over the channels. Differences well below `k` diffuse and edges well
+above it stay. For three channels it reproduces OpenCV's
+`ximgproc::anisotropicDiffusion` bit for bit for one iteration, and suite 202 holds `n`
+iterations to `n` chained one-iteration OpenCV calls. OpenCV's own loop is correct only for
+one iteration: it refreshes the border with `copyMakeBorder` from a view into its padded
+buffer, which without `BORDER_ISOLATED` grows the view instead of replicating, so later
+iterations read a border that is stale or was never written. alwan replicates the border
+every iteration.
