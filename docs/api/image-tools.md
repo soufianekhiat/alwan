@@ -130,7 +130,8 @@ Suite 196 does that and agrees with OpenCV to 7.8e-6 at `lambda` 1000 and 4.5e-7
 typedef enum {
     ALWAN_DENOISE_TV_CHAMBOLLE = 0,
     ALWAN_DENOISE_NL_MEANS = 1,
-    ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2
+    ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
+    ALWAN_DENOISE_DCT = 3
 } alwan_denoise_method;
 
 alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -143,10 +144,10 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
                               alwan_denoise_method method, alwan_denoise_params const *params);
 ```
 
-Three classic denoisers that fail in different ways (plate 89 of the v3 plates shows them
-on one portrait). `alwan_denoise_u8` runs all three; `alwan_denoise_{T}` runs
-`TV_CHAMBOLLE`, and returns `ALWAN_E_INVALID` for the two whose references work on 8-bit
-data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
+Four classic denoisers that fail in different ways (plate 89 of the v3 plates shows them
+on one portrait). `alwan_denoise_u8` runs all four; `alwan_denoise_{T}` runs
+`TV_CHAMBOLLE` and `DCT`, and returns `ALWAN_E_INVALID` for the two whose references work
+on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 
 | Field of `alwan_denoise_params` | Method | 0 reads as |
 |---|---|---|
@@ -156,6 +157,8 @@ data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 | `h` | `NL_MEANS` | 10, in 0..255 units |
 | `template_window`, `search_window` | `NL_MEANS` | 7, 21 |
 | `alpha`, `k` | `ANISOTROPIC_DIFFUSION` | 0.15, 0.05 |
+| `sigma` | `DCT` | 10 for 8-bit data, 10 / 255 for floats |
+| `block_size` | `DCT` | 16 |
 
 ### `TV_CHAMBOLLE`
 
@@ -194,6 +197,24 @@ one iteration: it refreshes the border with `copyMakeBorder` from a view into it
 buffer, which without `BORDER_ISOLATED` grows the view instead of replicating, so later
 iterations read a border that is stale or was never written. alwan replicates the border
 every iteration.
+
+### `DCT`
+
+Yu and Sapiro (IPOL 2011). Every `block_size` square of the image, at every position, goes
+through an orthonormal 2D DCT-II; coefficients of magnitude at most `3 sigma` are zeroed,
+the inverse DCT gives the block back, and each pixel is the mean of every block estimate
+covering it. Three channels are first turned into an orthonormal opponent space
+(`(1, 1, 1) / sqrt3`, `(1, 0, -1) / sqrt2`, `(1, -2, 1) / sqrt6`) and back after, so the
+noise of each is thresholded apart from the colour. `sigma` is the noise's standard
+deviation in the data's own units.
+
+It follows OpenCV's `xphoto::dctDenoising` except at the border: OpenCV places its blocks
+at `x < width - block_size` only, so its last row and column are covered by none and come
+out 0 for 8-bit data and NaN for floats. alwan places them up to `x = width - block_size`,
+as the paper's own code does, so every pixel is covered. Suite 204 compares the pixels more
+than one block from the right and bottom edges, where the two agree to 5e-7 in float and
+exactly in 8-bit but for one value in one case, a coefficient within rounding of the
+threshold; a constant image is unchanged at the border too.
 
 ## Local contrast
 

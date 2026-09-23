@@ -397,6 +397,142 @@ static alwan_status alwan_ad_run(unsigned char *out, size_t out_row_stride, unsi
     return ALWAN_OK;
 }
 
+/*
+ * DCT denoising: Yu and Sapiro, "DCT Image Denoising: a Simple and Effective Image
+ * Denoising Algorithm", IPOL 2011. Every block_size x block_size patch of the image, at
+ * every position, goes through an orthonormal 2D DCT-II; coefficients of magnitude at most
+ * 3 sigma are zeroed (the DC one too, if it is that small); the inverse DCT gives the
+ * patch back, and each pixel is the mean of every patch estimate covering it. Three
+ * channels are first turned by the orthonormal opponent transform
+ * (1, 1, 1) / sqrt3, (1, 0, -1) / sqrt2, (1, -2, 1) / sqrt6 and back after.
+ *
+ * The reference is OpenCV's xphoto::dctDenoising (opencv_contrib, BSD-3), and this follows
+ * it except at the border: OpenCV places patches at x < width - block_size only, so the
+ * last row and column are covered by no patch, and its output there is 0 for 8-bit data
+ * and NaN for floats. Here patches run to x = width - block_size, as in the paper's own
+ * code, so every pixel is covered. Rows and columns more than one block from the right
+ * and bottom edges are unaffected by the difference.
+ */
+static alwan_status alwan_dct_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w,
+                                  size_t h, double sigma, size_t ps, int kind /* 0 f64, 1 f32, 2 u8 */) {
+    size_t const elem = kind == 0 ? sizeof(alwan_f64) : kind == 1 ? sizeof(alwan_f32) : 1u;
+    size_t const n = w * h;
+    double const thresh = 3.0 * sigma;
+    double *plane, *acc, *cnt, *cm, *pa, *pb;
+    size_t x, y, c, i, j, k, x0, y0;
+    double const s3 = 1.0 / sqrt(3.0), s2 = 1.0 / sqrt(2.0), s6 = 1.0 / sqrt(6.0);
+    double const opp[3][3] = { { s3, s3, s3 }, { s2, 0.0, -s2 }, { s6, -2.0 * s6, s6 } };
+    if (!out || !src) return ALWAN_E_INVALID;
+    if (w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
+    if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
+    if (!alwan_dn_finite(sigma) || !(sigma >= 0.0)) return ALWAN_E_RANGE;
+    if (ps < 2 || ps > 64 || w < ps || h < ps || n / w != h) return ALWAN_E_RANGE;
+
+    plane = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, (ch + 2) * sizeof(double)), sizeof(double));
+    cm = (double *)ALWAN_ALLOC(alwan_safe_array_size(ps * ps, 3 * sizeof(double)), sizeof(double));
+    if (!plane || !cm) {
+        if (plane) ALWAN_FREE(plane);
+        if (cm) ALWAN_FREE(cm);
+        return ALWAN_E_NOMEM;
+    }
+    acc = plane + n * ch;
+    cnt = acc + n;
+    pa = cm + ps * ps;
+    pb = pa + ps * ps;
+    for (k = 0; k < ps; k++) {
+        double const a = k == 0 ? sqrt(1.0 / (double)ps) : sqrt(2.0 / (double)ps);
+        for (i = 0; i < ps; i++) cm[k * ps + i] = a * cos(3.14159265358979323846 * (double)((2 * i + 1) * k) / (double)(2 * ps));
+    }
+
+    for (y = 0; y < h; y++) {
+        char const *row = (char const *)src + y * src_rs;
+        for (x = 0; x < w; x++) {
+            double v[4];
+            for (c = 0; c < ch; c++) {
+                v[c] = kind == 0 ? ((alwan_f64 const *)row)[x * ch + c]
+                     : kind == 1 ? (double)((alwan_f32 const *)row)[x * ch + c]
+                                 : (double)((unsigned char const *)row)[x * ch + c];
+                if (!alwan_dn_finite(v[c])) {
+                    ALWAN_FREE(plane);
+                    ALWAN_FREE(cm);
+                    return ALWAN_E_INVALID;
+                }
+            }
+            for (c = 0; c < ch; c++) {
+                plane[c * n + y * w + x] = ch == 3 ? opp[c][0] * v[0] + opp[c][1] * v[1] + opp[c][2] * v[2] : v[c];
+            }
+        }
+    }
+
+    for (c = 0; c < ch; c++) {
+        double *pl = plane + c * n;
+        for (i = 0; i < n; i++) { acc[i] = 0.0; cnt[i] = 0.0; }
+        for (y0 = 0; y0 + ps <= h; y0++) {
+            for (x0 = 0; x0 + ps <= w; x0++) {
+                /* pb = C P, then pa = (C P) C^T: the 2D DCT */
+                for (k = 0; k < ps; k++) {
+                    for (j = 0; j < ps; j++) {
+                        double s = 0.0;
+                        for (i = 0; i < ps; i++) s += cm[k * ps + i] * pl[(y0 + i) * w + x0 + j];
+                        pb[k * ps + j] = s;
+                    }
+                }
+                for (k = 0; k < ps; k++) {
+                    for (j = 0; j < ps; j++) {
+                        double s = 0.0;
+                        for (i = 0; i < ps; i++) s += pb[k * ps + i] * cm[j * ps + i];
+                        pa[k * ps + j] = fabs(s) > thresh ? s : 0.0;
+                    }
+                }
+                /* the inverse: C^T D C */
+                for (k = 0; k < ps; k++) {
+                    for (j = 0; j < ps; j++) {
+                        double s = 0.0;
+                        for (i = 0; i < ps; i++) s += cm[i * ps + k] * pa[i * ps + j];
+                        pb[k * ps + j] = s;
+                    }
+                }
+                for (k = 0; k < ps; k++) {
+                    for (j = 0; j < ps; j++) {
+                        double s = 0.0;
+                        for (i = 0; i < ps; i++) s += pb[k * ps + i] * cm[i * ps + j];
+                        acc[(y0 + k) * w + x0 + j] += s;
+                        cnt[(y0 + k) * w + x0 + j] += 1.0;
+                    }
+                }
+            }
+        }
+        for (i = 0; i < n; i++) pl[i] = acc[i] / cnt[i];
+    }
+
+    for (y = 0; y < h; y++) {
+        char *row = (char *)out + y * out_rs;
+        for (x = 0; x < w; x++) {
+            for (c = 0; c < ch; c++) {
+                double v;
+                if (ch == 3) { /* the opponent transform is orthonormal: its inverse is its transpose */
+                    v = opp[0][c] * plane[y * w + x] + opp[1][c] * plane[n + y * w + x] + opp[2][c] * plane[2 * n + y * w + x];
+                } else {
+                    v = plane[c * n + y * w + x];
+                }
+                if (kind == 0) {
+                    ((alwan_f64 *)row)[x * ch + c] = v;
+                } else if (kind == 1) {
+                    ((alwan_f32 *)row)[x * ch + c] = (alwan_f32)v;
+                } else {
+                    double f = floor(v);
+                    double const d = v - f;
+                    if (d > 0.5 || (d == 0.5 && fmod(f, 2.0) != 0.0)) f += 1.0;
+                    ((unsigned char *)row)[x * ch + c] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
+                }
+            }
+        }
+    }
+    ALWAN_FREE(plane);
+    ALWAN_FREE(cm);
+    return ALWAN_OK;
+}
+
 /* ---- the family ---- */
 
 static double alwan_dn_or(double v, double def) {
@@ -444,6 +580,9 @@ static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const 
     case ALWAN_DENOISE_TV_CHAMBOLLE:
         return alwan_tv_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->weight, 0.1),
                             alwan_dn_or(p->tolerance, 2e-4), p->iterations == 0 ? 200 : p->iterations, is_f32);
+    case ALWAN_DENOISE_DCT:
+        return alwan_dct_run(out, out_row_stride, src, src_row_stride, channels, width, height,
+                             alwan_dn_or(p->sigma, 10.0 / 255.0), p->block_size == 0 ? 16 : p->block_size, is_f32 ? 1 : 0);
     case ALWAN_DENOISE_NL_MEANS:
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION: /* 8-bit only, as their references are */
     default:
@@ -464,6 +603,9 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
         return alwan_nlm_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->h, 10.0),
                              p->template_window == 0 ? 7 : p->template_window,
                              p->search_window == 0 ? 21 : p->search_window);
+    case ALWAN_DENOISE_DCT:
+        return alwan_dct_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->sigma, 10.0),
+                             p->block_size == 0 ? 16 : p->block_size, 2);
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION:
         return alwan_ad_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->alpha, 0.15),
                             alwan_dn_or(p->k, 0.05), p->iterations == 0 ? 10 : p->iterations);

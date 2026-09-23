@@ -435,7 +435,9 @@
   total variation (Chambolle 2004, exact to scikit-image, suite 200), non-local means
   (Buades et al. 2005, bit for bit with OpenCV's `fastNlMeansDenoising`, suite 201) and
   anisotropic diffusion (Perona and Malik 1990, bit for bit with OpenCV per iteration, suite
-  202; OpenCV's own multi-iteration loop reads a border it never refreshes, this does not).
+  202; OpenCV's own multi-iteration loop reads a border it never refreshes, this does not)
+  and DCT denoising (Yu and Sapiro 2011, OpenCV's `xphoto::dctDenoising` to 5e-7, suite 204;
+  OpenCV's last row and column come out 0 or NaN, these do not).
 
 - **Edge-aware smoothing: `alwan_edge_filter`.** One entry point with a method enum and a
   parameter struct whose zero fields are each paper's defaults: the guided filter (He et al.

@@ -2222,16 +2222,23 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        slows across large differences (OpenCV
  *                                        ximgproc::anisotropicDiffusion, bit for bit per
  *                                        iteration, suite 202)
+ *   ALWAN_DENOISE_DCT                    Yu and Sapiro 2011: every block's DCT coefficients
+ *                                        under 3 sigma zeroed, the overlapping estimates
+ *                                        averaged; three channels in an opponent space
+ *                                        (OpenCV xphoto::dctDenoising, suite 204, whose last
+ *                                        row and column come out 0 or NaN where these do not)
  *
  * alwan_denoise_u8 runs every method on 8-bit data (TV through double in 0..1, rounded
- * back); alwan_denoise_{T} runs TV_CHAMBOLLE, and ALWAN_E_INVALID for the two methods whose
- * references are 8-bit. src has 1 to 4 channels, each denoised on its own except that NL
- * means and diffusion measure differences over all of them; rows at the given byte
- * strides. out may be src, except for NL_MEANS. params NULL is every default. */
+ * back); alwan_denoise_{T} runs TV_CHAMBOLLE and DCT, and ALWAN_E_INVALID for the two
+ * methods whose references are 8-bit. src has 1 to 4 channels, each denoised on its own
+ * except that NL means and diffusion measure differences over all of them and DCT turns
+ * three channels to an opponent space first; rows at the given byte strides. out may be
+ * src, except for NL_MEANS. params NULL is every default. */
 typedef enum {
     ALWAN_DENOISE_TV_CHAMBOLLE = 0,
     ALWAN_DENOISE_NL_MEANS = 1,
-    ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2
+    ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
+    ALWAN_DENOISE_DCT = 3
 } alwan_denoise_method;
 
 /* Each method reads its own fields; a zero field is its default. */
@@ -2246,6 +2253,10 @@ typedef struct {
     double alpha;           /* ANISOTROPIC_DIFFUSION: step, 0.1 to 0.2 keeps it stable; 0 reads as 0.15 */
     double k;               /* ANISOTROPIC_DIFFUSION: edge threshold, a fraction of full scale per channel;
                              * 0 reads as 0.05 */
+    double sigma;           /* DCT: the noise's standard deviation in the data's units (0..255 for
+                             * 8-bit); 0 reads as 10 for 8-bit data, 10 / 255 for floats */
+    size_t block_size;      /* DCT: the side of the DCT block, 2 to 64, at most the image's sides;
+                             * 0 reads as 16 */
 } alwan_denoise_params;
 
 alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
