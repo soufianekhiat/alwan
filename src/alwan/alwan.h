@@ -7363,6 +7363,52 @@ alwan_status alwan_grading_tone_f32_map_interleave(alwan_f32 *out, size_t out_st
 alwan_status alwan_grading_tone_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_tone const *params, int inverse);
 
 /* ----------------------------------------------------------------
+ * OpenColorIO grading: RGB curves
+ *
+ * OCIO's GradingRGBCurveTransform: a curve per channel and a master curve applied to
+ * all three after them, each a monotone B-spline through control points, as a
+ * grading panel's curves tab. The spline is OCIO's GradingBSplineCurve: slopes are
+ * estimated from the points unless the caller gives them (all zero means estimate),
+ * and the curve continues straight beyond its end points. The x and y of the points
+ * must each be non-decreasing, since the curve is inverted by solving it. The lin
+ * style converts to OCIO's log domain first and back after, so its points are in
+ * that domain (stops from 0.18; the default curve runs from -7 to 7).
+ *
+ * The spline is fitted in float, as OCIO fits it: its fit branches on float
+ * thresholds, and a fit in double could take the other branch. Evaluation is in
+ * double. A curve holds up to ALWAN_GRADING_CURVE_MAX_POINTS points; OCIO also caps
+ * the four curves together at 120 knots, which this does not.
+ *
+ * alwan_grading_rgb_curve_init sets OCIO's default, a three-point identity for every
+ * curve. An identity set is a pass-through. ALWAN_E_INVALID for a NULL, a style
+ * outside the enum, a curve with fewer than two or more than the maximum points, a
+ * non-finite value, or a decreasing x or y. Suite 186 holds it to PyOpenColorIO.
+ * ---------------------------------------------------------------- */
+
+#define ALWAN_GRADING_CURVE_MAX_POINTS 32
+
+typedef struct {
+    alwan_f64 x, y;
+} alwan_grading_point;
+
+typedef struct {
+    int count;
+    alwan_grading_point points[ALWAN_GRADING_CURVE_MAX_POINTS];
+    alwan_f64 slopes[ALWAN_GRADING_CURVE_MAX_POINTS];   /* all zero: estimated from the points */
+} alwan_grading_curve;
+
+typedef struct {
+    alwan_grading_curve red, green, blue, master;
+} alwan_grading_rgb_curve;
+
+void alwan_grading_rgb_curve_init(alwan_grading_rgb_curve *curves, alwan_grading_style style);
+
+alwan_status alwan_grading_rgb_curve_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
+alwan_status alwan_grading_rgb_curve_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
+alwan_status alwan_grading_rgb_curve_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
+alwan_status alwan_grading_rgb_curve_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_rgb_curve const *curves, int inverse);
+
+/* ----------------------------------------------------------------
  * Camera Profiling / Polynomial Color Correction
  * Reference: Cheung et al. (2004), Finlayson et al. (2015)
  * ---------------------------------------------------------------- */

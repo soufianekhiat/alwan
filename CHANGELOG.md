@@ -427,6 +427,13 @@
 
 ### Added
 
+- **OpenColorIO's GradingRGBCurve: `alwan_grading_rgb_curve_apply` and its map.** A
+  monotone B-spline curve per channel and a master, as OCIO's GradingBSplineCurve fits
+  them (slopes estimated or given, the refit that keeps a span from turning back, straight
+  extrapolation), forward and inverse, in the three styles. The fit runs in float as
+  OCIO's does, since it branches on float thresholds. Suite 186 holds five curve sets to
+  PyOpenColorIO 2.5.0: 2.4e-7 relative in log and video, 8.8e-5 in lin.
+
 - **OpenColorIO's GradingTone: `alwan_grading_tone_apply` and its map.** Five zones of the
   tonescale (blacks, shadows, midtones, highlights, whites), each a piecewise-quadratic
   curve set per channel and by master, and an S-contrast, in OCIO's log, lin and video

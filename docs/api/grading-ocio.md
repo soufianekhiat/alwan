@@ -130,3 +130,56 @@ with moved zones), forward and inverse. Log and video agree to 5.7e-7 relative, 
 rounding. Lin agrees to 1.5e-4: OCIO's SSE build takes its log and exponential with
 approximations, and an OCIO channel that no zone touches already comes back 8.6e-5 off
 at 57 from that round trip alone. Forward then inverse closes to 1.1e-8.
+
+## RGB curves
+
+OCIO's `GradingRGBCurveTransform`: a curve per channel, then a master curve on all
+three, each a monotone B-spline through control points: the curves tab of a grading
+panel.
+
+```c
+#define ALWAN_GRADING_CURVE_MAX_POINTS 32
+typedef struct { alwan_f64 x, y; } alwan_grading_point;
+typedef struct {
+    int count;
+    alwan_grading_point points[ALWAN_GRADING_CURVE_MAX_POINTS];
+    alwan_f64 slopes[ALWAN_GRADING_CURVE_MAX_POINTS];   /* all zero: estimated */
+} alwan_grading_curve;
+typedef struct { alwan_grading_curve red, green, blue, master; } alwan_grading_rgb_curve;
+
+void alwan_grading_rgb_curve_init(alwan_grading_rgb_curve *curves, alwan_grading_style style);
+alwan_status alwan_grading_rgb_curve_apply_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in,
+                                               alwan_grading_style style,
+                                               alwan_grading_rgb_curve const *curves, int inverse);
+alwan_status alwan_grading_rgb_curve_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                        alwan_{T} const *in, size_t in_stride,
+                                                        size_t count, alwan_grading_style style,
+                                                        alwan_grading_rgb_curve const *curves,
+                                                        int inverse);
+```
+
+The spline is OCIO's `GradingBSplineCurve`: each span between control points is one or
+two quadratic pieces, the slopes at the points are estimated from their neighbours
+unless the caller gives them (all zero means estimate), and a span whose middle would
+turn back is refitted with gentler slopes, so the curve never decreases. Beyond its end
+points it continues straight. The x and y of the points must each be non-decreasing,
+since the inverse solves the curve.
+
+**The fit is in float,** as OCIO's is: its slope estimation and knot placement branch
+on float thresholds, and a fit in double could take the other branch on the same
+points. Evaluation is in double. The lin style converts to OCIO's log domain first and
+back after (see Tone), so its points are in that domain; the default curve runs from -7
+to 7. A curve holds up to 32 points; OCIO also caps the four curves together at 120
+knots, which alwan does not.
+
+**Errors:** `ALWAN_E_INVALID` for a NULL, a stride under three values, a style outside
+the enum, a curve with fewer than two or more than 32 points, a non-finite value, or a
+decreasing x or y.
+
+**Testing:** suite 186 renders five curve sets through PyOpenColorIO, forward and
+inverse, chosen to take the fit's branches: estimated slopes, collinear runs, a jump
+that forces the refit, caller slopes, two-point curves and the lin domain. Log and video
+agree to 2.4e-7 relative, float rounding; lin to 8.8e-5, OCIO's approximate log and pow.
+Forward then inverse closes to 7.7e-9. PyOpenColorIO 2.5.0's `red`, `green`, `blue` and
+`master` setters copy a curve's control points and drop its slopes; the generator sets
+slopes through the getter after assignment and checks they arrived.
