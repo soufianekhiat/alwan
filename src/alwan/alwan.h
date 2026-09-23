@@ -2188,7 +2188,7 @@ typedef enum {
 alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f32 const *params);
 alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f64 const *params);
 
-/* Local contrast: contrast that adapts to each neighbourhood.
+/* Local contrast: contrast that adapts to each neighbourhood, and its global form.
  *
  *   ALWAN_LOCAL_CONTRAST_LAPLACIAN  the local Laplacian filter (Paris, Hasinoff and Kautz,
  *                                   SIGGRAPH 2011, the fast form of Aubry et al. 2014):
@@ -2202,16 +2202,26 @@ alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_
  *                                   its clipped histogram's cumulative sum as a tone curve,
  *                                   blended between the four nearest tiles. One channel;
  *                                   OpenCV's createCLAHE bit for bit (suite 197)
+ *   ALWAN_LOCAL_CONTRAST_HISTOGRAM_EQUALIZE
+ *                                   global histogram equalisation: one tone curve, the
+ *                                   image's cumulative histogram, for every pixel. One
+ *                                   channel (equalise a lightness channel for colour).
+ *                                   8-bit as OpenCV's equalizeHist bit for bit, the
+ *                                   first occupied level to 0; floats as scikit-image's
+ *                                   equalize_hist, `bins` bins over [min, max] and the
+ *                                   result in 0..1 (suite 210). No 16-bit form
  *
- * alwan_local_contrast_u8 and _u16 run both (the Laplacian through double in 0..1, rounded
- * back as MATLAB rounds integer output); alwan_local_contrast_{T} runs LAPLACIAN and
- * refuses CLAHE, whose histogram bins need integer data. Rows at the given byte strides;
- * out may be src. params NULL is every default. ALWAN_E_INVALID for a NULL, a zero size, a
- * channel count out of range (CLAHE takes 1), a stride too small, a non-finite value or an
+ * alwan_local_contrast_u8 runs all three; _u16 runs LAPLACIAN and CLAHE (the Laplacian
+ * through double in 0..1, rounded back as MATLAB rounds integer output);
+ * alwan_local_contrast_{T} runs LAPLACIAN and HISTOGRAM_EQUALIZE and refuses CLAHE, whose
+ * histogram bins need integer data. Rows at the given byte strides; out may be src. params
+ * NULL is every default. ALWAN_E_INVALID for a NULL, a zero size, a channel count out of
+ * range (CLAHE and HISTOGRAM_EQUALIZE take 1), a stride too small, a non-finite value or an
  * unknown method; ALWAN_E_RANGE for a parameter out of its range. */
 typedef enum {
     ALWAN_LOCAL_CONTRAST_LAPLACIAN = 0,
-    ALWAN_LOCAL_CONTRAST_CLAHE = 1
+    ALWAN_LOCAL_CONTRAST_CLAHE = 1,
+    ALWAN_LOCAL_CONTRAST_HISTOGRAM_EQUALIZE = 2
 } alwan_local_contrast_method;
 
 /* Each method reads its own fields; a zero field is its default. */
@@ -2228,6 +2238,8 @@ typedef struct {
     double clip_limit;       /* CLAHE: clip level in mean bin counts; 0 reads as OpenCV's 40, a negative
                               * value turns clipping off. With 65536 bins it floors to one count on
                               * tiles under 65536 / clip_limit pixels, so 16-bit limits rarely differ */
+    size_t bins;             /* HISTOGRAM_EQUALIZE on floats: histogram bins over [min, max], at most
+                              * 1000000; 0 reads as 256 */
 } alwan_local_contrast_params;
 
 alwan_status alwan_local_contrast_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_local_contrast_method method, alwan_local_contrast_params const *params);

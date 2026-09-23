@@ -251,7 +251,8 @@ to 1e-11, as PyWavelets' own does.
 ```c
 typedef enum {
     ALWAN_LOCAL_CONTRAST_LAPLACIAN = 0,
-    ALWAN_LOCAL_CONTRAST_CLAHE = 1
+    ALWAN_LOCAL_CONTRAST_CLAHE = 1,
+    ALWAN_LOCAL_CONTRAST_HISTOGRAM_EQUALIZE = 2
 } alwan_local_contrast_method;
 
 alwan_status alwan_local_contrast_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -263,9 +264,10 @@ alwan_status alwan_local_contrast_u8(...);   /* same, unsigned char pixels */
 alwan_status alwan_local_contrast_u16(...);  /* same, unsigned short pixels */
 ```
 
-Contrast that adapts to each neighbourhood. The 8- and 16-bit entry points run both
-methods, the local Laplacian through double in 0..1, rounded back as MATLAB rounds integer
-output. The float entry points run `LAPLACIAN` and refuse `CLAHE`, whose histogram bins
+Contrast that adapts to each neighbourhood, and its global form. The 8-bit entry point
+runs all three methods and the 16-bit one `LAPLACIAN` and `CLAHE`, the local Laplacian
+through double in 0..1, rounded back as MATLAB rounds integer output. The float entry
+points run `LAPLACIAN` and `HISTOGRAM_EQUALIZE` and refuse `CLAHE`, whose histogram bins
 need integer data. `out` may alias `src`.
 
 | Field of `alwan_local_contrast_params` | Method | 0 reads as |
@@ -277,6 +279,7 @@ need integer data. `out` may alias `src`.
 | `separate_channels` | `LAPLACIAN` | 0: filter the luma of three channels |
 | `tiles_x`, `tiles_y` | `CLAHE` | 8 |
 | `clip_limit` | `CLAHE` | OpenCV's 40; a negative value turns clipping off |
+| `bins` | `HISTOGRAM_EQUALIZE` on floats | 256 |
 
 The `LAPLACIAN` defaults are MATLAB's documented example, `locallapfilt(I, 0.4, 0.5)`.
 
@@ -327,6 +330,33 @@ With 65536 bins, a tile of fewer than `65536 / clip_limit` pixels clips at one c
 whatever `clip_limit` says, so on 16-bit data clip limits of 2 and 4 give the same image
 unless the tiles are large. OpenCV behaves the same way. For photographic clip limits on
 an image of ordinary size, equalise an 8-bit lightness channel.
+
+### `HISTOGRAM_EQUALIZE`
+
+Global histogram equalisation: one tone curve for the whole image, its cumulative
+histogram, so that the levels are used about equally often. It is what CLAHE does per tile
+without the clip; with nothing to limit it, a large flat area (a sky, a wall) takes most
+of the range and its noise with it. One channel; for a colour image equalise a lightness
+channel and rebuild the colour from it.
+
+On 8-bit data it is OpenCV's `equalizeHist` bit for bit: the first occupied level goes to
+0 and each level `v` above it to the count at or below `v`, past that first level, times
+`255 / (n - h[first])`, the product in float and rounded half to even. An image of one
+level is left as it is. There is no 16-bit form: OpenCV's is 8-bit only and
+scikit-image's integer path is a different curve, so neither can be followed for 16 bits;
+use the float path and scale.
+
+On floats it is scikit-image's `exposure.equalize_hist`: a `numpy.histogram` of `bins`
+bins over the image's own [min, max] (widened by a half on each side when the image is
+constant), the cumulative counts over `n` as the curve at the bin centres, and each value
+interpolated on it with `numpy.interp`'s rules. The result is in 0..1 whatever the input's
+range, and any finite values are accepted, signed or past 1.
+
+Suite 210 matches OpenCV exactly on four 8-bit images (a frame's luma, a low-contrast
+strip, levels with gaps, two levels) and scikit-image exactly on five float64 ones at 64,
+256 and 1000 bins, a constant and a signed one among them. On float32 input scikit-image
+builds its bin edges in float32 and alwan in double, and 13 of 28800 values differ by one
+float32 step.
 
 ## Colour transfer
 

@@ -462,6 +462,9 @@
   8-bit, 16-bit) with a method enum: the local Laplacian filter (Paris et al. 2011, the fast
   form of Aubry et al. 2014, following MATLAB's `locallapfilt` to 1.5e-6, suite 198) and
   CLAHE (Zuiderveld 1994, bit for bit with OpenCV's `createCLAHE`, suite 197).
+  `ALWAN_LOCAL_CONTRAST_HISTOGRAM_EQUALIZE` adds global histogram equalisation: 8-bit bit
+  for bit with OpenCV's `equalizeHist`, floats exactly as scikit-image's `equalize_hist`
+  with a `bins` field (suite 210).
 
 - **Colour transfer: `alwan_color_transfer`.** One entry point with a method enum and a
   blend amount: histogram matching as scikit-image's `match_histograms` (bit for bit, suite
