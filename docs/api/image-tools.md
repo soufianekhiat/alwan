@@ -321,3 +321,101 @@ whole distribution, and so keeps the source's own shape.
 No implementation of the paper's own space exists to compare with; suite 193 checks the
 property that defines it: the result's l alpha beta means and standard deviations equal the
 reference's, to 3e-15, and an image transferred onto itself comes back unchanged.
+
+## Haze removal
+
+```c
+typedef struct {
+    size_t patch_radius;      /* 7: the paper's 15 x 15 */
+    alwan_f64 omega;          /* 0.95: the haze kept for depth */
+    alwan_f64 t0;             /* 0.1: the transmission floor */
+    alwan_f64 top_fraction;   /* 0.001: of the dark channel searched for the airlight */
+    size_t guide_radius;      /* 30; 0 skips the refinement */
+    alwan_f64 guide_eps;      /* 1e-3 */
+} alwan_dehaze_params;
+
+typedef enum {
+    ALWAN_DEHAZE_DARK_CHANNEL = 0
+} alwan_dehaze_method;
+
+void alwan_dehaze_params_init(alwan_dehaze_params *params);
+alwan_status alwan_dehaze_{T}(alwan_{T} *out, size_t out_row_stride,
+                              alwan_{T} *transmission_out, size_t t_row_stride,
+                              alwan_{T} airlight_out[3],
+                              alwan_{T} const *rgb, size_t row_stride,
+                              size_t width, size_t height,
+                              alwan_dehaze_method method, alwan_dehaze_params const *params);
+```
+
+The parameters use an initialiser rather than zero defaults, since a zero guide radius is
+meaningful (it skips the refinement); NULL is `alwan_dehaze_params_init`'s values.
+
+### `DARK_CHANNEL`
+
+He, Sun and Tang (CVPR 2009, TPAMI 2011) model a hazy image as `I = J t + A (1 - t)` and
+observe that in most patches of a clear outdoor image some channel is near zero. So the
+patch minimum of `I / A` measures the haze: the airlight `A` is taken among the brightest
+0.1 % of the dark channel (the pixel with the largest channel mean), the transmission is
+`t = 1 - omega min_patch min_c I_c / A_c`, refined here by the guided filter (`alwan_edge_filter`, `ALWAN_EDGE_FILTER_GUIDED`) with the
+image as the colour guide (the authors' own replacement for soft matting), and the scene
+is `J = (I - A) / max(t, t0) + A`. Work on linear light; scale the radii with the image.
+
+There is no reference implementation to compare with, so suite 192 makes haze with a
+known answer: a scene that satisfies the prior, hazed with a known `A` and `t`. The
+airlight comes back within 0.017 (the sky it is read from is 2 % scene), the transmission
+to a median error of 0.029, the scene to a mean error of 0.032 (omega keeps 5 % of the
+haze on purpose). A clear image with a white patch changes by 0.0005 on average; one with
+no bright neutral at all has no airlight to find and returns `ALWAN_E_RANGE`.
+
+## Colour quantisation
+
+```c
+typedef enum {
+    ALWAN_QUANTIZE_MEDIAN_CUT = 0
+} alwan_quantize_method;
+
+alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out,
+                               unsigned int *index_out,
+                               unsigned char const *rgb, size_t pixel_stride,
+                               size_t count, size_t max_colors, alwan_quantize_method method);
+```
+
+A palette of at most `max_colors` entries for a photograph, and optionally each pixel's
+entry. An unknown method is `ALWAN_E_INVALID`.
+
+### `MEDIAN_CUT`
+
+Heckbert's median cut (SIGGRAPH 1982) as Pillow's `Image.quantize(method=MEDIANCUT)`
+computes it, on 8-bit RGB.
+The distinct colours are split into at most `max_colors` boxes: each time the box with
+the most pixels, on the channel whose range weighted 77 : 150 : 29 is widest, at the
+median of its pixel count, with every pixel of one channel value kept on one side; a box
+of a single colour is not split. Each palette entry is the rounded mean of its box's
+pixels, in Pillow's order (the upper half of each split first), and `index_out` (optional)
+maps every pixel to its nearest entry in squared distance, searched as Pillow searches.
+An image with more than 65536 distinct colours first loses low bits until it has at most
+that many, as Pillow does. `palette_out` holds `3 * max_colors` bytes; the result may have
+fewer entries when the splits run out.
+
+Suite 188 compares palettes, their order and every pixel's index with Pillow, exactly:
+an SRIC crop at 8 to 256 colours, a posterised gradient whose boxes tie on pixel count
+(where the order Pillow's heap breaks ties decides the palette, so that heap is
+reproduced too), a four-colour image asked for 16, and 70000 pixels with more than 65536
+colours.
+
+## The colour cube: a 3D histogram
+
+```c
+alwan_status alwan_histogram3d_{T}(unsigned int *counts_out, size_t bins,
+                                   alwan_{T} const *rgb, size_t stride, size_t count,
+                                   alwan_{T} const lo[3], alwan_{T} const hi[3]);
+```
+
+How many pixels fall in each cell of a `bins x bins x bins` lattice over `[lo, hi]`, the
+data a colour-cube or point-cloud view of an image is drawn from, stored as
+`counts_out[(r * bins + g) * bins + b]`. It bins as `numpy.histogramdd` does: the edges of
+each axis are `lo + i (hi - lo) / bins` with the last exactly `hi`, a value's cell is the
+last edge at or below it, a value equal to `hi` counts in the last cell, and a pixel with a
+channel outside `[lo, hi]` or NaN is not counted. `bins` runs from 1 to 1024; the caller
+holds `bins^3` counts. Suite 189 matches `numpy.histogramdd` cell for cell over five
+binnings, with values on edges, on both bounds, outside every range, and a NaN.

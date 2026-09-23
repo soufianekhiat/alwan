@@ -2083,8 +2083,13 @@ alwan_status alwan_palette_extract_f32(alwan_f32 *palette_out, size_t max_colors
 alwan_status alwan_palette_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *rgb, size_t in_stride, size_t count, alwan_f64 const *palette, size_t palette_count, alwan_f64 const *values, size_t channels);
 alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *rgb, size_t in_stride, size_t count, alwan_f32 const *palette, size_t palette_count, alwan_f32 const *values, size_t channels);
 
-/* A palette from a photograph by median cut (Heckbert 1982), as Pillow's
- * Image.quantize(method=MEDIANCUT) computes it: the distinct colours of count 8-bit
+/* Colour quantisation: a palette of at most max_colors entries for count 8-bit RGB pixels
+ * (pixel_stride bytes apart, at least 3), and optionally each pixel's entry.
+ *
+ *   ALWAN_QUANTIZE_MEDIAN_CUT  median cut (Heckbert 1982), as Pillow's
+ *                              Image.quantize(method=MEDIANCUT) computes it
+ *
+ * MEDIAN_CUT: the distinct colours of count 8-bit
  * RGB pixels (pixel_stride bytes apart, at least 3) are split into at most max_colors
  * boxes, each time the box with the most pixels on the channel whose range, weighted
  * 77 : 150 : 29, is widest, at the median of its pixel count; a box of one colour is
@@ -2094,8 +2099,13 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  * more than 65536 distinct colours is first reduced by dropping low bits, as Pillow
  * does. palette_out must hold 3 * max_colors bytes. ALWAN_E_INVALID for a NULL, no
  * pixels, max_colors 0 or a stride under 3; ALWAN_E_RANGE for max_colors above 65536.
- * Suite 188 holds the palette and the index map to Pillow exactly. */
-alwan_status alwan_palette_median_cut_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors);
+ * Suite 188 holds the palette and the index map to Pillow exactly. An unknown method is
+ * ALWAN_E_INVALID. */
+typedef enum {
+    ALWAN_QUANTIZE_MEDIAN_CUT = 0
+} alwan_quantize_method;
+
+alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors, alwan_quantize_method method);
 
 /* A 3D histogram of RGB values: counts_out[(r * bins + g) * bins + b] receives how many
  * of count pixels (three values, stride bytes apart) fall in each cell of a bins^3
@@ -2275,8 +2285,14 @@ typedef struct {
 alwan_status alwan_color_transfer_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count, size_t channels, alwan_color_transfer_method method, alwan_color_transfer_params const *params);
 alwan_status alwan_color_transfer_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count, size_t channels, alwan_color_transfer_method method, alwan_color_transfer_params const *params);
 
-/* Haze removal by the dark channel prior (He, Sun and Tang, CVPR 2009 / TPAMI 2011), the
- * transmission refined by the guided filter (alwan_edge_filter, ALWAN_EDGE_FILTER_GUIDED) as in their Guided Image Filtering paper.
+/* Haze removal.
+ *
+ *   ALWAN_DEHAZE_DARK_CHANNEL  the dark channel prior (He, Sun and Tang, CVPR 2009 / TPAMI
+ *                              2011), the transmission refined by the guided filter
+ *                              (ALWAN_EDGE_FILTER_GUIDED) as in their Guided Image
+ *                              Filtering paper
+ *
+ * DARK_CHANNEL:
  * A hazy image is I = J t + A (1 - t); in most patches of a clear outdoor image some
  * channel is near zero, so the patch minimum of I / A measures the haze:
  *
@@ -2303,9 +2319,14 @@ typedef struct {
     alwan_f64 guide_eps;
 } alwan_dehaze_params;
 
+typedef enum {
+    ALWAN_DEHAZE_DARK_CHANNEL = 0
+} alwan_dehaze_method;
+
+/* params NULL is alwan_dehaze_params_init's values; an unknown method is ALWAN_E_INVALID. */
 void alwan_dehaze_params_init(alwan_dehaze_params *params);
-alwan_status alwan_dehaze_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 *transmission_out, size_t t_row_stride, alwan_f32 airlight_out[3], alwan_f32 const *rgb, size_t row_stride, size_t width, size_t height, alwan_dehaze_params const *params);
-alwan_status alwan_dehaze_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 *transmission_out, size_t t_row_stride, alwan_f64 airlight_out[3], alwan_f64 const *rgb, size_t row_stride, size_t width, size_t height, alwan_dehaze_params const *params);
+alwan_status alwan_dehaze_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 *transmission_out, size_t t_row_stride, alwan_f32 airlight_out[3], alwan_f32 const *rgb, size_t row_stride, size_t width, size_t height, alwan_dehaze_method method, alwan_dehaze_params const *params);
+alwan_status alwan_dehaze_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 *transmission_out, size_t t_row_stride, alwan_f64 airlight_out[3], alwan_f64 const *rgb, size_t row_stride, size_t width, size_t height, alwan_dehaze_method method, alwan_dehaze_params const *params);
 
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)

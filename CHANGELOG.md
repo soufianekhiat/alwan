@@ -451,7 +451,7 @@
   191) and Reinhard et al. 2001's l alpha beta statistics transfer (suite 193 checks the
   result's statistics equal the reference's to 3e-15).
 
-- **Haze removal: `alwan_dehaze`.** The dark channel prior (He, Sun and Tang 2009) with the
+- **Haze removal: `alwan_dehaze`, `ALWAN_DEHAZE_DARK_CHANNEL`.** The dark channel prior (He, Sun and Tang 2009) with the
   transmission refined by the guided filter; the transmission and airlight are returned
   too. No reference implementation exists; suite 192 recovers a known synthetic haze
   (airlight within 0.017, transmission median 0.029, scene 0.032).
@@ -460,7 +460,7 @@
   binned as `numpy.histogramdd` bins (linspace edges, the upper bound in the last cell,
   outliers and NaN dropped); suite 189 matches it cell for cell.
 
-- **A palette from a photograph: `alwan_palette_median_cut_u8`.** Heckbert's median cut as
+- **Colour quantisation: `alwan_quantize_u8`, `ALWAN_QUANTIZE_MEDIAN_CUT`.** Heckbert's median cut as
   Pillow's `Image.quantize(method=MEDIANCUT)` computes it (its box splits, its heap, its
   rounding, its nearest-entry index map and its low-bit reduction above 65536 colours).
   Suite 188 matches Pillow 12.0 exactly, palette bytes and every pixel's index;

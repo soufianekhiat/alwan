@@ -189,9 +189,8 @@ static unsigned int alwan_mc_d2(unsigned char const *p, unsigned char const *q) 
     return (unsigned int)(dr * dr + dg * dg + db * db);
 }
 
-alwan_status alwan_palette_median_cut_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
-                                         unsigned char const *rgb, size_t pixel_stride, size_t count,
-                                         size_t max_colors) {
+static alwan_status alwan_mc_run(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
+                                 unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors) {
     unsigned int *keys = NULL;
     alwan_mc_colour *col = NULL, *tmp = NULL;
     alwan_mc_box *boxes = NULL;
@@ -318,4 +317,15 @@ done:
     if (sum) ALWAN_FREE(sum);
     if (sorted) ALWAN_FREE(sorted);
     return st;
+}
+
+alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
+                               unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors,
+                               alwan_quantize_method method) {
+    switch (method) {
+    case ALWAN_QUANTIZE_MEDIAN_CUT:
+        return alwan_mc_run(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors);
+    default:
+        return ALWAN_E_INVALID;
+    }
 }

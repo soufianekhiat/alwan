@@ -90,7 +90,12 @@ static alwan_status alwan_dh_run(void *out, size_t out_row_stride, void *t_out, 
     size_t i, x, y, ntop, best;
     int c;
     alwan_status st;
-    if (!out || !rgb || !p) return ALWAN_E_INVALID;
+    alwan_dehaze_params defaults;
+    if (!p) {
+        alwan_dehaze_params_init(&defaults);
+        p = &defaults;
+    }
+    if (!out || !rgb) return ALWAN_E_INVALID;
     if (w == 0 || h == 0 || row_stride / elem / 3 < w || out_row_stride / elem / 3 < w) return ALWAN_E_INVALID;
     if (t_out && t_row_stride / elem < w) return ALWAN_E_INVALID;
     if (!(p->omega > 0.0 && p->omega <= 1.0) || !(p->t0 > 0.0 && p->t0 <= 1.0)) return ALWAN_E_INVALID;
@@ -180,10 +185,12 @@ done:
 #if ALWAN_WITH_F64_FACADE
 alwan_status alwan_dehaze_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 *transmission_out, size_t t_row_stride,
                               alwan_f64 airlight_out[3], alwan_f64 const *rgb, size_t row_stride, size_t width,
-                              size_t height, alwan_dehaze_params const *params) {
+                              size_t height, alwan_dehaze_method method, alwan_dehaze_params const *params) {
     double a[3];
-    alwan_status const st = alwan_dh_run(out, out_row_stride, transmission_out, t_row_stride, a, rgb, row_stride,
-                                         width, height, params, 0);
+    alwan_status st;
+    if (method != ALWAN_DEHAZE_DARK_CHANNEL) return ALWAN_E_INVALID;
+    st = alwan_dh_run(out, out_row_stride, transmission_out, t_row_stride, a, rgb, row_stride, width, height, params,
+                      0);
     if (st == ALWAN_OK && airlight_out) { airlight_out[0] = a[0]; airlight_out[1] = a[1]; airlight_out[2] = a[2]; }
     return st;
 }
@@ -192,10 +199,12 @@ alwan_status alwan_dehaze_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 *
 #if ALWAN_WITH_F32
 alwan_status alwan_dehaze_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 *transmission_out, size_t t_row_stride,
                               alwan_f32 airlight_out[3], alwan_f32 const *rgb, size_t row_stride, size_t width,
-                              size_t height, alwan_dehaze_params const *params) {
+                              size_t height, alwan_dehaze_method method, alwan_dehaze_params const *params) {
     double a[3];
-    alwan_status const st = alwan_dh_run(out, out_row_stride, transmission_out, t_row_stride, a, rgb, row_stride,
-                                         width, height, params, 1);
+    alwan_status st;
+    if (method != ALWAN_DEHAZE_DARK_CHANNEL) return ALWAN_E_INVALID;
+    st = alwan_dh_run(out, out_row_stride, transmission_out, t_row_stride, a, rgb, row_stride, width, height, params,
+                      1);
     if (st == ALWAN_OK && airlight_out) {
         airlight_out[0] = (alwan_f32)a[0]; airlight_out[1] = (alwan_f32)a[1]; airlight_out[2] = (alwan_f32)a[2];
     }
