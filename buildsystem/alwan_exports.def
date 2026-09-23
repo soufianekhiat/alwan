@@ -1341,6 +1341,7 @@ EXPORTS
     alwan_palette_extract_f32
     alwan_palette_extract_f64
     alwan_palette_find
+    alwan_palette_median_cut_u8
     alwan_palette_nearest_f32
     alwan_palette_nearest_f64
     alwan_palette_search

@@ -427,6 +427,12 @@
 
 ### Added
 
+- **A palette from a photograph: `alwan_palette_median_cut_u8`.** Heckbert's median cut as
+  Pillow's `Image.quantize(method=MEDIANCUT)` computes it (its box splits, its heap, its
+  rounding, its nearest-entry index map and its low-bit reduction above 65536 colours).
+  Suite 188 matches Pillow 12.0 exactly, palette bytes and every pixel's index;
+  docs/api/patterns.md.
+
 - **OpenColorIO's GradingHueCurve: `alwan_grading_hue_curve_apply` and its map.** The eight
   hue-selective curves of OCIO's HSY space (hue to hue, saturation and luma; luma to
   saturation and luma; saturation to saturation and luma; a hue offset), each the spline

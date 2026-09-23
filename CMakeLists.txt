@@ -129,6 +129,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_select.c
   src/alwan/api/alwan_constancy.c
   src/alwan/api/alwan_grading_ocio.c
+  src/alwan/api/alwan_palette_median_cut.c
   src/alwan/api/alwan_colorspace.c
   src/alwan/map/alwan_color_correction_map.c
   src/alwan/map/alwan_colorspace_map.c

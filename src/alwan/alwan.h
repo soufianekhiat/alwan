@@ -2083,6 +2083,20 @@ alwan_status alwan_palette_extract_f32(alwan_f32 *palette_out, size_t max_colors
 alwan_status alwan_palette_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *rgb, size_t in_stride, size_t count, alwan_f64 const *palette, size_t palette_count, alwan_f64 const *values, size_t channels);
 alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *rgb, size_t in_stride, size_t count, alwan_f32 const *palette, size_t palette_count, alwan_f32 const *values, size_t channels);
 
+/* A palette from a photograph by median cut (Heckbert 1982), as Pillow's
+ * Image.quantize(method=MEDIANCUT) computes it: the distinct colours of count 8-bit
+ * RGB pixels (pixel_stride bytes apart, at least 3) are split into at most max_colors
+ * boxes, each time the box with the most pixels on the channel whose range, weighted
+ * 77 : 150 : 29, is widest, at the median of its pixel count; a box of one colour is
+ * not split. palette_out receives count_out entries of three bytes, each the rounded
+ * mean of its box's pixels, in Pillow's order; index_out, when not NULL, one entry a
+ * pixel: the nearest palette entry in squared distance, as Pillow maps it. An image of
+ * more than 65536 distinct colours is first reduced by dropping low bits, as Pillow
+ * does. palette_out must hold 3 * max_colors bytes. ALWAN_E_INVALID for a NULL, no
+ * pixels, max_colors 0 or a stride under 3; ALWAN_E_RANGE for max_colors above 65536.
+ * Suite 188 holds the palette and the index map to Pillow exactly. */
+alwan_status alwan_palette_median_cut_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics

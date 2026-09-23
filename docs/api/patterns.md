@@ -183,6 +183,35 @@ the `channels` converted values of the entry the pixel's colour has in the palet
 the converted palette becomes the converted image in one pass, four channels for CMYK.
 Suite 138.
 
+## A palette from a photograph: median cut
+
+A photograph is not a palette, but it can be given one. `alwan_palette_median_cut_u8` is
+Heckbert's median cut (SIGGRAPH 1982) as Pillow's `Image.quantize(method=MEDIANCUT)`
+computes it, on 8-bit RGB:
+
+```c
+alwan_status alwan_palette_median_cut_u8(unsigned char *palette_out, size_t *count_out,
+                                         unsigned int *index_out,
+                                         unsigned char const *rgb, size_t pixel_stride,
+                                         size_t count, size_t max_colors);
+```
+
+The distinct colours are split into at most `max_colors` boxes: each time the box with
+the most pixels, on the channel whose range weighted 77 : 150 : 29 is widest, at the
+median of its pixel count, with every pixel of one channel value kept on one side; a box
+of a single colour is not split. Each palette entry is the rounded mean of its box's
+pixels, in Pillow's order (the upper half of each split first), and `index_out` (optional)
+maps every pixel to its nearest entry in squared distance, searched as Pillow searches.
+An image with more than 65536 distinct colours first loses low bits until it has at most
+that many, as Pillow does. `palette_out` holds `3 * max_colors` bytes; the result may have
+fewer entries when the splits run out.
+
+Suite 188 compares palettes, their order and every pixel's index with Pillow, exactly:
+an SRIC crop at 8 to 256 colours, a posterised gradient whose boxes tie on pixel count
+(where the order Pillow's heap breaks ties decides the palette, so that heap is
+reproduced too), a four-colour image asked for 16, and 70000 pixels with more than 65536
+colours.
+
 ## Getting a pattern to Y'CbCr codes
 
 A rendered pattern is already R'G'B', so it goes to Y'CbCr without a transfer function in
