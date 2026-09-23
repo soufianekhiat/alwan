@@ -7259,6 +7259,65 @@ alwan_status alwan_printer_lights_apply_f64_map_interleave(alwan_f64 *rgb_out, s
 alwan_status alwan_printer_lights_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_f64 red_lights, alwan_f64 green_lights, alwan_f64 blue_lights);
 
 /* ----------------------------------------------------------------
+ * OpenColorIO grading: primary
+ *
+ * OCIO's GradingPrimaryTransform (OpenColorIO 2.x, BSD-3-Clause), the primary
+ * controls of a grading panel in three styles, each a fixed chain:
+ *
+ *   ALWAN_GRADING_LOG    brightness (in units of 6.25 / 1023), contrast about
+ *                        0.5 + 0.5 * pivot, gamma between pivot_black and
+ *                        pivot_white: for log-encoded images
+ *   ALWAN_GRADING_LIN    offset, exposure in stops, contrast as a power about
+ *                        0.18 * 2^pivot: for scene-linear images
+ *   ALWAN_GRADING_VIDEO  offset, lift and gain about pivot_black and pivot_white,
+ *                        gamma: for display-referred video
+ *
+ * then saturation about Rec.709 luma and a clamp to [clamp_black, clamp_white], in
+ * every style. Each control is red, green, blue and master: added for brightness,
+ * offset, exposure and lift, multiplied for contrast, gamma and gain. inverse = 1
+ * runs the chain backwards. A lin contrast of 0.5 about the default pivot halves the
+ * log distance of every value from 0.2034 (OCIO's default pivot parameter is 0.18
+ * STOPS above 0.18, and init reproduces it); set pivot = 0 to pivot at 0.18 itself.
+ *
+ * alwan_grading_primary_init gives OCIO's defaults for the style, an identity grade.
+ * ALWAN_E_INVALID for a NULL, a style outside the enum, a non-finite control, a gamma
+ * below 0.01 (log and video) or a lin contrast below 0.01, pivot_white less than 0.01
+ * above pivot_black, or clamp_black above clamp_white. Computed in double; suite 184
+ * holds it to PyOpenColorIO's float32 render.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_GRADING_LOG = 0,
+    ALWAN_GRADING_LIN = 1,
+    ALWAN_GRADING_VIDEO = 2
+} alwan_grading_style;
+
+typedef struct {
+    alwan_f64 red, green, blue, master;
+} alwan_grading_rgbm;
+
+typedef struct {
+    alwan_grading_rgbm brightness;   /* log */
+    alwan_grading_rgbm contrast;     /* log, lin */
+    alwan_grading_rgbm gamma;        /* log, video */
+    alwan_grading_rgbm offset;       /* lin, video */
+    alwan_grading_rgbm exposure;     /* lin, in stops */
+    alwan_grading_rgbm lift;         /* video */
+    alwan_grading_rgbm gain;         /* video */
+    alwan_f64 saturation;
+    alwan_f64 pivot;                 /* log: -1..1 around 0.5; lin: stops from 0.18 */
+    alwan_f64 pivot_black, pivot_white;
+    alwan_f64 clamp_black, clamp_white;   /* -DBL_MAX and DBL_MAX: no clamp */
+} alwan_grading_primary;
+
+void alwan_grading_primary_init(alwan_grading_primary *params, alwan_grading_style style);
+
+alwan_status alwan_grading_primary_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
+alwan_status alwan_grading_primary_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
+alwan_status alwan_grading_primary_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
+alwan_status alwan_grading_primary_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_style style, alwan_grading_primary const *params, int inverse);
+
+/* ----------------------------------------------------------------
  * Camera Profiling / Polynomial Color Correction
  * Reference: Cheung et al. (2004), Finlayson et al. (2015)
  * ---------------------------------------------------------------- */

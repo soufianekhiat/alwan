@@ -427,6 +427,15 @@
 
 ### Added
 
+- **OpenColorIO's GradingPrimary: `alwan_grading_primary_apply` and its map.** The primary
+  controls of a grading panel in OCIO's three styles: log (brightness, contrast about a
+  pivot, gamma between black and white pivots), lin (offset, exposure in stops, contrast
+  as a power about 0.18 * 2^pivot) and video (offset, lift, gain, gamma), each followed by
+  saturation about Rec.709 luma and a clamp, forward and inverse, with RGBM controls and
+  OCIO's defaults and bounds. Suite 184 holds it to PyOpenColorIO 2.5.0: 1.7e-5 relative
+  where a power is applied (OCIO's float32 SSE pow) and 1.6e-7 where none is;
+  docs/api/grading-ocio.md.
+
 - **Illuminant estimation from an image: `alwan_illuminant_estimate` and
   `alwan_illuminant_correct`.** The e(n, p, sigma) family of van de Weijer, Gevers and
   Gijsenij, "Edge-Based Color Constancy" (IEEE TIP 2007): the Minkowski p-norm of the

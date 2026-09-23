@@ -739,6 +739,11 @@ EXPORTS
     alwan_gamut_volume_ratio_f32
     alwan_gamut_volume_ratio_f64
     alwan_get_build_info
+    alwan_grading_primary_apply_f32
+    alwan_grading_primary_apply_f64
+    alwan_grading_primary_f32_map_interleave
+    alwan_grading_primary_f64_map_interleave
+    alwan_grading_primary_init
     alwan_h273_color_primaries_f32
     alwan_h273_color_primaries_f64
     alwan_h273_color_primaries_from_space
