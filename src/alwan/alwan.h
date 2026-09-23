@@ -2140,6 +2140,18 @@ alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwa
 alwan_status alwan_histogram_match_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
 alwan_status alwan_histogram_match_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count, size_t channels);
 
+/* Colour transfer (Reinhard, Ashikhmin, Gooch and Shirley, IEEE CG&A 2001): the look of
+ * ref carried onto src by matching the mean and standard deviation of each channel in
+ * Ruderman's l alpha beta space (log LMS, near-decorrelated for natural images), with the
+ * paper's RGB -> LMS matrix and the exact inverse of it. Both images are linear RGB,
+ * three values a pixel at the given byte strides; they need not be the same size. LMS is
+ * floored at 1e-6 before the logarithm; standard deviations are population ones; a source
+ * channel with zero spread is shifted, not scaled; the output is not clamped. out may be
+ * src. ALWAN_E_INVALID for a NULL, no pixels, a stride under three values or a non-finite
+ * value. Suite 193 checks that the result's l alpha beta statistics equal ref's. */
+alwan_status alwan_color_transfer_reinhard_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count);
+alwan_status alwan_color_transfer_reinhard_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *src, size_t src_stride, size_t src_count, alwan_f64 const *ref, size_t ref_stride, size_t ref_count);
+
 /* Haze removal by the dark channel prior (He, Sun and Tang, CVPR 2009 / TPAMI 2011), the
  * transmission refined by alwan_guided_filter as in their Guided Image Filtering paper.
  * A hazy image is I = J t + A (1 - t); in most patches of a clear outdoor image some

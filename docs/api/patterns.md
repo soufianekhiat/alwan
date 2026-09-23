@@ -394,3 +394,24 @@ airlight comes back within 0.017 (the sky it is read from is 2 % scene), the tra
 to a median error of 0.029, the scene to a mean error of 0.032 (omega keeps 5 % of the
 haze on purpose). A clear image with a white patch changes by 0.0005 on average; one with
 no bright neutral at all has no airlight to find and returns `ALWAN_E_RANGE`.
+
+## Carrying a look: colour transfer
+
+```c
+alwan_status alwan_color_transfer_reinhard_{T}(alwan_{T} *out, size_t out_stride,
+                                               alwan_{T} const *src, size_t src_stride, size_t src_count,
+                                               alwan_{T} const *ref, size_t ref_stride, size_t ref_count);
+```
+
+Reinhard, Ashikhmin, Gooch and Shirley's colour transfer (IEEE CG&A 2001): the mean and
+standard deviation of each channel of `src` are matched to `ref`'s in Ruderman's
+l alpha beta space, a log LMS space whose channels are nearly decorrelated for natural
+images, so a per-channel shift and scale moves the look without the cross-talk the same
+operation causes in RGB. It uses the paper's RGB to LMS matrix and the exact inverse of
+it (the paper prints the inverse rounded), floors LMS at 1e-6 before the logarithm, and
+does not clamp. Compared with `alwan_histogram_match`, it carries two moments where that
+carries the whole distribution, and so keeps the source's own shape.
+
+No implementation of the paper's own space exists to compare with; suite 193 checks the
+property that defines it: the result's l alpha beta means and standard deviations equal
+the reference's, to 3e-15, and an image transferred onto itself comes back unchanged.

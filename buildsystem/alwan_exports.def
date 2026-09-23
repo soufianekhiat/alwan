@@ -366,6 +366,8 @@ EXPORTS
     alwan_color_matrix_apply_map_planar_ex
     alwan_color_matrix_get_preset_f32
     alwan_color_matrix_get_preset_f64
+    alwan_color_transfer_reinhard_f32
+    alwan_color_transfer_reinhard_f64
     alwan_colorimetric_purity_f32
     alwan_colorimetric_purity_f64
     alwan_colour_correct_cheung2004_f32

@@ -427,6 +427,10 @@
 
 ### Added
 
+- **Colour transfer: `alwan_color_transfer_reinhard`.** Reinhard et al. 2001, mean and
+  deviation matched per channel in Ruderman's l alpha beta; suite 193 checks the result's
+  statistics equal the reference's to 3e-15.
+
 - **Haze removal: `alwan_dehaze`.** The dark channel prior (He, Sun and Tang 2009) with the
   transmission refined by the guided filter; the transmission and airlight are returned
   too. No reference implementation exists; suite 192 recovers a known synthetic haze
