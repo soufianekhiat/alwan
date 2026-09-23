@@ -427,6 +427,10 @@
 
 ### Added
 
+- **Anisotropic diffusion: `alwan_anisotropic_diffusion_u8`.** Perona and Malik 1990 on 8-bit
+  data, bit for bit with OpenCV's `ximgproc::anisotropicDiffusion` per iteration (suite
+  202); OpenCV's own multi-iteration loop reads a border it never refreshes, this does not.
+
 - **Non-local means: `alwan_denoise_nl_means_u8`.** Buades et al. 2005 on 8-bit data of 1
   to 4 channels, reproducing OpenCV's `cv::fastNlMeansDenoising` bit for bit (suite 201).
 

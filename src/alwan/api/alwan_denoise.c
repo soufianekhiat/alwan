@@ -290,6 +290,113 @@ static alwan_status alwan_nlm_run(unsigned char *out, size_t out_row_stride, uns
     return ALWAN_OK;
 }
 
+/*
+ * Anisotropic diffusion: Perona and Malik, "Scale-space and edge detection using
+ * anisotropic diffusion", IEEE PAMI 1990. Each iteration moves every pixel toward its eight
+ * neighbours by
+ *
+ *     I <- I + alpha sum_n g(|I_n - I|) (I_n - I),   g(d) = exp(-(d / (K channels 255))^2),
+ *
+ * d the L1 distance over the channels in 0..255 units, so small differences (noise,
+ * texture) diffuse and large ones (edges) stay.
+ *
+ * The reference is OpenCV's ximgproc::anisotropicDiffusion (opencv_contrib, BSD-3), 8-bit
+ * three-channel, and this reproduces it bit for bit for three channels: a float table
+ * exp(-(k k) / sigma^2), sigma = K 3 255 in float, the neighbours in the order left, right,
+ * the three above, the three below, the sum accumulated in float, the result
+ * saturate(round(I + alpha s)) rounding half to even, the border replicated before every
+ * iteration, each iteration reading only the last. OpenCV's table has 765 entries and reads
+ * one past its end when a pure black pixel meets a pure white one (d = 765); this table
+ * has 766. For 1, 2 or 4 channels the same formula holds with their own count.
+ *
+ * OpenCV's loop is right for one iteration only: it refreshes the border with
+ * copyMakeBorder from a view into the padded buffer itself, which (without
+ * BORDER_ISOLATED) grows the view into the buffer instead of replicating, so later
+ * iterations see a stale or never-written border and the result depends on that memory.
+ * This replicates the border before every iteration, which equals n chained one-iteration
+ * OpenCV calls, and that is what the test holds it to.
+ */
+static long alwan_ad_round(float v) {
+    float f = floorf(v);
+    float const d = v - f;
+    if (d > 0.5f || (d == 0.5f && fmodf(f, 2.0f) != 0.0f)) f += 1.0f;
+    return (long)f;
+}
+
+alwan_status alwan_anisotropic_diffusion_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src,
+                                            size_t src_row_stride, size_t channels, size_t width, size_t height,
+                                            double alpha, double k, size_t iterations) {
+    size_t const ch = channels, w = width, h = height;
+    size_t const pw = w + 2, ph = h + 2;
+    float const af = (float)alpha;
+    float const sigma = (float)k * (float)(int)ch * 255.0f;
+    float const isigma2 = 1.0f / (sigma * sigma);
+    size_t const tabn = 255 * ch + 1;
+    float *tab;
+    unsigned char *a, *b;
+    size_t it, x, y, c, i;
+    if (!out || !src) return ALWAN_E_INVALID;
+    if (w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
+    if (src_row_stride / ch < w || out_row_stride / ch < w) return ALWAN_E_INVALID;
+    if (!(alpha == alpha) || !(k == k) || !(alpha > 0.0) || k == 0.0 || alpha > 1e6 || k > 1e6 || k < -1e6 || iterations > 100000) {
+        return ALWAN_E_RANGE;
+    }
+    if (iterations == 0) {
+        for (y = 0; y < h; y++) memmove(out + y * out_row_stride, src + y * src_row_stride, w * ch);
+        return ALWAN_OK;
+    }
+    tab = (float *)ALWAN_ALLOC(tabn * sizeof(float), sizeof(float));
+    a = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size(pw * ph, 2 * ch), 16);
+    if (!tab || !a) {
+        if (tab) ALWAN_FREE(tab);
+        if (a) ALWAN_FREE(a);
+        return ALWAN_E_NOMEM;
+    }
+    b = a + pw * ph * ch;
+    for (i = 0; i < tabn; i++) tab[i] = expf(-(float)(int)(i * i) * isigma2);
+    for (y = 0; y < h; y++) memcpy(a + ((y + 1) * pw + 1) * ch, src + y * src_row_stride, w * ch);
+
+    for (it = 0; it < iterations; it++) {
+        /* replicate the border of a */
+        for (y = 1; y <= h; y++) {
+            memcpy(a + (y * pw) * ch, a + (y * pw + 1) * ch, ch);
+            memcpy(a + (y * pw + w + 1) * ch, a + (y * pw + w) * ch, ch);
+        }
+        memcpy(a, a + pw * ch, pw * ch);
+        memcpy(a + (h + 1) * pw * ch, a + h * pw * ch, pw * ch);
+        for (y = 1; y <= h; y++) {
+            for (x = 1; x <= w; x++) {
+                unsigned char const *p0 = a + (y * pw + x) * ch;
+                long const nb[8] = { -(long)ch, (long)ch, -(long)(pw * ch) - (long)ch, -(long)(pw * ch),
+                                     -(long)(pw * ch) + (long)ch, (long)(pw * ch) - (long)ch, (long)(pw * ch),
+                                     (long)(pw * ch) + (long)ch };
+                float s[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+                int kk;
+                for (kk = 0; kk < 8; kk++) {
+                    unsigned char const *p1 = p0 + nb[kk];
+                    int dl[4], nabla = 0;
+                    float wgt;
+                    for (c = 0; c < ch; c++) {
+                        dl[c] = (int)p1[c] - (int)p0[c];
+                        nabla += dl[c] < 0 ? -dl[c] : dl[c];
+                    }
+                    wgt = tab[nabla];
+                    for (c = 0; c < ch; c++) s[c] += (float)dl[c] * wgt;
+                }
+                for (c = 0; c < ch; c++) {
+                    long const r = alwan_ad_round((float)p0[c] + af * s[c]);
+                    b[(y * pw + x) * ch + c] = (unsigned char)(r < 0 ? 0 : r > 255 ? 255 : r);
+                }
+            }
+        }
+        { unsigned char *t = a; a = b; b = t; }
+    }
+    for (y = 0; y < h; y++) memcpy(out + y * out_row_stride, a + ((y + 1) * pw + 1) * ch, w * ch);
+    ALWAN_FREE(tab);
+    ALWAN_FREE(a < b ? a : b);
+    return ALWAN_OK;
+}
+
 alwan_status alwan_denoise_nl_means_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src,
                                        size_t src_row_stride, size_t channels, size_t width, size_t height, double h,
                                        size_t template_window, size_t search_window) {

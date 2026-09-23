@@ -665,6 +665,30 @@ Suite 201 holds every value of ten cases equal. For a colour photograph, OpenCV'
 `fastNlMeansDenoisingColored` denoises CIELAB with a separate `h` for a and b. Convert to
 Lab first and denoise the channels you choose. `out` must not alias `src`.
 
+### Anisotropic diffusion
+
+```c
+alwan_status alwan_anisotropic_diffusion_u8(unsigned char *out, size_t out_row_stride,
+                                            unsigned char const *src, size_t src_row_stride, size_t channels,
+                                            size_t width, size_t height,
+                                            double alpha, double k, size_t iterations);
+```
+
+Perona and Malik (IEEE PAMI 1990). Each iteration moves every pixel toward its eight
+neighbours by `alpha sum g(d) (I_n - I)`, with `g(d) = exp(-(d / (k channels 255))^2)` and
+`d` the L1 difference over the channels. Differences well below `k` diffuse and edges well
+above it stay, so the image smooths within regions and not across them. `alpha` 0.1 to 0.2
+keeps the eight-neighbour step stable; `k` 0.02 to 0.1 sets the edge threshold as a
+fraction of full scale per channel.
+
+For three channels the function reproduces OpenCV's `ximgproc::anisotropicDiffusion` bit
+for bit for one iteration, and suite 202 holds `n` iterations to `n` chained one-iteration
+OpenCV calls. OpenCV's own loop is correct only for one iteration. It refreshes the
+border with `copyMakeBorder` from a view into the padded buffer itself, and without
+`BORDER_ISOLATED` that call grows the view instead of replicating. Later iterations then
+read a border that is stale or was never written. alwan replicates the border every
+iteration. `out` may alias `src`.
+
 The functions reproduce OpenCV's `cv::createCLAHE` bit for bit, and suite 197 holds every
 pixel of ten cases equal. An image that does not divide into tiles is extended at the
 bottom and right by reflection, by `tiles - size % tiles` in each direction, so an image

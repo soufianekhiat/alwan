@@ -2299,6 +2299,22 @@ alwan_status alwan_denoise_tv_chambolle_f64(alwan_f64 *out, size_t out_row_strid
  * 201. */
 alwan_status alwan_denoise_nl_means_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, double h, size_t template_window, size_t search_window);
 
+/* Anisotropic diffusion (Perona and Malik, IEEE PAMI 1990) on 8-bit data: `iterations`
+ * steps, each moving every pixel toward its eight neighbours by alpha sum g(d) (I_n - I),
+ * g(d) = exp(-(d / (k channels 255))^2), d the L1 difference over the channels. Noise and
+ * fine texture diffuse, edges (differences well above k) stay. alpha is the step (0.1 to
+ * 0.2 keeps it stable over eight neighbours), k the edge threshold as a fraction of full
+ * scale per channel (0.02 to 0.1).
+ *
+ * 1 to 4 channels, rows at the given byte strides; out may be src. For three channels it
+ * reproduces OpenCV's ximgproc::anisotropicDiffusion bit for bit for one iteration, and n
+ * iterations equal n chained one-iteration calls; OpenCV's own multi-iteration loop reads
+ * a border it never refreshes (and its table reads one past its end when black meets
+ * white), where this does not. ALWAN_E_INVALID for a NULL, a zero
+ * size, a channel count out of range or a stride too small; ALWAN_E_RANGE for alpha not
+ * above 0, k 0, a NaN or huge value, or more than 100000 iterations. Suite 202. */
+alwan_status alwan_anisotropic_diffusion_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, double alpha, double k, size_t iterations);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every
