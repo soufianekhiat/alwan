@@ -466,7 +466,11 @@
 - **Colour transfer: `alwan_color_transfer`.** One entry point with a method enum and a
   blend amount: histogram matching as scikit-image's `match_histograms` (bit for bit, suite
   191) and Reinhard et al. 2001's l alpha beta statistics transfer (suite 193 checks the
-  result's statistics equal the reference's to 3e-15).
+  result's statistics equal the reference's to 3e-15). `ALWAN_COLOR_TRANSFER_MKL` adds Pitie
+  and Kokaram's linear Monge-Kantorovich map, the whole covariance of 1 to 4 channels
+  matched by optimal transport between Gaussians, against color-matcher's `mkl` to 5.5e-14
+  (suite 209); a singular source covariance takes a pseudo-inverse where the authors' code
+  divides by machine epsilon.
 
 - **Haze removal: `alwan_dehaze`, `ALWAN_DEHAZE_DARK_CHANNEL`.** The dark channel prior (He, Sun and Tang 2009) with the
   transmission refined by the guided filter; the transmission and airlight are returned

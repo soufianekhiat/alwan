@@ -333,7 +333,8 @@ an image of ordinary size, equalise an 8-bit lightness channel.
 ```c
 typedef enum {
     ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH = 0,
-    ALWAN_COLOR_TRANSFER_REINHARD2001 = 1
+    ALWAN_COLOR_TRANSFER_REINHARD2001 = 1,
+    ALWAN_COLOR_TRANSFER_MKL = 2
 } alwan_color_transfer_method;
 
 alwan_status alwan_color_transfer_{T}(alwan_{T} *out, size_t out_stride,
@@ -344,7 +345,7 @@ alwan_status alwan_color_transfer_{T}(alwan_{T} *out, size_t out_stride,
 ```
 
 The look of a reference image carried onto a source. The two need not be the same size,
-and pixels are passed as counts, since neither method looks at neighbours. `out` may be
+and pixels are passed as counts, since no method looks at neighbours. `out` may be
 `src`. `params.amount` blends the result with the source,
 `source + amount (transfer - source)`; 0 (or NULL params) reads as 1, the full transfer.
 
@@ -372,6 +373,39 @@ whole distribution, and so keeps the source's own shape.
 No implementation of the paper's own space exists to compare with; suite 193 checks the
 property that defines it: the result's l alpha beta means and standard deviations equal the
 reference's, to 3e-15, and an image transferred onto itself comes back unchanged.
+
+### `MKL`
+
+Pitie and Kokaram's linear Monge-Kantorovich mapping (IET CVMP 2007). Of all the affine
+maps that carry a Gaussian with the source's mean and covariance onto one with the
+reference's, it is the one that moves colours least on average, the optimal transport
+between the two Gaussians:
+
+```
+T   = Sr^-1/2 (Sr^1/2 Sz Sr^1/2)^1/2 Sr^-1/2
+out = T (x - mean_src) + mean_ref
+```
+
+with `Sr`, `Sz` the sample covariances (divided by n - 1). Where `REINHARD2001` matches
+each channel's spread in a space chosen to decorrelate them, this matches the whole
+covariance in the space it is given, cross-channel terms included, so the correlations of
+the reference (warm highlights with cool shadows, say) arrive with its spread. It takes 1
+to 4 channels and at least two pixels in each image, and does not clamp. One channel is a
+shift and a scale by the ratio of standard deviations.
+
+The square roots come from a cyclic Jacobi eigen decomposition. As in the authors' MATLAB
+code, negative eigenvalues are zeroed and the inverse square root is `1 / (sqrt(l) + eps)`.
+`T` is unique when the source's covariance is not singular. When it is (a grey image, a
+constant channel) the authors' code divides by `eps` and its result carries rounding noise
+magnified by about 1e31; alwan takes the pseudo-inverse instead, an eigenvalue under 1e-12
+of the largest counting as zero, so the source moves only within the directions it spans.
+
+Suite 209 compares with color-matcher's `mkl` (C. Hahne's Python port of the authors'
+code, GPL-3.0, used as an oracle only) on six pairs: display-rendered SRIC frames of
+different sizes, linear light running past 1, and 4- and 2-channel pairs, to 5.5e-14
+relative. It also checks the property that defines the method, that the result's mean and
+covariance are the reference's (to 2.3e-15), and the identity, one-channel, grey-source,
+float32 and blend cases.
 
 ## Sharpening
 

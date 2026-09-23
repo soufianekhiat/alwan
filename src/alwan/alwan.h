@@ -2352,7 +2352,7 @@ alwan_status alwan_sharpen_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
 
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
- * width and height, since neither method looks at neighbours). out may be src.
+ * width and height, since no method looks at neighbours). out may be src.
  *
  *   ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH  each of 1 to 4 channels remapped so its cumulative
  *                                         distribution matches the reference's, as
@@ -2366,13 +2366,22 @@ alwan_status alwan_sharpen_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
  *                                         linear RGB; LMS floored at 1e-6 before the log; a
  *                                         source channel with no spread is shifted, not
  *                                         scaled; not clamped (suite 193)
+ *   ALWAN_COLOR_TRANSFER_MKL              Pitie and Kokaram 2007, the linear Monge-Kantorovich
+ *                                         map: the affine map carrying the source's mean
+ *                                         and covariance onto the reference's that moves
+ *                                         colours least, over all 1 to 4 channels at once,
+ *                                         so cross-channel structure moves too. Sample
+ *                                         covariances (n - 1), at least two pixels each; a
+ *                                         singular source covariance takes a pseudo-inverse;
+ *                                         not clamped (color-matcher's mkl, suite 209)
  *
  * params NULL is the full transfer. ALWAN_E_INVALID for a NULL, no pixels, a channel count
- * out of range (REINHARD2001 takes 3), a stride too small, a non-finite value or an unknown
- * method; ALWAN_E_RANGE for an amount outside 0..1. */
+ * out of range (REINHARD2001 takes 3), fewer than two pixels for MKL, a stride too small,
+ * a non-finite value or an unknown method; ALWAN_E_RANGE for an amount outside 0..1. */
 typedef enum {
     ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH = 0,
-    ALWAN_COLOR_TRANSFER_REINHARD2001 = 1
+    ALWAN_COLOR_TRANSFER_REINHARD2001 = 1,
+    ALWAN_COLOR_TRANSFER_MKL = 2
 } alwan_color_transfer_method;
 
 typedef struct {

@@ -23,6 +23,23 @@
  * No implementation of the paper's own space exists to compare with; suite 193 checks
  * the property that defines the method, that the result's lab statistics equal the
  * reference's.
+ *
+ * MKL: Pitie and Kokaram, "The linear Monge-Kantorovitch linear colour mapping for
+ * example-based colour transfer", IET CVMP 2007. The source's colours are moved by the
+ * affine map that carries a Gaussian with the source's mean and covariance onto one with
+ * the reference's while moving colours least on average (the Monge-Kantorovich optimum
+ * between Gaussians):
+ *
+ *   T = Sr^-1/2 (Sr^1/2 Sz Sr^1/2)^1/2 Sr^-1/2,   out = T (x - mean_src) + mean_ref
+ *
+ * with Sr, Sz the sample covariances (divided by n - 1). The square roots come from a
+ * cyclic Jacobi eigen decomposition; as in the authors' MATLAB code and color-matcher's
+ * port, negative eigenvalues are zeroed and the inverse square root is 1 / (sqrt(l) +
+ * DBL_EPSILON). T is unique for a source whose covariance is not singular. Where it is (a
+ * grey image, a flat channel) the authors' code divides by DBL_EPSILON and the result
+ * carries rounding noise amplified by 1e31; this takes the pseudo-inverse instead, an
+ * eigenvalue under 1e-12 of the largest counting as zero, so the source is moved only
+ * within the directions it spans.
  */
 
 #include "../alwan.h"
@@ -123,6 +140,162 @@ static alwan_status alwan_ct_run(void *out, size_t out_stride, void const *src, 
     return ALWAN_OK;
 }
 
+/* ---- MKL ---- */
+
+/* Eigen decomposition of a symmetric n x n matrix (n <= 4) by cyclic Jacobi: a becomes
+ * diagonal (the eigenvalues), v the eigenvectors in its columns. */
+static void alwan_mkl_jacobi(double a[16], double v[16], size_t n) {
+    size_t i, j, k, sweep;
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) v[i * n + j] = i == j ? 1.0 : 0.0;
+    }
+    for (sweep = 0; sweep < 100; sweep++) {
+        double off = 0.0, diag = 0.0;
+        for (i = 0; i < n; i++) {
+            diag += a[i * n + i] * a[i * n + i];
+            for (j = i + 1; j < n; j++) off += a[i * n + j] * a[i * n + j];
+        }
+        if (off <= 1e-30 * diag || off == 0.0) break;
+        for (i = 0; i < n; i++) {
+            for (j = i + 1; j < n; j++) {
+                double const apq = a[i * n + j];
+                double theta, t, c, s;
+                if (apq == 0.0) continue;
+                theta = (a[j * n + j] - a[i * n + i]) / (2.0 * apq);
+                t = (theta >= 0.0 ? 1.0 : -1.0) / (fabs(theta) + sqrt(theta * theta + 1.0));
+                c = 1.0 / sqrt(t * t + 1.0);
+                s = t * c;
+                for (k = 0; k < n; k++) { /* columns i and j */
+                    double const aki = a[k * n + i], akj = a[k * n + j];
+                    a[k * n + i] = c * aki - s * akj;
+                    a[k * n + j] = s * aki + c * akj;
+                }
+                for (k = 0; k < n; k++) { /* rows i and j */
+                    double const aik = a[i * n + k], ajk = a[j * n + k];
+                    a[i * n + k] = c * aik - s * ajk;
+                    a[j * n + k] = s * aik + c * ajk;
+                }
+                for (k = 0; k < n; k++) {
+                    double const vki = v[k * n + i], vkj = v[k * n + j];
+                    v[k * n + i] = c * vki - s * vkj;
+                    v[k * n + j] = s * vki + c * vkj;
+                }
+            }
+        }
+    }
+}
+
+/* Mean and sample covariance (n - 1) of count pixels of n channels. */
+static int alwan_mkl_stats(double mean[4], double cov[16], void const *px, size_t stride, size_t count, size_t n,
+                           int is_f32) {
+    size_t i, a, b;
+    for (a = 0; a < n; a++) mean[a] = 0.0;
+    for (a = 0; a < n * n; a++) cov[a] = 0.0;
+    for (i = 0; i < count; i++) {
+        char const *p = (char const *)px + i * stride;
+        for (a = 0; a < n; a++) {
+            double const v = is_f32 ? (double)((alwan_f32 const *)p)[a] : ((alwan_f64 const *)p)[a];
+            if (!alwan_ct_finite(v)) return 0;
+            mean[a] += v;
+        }
+    }
+    for (a = 0; a < n; a++) mean[a] /= (double)count;
+    for (i = 0; i < count; i++) {
+        char const *p = (char const *)px + i * stride;
+        double d[4];
+        for (a = 0; a < n; a++) d[a] = (is_f32 ? (double)((alwan_f32 const *)p)[a] : ((alwan_f64 const *)p)[a]) - mean[a];
+        for (a = 0; a < n; a++) {
+            for (b = a; b < n; b++) cov[a * n + b] += d[a] * d[b];
+        }
+    }
+    for (a = 0; a < n; a++) {
+        for (b = a; b < n; b++) {
+            cov[a * n + b] /= (double)(count - 1);
+            cov[b * n + a] = cov[a * n + b];
+        }
+    }
+    return 1;
+}
+
+static alwan_status alwan_mkl_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
+                                  void const *ref, size_t ref_stride, size_t ref_count, size_t n, int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    double ms[4], mz[4], sr[16], sz[16], vr[16], vc[16], c[16], tmp[16], t[16];
+    double val_r[4], inv_r[4], big = 0.0;
+    size_t i, a, b, k;
+    if (src_count < 2 || ref_count < 2) return ALWAN_E_INVALID;
+    if (ref_stride / elem < n) return ALWAN_E_INVALID;
+    if (!alwan_mkl_stats(ms, sr, src, src_stride, src_count, n, is_f32)) return ALWAN_E_INVALID;
+    if (!alwan_mkl_stats(mz, sz, ref, ref_stride, ref_count, n, is_f32)) return ALWAN_E_INVALID;
+    alwan_mkl_jacobi(sr, vr, n);
+    for (a = 0; a < n; a++) {
+        double const l = sr[a * n + a];
+        if (l > big) big = l;
+    }
+    for (a = 0; a < n; a++) {
+        double const l = sr[a * n + a] > 0.0 ? sr[a * n + a] : 0.0;
+        val_r[a] = sqrt(l);
+        inv_r[a] = l > 1e-12 * big ? 1.0 / (val_r[a] + DBL_EPSILON) : 0.0;
+    }
+    /* C = D Vr' Sz Vr D, D = diag(sqrt l) */
+    for (a = 0; a < n; a++) {
+        for (b = 0; b < n; b++) {
+            double s = 0.0;
+            for (k = 0; k < n; k++) s += sz[a * n + k] * vr[k * n + b];
+            tmp[a * n + b] = s; /* Sz Vr */
+        }
+    }
+    for (a = 0; a < n; a++) {
+        for (b = 0; b < n; b++) {
+            double s = 0.0;
+            for (k = 0; k < n; k++) s += vr[k * n + a] * tmp[k * n + b];
+            c[a * n + b] = val_r[a] * s * val_r[b];
+        }
+    }
+    alwan_mkl_jacobi(c, vc, n);
+    /* C^1/2 = Vc sqrt(L) Vc', then T = Vr Dinv C^1/2 Dinv Vr' */
+    for (a = 0; a < n; a++) {
+        for (b = 0; b < n; b++) {
+            double s = 0.0;
+            for (k = 0; k < n; k++) {
+                double const l = c[k * n + k] > 0.0 ? c[k * n + k] : 0.0;
+                s += vc[a * n + k] * sqrt(l) * vc[b * n + k];
+            }
+            tmp[a * n + b] = inv_r[a] * s * inv_r[b];
+        }
+    }
+    for (a = 0; a < n; a++) {
+        for (b = 0; b < n; b++) {
+            double s = 0.0;
+            for (k = 0; k < n; k++) s += vr[a * n + k] * tmp[k * n + b];
+            c[a * n + b] = s; /* Vr (Dinv C^1/2 Dinv) */
+        }
+    }
+    for (a = 0; a < n; a++) {
+        for (b = 0; b < n; b++) {
+            double s = 0.0;
+            for (k = 0; k < n; k++) s += c[a * n + k] * vr[b * n + k];
+            t[a * n + b] = s;
+        }
+    }
+    for (i = 0; i < src_count; i++) {
+        char const *p = (char const *)src + i * src_stride;
+        char *d = (char *)out + i * out_stride;
+        double x[4], y[4];
+        for (a = 0; a < n; a++) x[a] = (is_f32 ? (double)((alwan_f32 const *)p)[a] : ((alwan_f64 const *)p)[a]) - ms[a];
+        for (a = 0; a < n; a++) {
+            double s = mz[a];
+            for (b = 0; b < n; b++) s += t[a * n + b] * x[b];
+            y[a] = s;
+        }
+        for (a = 0; a < n; a++) {
+            if (is_f32) ((alwan_f32 *)d)[a] = (alwan_f32)y[a];
+            else ((alwan_f64 *)d)[a] = y[a];
+        }
+    }
+    return ALWAN_OK;
+}
+
 /* ---- the family: alwan_color_transfer_{T} ---- */
 
 static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
@@ -137,7 +310,8 @@ static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src,
     if (!out || !src || !ref || src_count == 0 || channels == 0 || channels > 4) return ALWAN_E_INVALID;
     if (!(amount == amount) || amount < 0.0 || amount > 1.0) return ALWAN_E_RANGE;
     if (method == ALWAN_COLOR_TRANSFER_REINHARD2001 && channels != 3) return ALWAN_E_INVALID;
-    if (method != ALWAN_COLOR_TRANSFER_REINHARD2001 && method != ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH) {
+    if (method != ALWAN_COLOR_TRANSFER_REINHARD2001 && method != ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH &&
+        method != ALWAN_COLOR_TRANSFER_MKL) {
         return ALWAN_E_INVALID;
     }
     if (src_stride / elem < channels || out_stride / elem < channels) return ALWAN_E_INVALID;
@@ -153,6 +327,8 @@ static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src,
     }
     if (method == ALWAN_COLOR_TRANSFER_REINHARD2001) {
         st = alwan_ct_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, is_f32);
+    } else if (method == ALWAN_COLOR_TRANSFER_MKL) {
+        st = alwan_mkl_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, is_f32);
     } else {
         st = alwan__hm_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, is_f32);
     }
