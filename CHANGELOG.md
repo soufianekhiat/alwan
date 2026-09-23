@@ -427,6 +427,10 @@
 
 ### Added
 
+- **The colour cube: `alwan_histogram3d`.** Counts of RGB values over a `bins^3` lattice,
+  binned as `numpy.histogramdd` bins (linspace edges, the upper bound in the last cell,
+  outliers and NaN dropped); suite 189 matches it cell for cell.
+
 - **A palette from a photograph: `alwan_palette_median_cut_u8`.** Heckbert's median cut as
   Pillow's `Image.quantize(method=MEDIANCUT)` computes it (its box splits, its heap, its
   rounding, its nearest-entry index map and its low-bit reduction above 65536 colours).

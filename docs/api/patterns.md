@@ -300,3 +300,20 @@ files state no licence, so alwan_dev records the rectangles and codes measured f
 rather than the files. ITU-R BT.814-4 is a free download from itu.int; its own tables give
 the PLUGE, and the EBU files only check the transcription. ITU-R BT.1729 is free from
 itu.int as well.
+
+## The colour cube: a 3D histogram
+
+```c
+alwan_status alwan_histogram3d_{T}(unsigned int *counts_out, size_t bins,
+                                   alwan_{T} const *rgb, size_t stride, size_t count,
+                                   alwan_{T} const lo[3], alwan_{T} const hi[3]);
+```
+
+How many pixels fall in each cell of a `bins x bins x bins` lattice over `[lo, hi]`, the
+data a colour-cube or point-cloud view of an image is drawn from, stored as
+`counts_out[(r * bins + g) * bins + b]`. It bins as `numpy.histogramdd` does: the edges of
+each axis are `lo + i (hi - lo) / bins` with the last exactly `hi`, a value's cell is the
+last edge at or below it, a value equal to `hi` counts in the last cell, and a pixel with a
+channel outside `[lo, hi]` or NaN is not counted. `bins` runs from 1 to 1024; the caller
+holds `bins^3` counts. Suite 189 matches `numpy.histogramdd` cell for cell over five
+binnings, with values on edges, on both bounds, outside every range, and a NaN.

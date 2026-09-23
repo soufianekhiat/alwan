@@ -2097,6 +2097,17 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  * Suite 188 holds the palette and the index map to Pillow exactly. */
 alwan_status alwan_palette_median_cut_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors);
 
+/* A 3D histogram of RGB values: counts_out[(r * bins + g) * bins + b] receives how many
+ * of count pixels (three values, stride bytes apart) fall in each cell of a bins^3
+ * lattice over [lo, hi] per channel, the data a colour-cube or point-cloud view is
+ * drawn from. It bins as numpy.histogramdd: edges lo + i (hi - lo) / bins with the last
+ * exactly hi, a value's cell is the last edge at or below it, a value equal to hi counts
+ * in the last cell, and a pixel with a channel outside [lo, hi] or NaN is not counted.
+ * counts_out holds bins^3 entries. ALWAN_E_INVALID for a NULL, a stride under three
+ * values, or lo not below hi; ALWAN_E_RANGE for bins 0 or above 1024. Suite 189. */
+alwan_status alwan_histogram3d_f32(unsigned int *counts_out, size_t bins, alwan_f32 const *rgb, size_t stride, size_t count, alwan_f32 const lo[3], alwan_f32 const hi[3]);
+alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_f64 const *rgb, size_t stride, size_t count, alwan_f64 const lo[3], alwan_f64 const hi[3]);
+
 /* ICaCb <-> XYZ conversions (Image Difference Color Space)
  * - Zhang & Wandell (1996, 1997)
  * - Optimized for image difference metrics
