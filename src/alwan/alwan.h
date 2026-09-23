@@ -2282,6 +2282,23 @@ alwan_status alwan_exposure_fusion_f64(alwan_f64 *out, size_t out_row_stride, al
 alwan_status alwan_denoise_tv_chambolle_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 weight, alwan_f32 eps, size_t max_iterations);
 alwan_status alwan_denoise_tv_chambolle_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 weight, alwan_f64 eps, size_t max_iterations);
 
+/* Non-local means denoising (Buades, Coll and Morel, CVPR 2005) on 8-bit data: every
+ * pixel becomes the weighted mean of the pixels in the search_window x search_window
+ * window around it, each weighted by exp(-d / (h^2 channels)), d the mean squared
+ * difference between the template_window x template_window patches around the two. Noise
+ * averages away where structure repeats; h sets the strength (OpenCV suggests 10 for
+ * clean detail, higher for more removal, in 0..255 units). OpenCV's defaults are template
+ * 7 and search 21; even sizes are made odd by dropping one.
+ *
+ * 1 to 4 channels, one h for all, rows at the given byte strides. It reproduces OpenCV's
+ * cv::fastNlMeansDenoising (NORM_L2) bit for bit. For a colour photograph, OpenCV's
+ * fastNlMeansDenoisingColored runs this on CIELAB with a separate h for a and b; convert
+ * first and denoise the channels you choose. out must not alias src. ALWAN_E_INVALID for a
+ * NULL, a zero size, a channel count out of range or a stride too small; ALWAN_E_RANGE for
+ * a negative or NaN h, a zero window, a template above 101 or a search above 201. Suite
+ * 201. */
+alwan_status alwan_denoise_nl_means_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, double h, size_t template_window, size_t search_window);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every

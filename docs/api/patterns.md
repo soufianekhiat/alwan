@@ -643,6 +643,28 @@ The function follows scikit-image's `denoise_tv_chambolle` with `channel_axis` s
 to which iteration's image it returns. Suite 200 agrees with it exactly in f64 over seven
 cases, including runs cut after 1, 2 and 7 iterations. `out` may alias `src`.
 
+### Non-local means
+
+```c
+alwan_status alwan_denoise_nl_means_u8(unsigned char *out, size_t out_row_stride,
+                                       unsigned char const *src, size_t src_row_stride, size_t channels,
+                                       size_t width, size_t height, double h,
+                                       size_t template_window, size_t search_window);
+```
+
+Buades, Coll and Morel (CVPR 2005). Each pixel becomes the weighted mean of the pixels in a
+`search_window` square around it, weighted by `exp(-d / (h^2 channels))`, where `d` is the
+mean squared difference between the `template_window` patches around the two pixels. A
+pixel draws on others with the same neighbourhood wherever they are in the window, so
+repeated structure survives and noise averages away. `h` is in 0..255 units: about 10
+keeps fine detail, higher values remove more. OpenCV's default windows are 7 and 21.
+
+The function takes 8-bit data of 1 to 4 channels with one `h`, and reproduces OpenCV's
+`cv::fastNlMeansDenoising` (`NORM_L2`) bit for bit, fixed-point weight table included.
+Suite 201 holds every value of ten cases equal. For a colour photograph, OpenCV's
+`fastNlMeansDenoisingColored` denoises CIELAB with a separate `h` for a and b. Convert to
+Lab first and denoise the channels you choose. `out` must not alias `src`.
+
 The functions reproduce OpenCV's `cv::createCLAHE` bit for bit, and suite 197 holds every
 pixel of ten cases equal. An image that does not divide into tiles is extended at the
 bottom and right by reflection, by `tiles - size % tiles` in each direction, so an image

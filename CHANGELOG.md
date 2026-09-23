@@ -427,6 +427,9 @@
 
 ### Added
 
+- **Non-local means: `alwan_denoise_nl_means_u8`.** Buades et al. 2005 on 8-bit data of 1
+  to 4 channels, reproducing OpenCV's `cv::fastNlMeansDenoising` bit for bit (suite 201).
+
 - **TV denoising: `alwan_denoise_tv_chambolle`.** Chambolle 2004 for the Rudin, Osher and
   Fatemi model, channel by channel, as scikit-image's `denoise_tv_chambolle` computes it;
   suite 200 agrees with scikit-image exactly in f64.

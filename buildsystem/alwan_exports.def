@@ -588,6 +588,7 @@ EXPORTS
     alwan_delta_e_zcam_f32_map_interleave
     alwan_delta_e_zcam_f64
     alwan_delta_e_zcam_f64_map_interleave
+    alwan_denoise_nl_means_u8
     alwan_denoise_tv_chambolle_f32
     alwan_denoise_tv_chambolle_f64
     alwan_destroy

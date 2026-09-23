@@ -134,6 +134,169 @@ static alwan_status alwan_tv_run(void *out, size_t out_row_stride, void const *s
     return ALWAN_OK;
 }
 
+/*
+ * Non-local means: Buades, Coll and Morel, "A non-local algorithm for image denoising",
+ * CVPR 2005. Every pixel becomes the weighted mean of the pixels in a search window around
+ * it, each weighted by how alike the patches (template windows) around the two are:
+ *
+ *     w = exp(-d / (h^2 channels)),  d = mean over the patch of sum_c (a_c - b_c)^2,
+ *
+ * so a pixel draws on others with the same neighbourhood, wherever they sit in the window,
+ * and noise averages out while structure repeats.
+ *
+ * The reference is OpenCV's cv::fastNlMeansDenoising for 8-bit data and the L2 norm
+ * (modules/photo/src/fast_nlmeans_denoising_invoker*.hpp, Apache-2.0), and this reproduces
+ * its integer arithmetic bit for bit: the image extended by BORDER_REFLECT_101; the patch
+ * sum of squared differences divided by the patch area rounded up to a power of two, as a
+ * right shift, and looked up in a table of cvRound(m exp(-d' / (float(h h) channels)))
+ * with d' the shifted sum times 2^shift / area, zeroed below 0.001 m, m = INT_MAX /
+ * (search^2 255); the estimate (sum w p + sum w / 2) / sum w in unsigned integers. OpenCV
+ * computes the patch sums incrementally along each row; this computes them with one
+ * integral image per search offset, which gives the same integers. The window sizes are
+ * forced odd, as OpenCV forces them.
+ */
+static alwan_status alwan_nlm_run(unsigned char *out, size_t out_row_stride, unsigned char const *src,
+                                  size_t src_row_stride, size_t ch, size_t w, size_t h, double hparam, size_t tws,
+                                  size_t sws) {
+    long const th = (long)(tws / 2), sh = (long)(sws / 2);
+    long const T = 2 * th + 1, S = 2 * sh + 1, bs = th + sh;
+    long const ew = (long)w + 2 * bs, eh = (long)h + 2 * bs;
+    long const n = (long)w * (long)h;
+    int const fpm = (int)(2147483647L / ((long)S * S * 255L));
+    int shift = 0;
+    long tsq, maxd, amax, x, y, sy, sx, k;
+    double mult;
+    float const hh = (float)hparam * (float)hparam * (float)(int)ch;
+    unsigned char *ext;
+    int *lut;
+    long long *integ;
+    long long *est, *wsum;
+    if (!out || !src) return ALWAN_E_INVALID;
+    if (w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
+    if (src_row_stride / ch < w || out_row_stride / ch < w) return ALWAN_E_INVALID;
+    if (!(hparam == hparam) || !(hparam >= 0.0) || hparam > 1e6 || tws == 0 || sws == 0 || tws > 101 || sws > 201) {
+        return ALWAN_E_RANGE;
+    }
+    if (w > 1000000 || h > 1000000 || n / (long)w != (long)h) return ALWAN_E_RANGE;
+
+    tsq = T * T;
+    while ((1L << shift) < tsq) shift++;
+    mult = (double)(1L << shift) / (double)tsq;
+    maxd = 255L * 255L * (long)ch;
+    amax = (long)((double)maxd / mult + 1.0);
+
+    ext = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size((size_t)ew * (size_t)eh, ch), 16);
+    lut = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)amax, sizeof(int)), sizeof(int));
+    integ = (long long *)ALWAN_ALLOC(alwan_safe_array_size((size_t)(w + 2 * th + 1) * (h + 2 * th + 1), sizeof(long long)), 16);
+    est = (long long *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n, (ch + 1) * sizeof(long long)), 16);
+    if (!ext || !lut || !integ || !est) {
+        if (ext) ALWAN_FREE(ext);
+        if (lut) ALWAN_FREE(lut);
+        if (integ) ALWAN_FREE(integ);
+        if (est) ALWAN_FREE(est);
+        return ALWAN_E_NOMEM;
+    }
+    wsum = est + (size_t)n * ch;
+    memset(est, 0, (size_t)n * (ch + 1) * sizeof(long long));
+
+    for (k = 0; k < amax; k++) {
+        double const d = (double)k * mult;
+        double wv = exp(-d / (double)hh);
+        double r;
+        long rv;
+        if (wv != wv) wv = 1.0; /* h = 0: 0 / 0 at d = 0 */
+        r = (double)fpm * wv;
+        rv = (long)floor(r);
+        if (r - (double)rv > 0.5 || (r - (double)rv == 0.5 && (rv & 1))) rv++; /* cvRound, ties to even */
+        if ((double)rv < 0.001 * (double)fpm) rv = 0;
+        lut[k] = (int)rv;
+    }
+
+    for (y = 0; y < eh; y++) {
+        long yy = y - bs;
+        while (yy < 0 || yy >= (long)h) {
+            if (h == 1) { yy = 0; break; }
+            if (yy < 0) yy = -yy;
+            if (yy >= (long)h) yy = 2 * ((long)h - 1) - yy;
+        }
+        for (x = 0; x < ew; x++) {
+            long xx = x - bs;
+            size_t c;
+            while (xx < 0 || xx >= (long)w) {
+                if (w == 1) { xx = 0; break; }
+                if (xx < 0) xx = -xx;
+                if (xx >= (long)w) xx = 2 * ((long)w - 1) - xx;
+            }
+            for (c = 0; c < ch; c++) ext[((size_t)y * ew + x) * ch + c] = src[(size_t)yy * src_row_stride + (size_t)xx * ch + c];
+        }
+    }
+
+    {
+        long const iw = (long)w + 2 * th + 1, ih = (long)h + 2 * th + 1; /* integral over the patch-centre area plus a margin */
+        for (sy = -sh; sy <= sh; sy++) {
+            for (sx = -sh; sx <= sh; sx++) {
+                /* integ[(y + 1) iw + (x + 1)]: sum of d over rows < y + 1, cols < x + 1 of the area
+                 * starting at ext (sh, sh), which is image pixel (-th, -th) */
+                for (x = 0; x < iw; x++) integ[x] = 0;
+                for (y = 0; y + 1 < ih; y++) {
+                    long long rowsum = 0;
+                    unsigned char const *a = ext + ((size_t)(y + sh) * ew + sh) * ch;
+                    unsigned char const *b = ext + ((size_t)(y + sh + sy) * ew + sh + sx) * ch;
+                    integ[(y + 1) * iw] = 0;
+                    for (x = 0; x + 1 < iw; x++) {
+                        int d = 0;
+                        size_t c;
+                        for (c = 0; c < ch; c++) {
+                            int const t = (int)a[x * ch + c] - (int)b[x * ch + c];
+                            d += t * t;
+                        }
+                        rowsum += d;
+                        integ[(y + 1) * iw + x + 1] = integ[y * iw + x + 1] + rowsum;
+                    }
+                }
+                for (y = 0; y < (long)h; y++) {
+                    for (x = 0; x < (long)w; x++) {
+                        /* the patch around image pixel (x, y) covers area rows y..y + 2 th */
+                        long long const ds = integ[(y + T) * iw + x + T] - integ[y * iw + x + T] - integ[(y + T) * iw + x] + integ[y * iw + x];
+                        int const wt = lut[(long)(ds >> shift)];
+                        size_t const q = (size_t)y * w + (size_t)x;
+                        unsigned char const *p = ext + ((size_t)(y + bs + sy) * ew + (size_t)(x + bs + sx)) * ch;
+                        size_t c;
+                        if (wt == 0) continue;
+                        for (c = 0; c < ch; c++) est[q * ch + c] += (long long)wt * p[c];
+                        wsum[q] += wt;
+                    }
+                }
+            }
+        }
+    }
+
+    for (y = 0; y < (long)h; y++) {
+        for (x = 0; x < (long)w; x++) {
+            size_t const q = (size_t)y * w + (size_t)x;
+            size_t c;
+            for (c = 0; c < ch; c++) {
+                unsigned int const e = (unsigned int)est[q * ch + c];
+                int const ws = (int)wsum[q];
+                unsigned int const v = (e + (unsigned int)(ws / 2)) / (unsigned int)ws;
+                out[(size_t)y * out_row_stride + (size_t)x * ch + c] = (unsigned char)(v > 255u ? 255u : v);
+            }
+        }
+    }
+    ALWAN_FREE(ext);
+    ALWAN_FREE(lut);
+    ALWAN_FREE(integ);
+    ALWAN_FREE(est);
+    return ALWAN_OK;
+}
+
+alwan_status alwan_denoise_nl_means_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src,
+                                       size_t src_row_stride, size_t channels, size_t width, size_t height, double h,
+                                       size_t template_window, size_t search_window) {
+    return alwan_nlm_run(out, out_row_stride, src, src_row_stride, channels, width, height, h, template_window,
+                         search_window);
+}
+
 #if ALWAN_WITH_F64_FACADE
 alwan_status alwan_denoise_tv_chambolle_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src,
                                             size_t src_row_stride, size_t channels, size_t width, size_t height,
