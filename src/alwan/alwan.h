@@ -2144,6 +2144,17 @@ alwan_status alwan_guided_filter_f64(alwan_f64 *out, size_t out_row_stride, alwa
 alwan_status alwan_joint_bilateral_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *joint, size_t joint_row_stride, size_t joint_channels, size_t width, size_t height, size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space);
 alwan_status alwan_joint_bilateral_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *joint, size_t joint_row_stride, size_t joint_channels, size_t width, size_t height, size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space);
 
+/* The rolling guidance filter (Zhang, Shen, Xu and Jia, ECCV 2014): the joint bilateral
+ * filter above iterated `iterations` times with its own last output as the joint image,
+ * removing structures smaller than sigma_space while keeping large edges. from_gaussian 1
+ * starts as the paper does, from the source's spatial Gaussian (a constant guide);
+ * from_gaussian 0 starts from the source itself, as OpenCV's
+ * ximgproc::rollingGuidanceFilter does. src and out share `channels` (1 to 4); out may be
+ * src. Errors as for the joint bilateral filter, and ALWAN_E_RANGE for iterations 0 or
+ * above 1000. Suite 194 holds the OpenCV start to OpenCV. */
+alwan_status alwan_rolling_guidance_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space, size_t iterations, int from_gaussian);
+alwan_status alwan_rolling_guidance_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space, size_t iterations, int from_gaussian);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every

@@ -437,3 +437,22 @@ window a disc and the border reflected without repeating the edge pixel, as in O
 a 4096-bin table, and a flat joint image is not replaced by a square Gaussian blur as
 OpenCV does. Cost grows with the square of the radius, unlike the guided filter's. Suite
 194 agrees with OpenCV to 4.8e-7.
+
+### The rolling guidance filter
+
+```c
+alwan_status alwan_rolling_guidance_filter_{T}(alwan_{T} *out, size_t out_row_stride,
+                                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                               size_t width, size_t height, size_t radius,
+                                               alwan_{T} sigma_color, alwan_{T} sigma_space,
+                                               size_t iterations, int from_gaussian);
+```
+
+Zhang, Shen, Xu and Jia (ECCV 2014): the joint bilateral filter iterated with its own last
+output as the joint image. Starting from the source's Gaussian (`from_gaussian = 1`, the
+paper), structures smaller than `sigma_space` are removed first and the iterations then
+bring the large edges back, a scale-aware smoother that keeps the outlines of what it keeps.
+OpenCV's `ximgproc::rollingGuidanceFilter` starts from the source itself
+(`from_gaussian = 0`), which keeps small structures that the paper's start removes; suite
+194 holds that start to OpenCV to 7.7e-7 over four iterations and checks the paper's first
+step is the constant-guide filter.

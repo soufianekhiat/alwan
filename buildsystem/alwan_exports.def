@@ -1667,6 +1667,8 @@ EXPORTS
     alwan_rlab_inverse_f32_map_interleave
     alwan_rlab_inverse_f64
     alwan_rlab_inverse_f64_map_interleave
+    alwan_rolling_guidance_filter_f32
+    alwan_rolling_guidance_filter_f64
     alwan_saturation_based_speed_focal_plane_exposure_f32
     alwan_saturation_based_speed_focal_plane_exposure_f64
     alwan_scam_forward_f32

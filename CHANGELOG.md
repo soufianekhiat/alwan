@@ -427,6 +427,10 @@
 
 ### Added
 
+- **The rolling guidance filter: `alwan_rolling_guidance_filter`.** Zhang et al. 2014, the joint
+  bilateral filter iterated on its own output, from the paper's Gaussian start or OpenCV's
+  start from the source; suite 194 holds the OpenCV start to OpenCV to 7.7e-7.
+
 - **The joint bilateral filter: `alwan_joint_bilateral_filter`.** Bilateral smoothing with its
   edges taken from a second image (flash / no-flash denoising, edge-aware mask smoothing), as
   OpenCV's ximgproc computes it with the colour Gaussian evaluated exactly; suite 194 agrees to
