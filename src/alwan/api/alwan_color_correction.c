@@ -1039,6 +1039,13 @@ static alwan_status alwan__ccm_neutral_check(alwan_ccm_fit_params const *params,
     return ALWAN_OK;
 }
 
+static alwan_status alwan__ccm_fit_cheung(alwan_f64 *matrix_out, alwan_f64 const *M_T, alwan_f64 const *M_R,
+                                          int num_samples, alwan_poly_cheung_terms terms,
+                                          alwan_ccm_fit_params const *params);
+static alwan_status alwan__ccm_fit_finlayson(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T,
+                                             alwan_f64 const *M_R, int num_samples, int degree, int root_poly,
+                                             alwan_ccm_fit_params const *params);
+
 alwan_status alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out,
                                                alwan_f64 const *M_T,
                                                alwan_f64 const *M_R,
@@ -1048,10 +1055,10 @@ alwan_status alwan_colour_correction_matrix_cheung2004_f64(alwan_f64 *matrix_out
     if (!M_T || !M_R || !matrix_out || num_samples < (int)terms) {
         return ALWAN_E_INVALID;
     }
-    return alwan_ccm_fit_cheung2004_f64(matrix_out, M_T, M_R, num_samples, terms, NULL);
+    return alwan__ccm_fit_cheung(matrix_out, M_T, M_R, num_samples, terms, NULL);
 }
 
-alwan_status alwan_ccm_fit_cheung2004_f64(alwan_f64 *matrix_out, alwan_f64 const *M_T, alwan_f64 const *M_R,
+static alwan_status alwan__ccm_fit_cheung(alwan_f64 *matrix_out, alwan_f64 const *M_T, alwan_f64 const *M_R,
                                           int num_samples, alwan_poly_cheung_terms terms,
                                           alwan_ccm_fit_params const *params)
 {
@@ -1167,10 +1174,10 @@ alwan_status alwan_colour_correction_matrix_finlayson2015_f64(alwan_f64 *matrix_
                                                   alwan_f64 const *M_R,
                                                   int num_samples, int degree, int root_poly)
 {
-    return alwan_ccm_fit_finlayson2015_f64(matrix_out, matrix_size, M_T, M_R, num_samples, degree, root_poly, NULL);
+    return alwan__ccm_fit_finlayson(matrix_out, matrix_size, M_T, M_R, num_samples, degree, root_poly, NULL);
 }
 
-alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T,
+static alwan_status alwan__ccm_fit_finlayson(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T,
                                              alwan_f64 const *M_R, int num_samples, int degree, int root_poly,
                                              alwan_ccm_fit_params const *params)
 {
@@ -1298,10 +1305,10 @@ static alwan_status alwan__ccm_loo(alwan_f64 *rms_out, alwan_f64 *pred_out, alwa
         }
         w[k] = 0.0;
         if (!finlayson) {
-            st = alwan_ccm_fit_cheung2004_f64(m, M_T, M_R, n, (alwan_poly_cheung_terms)a, &p);
+            st = alwan__ccm_fit_cheung(m, M_T, M_R, n, (alwan_poly_cheung_terms)a, &p);
         } else {
             int size = 0;
-            st = alwan_ccm_fit_finlayson2015_f64(m, &size, M_T, M_R, n, a, root, &p);
+            st = alwan__ccm_fit_finlayson(m, &size, M_T, M_R, n, a, root, &p);
         }
         w[k] = wk;
         if (st != ALWAN_OK) break;
@@ -1331,35 +1338,75 @@ static alwan_status alwan__ccm_loo(alwan_f64 *rms_out, alwan_f64 *pred_out, alwa
     return ALWAN_OK;
 }
 
-alwan_status alwan_ccm_loo_cheung2004_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T,
-                                          alwan_f64 const *M_R, int num_samples, alwan_poly_cheung_terms terms,
-                                          alwan_ccm_fit_params const *params)
+/* The basis a method and expansion name: Cheung's term count, or Finlayson's degree and
+ * root flag. */
+static alwan_status alwan__ccm_basis(int *finlayson, int *a, int *root, alwan_ccm_method method,
+                                     alwan_ccm_expansion const *e)
 {
-    return alwan__ccm_loo(rms_out, pred_out, M_T, M_R, num_samples, 0, (int)terms, 0, params);
+    int j;
+    if (method == ALWAN_CCM_CHEUNG2004) {
+        *finlayson = 0;
+        *a = e && e->terms ? (int)e->terms : 3;
+        *root = 0;
+        for (j = 0; j < 14; j++) {
+            if (alwan__cheung_counts[j] == *a) return ALWAN_OK;
+        }
+        return ALWAN_E_INVALID;
+    }
+    if (method == ALWAN_CCM_FINLAYSON2015) {
+        *finlayson = 1;
+        *a = e && e->degree ? e->degree : 1;
+        *root = e && e->root_poly ? 1 : 0;
+        return *a >= 1 && *a <= 4 ? ALWAN_OK : ALWAN_E_INVALID;
+    }
+    return ALWAN_E_INVALID;
 }
 
-alwan_status alwan_ccm_loo_finlayson2015_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T,
-                                             alwan_f64 const *M_R, int num_samples, int degree, int root_poly,
-                                             alwan_ccm_fit_params const *params)
+alwan_status alwan_ccm_fit_f64(alwan_f64 *matrix_out, int *terms_out, alwan_f64 const *M_T, alwan_f64 const *M_R,
+                               int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion,
+                               alwan_ccm_fit_params const *params)
 {
-    return alwan__ccm_loo(rms_out, pred_out, M_T, M_R, num_samples, 1, degree, root_poly, params);
+    int fin, a, root, size = 0;
+    alwan_status st = alwan__ccm_basis(&fin, &a, &root, method, expansion);
+    if (st != ALWAN_OK) return st;
+    st = fin ? alwan__ccm_fit_finlayson(matrix_out, &size, M_T, M_R, num_samples, a, root, params)
+             : alwan__ccm_fit_cheung(matrix_out, M_T, M_R, num_samples, (alwan_poly_cheung_terms)a, params);
+    if (st == ALWAN_OK && terms_out) *terms_out = fin ? size / 3 : a;
+    return st;
 }
 
-alwan_status alwan_ccm_select_cheung2004_f64(alwan_poly_cheung_terms *terms_out, alwan_f64 *rms_out,
-                                             alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples,
-                                             alwan_ccm_fit_params const *params)
+alwan_status alwan_ccm_loo_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T, alwan_f64 const *M_R,
+                               int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion,
+                               alwan_ccm_fit_params const *params)
 {
+    int fin, a, root;
+    alwan_status const st = alwan__ccm_basis(&fin, &a, &root, method, expansion);
+    if (st != ALWAN_OK) return st;
+    return alwan__ccm_loo(rms_out, pred_out, M_T, M_R, num_samples, fin, a, root, params);
+}
+
+/* Finlayson's bases in select's order: degree 1 to 4, each plain then root. */
+static int const alwan__finlayson_bases[8][2] = { { 1, 0 }, { 1, 1 }, { 2, 0 }, { 2, 1 },
+                                                  { 3, 0 }, { 3, 1 }, { 4, 0 }, { 4, 1 } };
+
+alwan_status alwan_ccm_select_f64(alwan_ccm_expansion *expansion_out, alwan_f64 *rms_out, alwan_f64 const *M_T,
+                                  alwan_f64 const *M_R, int num_samples, alwan_ccm_method method,
+                                  alwan_ccm_fit_params const *params)
+{
+    int const fin = method == ALWAN_CCM_FINLAYSON2015;
+    int const count = method == ALWAN_CCM_CHEUNG2004 ? 14 : fin ? 8 : 0;
     alwan_status first = ALWAN_OK;
     alwan_f64 best = 0.0;
     int j, found = 0;
-    if (!terms_out) return ALWAN_E_INVALID;
-    for (j = 0; j < 14; j++) {
+    if (!expansion_out || count == 0) return ALWAN_E_INVALID;
+    for (j = 0; j < count; j++) {
+        int const a = fin ? alwan__finlayson_bases[j][0] : alwan__cheung_counts[j];
+        int const root = fin ? alwan__finlayson_bases[j][1] : 0;
         alwan_f64 r = 0.0;
-        alwan_status const st = alwan__ccm_loo(&r, NULL, M_T, M_R, num_samples, 0, alwan__cheung_counts[j], 0,
-                                               params);
+        alwan_status const st = alwan__ccm_loo(&r, NULL, M_T, M_R, num_samples, fin, a, root, params);
         if (st == ALWAN_E_NOMEM) return st;
         if (st != ALWAN_OK) {
-            /* This count cannot be fitted from what is left once a sample is out. */
+            /* This basis cannot be fitted from what is left once a sample is out. */
             if (first == ALWAN_OK) first = st;
             if (rms_out) rms_out[j] = alwan__ccm_nan();
             continue;
@@ -1367,7 +1414,13 @@ alwan_status alwan_ccm_select_cheung2004_f64(alwan_poly_cheung_terms *terms_out,
         if (rms_out) rms_out[j] = r;
         if (!found || r < best) {
             best = r;
-            *terms_out = (alwan_poly_cheung_terms)alwan__cheung_counts[j];
+            memset(expansion_out, 0, sizeof(*expansion_out));
+            if (fin) {
+                expansion_out->degree = a;
+                expansion_out->root_poly = root;
+            } else {
+                expansion_out->terms = (alwan_poly_cheung_terms)a;
+            }
             found = 1;
         }
     }
@@ -1799,75 +1852,58 @@ alwan_status alwan_colour_correction_matrix_cheung2004_f32(alwan_f32 *matrix_out
                                                alwan_f32 const *M_R,
                                                int num_samples,
                                                alwan_poly_cheung_terms terms) {
-    if (!M_T || !M_R || !matrix_out || num_samples < (int)terms) return ALWAN_E_INVALID;
-    return alwan_ccm_fit_cheung2004_f32(matrix_out, M_T, M_R, num_samples, terms, NULL);
+    alwan_ccm_expansion e;
+    if (!M_T || !M_R || !matrix_out || num_samples < (int)terms || (int)terms < 1) return ALWAN_E_INVALID;
+    memset(&e, 0, sizeof(e));
+    e.terms = terms;
+    return alwan_ccm_fit_f32(matrix_out, NULL, M_T, M_R, num_samples, ALWAN_CCM_CHEUNG2004, &e, NULL);
 }
 
 alwan_status alwan_colour_correction_matrix_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size,
                                                   alwan_f32 const *M_T,
                                                   alwan_f32 const *M_R,
                                                   int num_samples, int degree, int root_poly) {
-    if (!M_T || !M_R || !matrix_out || !matrix_size) return ALWAN_E_INVALID;
-
-    return alwan_ccm_fit_finlayson2015_f32(matrix_out, matrix_size, M_T, M_R, num_samples, degree, root_poly, NULL);
+    alwan_ccm_expansion e;
+    int nt = 0;
+    alwan_status st;
+    if (!M_T || !M_R || !matrix_out || !matrix_size || degree < 1 || degree > 4) return ALWAN_E_INVALID;
+    memset(&e, 0, sizeof(e));
+    e.degree = degree;
+    e.root_poly = root_poly;
+    st = alwan_ccm_fit_f32(matrix_out, &nt, M_T, M_R, num_samples, ALWAN_CCM_FINLAYSON2015, &e, NULL);
+    if (st == ALWAN_OK) *matrix_size = 3 * nt;   /* the element count, as before */
+    return st;
 }
 
-alwan_status alwan_ccm_fit_cheung2004_f32(alwan_f32 *matrix_out, alwan_f32 const *M_T, alwan_f32 const *M_R,
-                                          int num_samples, alwan_poly_cheung_terms terms,
-                                          alwan_ccm_fit_params const *params) {
-    if (!M_T || !M_R || !matrix_out || num_samples < 1 || (int)terms < 1) return ALWAN_E_INVALID;
-
-    size_t ns = (size_t)num_samples * 3;
-    alwan_f64 *MT64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
-    alwan_f64 *MR64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
-    size_t mat_sz = (size_t)terms * 3;
-    alwan_f64 *mat64 = (alwan_f64 *)ALWAN_ALLOC(mat_sz * sizeof(alwan_f64), sizeof(alwan_f64));
-    if (!MT64 || !MR64 || !mat64) {
-        if (MT64) ALWAN_FREE(MT64);
-        if (MR64) ALWAN_FREE(MR64);
-        if (mat64) ALWAN_FREE(mat64);
-        return ALWAN_E_NOMEM;
-    }
-    for (size_t i = 0; i < ns; i++) { MT64[i] = (alwan_f64)M_T[i]; MR64[i] = (alwan_f64)M_R[i]; }
-
-    int rc = alwan_ccm_fit_cheung2004_f64(mat64, MT64, MR64, num_samples, terms, params);
-    if (rc == ALWAN_OK) {
-        for (size_t i = 0; i < mat_sz; i++) matrix_out[i] = (alwan_f32)mat64[i];
-    }
-    ALWAN_FREE(MT64); ALWAN_FREE(MR64); ALWAN_FREE(mat64);
-    return rc;
-}
-
-alwan_status alwan_ccm_fit_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size, alwan_f32 const *M_T,
-                                             alwan_f32 const *M_R, int num_samples, int degree, int root_poly,
-                                             alwan_ccm_fit_params const *params) {
-    if (!M_T || !M_R || !matrix_out || !matrix_size || num_samples < 1) return ALWAN_E_INVALID;
-
-    size_t ns = (size_t)num_samples * 3;
-    alwan_f64 *MT64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
-    alwan_f64 *MR64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
-    /* The widest basis, plain degree 4, has 34 terms. matrix_size comes back as the
-     * element count, terms x 3, which is exactly what is copied out. */
-    alwan_f64 mat64[34 * 3];
+alwan_status alwan_ccm_fit_f32(alwan_f32 *matrix_out, int *terms_out, alwan_f32 const *M_T, alwan_f32 const *M_R,
+                               int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion,
+                               alwan_ccm_fit_params const *params) {
+    size_t const ns = num_samples > 0 ? (size_t)num_samples * 3 : 0;
+    alwan_f64 *MT64, *MR64;
+    /* The widest basis, Cheung's 35 terms, bounds the matrix. */
+    alwan_f64 mat64[35 * 3];
+    int nt = 0, rc;
+    if (!M_T || !M_R || !matrix_out || num_samples < 1) return ALWAN_E_INVALID;
+    MT64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
+    MR64 = (alwan_f64 *)ALWAN_ALLOC(ns * sizeof(alwan_f64), sizeof(alwan_f64));
     if (!MT64 || !MR64) {
         if (MT64) ALWAN_FREE(MT64);
         if (MR64) ALWAN_FREE(MR64);
         return ALWAN_E_NOMEM;
     }
     for (size_t i = 0; i < ns; i++) { MT64[i] = (alwan_f64)M_T[i]; MR64[i] = (alwan_f64)M_R[i]; }
-
-    int rc = alwan_ccm_fit_finlayson2015_f64(mat64, matrix_size, MT64, MR64, num_samples, degree, root_poly, params);
+    rc = alwan_ccm_fit_f64(mat64, &nt, MT64, MR64, num_samples, method, expansion, params);
     if (rc == ALWAN_OK) {
-        for (int i = 0; i < *matrix_size; i++) matrix_out[i] = (alwan_f32)mat64[i];
+        for (int i = 0; i < 3 * nt; i++) matrix_out[i] = (alwan_f32)mat64[i];
+        if (terms_out) *terms_out = nt;
     }
     ALWAN_FREE(MT64); ALWAN_FREE(MR64);
     return rc;
 }
 
-/* Leave-one-out for f32 samples: widen, score in f64, narrow. */
-static alwan_status alwan__ccm_loo_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T,
-                                       alwan_f32 const *M_R, int num_samples, int finlayson, int a, int root,
-                                       alwan_ccm_fit_params const *params) {
+alwan_status alwan_ccm_loo_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T, alwan_f32 const *M_R,
+                               int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion,
+                               alwan_ccm_fit_params const *params) {
     size_t const ns = num_samples > 0 ? (size_t)num_samples * 3 : 0;
     alwan_f64 *buf, rms = 0.0;
     int rc;
@@ -1875,10 +1911,7 @@ static alwan_status alwan__ccm_loo_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, 
     buf = (alwan_f64 *)ALWAN_ALLOC(3 * ns * sizeof(alwan_f64), sizeof(alwan_f64));
     if (!buf) return ALWAN_E_NOMEM;
     for (size_t i = 0; i < ns; i++) { buf[i] = (alwan_f64)M_T[i]; buf[ns + i] = (alwan_f64)M_R[i]; }
-    rc = finlayson ? alwan_ccm_loo_finlayson2015_f64(&rms, pred_out ? buf + 2 * ns : NULL, buf, buf + ns,
-                                                      num_samples, a, root, params)
-                   : alwan_ccm_loo_cheung2004_f64(&rms, pred_out ? buf + 2 * ns : NULL, buf, buf + ns, num_samples,
-                                                  (alwan_poly_cheung_terms)a, params);
+    rc = alwan_ccm_loo_f64(&rms, pred_out ? buf + 2 * ns : NULL, buf, buf + ns, num_samples, method, expansion, params);
     if (rc == ALWAN_OK) {
         *rms_out = (alwan_f32)rms;
         if (pred_out) for (size_t i = 0; i < ns; i++) pred_out[i] = (alwan_f32)buf[2 * ns + i];
@@ -1887,30 +1920,19 @@ static alwan_status alwan__ccm_loo_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, 
     return rc;
 }
 
-alwan_status alwan_ccm_loo_cheung2004_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T,
-                                          alwan_f32 const *M_R, int num_samples, alwan_poly_cheung_terms terms,
-                                          alwan_ccm_fit_params const *params) {
-    return alwan__ccm_loo_f32(rms_out, pred_out, M_T, M_R, num_samples, 0, (int)terms, 0, params);
-}
-
-alwan_status alwan_ccm_loo_finlayson2015_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T,
-                                             alwan_f32 const *M_R, int num_samples, int degree, int root_poly,
-                                             alwan_ccm_fit_params const *params) {
-    return alwan__ccm_loo_f32(rms_out, pred_out, M_T, M_R, num_samples, 1, degree, root_poly, params);
-}
-
-alwan_status alwan_ccm_select_cheung2004_f32(alwan_poly_cheung_terms *terms_out, alwan_f32 *rms_out,
-                                             alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples,
-                                             alwan_ccm_fit_params const *params) {
+alwan_status alwan_ccm_select_f32(alwan_ccm_expansion *expansion_out, alwan_f32 *rms_out, alwan_f32 const *M_T,
+                                  alwan_f32 const *M_R, int num_samples, alwan_ccm_method method,
+                                  alwan_ccm_fit_params const *params) {
     size_t const ns = num_samples > 0 ? (size_t)num_samples * 3 : 0;
-    alwan_f64 *buf, rms64[14];
+    int const count = method == ALWAN_CCM_CHEUNG2004 ? 14 : method == ALWAN_CCM_FINLAYSON2015 ? 8 : 0;
+    alwan_f64 *buf, rms64[ALWAN_CCM_SELECT_MAX];
     int rc;
-    if (!terms_out || !M_T || !M_R || num_samples < 2) return ALWAN_E_INVALID;
+    if (!expansion_out || !M_T || !M_R || num_samples < 2 || count == 0) return ALWAN_E_INVALID;
     buf = (alwan_f64 *)ALWAN_ALLOC(2 * ns * sizeof(alwan_f64), sizeof(alwan_f64));
     if (!buf) return ALWAN_E_NOMEM;
     for (size_t i = 0; i < ns; i++) { buf[i] = (alwan_f64)M_T[i]; buf[ns + i] = (alwan_f64)M_R[i]; }
-    rc = alwan_ccm_select_cheung2004_f64(terms_out, rms64, buf, buf + ns, num_samples, params);
-    if (rc == ALWAN_OK && rms_out) for (int j = 0; j < 14; j++) rms_out[j] = (alwan_f32)rms64[j];
+    rc = alwan_ccm_select_f64(expansion_out, rms64, buf, buf + ns, num_samples, method, params);
+    if (rc == ALWAN_OK && rms_out) for (int j = 0; j < count; j++) rms_out[j] = (alwan_f32)rms64[j];
     ALWAN_FREE(buf);
     return rc;
 }

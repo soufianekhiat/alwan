@@ -8091,13 +8091,39 @@ typedef struct {
     alwan_f64 robust_tol;    /* stop once no coefficient moves by more than this; 0 is 1e-12 */
 } alwan_ccm_fit_params;
 
-/* The two fits above with alwan_ccm_fit_params; the arguments before it are theirs.
- * Without a ridge the QR solver needs at least as many samples of non-zero weight as
- * terms. */
-alwan_status alwan_ccm_fit_cheung2004_f64(alwan_f64 *matrix_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
-alwan_status alwan_ccm_fit_cheung2004_f32(alwan_f32 *matrix_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
-alwan_status alwan_ccm_fit_finlayson2015_f64(alwan_f64 *matrix_out, int *matrix_size, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
-alwan_status alwan_ccm_fit_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_size, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
+/* The polynomial colour correction as one family: fit, leave-one-out, selection and
+ * apply, each routed by the method.
+ *
+ *   ALWAN_CCM_CHEUNG2004     Cheung, Westland, Connah and Ripamonti 2004: the expansions of
+ *                            alwan_poly_cheung_terms, 3 to 35 terms
+ *   ALWAN_CCM_FINLAYSON2015  Finlayson, Mackiewicz and Hurlbert 2015: the polynomial or the
+ *                            root-polynomial of degree 1 to 4
+ *
+ * alwan_ccm_expansion picks the basis within the method; a zero field is its default and
+ * NULL is every default, the linear [R, G, B] for both. The matrix is terms x 3,
+ * row-major, reference = expanded(test) matrix, and alwan_colour_correct_cheung2004 and
+ * _finlayson2015 apply it to one pixel. An unknown method, or a basis the method does
+ * not have, is ALWAN_E_INVALID. */
+typedef enum {
+    ALWAN_CCM_CHEUNG2004 = 0,
+    ALWAN_CCM_FINLAYSON2015 = 1
+} alwan_ccm_method;
+
+typedef struct {
+    alwan_poly_cheung_terms terms; /* CHEUNG2004: the term count; 0 reads as 3 */
+    int degree;                    /* FINLAYSON2015: 1 to 4; 0 reads as 1 */
+    int root_poly;                 /* FINLAYSON2015: non-zero takes the root-polynomial */
+} alwan_ccm_expansion;
+
+/* The number of bases alwan_ccm_select tries at most, and so the length of its rms_out. */
+#define ALWAN_CCM_SELECT_MAX 14
+
+/* The fit, with alwan_ccm_fit_params (NULL is the plain least squares of
+ * alwan_colour_correction_matrix_*, bit for bit). terms_out, when not NULL, receives the
+ * basis's term count, the matrix's rows. Without a ridge the QR solver needs at least as
+ * many samples of non-zero weight as terms. */
+alwan_status alwan_ccm_fit_f64(alwan_f64 *matrix_out, int *terms_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_fit_f32(alwan_f32 *matrix_out, int *terms_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion, alwan_ccm_fit_params const *params);
 
 /* Leave-one-out: each sample of positive weight left out in turn, the rest fitted with
  * params (its weights, ridge and solver; rank_out is not written), and the fit's
@@ -8110,17 +8136,24 @@ alwan_status alwan_ccm_fit_finlayson2015_f32(alwan_f32 *matrix_out, int *matrix_
  * ALWAN_E_INVALID for fewer samples than terms, ALWAN_E_DIVZERO when QR finds the
  * system rank deficient. Matches scikit-learn's LeaveOneOut over LinearRegression and
  * Ridge. */
-alwan_status alwan_ccm_loo_cheung2004_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
-alwan_status alwan_ccm_loo_cheung2004_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_poly_cheung_terms terms, alwan_ccm_fit_params const *params);
-alwan_status alwan_ccm_loo_finlayson2015_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
-alwan_status alwan_ccm_loo_finlayson2015_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, int degree, int root_poly, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_loo_f64(alwan_f64 *rms_out, alwan_f64 *pred_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_loo_f32(alwan_f32 *rms_out, alwan_f32 *pred_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_ccm_method method, alwan_ccm_expansion const *expansion, alwan_ccm_fit_params const *params);
 
-/* The Cheung term count with the lowest leave-one-out error, of all 14. rms_out, when not
- * NULL, receives the 14 errors in the enum's order (3, 4, 5, 7, 8, 10, 11, 14, 16, 17, 19,
- * 20, 22, 35), NaN for a count the samples left cannot fit. The smaller count wins a
- * tie. When no count can be fitted, the status is the first failure. */
-alwan_status alwan_ccm_select_cheung2004_f64(alwan_poly_cheung_terms *terms_out, alwan_f64 *rms_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_ccm_fit_params const *params);
-alwan_status alwan_ccm_select_cheung2004_f32(alwan_poly_cheung_terms *terms_out, alwan_f32 *rms_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_ccm_fit_params const *params);
+/* The method's basis with the lowest leave-one-out error, into expansion_out. CHEUNG2004
+ * tries its 14 term counts (3, 4, 5, 7, 8, 10, 11, 14, 16, 17, 19, 20, 22, 35),
+ * FINLAYSON2015 its 8 bases (degree 1 to 4, each the polynomial then the
+ * root-polynomial). rms_out, when not NULL, receives the errors in that order (14 or 8
+ * values, at most ALWAN_CCM_SELECT_MAX), NaN for a basis the samples left cannot fit. The
+ * earlier basis wins a tie. When no basis can be fitted, the status is the first
+ * failure. */
+alwan_status alwan_ccm_select_f64(alwan_ccm_expansion *expansion_out, alwan_f64 *rms_out, alwan_f64 const *M_T, alwan_f64 const *M_R, int num_samples, alwan_ccm_method method, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_select_f32(alwan_ccm_expansion *expansion_out, alwan_f32 *rms_out, alwan_f32 const *M_T, alwan_f32 const *M_R, int num_samples, alwan_ccm_method method, alwan_ccm_fit_params const *params);
+
+/* The apply over a buffer of count RGB pixels, strides in bytes: the method's
+ * alwan_colour_correct_*_map_interleave, bit for bit, for a matrix fitted with the same
+ * method and expansion. */
+alwan_status alwan_ccm_apply_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const *matrix, alwan_ccm_method method, alwan_ccm_expansion const *expansion);
+alwan_status alwan_ccm_apply_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const *matrix, alwan_ccm_method method, alwan_ccm_expansion const *expansion);
 
 /* Thin-plate spline in RGB (TPS-3D), Menesatti 2012 on Bookstein 1989: a smooth warp
  * through every control pair, exactly at smoothing 0, where a polynomial is a least-squares

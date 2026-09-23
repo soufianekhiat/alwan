@@ -476,6 +476,13 @@
   `alwan_crf_debevec1997_{T}` and `alwan_crf_robertson2003_{T}` and their two params
   structs, with the same results (suites 119 and 123).
 
+- **Colour correction matrices: `alwan_ccm`.** Fit, leave-one-out, basis selection and apply are one
+  family each, routed by `ALWAN_CCM_CHEUNG2004` or `ALWAN_CCM_FINLAYSON2015` with an
+  `alwan_ccm_expansion` for the basis: `alwan_ccm_fit`, `alwan_ccm_loo`, `alwan_ccm_select`
+  and `alwan_ccm_apply_{T}_map_interleave` replace the ten per-method functions added in v3.
+  Selection now also covers Finlayson's eight bases. The fits are unchanged (suites 124, 125,
+  128, 174); the 2.0.0 functions stay.
+
 - **Colour transfer: `alwan_color_transfer`.** One entry point with a method enum and a
   blend amount: histogram matching as scikit-image's `match_histograms` (bit for bit, suite
   191) and Reinhard et al. 2001's l alpha beta statistics transfer (suite 193 checks the

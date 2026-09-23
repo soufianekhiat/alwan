@@ -197,16 +197,14 @@ EXPORTS
     alwan_cat_zhai2018_f64
     alwan_cat_zhai2018_f64_map_interleave
     alwan_cat_zhai2018_f64_map_planar
-    alwan_ccm_fit_cheung2004_f32
-    alwan_ccm_fit_cheung2004_f64
-    alwan_ccm_fit_finlayson2015_f32
-    alwan_ccm_fit_finlayson2015_f64
-    alwan_ccm_loo_cheung2004_f32
-    alwan_ccm_loo_cheung2004_f64
-    alwan_ccm_loo_finlayson2015_f32
-    alwan_ccm_loo_finlayson2015_f64
-    alwan_ccm_select_cheung2004_f32
-    alwan_ccm_select_cheung2004_f64
+    alwan_ccm_apply_f32_map_interleave
+    alwan_ccm_apply_f64_map_interleave
+    alwan_ccm_fit_f32
+    alwan_ccm_fit_f64
+    alwan_ccm_loo_f32
+    alwan_ccm_loo_f64
+    alwan_ccm_select_f32
+    alwan_ccm_select_f64
     alwan_cct_duv_optimize_f32
     alwan_cct_duv_optimize_f64
     alwan_cct_hernandez_xy_f32

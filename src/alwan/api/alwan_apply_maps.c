@@ -232,3 +232,51 @@ ALWAN_APPLY_PLANAR_FOR(alwan_f32, f32)
 ALWAN_APPLY_PLANAR_FOR(alwan_f64, f64)
 #endif
 
+/* The polynomial colour correction's family apply: routes to the two twins above. */
+static alwan_status alwan__ccm_apply_basis(int *finlayson, int *a, int *root, alwan_ccm_method method,
+                                           alwan_ccm_expansion const *e) {
+    static int const counts[14] = { 3, 4, 5, 7, 8, 10, 11, 14, 16, 17, 19, 20, 22, 35 };
+    int j;
+    if (method == ALWAN_CCM_CHEUNG2004) {
+        *finlayson = 0;
+        *a = e && e->terms ? (int)e->terms : 3;
+        *root = 0;
+        for (j = 0; j < 14; j++) {
+            if (counts[j] == *a) return ALWAN_OK;
+        }
+        return ALWAN_E_INVALID;
+    }
+    if (method == ALWAN_CCM_FINLAYSON2015) {
+        *finlayson = 1;
+        *a = e && e->degree ? e->degree : 1;
+        *root = e && e->root_poly ? 1 : 0;
+        return *a >= 1 && *a <= 4 ? ALWAN_OK : ALWAN_E_INVALID;
+    }
+    return ALWAN_E_INVALID;
+}
+
+#if ALWAN_WITH_F64
+alwan_status alwan_ccm_apply_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride,
+                                                size_t count, alwan_f64 const *matrix, alwan_ccm_method method,
+                                                alwan_ccm_expansion const *expansion) {
+    int fin, a, root;
+    alwan_status const st = alwan__ccm_apply_basis(&fin, &a, &root, method, expansion);
+    if (st != ALWAN_OK) return st;
+    return fin ? alwan_colour_correct_finlayson2015_f64_map_interleave(out, out_stride, in, in_stride, count, matrix, a, root)
+               : alwan_colour_correct_cheung2004_f64_map_interleave(out, out_stride, in, in_stride, count, matrix,
+                                                                    (alwan_poly_cheung_terms)a);
+}
+#endif
+
+#if ALWAN_WITH_F32
+alwan_status alwan_ccm_apply_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride,
+                                                size_t count, alwan_f32 const *matrix, alwan_ccm_method method,
+                                                alwan_ccm_expansion const *expansion) {
+    int fin, a, root;
+    alwan_status const st = alwan__ccm_apply_basis(&fin, &a, &root, method, expansion);
+    if (st != ALWAN_OK) return st;
+    return fin ? alwan_colour_correct_finlayson2015_f32_map_interleave(out, out_stride, in, in_stride, count, matrix, a, root)
+               : alwan_colour_correct_cheung2004_f32_map_interleave(out, out_stride, in, in_stride, count, matrix,
+                                                                    (alwan_poly_cheung_terms)a);
+}
+#endif

@@ -343,6 +343,51 @@ camera-to-reference profiling.
 > precision. The f32 entry points therefore stay available even in an f32-only
 > build via `ALWAN_WITH_F64_FACADE`. See [Configuration](../configuration.md).
 
+### The `alwan_ccm` family
+
+```c
+typedef enum {
+    ALWAN_CCM_CHEUNG2004 = 0,
+    ALWAN_CCM_FINLAYSON2015 = 1
+} alwan_ccm_method;
+
+typedef struct {
+    alwan_poly_cheung_terms terms; /* CHEUNG2004: the term count; 0 reads as 3 */
+    int degree;                    /* FINLAYSON2015: 1 to 4; 0 reads as 1 */
+    int root_poly;                 /* FINLAYSON2015: non-zero takes the root-polynomial */
+} alwan_ccm_expansion;
+
+alwan_status alwan_ccm_fit_{T}(alwan_{T} *matrix_out, int *terms_out,
+                               alwan_{T} const *M_T, alwan_{T} const *M_R, int num_samples,
+                               alwan_ccm_method method, alwan_ccm_expansion const *expansion,
+                               alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_loo_{T}(alwan_{T} *rms_out, alwan_{T} *pred_out,
+                               alwan_{T} const *M_T, alwan_{T} const *M_R, int num_samples,
+                               alwan_ccm_method method, alwan_ccm_expansion const *expansion,
+                               alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_select_{T}(alwan_ccm_expansion *expansion_out, alwan_{T} *rms_out,
+                                  alwan_{T} const *M_T, alwan_{T} const *M_R, int num_samples,
+                                  alwan_ccm_method method, alwan_ccm_fit_params const *params);
+alwan_status alwan_ccm_apply_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                alwan_{T} const *in, size_t in_stride, size_t count,
+                                                alwan_{T} const *matrix, alwan_ccm_method method,
+                                                alwan_ccm_expansion const *expansion);
+```
+
+The fit, its leave-one-out score, the choice of basis and the apply, each routed by the
+method. The expansion picks the basis within it; a zero field is its default and NULL is
+every default, the linear `[R, G, B]` for both. `terms_out`, when not NULL, receives the
+matrix's rows, the basis's term count. `alwan_ccm_apply` is the method's
+`alwan_colour_correct_*_map_interleave`, bit for bit. The sections below describe the two
+bases and the params the fit takes; the 2.0.0 per-method functions
+(`alwan_colour_correction_matrix_*`, `alwan_colour_correct_*`) stay, and the zero params
+fit is theirs bit for bit.
+
+```c
+alwan_ccm_expansion cheung22 = { ALWAN_POLY_CHEUNG_22 };
+alwan_ccm_expansion root2 = { 0, 2, 1 };   /* Finlayson, degree 2, root-polynomial */
+```
+
 ### Cheung 2004 Method
 
 Polynomial expansion for camera-to-reference color correction.
@@ -405,7 +450,8 @@ void alwan_colour_correct_finlayson2015_{T}(
 - `degree`: polynomial degree (1-4)
 - `root_poly`: if non-zero, use root-polynomial expansion (must match between fit and apply)
 - `matrix_size`: receives the **element** count, terms x 3, which is what
-  `matrix_out` must hold. Not the term count. The expansion sizes are 3, 9, 19
+  `matrix_out` must hold. Not the term count; `alwan_ccm_fit`'s `terms_out` is the term
+  count. The expansion sizes are 3, 9, 19
   and 34 plain, and 3, 6, 13 and 22 root, so a degree-4 plain fit reports 102.
 
 > **Exposure invariance holds on predictions, not on coefficients.** Every root
@@ -427,12 +473,12 @@ void alwan_colour_correct_finlayson2015_{T}(
 ```c
 alwan_f64 weights[24];                  /* 1 each, 0 for a patch that glared */
 alwan_ccm_fit_params p = { weights, 1e-4 };
-alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
-                             ALWAN_POLY_CHEUNG_22, &p);
+alwan_ccm_fit_f64(matrix, NULL, camera_rgb, reference_rgb, 24,
+                  ALWAN_CCM_CHEUNG2004, &cheung22, &p);
 ```
 
-`alwan_ccm_fit_cheung2004_{T}` and `alwan_ccm_fit_finlayson2015_{T}` take the fits'
-arguments and an `alwan_ccm_fit_params`, and minimise
+`alwan_ccm_fit_{T}` takes an `alwan_ccm_fit_params`, for either method, and
+minimises
 
     sum_i w_i |reference_i - expanded(test_i) X|^2 + ridge |X|_F^2
 
@@ -467,8 +513,8 @@ read.
 ```c
 alwan_ccm_fit_params p = { 0 };
 p.robust_scale = 0.01;   /* a residual this size is ordinary; larger is suspect */
-alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
-                             ALWAN_POLY_CHEUNG_22, &p);
+alwan_ccm_fit_f64(matrix, NULL, camera_rgb, reference_rgb, 24,
+                  ALWAN_CCM_CHEUNG2004, &cheung22, &p);
 ```
 
 With `robust_scale` above zero the fit minimises
@@ -512,8 +558,8 @@ alwan_f64 grey_out[3] = { 0.50, 0.50, 0.50 };   /* what it has to become */
 alwan_ccm_fit_params p = { 0 };
 p.neutral_in  = grey_in;
 p.neutral_out = grey_out;
-alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
-                             ALWAN_POLY_CHEUNG_22, &p);
+alwan_ccm_fit_f64(matrix, NULL, camera_rgb, reference_rgb, 24,
+                  ALWAN_CCM_CHEUNG2004, &cheung22, &p);
 ```
 
 `neutral_in` and `neutral_out` are three values each, set together or both `NULL`. The
@@ -560,8 +606,9 @@ int rank = 0;
 alwan_ccm_fit_params p = { 0 };
 p.solver = ALWAN_CCM_SOLVER_SVD;
 p.rank_out = &rank;
-alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24,
-                             ALWAN_POLY_CHEUNG_35, &p);   /* rank 24: 11 terms unsupported */
+alwan_ccm_expansion cheung35 = { ALWAN_POLY_CHEUNG_35 };
+alwan_ccm_fit_f64(matrix, NULL, camera_rgb, reference_rgb, 24,
+                  ALWAN_CCM_CHEUNG2004, &cheung35, &p);   /* rank 24: 11 terms unsupported */
 ```
 
 The default solver, QR, refuses a rank-deficient system with `ALWAN_E_DIVZERO`
@@ -580,28 +627,29 @@ that truncates the weak directions on purpose, predicts held-out patches better.
 Use the rank to learn what a chart can support, then fit with that many terms or
 with a ridge.
 
-### Leave-One-Out and Choosing the Terms
+### Leave-One-Out and Choosing the Basis
 
 ```c
-alwan_poly_cheung_terms terms;
-alwan_f64 held_out[14];
-alwan_ccm_select_cheung2004_f64(&terms, held_out, camera_rgb, reference_rgb, 24, NULL);
-alwan_ccm_fit_cheung2004_f64(matrix, camera_rgb, reference_rgb, 24, terms, NULL);
+alwan_ccm_expansion best;
+alwan_f64 held_out[ALWAN_CCM_SELECT_MAX];
+alwan_ccm_select_f64(&best, held_out, camera_rgb, reference_rgb, 24, ALWAN_CCM_CHEUNG2004, NULL);
+alwan_ccm_fit_f64(matrix, NULL, camera_rgb, reference_rgb, 24, ALWAN_CCM_CHEUNG2004, &best, NULL);
 ```
 
 A fit's own residuals always improve with more terms, since each term gives it more
 freedom to pass through the patches it was fitted to. What matters for a profile is
-how it does on colours it has not seen. `alwan_ccm_loo_cheung2004_{T}` and
-`alwan_ccm_loo_finlayson2015_{T}` measure that. Each patch of positive weight is left
+how it does on colours it has not seen. `alwan_ccm_loo_{T}` measures that, for either
+method. Each patch of positive weight is left
 out in turn, by giving it weight 0, the others are fitted with the caller's params
 (weights, ridge, solver), and the fit predicts the patch left out. `rms_out` is the
 root mean square of those held-out residuals in the reference's units. `pred_out`,
 when given, receives every held-out prediction, NaN for a patch of weight 0, so a
 caller can score them in ΔE instead.
 
-`alwan_ccm_select_cheung2004_{T}` runs that for all 14 Cheung term counts and returns
-the one with the lowest held-out error; the smaller count wins a tie. It also reports
-the 14 errors, NaN for a count the patches left cannot fit. On a synthetic 24-patch
+`alwan_ccm_select_{T}` runs that over the method's bases and returns the one with the
+lowest held-out error: the 14 Cheung term counts, or Finlayson's 8 bases (degree 1 to 4,
+each the polynomial then the root-polynomial). The earlier basis wins a tie. It also
+reports the errors in that order, NaN for a basis the patches left cannot fit. On a synthetic 24-patch
 chart the plain fit's held-out error is lowest at 14 terms and seven times higher at
 22, where the fit's own residuals are at their smallest. A ridge flattens that rise.
 

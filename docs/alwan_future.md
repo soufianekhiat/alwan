@@ -1031,8 +1031,8 @@ Options worth having, roughly in the order they are worth adding:
    profiling tools apply by default. Equality-constrained least squares, or
    solve in a reduced basis and reconstruct.
 
-8. **Term selection by cross-validation.** **Done:** `alwan_ccm_select_cheung2004`,
-   scored by `alwan_ccm_loo_*`. Choose the Cheung term count from the
+8. **Term selection by cross-validation.** **Done:** `alwan_ccm_select`,
+   scored by `alwan_ccm_loo`. Choose the Cheung term count from the
    data instead of by hand. Leave-one-out over N patches is N solves of a small
    system, which is nothing at these sizes, and it stops a caller reaching for
    35 terms because it sounds better than 11.
