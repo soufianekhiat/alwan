@@ -621,6 +621,8 @@ EXPORTS
     alwan_dng_xy_to_camera_neutral_f64
     alwan_dng_xyz_to_camera_matrix_f32
     alwan_dng_xyz_to_camera_matrix_f64
+    alwan_domain_transform_filter_f32
+    alwan_domain_transform_filter_f64
     alwan_dominant_wavelength_f32
     alwan_dominant_wavelength_f64
     alwan_ellipse_canonical_f32

@@ -2155,6 +2155,31 @@ alwan_status alwan_joint_bilateral_filter_f64(alwan_f64 *out, size_t out_row_str
 alwan_status alwan_rolling_guidance_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, size_t radius, alwan_f32 sigma_color, alwan_f32 sigma_space, size_t iterations, int from_gaussian);
 alwan_status alwan_rolling_guidance_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, size_t radius, alwan_f64 sigma_color, alwan_f64 sigma_space, size_t iterations, int from_gaussian);
 
+/* The domain transform (Gastal and Oliveira, SIGGRAPH 2011): an edge-aware filter of 1D
+ * passes along rows and columns in a transformed coordinate where neighbours are
+ * 1 + (sigma_spatial / sigma_color) sum_c |I_c(x + 1) - I_c(x)| apart, so the guide's
+ * edges stop the smoothing. `iterations` (1 to 30; 3 is the paper's) alternate the
+ * passes with shrinking widths that add up to sigma_spatial. Cost is linear in pixels
+ * whatever sigma_spatial, the fastest of the edge-aware filters here.
+ *
+ *   ALWAN_DT_NC  normalized convolution: a box in the transformed coordinate
+ *   ALWAN_DT_RF  recursive filtering: a first-order recursive filter, forward and back
+ *
+ * src has 1 to 4 channels, the guide 1 to 4 (the image itself, or another), rows at the
+ * given byte strides; sigma_color is in guide units summed over its channels. It follows
+ * OpenCV's ximgproc::dtFilter (NC and RF; its interpolated-convolution mode is not
+ * provided), accumulating the transformed coordinate in float as OpenCV does. out may be
+ * src or the guide. ALWAN_E_INVALID for a NULL, a zero size, a channel count or mode out
+ * of range, a stride too small or a non-finite value; ALWAN_E_RANGE for sigma_spatial
+ * below 1, sigma_color below 0.01 or iterations out of range. Suite 195. */
+typedef enum {
+    ALWAN_DT_NC = 0,
+    ALWAN_DT_RF = 2
+} alwan_domain_transform_mode;
+
+alwan_status alwan_domain_transform_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f32 sigma_spatial, alwan_f32 sigma_color, alwan_domain_transform_mode mode, size_t iterations);
+alwan_status alwan_domain_transform_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_f64 sigma_spatial, alwan_f64 sigma_color, alwan_domain_transform_mode mode, size_t iterations);
+
 /* Histogram matching: each of `channels` channels (1 to 4) of src_count pixels remapped
  * so its cumulative distribution matches that of ref_count reference pixels, carrying one
  * shot's tonal and colour spread onto another. As scikit-image's match_histograms: every

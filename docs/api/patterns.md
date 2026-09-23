@@ -456,3 +456,35 @@ OpenCV's `ximgproc::rollingGuidanceFilter` starts from the source itself
 (`from_gaussian = 0`), which keeps small structures that the paper's start removes; suite
 194 holds that start to OpenCV to 7.7e-7 over four iterations and checks the paper's first
 step is the constant-guide filter.
+
+## Edge-aware smoothing in linear time: the domain transform
+
+```c
+typedef enum { ALWAN_DT_NC = 0, ALWAN_DT_RF = 2 } alwan_domain_transform_mode;
+
+alwan_status alwan_domain_transform_filter_{T}(alwan_{T} *out, size_t out_row_stride,
+                                               alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
+                                               alwan_{T} const *guide, size_t guide_row_stride, size_t guide_channels,
+                                               size_t width, size_t height,
+                                               alwan_{T} sigma_spatial, alwan_{T} sigma_color,
+                                               alwan_domain_transform_mode mode, size_t iterations);
+```
+
+Gastal and Oliveira (SIGGRAPH 2011) replace a 2D edge-aware filter with 1D filters along
+rows and columns in a transformed coordinate: each step between neighbours is
+`1 + sigma_spatial / sigma_color * |guide difference|` (L1 over the guide's channels) long,
+so an edge in the guide becomes a long gap that the 1D filter barely crosses. Rows and
+columns alternate `iterations` times with a shrinking spatial sigma, which removes the
+stripes a single pass leaves. The cost does not depend on `sigma_spatial`.
+
+`ALWAN_DT_NC` (normalized convolution) averages a box in the transformed coordinate;
+`ALWAN_DT_RF` (recursive filtering) runs a first-order recursive filter forward and back,
+which leaks further across weak edges and costs less. The interpolated-convolution mode of
+the paper is not offered.
+
+The filter follows OpenCV's `ximgproc::dtFilter`: the transformed coordinate is built in
+float as OpenCV builds it, so NC boxes hold the same pixels, and the data is filtered in
+double. Suite 195 agrees with OpenCV to 1.9e-6 in NC mode (OpenCV's float running sum) and
+1.5e-7 in RF mode, along a colour and a one-channel guide. `sigma_spatial` below 1 or
+`sigma_color` below 0.01 returns `ALWAN_E_RANGE` where OpenCV clamps silently; `iterations`
+runs from 1 to 30. `out` may alias `src`; `guide` may be `src` itself.

@@ -427,6 +427,11 @@
 
 ### Added
 
+- **The domain transform: `alwan_domain_transform_filter`.** Gastal and Oliveira 2011,
+  edge-aware smoothing along a guide in time independent of the spatial sigma, in the
+  normalized-convolution and recursive-filtering modes of OpenCV's `ximgproc::dtFilter`;
+  suite 195 agrees with OpenCV to 1.9e-6 (NC) and 1.5e-7 (RF).
+
 - **The rolling guidance filter: `alwan_rolling_guidance_filter`.** Zhang et al. 2014, the joint
   bilateral filter iterated on its own output, from the paper's Gaussian start or OpenCV's
   start from the source; suite 194 holds the OpenCV start to OpenCV to 7.7e-7.
