@@ -130,6 +130,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_constancy.c
   src/alwan/api/alwan_grading_ocio.c
   src/alwan/api/alwan_palette_median_cut.c
+  src/alwan/api/alwan_quantize_octree.c
   src/alwan/api/alwan_histogram3d.c
   src/alwan/api/alwan_edge_filter.c
   src/alwan/api/alwan_guided_filter.c

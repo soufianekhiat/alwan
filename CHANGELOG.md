@@ -481,7 +481,11 @@
   Pillow's `Image.quantize(method=MEDIANCUT)` computes it (its box splits, its heap, its
   rounding, its nearest-entry index map and its low-bit reduction above 65536 colours).
   Suite 188 matches Pillow 12.0 exactly, palette bytes and every pixel's index;
-  docs/api/patterns.md.
+  docs/api/patterns.md. `ALWAN_QUANTIZE_FAST_OCTREE` adds Pillow's two-level octree
+  (`method=FASTOCTREE`), exact to Pillow where no two colour cells tie on pixel count
+  (suite 207). Tied cells are ordered by index, where Pillow's order depends on the C
+  library's qsort, and a small palette's pixels without a coarse entry go to the nearest
+  entry instead of Pillow's entry 0.
 
 - **OpenColorIO's GradingHueCurve: `alwan_grading` with `ALWAN_GRADING_HUE_CURVE`.** The eight
   hue-selective curves of OCIO's HSY space (hue to hue, saturation and luma; luma to

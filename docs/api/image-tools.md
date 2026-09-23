@@ -459,7 +459,8 @@ no bright neutral at all has no airlight to find and returns `ALWAN_E_RANGE`.
 
 ```c
 typedef enum {
-    ALWAN_QUANTIZE_MEDIAN_CUT = 0
+    ALWAN_QUANTIZE_MEDIAN_CUT = 0,
+    ALWAN_QUANTIZE_FAST_OCTREE = 1
 } alwan_quantize_method;
 
 alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out,
@@ -490,6 +491,40 @@ an SRIC crop at 8 to 256 colours, a posterised gradient whose boxes tie on pixel
 (where the order Pillow's heap breaks ties decides the palette, so that heap is
 reproduced too), a four-colour image asked for 16, and 70000 pixels with more than 65536
 colours.
+
+### `FAST_OCTREE`
+
+A two-level octree as Pillow's `Image.quantize(method=FASTOCTREE)` computes it
+(Tonnhofer 2010). One pass counts the pixels, and sums their channels, in a fine cube of
+16 x 16 x 16 cells (the top four bits of each channel) and a coarse cube of 4 x 4 x 4.
+Every occupied coarse cell gets an entry, the rest of the palette goes to the most
+populated fine cells, and a fine cell with an entry takes its pixels out of its coarse
+cell; a coarse cell left empty frees its entry for another fine cell. The entries are the
+coarse cells, most populated first, then the fine ones, each the mean of its pixels in
+float, truncated. A pixel maps to its fine cell's entry when it has one and to its
+coarse cell's otherwise, through a table, with no search: it is the fast method, and
+coarser than median cut on a photograph with few colours.
+
+Three differences from Pillow, each deliberate:
+
+- Pillow sorts the cells by count with `qsort` and a comparator that calls equal counts
+  equal, so the order of tied cells, and with it the palette and the index map, depends
+  on the C library: a Windows build of Pillow and a glibc build give different palettes
+  for the same image. alwan orders equal counts by cell index, the same on every
+  platform.
+- With `max_colors` below the number of occupied coarse cells (at most 64), some coarse
+  cells get no entry, and Pillow maps their pixels to entry 0, the default of its lookup
+  table, wherever that entry is. alwan maps them to the nearest entry in squared
+  distance. On suite 207's images this more than halves the RMS error at 12 to 40
+  colours (at 16 colours, 28.4 against Pillow's 67.5).
+- Pillow pads the palette to `max_colors` with black entries no pixel uses; `count_out`
+  counts only the entries that hold pixels.
+
+Suite 207 holds the palette and every pixel's index to Pillow 12.0 exactly on three
+images built so that no two occupied cells share a pixel count, where Pillow's result
+does not depend on its C library, at 12 to 256 colours; the pixels Pillow sends to
+entry 0 are checked to go to their nearest entry. On an SRIC crop, which ties, the
+error is Pillow's to two decimals, 3.64 at 256 colours and 5.07 at 64.
 
 ## The colour cube: a 3D histogram
 

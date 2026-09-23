@@ -2088,6 +2088,8 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  *
  *   ALWAN_QUANTIZE_MEDIAN_CUT  median cut (Heckbert 1982), as Pillow's
  *                              Image.quantize(method=MEDIANCUT) computes it
+ *   ALWAN_QUANTIZE_FAST_OCTREE a two-level octree, as Pillow's
+ *                              Image.quantize(method=FASTOCTREE) computes it
  *
  * MEDIAN_CUT: the distinct colours of count 8-bit
  * RGB pixels (pixel_stride bytes apart, at least 3) are split into at most max_colors
@@ -2099,10 +2101,24 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  * more than 65536 distinct colours is first reduced by dropping low bits, as Pillow
  * does. palette_out must hold 3 * max_colors bytes. ALWAN_E_INVALID for a NULL, no
  * pixels, max_colors 0 or a stride under 3; ALWAN_E_RANGE for max_colors above 65536.
- * Suite 188 holds the palette and the index map to Pillow exactly. An unknown method is
- * ALWAN_E_INVALID. */
+ * Suite 188 holds the palette and the index map to Pillow exactly.
+ *
+ * FAST_OCTREE: pixels are counted in a 16 x 16 x 16 cube of cells (the top four bits
+ * of each channel) and a 4 x 4 x 4 one. Every occupied coarse cell gets an entry and
+ * the rest of the palette goes to the most populated fine cells, whose pixels leave
+ * their coarse cell; a coarse cell left empty frees its entry for another fine cell.
+ * Entries are the coarse cells, most populated first, then the fine ones, each the
+ * mean of its pixels in float, truncated; a pixel maps to its fine cell's entry, else
+ * its coarse cell's. It runs in one pass over the pixels and does not search. Cells of
+ * equal count are ordered by index; where max_colors is below the number of occupied
+ * coarse cells, the pixels of a coarse cell without an entry map to the nearest entry
+ * (Pillow maps them to entry 0). count_out counts entries that hold pixels, where
+ * Pillow pads to max_colors with black. Suite 207 holds it to Pillow.
+ *
+ * An unknown method is ALWAN_E_INVALID. */
 typedef enum {
-    ALWAN_QUANTIZE_MEDIAN_CUT = 0
+    ALWAN_QUANTIZE_MEDIAN_CUT = 0,
+    ALWAN_QUANTIZE_FAST_OCTREE = 1
 } alwan_quantize_method;
 
 alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors, alwan_quantize_method method);

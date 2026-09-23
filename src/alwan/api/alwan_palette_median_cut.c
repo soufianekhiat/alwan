@@ -325,6 +325,8 @@ alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, un
     switch (method) {
     case ALWAN_QUANTIZE_MEDIAN_CUT:
         return alwan_mc_run(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors);
+    case ALWAN_QUANTIZE_FAST_OCTREE:
+        return alwan__quantize_octree(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors);
     default:
         return ALWAN_E_INVALID;
     }

@@ -60,6 +60,9 @@ alwan_status alwan__llf_run(void *out, size_t out_row_stride, void const *src, s
 /* Histogram matching worker (api/alwan_histogram_match.c), behind alwan_color_transfer_{T}. */
 alwan_status alwan__hm_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
                            void const *ref, size_t ref_stride, size_t ref_count, size_t channels, int is_f32);
+/* alwan_quantize_octree.c: ALWAN_QUANTIZE_FAST_OCTREE of alwan_quantize_u8 */
+alwan_status alwan__quantize_octree(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
+                                    unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors);
 
 /* Batch workers behind the CIECAM02 / CAM16 maps (api/alwan_cam_impl.inc): the
  * viewing-condition terms once, the scalar's _v core per pixel, bit-identical to
