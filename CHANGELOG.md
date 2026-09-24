@@ -472,6 +472,12 @@
   PSF, clipping only when asked. scikit-image's `restoration.wiener` and `richardson_lucy`
   to 2.7e-15 (suite 214).
 
+- **Inpainting: `alwan_inpaint`.** Masked pixels filled from their surroundings,
+  `ALWAN_INPAINT_BIHARMONIC` first: the discrete biharmonic equation with the known pixels
+  as boundary values, solved directly by banded elimination per coupled group, as
+  scikit-image's `restoration.inpaint_biharmonic` to 5.8e-15 (suite 215), its range clip
+  switchable.
+
 - **Local contrast: `alwan_local_contrast`.** One entry point per data type (float,
   8-bit, 16-bit) with a method enum: the local Laplacian filter (Paris et al. 2011, the fast
   form of Aubry et al. 2014, following MATLAB's `locallapfilt` to 1.5e-6, suite 198) and

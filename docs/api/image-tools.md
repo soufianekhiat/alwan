@@ -461,6 +461,53 @@ Suite 214 holds both to scikit-image's `restoration.wiener` and `richardson_lucy
 even-sized box PSF: 2.7e-15 in double, and 6e-7 in float32, where scikit-image computes in
 float32. The transforms are alwan's own (see `L0_SMOOTH`).
 
+## Inpainting
+
+```c
+typedef enum {
+    ALWAN_INPAINT_BIHARMONIC = 0
+} alwan_inpaint_method;
+
+alwan_status alwan_inpaint_{T}(alwan_{T} *out, size_t out_row_stride,
+                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                               size_t width, size_t height,
+                               unsigned char const *mask, size_t mask_row_stride,
+                               alwan_inpaint_method method, alwan_inpaint_params const *params);
+```
+
+The pixels a mask marks (non-zero bytes, one per pixel) filled from their surroundings: a
+dust spot, a scratch, a hot pixel cluster, a wire or a date stamp to remove. The values
+`src` holds under the mask are never read. 1 to 4 channels; `out` may be `src`.
+
+| Field of `alwan_inpaint_params` | Method | 0 reads as |
+|---|---|---|
+| `unclipped` | `BIHARMONIC` | 0: clip each channel to its known pixels' range, as scikit-image |
+
+### `BIHARMONIC`
+
+Each masked pixel satisfies the discrete biharmonic equation, the Laplacian applied twice
+(a 13-point stencil: 20 at the pixel, -8 at its four neighbours, 2 at the diagonals, 1 two
+away), with the known pixels as boundary values. A harmonic fill would meet the
+surroundings' values but put a crease where their slope changes; the biharmonic one meets
+the slope too, so a gradient or a curved surface carries on through the hole, and a linear
+ramp is filled exactly. It knows nothing about texture: a hole in grass or hair fills with
+a smooth blur of the colours around it, so it suits small defects rather than large
+objects. Within two pixels of the image's edge the stencil is the one the reflecting
+border gives on the part of the window that fits, as scikit-image computes it. After the
+solve each channel is clipped to the range of its known pixels, as scikit-image does;
+`unclipped` keeps the solution as it is, which can overshoot where the surroundings curve.
+
+The system is solved directly. The masked pixels are split into the groups the stencil
+couples, each ordered row by row, and each group is solved by banded Gaussian elimination
+with partial pivoting. That is fast and small for spots, lines and scratches, whatever
+their number; a single solid hole costs memory in proportion to its area times its width,
+about 400 MB for 200 x 200, and returns `ALWAN_E_NOMEM` when that does not fit.
+
+Suite 215 holds it to scikit-image's `restoration.inpaint_biharmonic`, solved by SuperLU,
+to 5.8e-15 on grey and colour images with scattered spots, a diagonal scratch, a solid
+block and a mask along the top edge into a corner, and to 9.5e-7 on float32, which
+scikit-image solves in float32.
+
 ## Colour transfer
 
 ```c

@@ -2427,6 +2427,36 @@ typedef struct {
 alwan_status alwan_deconvolve_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 const *psf, size_t psf_width, size_t psf_height, alwan_deconvolve_method method, alwan_deconvolve_params const *params);
 alwan_status alwan_deconvolve_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 const *psf, size_t psf_width, size_t psf_height, alwan_deconvolve_method method, alwan_deconvolve_params const *params);
 
+/* Inpainting: the pixels a mask marks filled from their surroundings, for a dust spot, a
+ * scratch, a sensor defect or a wire to remove. mask has width x height bytes at
+ * mask_row_stride, non-zero where a pixel is to be filled; the values src holds there are
+ * not read. src has 1 to 4 channels; out may be src.
+ *
+ *   ALWAN_INPAINT_BIHARMONIC  each masked pixel satisfies the discrete biharmonic equation
+ *                             with the known pixels as boundary values, so the fill
+ *                             continues the surroundings and their slope smoothly; solved
+ *                             directly, the masked pixels grouped by the stencil's reach;
+ *                             then each channel clipped to its known pixels' range, as
+ *                             scikit-image's restoration.inpaint_biharmonic does (suite 215).
+ *                             Cost grows with the region's width: fine for spots, lines and
+ *                             scratches; a solid hole of 200 x 200 needs about 400 MB
+ *
+ * params NULL is every default. ALWAN_E_INVALID for a NULL, a zero size, a channel count
+ * out of range, a stride too small, a non-finite known value, a mask that marks every
+ * pixel or an unknown method; ALWAN_E_NOMEM when a region's system does not fit. */
+typedef enum {
+    ALWAN_INPAINT_BIHARMONIC = 0
+} alwan_inpaint_method;
+
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    int unclipped; /* BIHARMONIC: non-zero leaves the fill as solved; 0 clips each channel to the range
+                    * of its known pixels, as scikit-image does */
+} alwan_inpaint_params;
+
+alwan_status alwan_inpaint_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
+alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since no method looks at neighbours). out may be src.

@@ -1001,6 +1001,8 @@ EXPORTS
     alwan_image_convert_rgba_f64
     alwan_index_stress_f32
     alwan_index_stress_f64
+    alwan_inpaint_f32
+    alwan_inpaint_f64
     alwan_interop_count
     alwan_interop_entry_at
     alwan_interop_format
