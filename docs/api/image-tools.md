@@ -1042,8 +1042,8 @@ Two options leave Pillow's resampling for other ends. `integration` (an
 `alwan_pixel_integration`, see Warping) makes each output pixel the mean of the source over
 its own area, through `alwan_warp`'s integration with the scale as the map: the source is
 reconstructed at sub-positions of the output pixel by nearest (`NEAREST`, `BOX`), bilinear
-(`BILINEAR`, `HAMMING`) or bicubic (`BICUBIC`, `LANCZOS`), and `samples`, `seed` and
-`alpha_channel` mean what they mean there. `GRID` with `BOX` at an integer factor is the
+(`BILINEAR`, `HAMMING`) or bicubic (`BICUBIC`, `LANCZOS`), and `kernel`, `samples`, `seed`
+and `alpha_channel` mean what they mean there. `GRID` with `BOX` at an integer factor is the
 block mean exactly.
 
 `subpixel` is for text shown on an LCD. With a layout (`ALWAN_SUBPIXEL_RGB`, `BGR`, or the
@@ -1057,7 +1057,7 @@ It needs three or four channels.
 | Field of `alwan_resize_params` | 0 reads as |
 |---|---|
 | `box[4]` | the whole image |
-| `integration`, `samples`, `seed`, `alpha_channel` | `POINT`: Pillow's resampling |
+| `integration`, `kernel`, `samples`, `seed`, `alpha_channel` | `POINT`: Pillow's resampling |
 | `subpixel` | `ALWAN_SUBPIXEL_NONE` |
 
 ## Warping
@@ -1103,9 +1103,10 @@ takes; a callback takes any analytic map.
 | `field`, `field_row_stride` | required by `ALWAN_WARP_MAP_FIELD` |
 | `callback`, `callback_user` | required by `ALWAN_WARP_MAP_CALLBACK` |
 | `integration` | `ALWAN_PIXEL_INTEGRATE_POINT`: one sample at the centre |
+| `kernel` | `ALWAN_PIXEL_KERNEL_BOX`: the pixel's mean |
 | `samples` | 16 x 16 for `GRID`, 16 for `R2`, a cap of 64 for `ADAPTIVE` |
 | `tolerance` | 0.05 source pixels |
-| `seed`, `r2_disk` | seed 0, points over the square pixel |
+| `seed`, `r2_disk` | seed 0, points over the square pixel (`r2_disk` applies to the box only) |
 | `alpha_channel` | 0: channels independent |
 | `samples_out`, `samples_out_row_stride` | not written |
 
@@ -1146,7 +1147,7 @@ at every sub-position by the method.
 | `POINT` | the centre; Pillow's transform for a matrix map |
 | `GRID` | an n x n grid of cell centres (`samples` is n, 16 by default, up to 64): the brute-force reference |
 | `R2` | `samples` points (16 by default, up to 4096) of Roberts' R2 sequence in antithetic pairs `+d, -d`, so no pair shifts the pixel; the set is shifted toroidally per pixel by a hash of `(x, y, seed)` so neighbours do not share one pattern. `r2_disk` spreads it over the disk of the pixel's area instead, turned per pixel |
-| `ADAPTIVE` | R2 with a count per pixel, from central differences of the map at half a pixel: the footprint (the Jacobian's largest column) and the second difference. A footprint at most 1 with a second difference at most `tolerance` takes one sample; otherwise the first of 4, 8, 16, 32, 64 not below the larger of footprint^2 and second difference / tolerance, capped by `samples` |
+| `ADAPTIVE` | R2 with a count per pixel, from central differences of the map at half a pixel: the footprint (the Jacobian's largest column) and the second difference. A footprint at most 1 with a second difference at most `tolerance` takes one sample; otherwise the first of 4, 8, 16, 32, 64 not below the larger of footprint^2 and second difference / tolerance, capped by `samples`. A kernel other than the box takes 16 at least and four times the count |
 
 `ADAPTIVE` reads the map, not the picture: a rigid turn, a translation or a mild
 enlargement takes one sample even where the content has sharp edges, and the budget goes
@@ -1163,6 +1164,41 @@ a swirl of three turns, against a 48 x 48 grid, bilinear reconstruction:
 | `R2`, 64 | 64 | 0.017 |
 | `GRID`, 16 | 256 | 0.0009 |
 
+`kernel` sets the weight each sub-position takes, in output pixels around the centre:
+
+| Kernel | Weight | Support |
+|---|---|---|
+| `BOX` | 1: the pixel's mean | the pixel |
+| `TENT` | `(1 - abs(dx)) (1 - abs(dy))` | two pixels each way |
+| `GAUSSIAN` | `exp(-r^2 / (2 s^2))`, `s = 0.5` | a disk of radius 1.5 |
+
+`GRID` lays its cells over the kernel's support and weights them; `R2` draws its points
+from the kernel through its inverse distribution (Box-Muller for the Gaussian, cut at
+`3 s`), so every point weighs the same and the antithetic pairs still cancel. The box is
+the pixel's exact area mean, but its flat, abrupt response lets detail finer than a pixel
+fold back as moire even when the mean is computed exactly; the tent and the Gaussian
+overlap the neighbours and fall off smoothly, trading a little softness for much less
+folding. `ADAPTIVE` with a wider kernel keeps drawing it where the map is flat, since one
+sample there would drop the kernel and leave the flat parts sharper than the rest.
+
+The folding is measured against each kernel's own alias-free target: the same kernel on a
+4x render (8 x 8 points a canvas pixel) brought down by `alwan_resize`'s Lanczos, so the
+kernel's softness is on both sides and only what folds back counts. The same checker and
+swirl, RMS inside the swirl, a 16 x 16 grid per kernel:
+
+| Turns | `POINT` | `BOX` | `TENT` | `GAUSSIAN` | `ADAPTIVE`, `GAUSSIAN` |
+|---|---|---|---|---|---|
+| 0 | 0.077 | 0.037 | 0.034 | 0.032 | 0.034 |
+| 0.5 | 0.096 | 0.054 | 0.043 | 0.039 | 0.042 |
+| 1 | 0.146 | 0.065 | 0.050 | 0.043 | 0.046 |
+| 2 | 0.233 | 0.079 | 0.050 | 0.040 | 0.044 |
+| 3 | 0.270 | 0.074 | 0.045 | 0.037 | 0.041 |
+
+At no swirl every kernel sits on a floor that the checker's own hard edges set; the box
+climbs well above it as the swirl compresses the pattern, the Gaussian barely leaves it.
+At three turns, adaptive with the Gaussian took 58 points a pixel on average and 0.74 s
+against the grid's 2.5 s.
+
 With `alpha_channel` set, the last of two or four channels is straight alpha: the colour is
 premultiplied before the mean and divided after, so colour under zero alpha does not bleed
 into an edge. The mean is of the data's own values; for light-correct integration of
@@ -1173,7 +1209,10 @@ instead: `POINT` through a callback or a field that encode a matrix equals the m
 `GRID` with one sample equals `POINT`, antithetic R2 returns a linear ramp to 3e-16, R2
 converges to the grid reference under a swirl (RMS 0.029, 0.0032, 0.0006 at 16, 256 and
 2048 points), `ADAPTIVE` takes one sample past the swirl and more inside it, a zero angle is
-the identity, and a NaN texel is fill. Resize's integration and subpixel layouts are held
+the identity, and a NaN texel is fill. For the tent and the Gaussian, a linear ramp comes
+back to 1e-15 through the grid and through R2, one grid cell is the point, R2 converges to
+the weighted grid (RMS 0.037 and 0.040 at 16 points, 0.0015 and 0.0019 at 1024), and
+`ADAPTIVE` never takes fewer than 16 points. Resize's integration and subpixel layouts are held
 the same way: an integrated box halving is the 2 x 2 mean, a constant stays constant under
 every layout, and RGB and BGR move a thin line's red and blue in opposite directions.
 

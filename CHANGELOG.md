@@ -522,7 +522,9 @@
   pixel the mean of the source over its own area, the sub-offsets taken before the map, by
   a grid, antithetic R2 points shifted per pixel, or an adaptive count from the map's
   footprint and curvature; for any map: the matrix, a C2 swirl, a sampled field (flow, UV
-  pass) or a callback. Straight alpha is premultiplied for the mean. `alwan_resize` also
+  pass) or a callback, weighted by a box (the pixel's mean), a tent or a Gaussian kernel;
+  the Gaussian leaves about half the box's aliasing under a strong swirl. Straight alpha
+  is premultiplied for the mean. `alwan_resize` also
   gains LCD subpixel layouts (RGB, BGR, vertical) through FreeType's default LCD filter, for
   text. No reference exists; suite 235 holds the properties.
 

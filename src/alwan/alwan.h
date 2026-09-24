@@ -2863,6 +2863,7 @@ typedef struct {
                                     * resampling. Otherwise each output pixel is integrated over sub-positions,
                                     * reconstructed by nearest (NEAREST, BOX), bilinear (BILINEAR, HAMMING) or
                                     * bicubic (BICUBIC, LANCZOS) */
+    int kernel;                    /* an alwan_pixel_kernel, as alwan_warp_params.kernel; 0 is BOX */
     size_t samples;                /* as alwan_warp_params.samples */
     unsigned seed;                 /* as alwan_warp_params.seed */
     int alpha_channel;             /* as alwan_warp_params.alpha_channel, for integration */
@@ -2936,9 +2937,19 @@ typedef enum {
                                          * (x, y, seed) so neighbours do not share one pattern (r2_disk: on the
                                          * disk of the pixel's area instead) */
     ALWAN_PIXEL_INTEGRATE_ADAPTIVE = 3  /* per pixel: one point where the map is locally linear and its footprint
-                                         * within a pixel, else R2 with 4 to samples (64) points, from the
-                                         * map's finite-difference Jacobian and second differences */
+                                         * within a pixel (16 with a kernel other than BOX), else R2 with 4 to
+                                         * samples (64) points, from the map's finite-difference Jacobian and
+                                         * second differences, four times as many with a wider kernel */
 } alwan_pixel_integration;
+
+/* The weight integration gives each point around the output pixel's centre, in output pixels.
+ * A box stops at the pixel's edge, and its flat response lets detail finer than a pixel fold
+ * back as moire; the others overlap the neighbours and fall off smoothly. */
+typedef enum {
+    ALWAN_PIXEL_KERNEL_BOX = 0,       /* 1 over the pixel: the pixel's mean */
+    ALWAN_PIXEL_KERNEL_TENT = 1,      /* (1 - |dx|) (1 - |dy|) over two pixels each way */
+    ALWAN_PIXEL_KERNEL_GAUSSIAN = 2   /* exp(-r^2 / (2 s^2)), s = 0.5 pixel, cut at r = 1.5 */
+} alwan_pixel_kernel;
 
 typedef int (*alwan_warp_callback)(double x, double y, double *source_x, double *source_y, void *user);
 
@@ -2956,12 +2967,16 @@ typedef struct {
     alwan_warp_callback callback;    /* CALLBACK */
     void *callback_user;
     alwan_pixel_integration integration;  /* 0 is POINT */
+    alwan_pixel_kernel kernel;       /* GRID, R2, ADAPTIVE: 0 is BOX. GRID lays its n x n cells over the kernel's
+                                      * support and weights them; R2 draws its points from the kernel, so each
+                                      * weighs the same */
     size_t samples;                  /* GRID: per side, up to 64; R2: points; ADAPTIVE: the most points; see above */
     double tolerance;                /* ADAPTIVE: the second difference, in source pixels, below which the map
                                       * counts as linear; 0 reads as 0.05 */
     unsigned seed;                   /* R2, ADAPTIVE: the per-pixel shift's seed */
-    int r2_disk;                     /* R2, ADAPTIVE: non-zero spreads the points over the disk of the pixel's area
-                                      * (a round kernel, turned per pixel); 0 over the square pixel, GRID's kernel */
+    int r2_disk;                     /* R2, ADAPTIVE with the BOX kernel: non-zero spreads the points over the disk
+                                      * of the pixel's area (a round kernel, turned per pixel); 0 over the square
+                                      * pixel, GRID's kernel */
     int alpha_channel;               /* non-zero: the last of 2 or 4 channels is alpha, and integration runs on
                                       * premultiplied colour */
     unsigned char *samples_out;      /* optional: the points each output pixel took (255 for 255 or more) */
