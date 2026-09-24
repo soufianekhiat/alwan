@@ -741,7 +741,8 @@ for Sauvola, pass `r = 127.5`, the value scikit-image uses for 8-bit data.
 
 ```c
 typedef enum {
-    ALWAN_SEGMENT_CONNECTED = 0
+    ALWAN_SEGMENT_CONNECTED = 0,
+    ALWAN_SEGMENT_WATERSHED = 1
 } alwan_segment_method;
 
 alwan_status alwan_segment_{T}(uint32_t *labels, size_t labels_row_stride, size_t *count_out,
@@ -752,15 +753,19 @@ alwan_status alwan_segment_{T}(uint32_t *labels, size_t labels_row_stride, size_
 alwan_status alwan_segment_u8(...);   /* same, unsigned char pixels */
 ```
 
-An image divided into regions, one `uint32_t` label a pixel: 0 for background, 1 to
-`*count_out` for the regions. `labels_row_stride` is in bytes, as every stride here is;
-`count_out` may be NULL.
+An image divided into regions, one `uint32_t` label a pixel, 0 for background or a
+watershed line. `labels_row_stride` is in bytes, as every stride here is. `count_out`, which
+may be NULL, receives the largest label: the number of regions for `CONNECTED`, and for
+`WATERSHED` from its own markers.
 
 | Field of `alwan_segment_params` | 0 reads as |
 |---|---|
-| `connectivity` | 8, scikit-image's default for `label`; or 4 |
-| `background` | 0: pixels equal to it in every channel stay 0 |
-| `label_background` | 0: non-zero labels the background's regions too |
+| `connectivity` | scikit-image's default for the method: 8 for `CONNECTED`, 4 for `WATERSHED`; or give 4 or 8 |
+| `background` | `CONNECTED`: 0; pixels equal to it in every channel stay 0 |
+| `label_background` | `CONNECTED`: 0; non-zero labels the background's regions too |
+| `markers`, `markers_row_stride` | `WATERSHED`: NULL, flood from the local minima; otherwise a `uint32_t` image of labels, 0 where unmarked |
+| `compactness` | `WATERSHED`: 0, the classic flood |
+| `watershed_line` | `WATERSHED`: 0; non-zero leaves the pixels between basins 0 |
 
 ### `CONNECTED`
 
@@ -775,6 +780,29 @@ for count: a thresholded mask at both connectivities, a quantised luma with back
 into one integer a pixel, since scikit-image reads a colour array as a volume). One
 union-find pass joins each pixel to its equal neighbours already visited, and a second
 numbers the roots.
+
+### `WATERSHED`
+
+One channel, read as a relief, flooded from markers: every pixel joins the basin that
+reaches it first, the lowest levels flooding first. Flood a gradient magnitude and the
+basins are the image's regions and their borders its edges; flood a distance transform's
+negative and touching objects separate. Without `markers` each local minimum (a plateau
+whose other neighbours are all higher) is a marker, numbered in raster order, which on a
+noisy gradient over-segments; markers from a threshold or a coarse grid give one region
+each. `compactness` adds that times the distance to the marker to each level, pulling
+regions toward even shapes (Neubert and Protzel 2014); `watershed_line` leaves the
+one-pixel boundaries between basins at 0.
+
+Which basin takes a pixel on a tie depends on the order the flood visits equal levels, so
+this follows scikit-image's `segmentation.watershed` step for step: the image padded by
+one pixel, a binary heap ordered by level and then by age with scikit-image's own sift
+steps (markers all age 0, pushed in raster order), neighbours visited up, left, right,
+down and then the diagonals, each push one age older, and a pixel's level raised to the
+level that reached it. Suite 224 holds it to scikit-image label for label: a gradient from
+its minima at both connectivities, an image quantised to 16 levels where ties are
+everywhere, a caller's markers numbered with gaps, compact floods, watershed lines,
+float32 and 8-bit, 15 cases. A constant image has no minima (scikit-image disqualifies a
+plateau at the image's maximum where it meets the border) and stays 0.
 
 ## Background estimation
 

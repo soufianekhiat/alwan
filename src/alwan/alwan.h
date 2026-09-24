@@ -2666,8 +2666,9 @@ alwan_status alwan_threshold_local_f32(alwan_f32 *out, size_t out_row_stride, al
 alwan_status alwan_threshold_local_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_local_method method, alwan_threshold_local_params const *params);
 
 /* Segmentation: an image divided into labelled regions. labels receives one uint32_t a
- * pixel (labels_row_stride in bytes), 0 for background and 1 to count for the regions;
- * count_out, when not NULL, the number of regions.
+ * pixel (labels_row_stride in bytes), 0 for background (or a watershed line); count_out,
+ * when not NULL, the largest label, which for CONNECTED and for WATERSHED's own markers
+ * is the number of regions.
  *
  *   ALWAN_SEGMENT_CONNECTED  the connected components of equal pixels, every channel
  *                            equal: a thresholded mask's objects, a quantised image's
@@ -2675,19 +2676,33 @@ alwan_status alwan_threshold_local_f64(alwan_f64 *out, size_t out_row_stride, al
  *                            0 unless label_background is set. Numbered in the raster
  *                            order of each region's first pixel, as scikit-image's
  *                            measure.label, label for label (suite 223).
+ *   ALWAN_SEGMENT_WATERSHED  one channel flooded from markers, the caller's (non-zero
+ *                            labels in a uint32_t image) or else its local minima: each
+ *                            pixel joins the basin that reaches it first, lowest level
+ *                            first. compactness > 0 adds that times the distance to the
+ *                            marker to the level (compact watershed); watershed_line leaves
+ *                            the pixels between basins 0. As scikit-image's
+ *                            segmentation.watershed, label for label (suite 224); flood it
+ *                            with a gradient magnitude to segment an image by its edges.
  *
  * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
- * small, a NaN, a connectivity other than 4 or 8, or an unknown method; ALWAN_E_RANGE for
- * 2^32 - 1 pixels or more. */
+ * small, a NaN, a connectivity other than 4 or 8, an unknown method, or for WATERSHED more
+ * than one channel or a negative compactness; ALWAN_E_RANGE for 2^32 - 1 pixels or more. */
 typedef enum {
-    ALWAN_SEGMENT_CONNECTED = 0
+    ALWAN_SEGMENT_CONNECTED = 0,
+    ALWAN_SEGMENT_WATERSHED = 1
 } alwan_segment_method;
 
 /* A zero field is its default. */
 typedef struct {
-    unsigned connectivity;  /* CONNECTED: 4 or 8 neighbours; 0 reads as 8, scikit-image's default */
+    unsigned connectivity;  /* 4 or 8 neighbours; 0 reads as scikit-image's default, 8 for CONNECTED
+                             * and 4 for WATERSHED */
     double background;      /* CONNECTED: the value left unlabelled, in every channel */
     int label_background;   /* CONNECTED: non-zero labels the background's regions too */
+    uint32_t const *markers;   /* WATERSHED: width x height labels, 0 unmarked; NULL uses the local minima */
+    size_t markers_row_stride; /* WATERSHED: in bytes */
+    double compactness;     /* WATERSHED: 0 for the classic flood */
+    int watershed_line;     /* WATERSHED: non-zero leaves the lines between basins 0 */
 } alwan_segment_params;
 
 alwan_status alwan_segment_f32(uint32_t *labels, size_t labels_row_stride, size_t *count_out, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_segment_method method, alwan_segment_params const *params);
