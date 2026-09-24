@@ -492,6 +492,10 @@
   level that lets it drain to the border; value for value with scikit-image's
   `diameter_opening`, `diameter_closing` and `reconstruction` (suite 220).
 
+- **Skeletonize and thin in `alwan_morphology`.** Zhang and Suen's skeleton and Guo and
+  Hall's thinning, pixel for pixel with scikit-image's `skeletonize` and `thin` (suite 237);
+  kept pixels keep their value.
+
 - **Global thresholds: `alwan_threshold`.** One level per channel by Otsu, Li, Yen,
   isodata, triangle, minimum or the mean, for making a mask; value for value with
   scikit-image's `filters.threshold_*`, whose float32 arithmetic it follows (suite 221).

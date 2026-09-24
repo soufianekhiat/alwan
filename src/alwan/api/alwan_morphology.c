@@ -312,6 +312,95 @@ static alwan_status alwan_mo_fill(double *a, size_t w, size_t h, size_t ch, int 
     return ALWAN_OK;
 }
 
+/* Zhang and Suen's thinning ("A fast parallel algorithm for thinning digital patterns",
+ * CACM 27(3), 1984) as scikit-image's _fast_skeletonize (BSD) runs it: the neighbourhood
+ * number NW 1, N 2, NE 4, E 8, SE 16, S 32, SW 64, W 128, its class from this table (1 and
+ * 3 removed in the first pass, 2 and 3 in the second), every pass reading the image as the
+ * pass began. Transcribed from skimage/morphology/_skeletonize_various_cy.pyx at v0.26.0. */
+static unsigned char const alwan_mo_zhang_lut[256] = {
+    0, 0, 0, 1, 0, 0, 1, 3, 0, 0, 3, 1, 1, 0, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 3, 0, 3, 3,
+    0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 3, 0, 2, 2,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 3, 0, 2, 0,
+    0, 0, 3, 1, 0, 0, 1, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+    3, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    2, 3, 1, 3, 0, 0, 1, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    2, 3, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 1, 0, 0, 0, 0, 2, 2, 0, 0, 2, 0, 0, 0
+};
+
+/* Guo and Hall's two-subiteration thinning ("Parallel thinning with two-subiteration
+ * algorithms", CACM 32(3), 1989), as scikit-image's thin: the tables built from the paper's
+ * conditions G1, G2 and G3 (G3' for the second), the neighbourhood numbered E 1, NE 2, N 4,
+ * NW 8, W 16, SW 32, S 64, SE 128. */
+static void alwan_mo_guo_hall_luts(unsigned char *g123, unsigned char *g123p) {
+    int nb;
+    for (nb = 0; nb < 256; nb++) {
+        int b[8], i, s = 0, n1 = 0, n2 = 0, g1, g2, g3, g3p;
+        for (i = 0; i < 8; i++) b[i] = (nb >> i) & 1;
+        for (i = 0; i < 8; i += 2)
+            if (!b[i] && (b[i + 1] || b[(i + 2) % 8])) s++;
+        g1 = s == 1;
+        for (i = 1; i < 8; i += 2) {
+            n1 += b[i] || b[i - 1];
+            n2 += b[i] || b[(i + 1) % 8];
+        }
+        g2 = (n1 < n2 ? n1 : n2) == 2 || (n1 < n2 ? n1 : n2) == 3;
+        g3 = !((b[1] || b[2] || !b[7]) && b[0]);
+        g3p = !((b[5] || b[6] || !b[3]) && b[4]);
+        g123[nb] = (unsigned char)(g1 && g2 && g3);
+        g123p[nb] = (unsigned char)(g1 && g2 && g3p);
+    }
+}
+
+/* SKELETONIZE (thin = 0) or THIN, every channel of a (w x h x ch) on its own: a non-zero
+ * value is foreground, a removed pixel becomes 0 and a kept one keeps its value. THIN stops
+ * after max_iter iterations when that is not 0. */
+static alwan_status alwan_mo_skeleton(double *a, size_t w, size_t h, size_t ch, int thin, size_t max_iter) {
+    size_t const W = w + 2, H = h + 2;
+    unsigned char *s = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size(W * H, 2), 1), *d;
+    unsigned char g123[256], g123p[256];
+    size_t c, x, y;
+    if (!s) return ALWAN_E_NOMEM;
+    d = s + W * H;
+    if (thin) alwan_mo_guo_hall_luts(g123, g123p);
+    for (c = 0; c < ch; c++) {
+        size_t iter = 0;
+        int changed = 1;
+        /* a one-pixel border of background, as both do */
+        memset(s, 0, W * H);
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++) s[(y + 1) * W + x + 1] = (unsigned char)(a[(y * w + x) * ch + c] != 0.0);
+        while (changed && (!thin || max_iter == 0 || iter < max_iter)) {
+            int pass;
+            changed = 0;
+            for (pass = 0; pass < 2; pass++) {
+                memcpy(d, s, W * H);
+                for (y = 1; y + 1 < H; y++)
+                    for (x = 1; x + 1 < W; x++) {
+                        unsigned char const *q = s + y * W + x;
+                        if (!*q) continue;
+                        if (thin) {
+                            int const nb = q[1] | q[-(long)W + 1] << 1 | q[-(long)W] << 2 | q[-(long)W - 1] << 3 | q[-1] << 4 |
+                                           q[W - 1] << 5 | q[W] << 6 | q[W + 1] << 7;
+                            if ((pass == 0 ? g123 : g123p)[nb]) d[y * W + x] = 0, changed = 1;
+                        } else {
+                            int const k = alwan_mo_zhang_lut[q[-(long)W - 1] | q[-(long)W] << 1 | q[-(long)W + 1] << 2 | q[1] << 3 |
+                                                             q[W + 1] << 4 | q[W] << 5 | q[W - 1] << 6 | q[-1] << 7];
+                            if (k == 3 || (k == 1 && pass == 0) || (k == 2 && pass == 1)) d[y * W + x] = 0, changed = 1;
+                        }
+                    }
+                memcpy(s, d, W * H);
+            }
+            iter++;
+        }
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++)
+                if (!s[(y + 1) * W + x + 1]) a[(y * w + x) * ch + c] = 0.0;
+    }
+    ALWAN_FREE(s);
+    return ALWAN_OK;
+}
+
 static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_morphology_method method, alwan_morphology_params const *params,
                                  int kind /* 0 f64, 1 f32, 2 u8 */) {
@@ -326,7 +415,7 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
     size_t x, y, i;
     if (!out || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / ch / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_FILL_HOLES) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_THIN) return ALWAN_E_INVALID;
     if (p->connectivity != 0 && p->connectivity != 4 && p->connectivity != 8) return ALWAN_E_INVALID;
     if (!p->kernel && (unsigned)p->shape > (unsigned)ALWAN_MORPHOLOGY_DIAMOND) return ALWAN_E_INVALID;
     if (kw > 255 || kh > 255 || iterations > 1000) return ALWAN_E_RANGE;
@@ -381,6 +470,15 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
     case ALWAN_MORPHOLOGY_AREA_CLOSE:
     case ALWAN_MORPHOLOGY_DIAMETER_OPEN:
     case ALWAN_MORPHOLOGY_DIAMETER_CLOSE:
+    case ALWAN_MORPHOLOGY_SKELETONIZE:
+    case ALWAN_MORPHOLOGY_THIN: {
+        alwan_status const st = alwan_mo_skeleton(a, w, h, ch, method == ALWAN_MORPHOLOGY_THIN, p->iterations);
+        if (st != ALWAN_OK) {
+            ALWAN_FREE(a);
+            return st;
+        }
+        break;
+    }
     case ALWAN_MORPHOLOGY_FILL_HOLES: {
         int const diameter = method == ALWAN_MORPHOLOGY_DIAMETER_OPEN || method == ALWAN_MORPHOLOGY_DIAMETER_CLOSE;
         alwan_status const st =

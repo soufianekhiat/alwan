@@ -579,7 +579,8 @@ typedef enum {
     ALWAN_MORPHOLOGY_TOP_HAT = 5, ALWAN_MORPHOLOGY_BLACK_HAT = 6,
     ALWAN_MORPHOLOGY_AREA_OPEN = 7, ALWAN_MORPHOLOGY_AREA_CLOSE = 8,
     ALWAN_MORPHOLOGY_DIAMETER_OPEN = 9, ALWAN_MORPHOLOGY_DIAMETER_CLOSE = 10,
-    ALWAN_MORPHOLOGY_FILL_HOLES = 11
+    ALWAN_MORPHOLOGY_FILL_HOLES = 11,
+    ALWAN_MORPHOLOGY_SKELETONIZE = 12, ALWAN_MORPHOLOGY_THIN = 13
 } alwan_morphology_method;
 
 typedef enum {
@@ -609,7 +610,7 @@ speckle off a hard key and closes its pinholes. Each channel on its own; `out` m
 |---|---|
 | `shape` | `RECT` |
 | `kernel_width`, `kernel_height` | 3, 3 (1 to 255) |
-| `iterations` | 1: each erosion and dilation runs once |
+| `iterations` | 1: each erosion and dilation runs once; for `THIN`, until nothing changes |
 | `kernel` | NULL: build `shape`; otherwise the caller's element, `kernel_width x kernel_height` bytes |
 | `area_threshold` | 64: `AREA_OPEN` and `AREA_CLOSE`, the smallest region kept, in pixels |
 | `connectivity` | 4: `AREA_*`, `DIAMETER_*` and `FILL_HOLES`, 4 or 8 neighbours |
@@ -670,6 +671,26 @@ a priority flood from the border pixels, and it is the reconstruction by erosion
 image from a seed equal to the image on the border and its maximum inside, which is
 scikit-image's own recipe; suite 220 holds it to `morphology.reconstruction` that way, value
 for value. An image one or two pixels across is all border and comes back unchanged.
+
+### `SKELETONIZE` and `THIN`
+
+Each shape worn down to a line one pixel wide along its middle, keeping how it connects:
+the centre line of a stroke, a road, a vessel, a crack. Each channel is a mask, non-zero
+the shape; a pixel removed becomes 0 and a pixel kept keeps its value, so a labelled or
+coloured mask keeps its labels along the skeleton. Both remove border pixels in two
+alternating passes, each pass deciding from the image as it stood when the pass began, and
+repeat until a pass removes nothing.
+
+| Method | Rule | As |
+|---|---|---|
+| `SKELETONIZE` | Zhang and Suen 1984: each 8-neighbourhood classified by a 256-entry table, one class removed in the first pass, another in the second, a third in both | `skimage.morphology.skeletonize` (2D) |
+| `THIN` | Guo and Hall 1989: the paper's conditions G1, G2 and G3 (G3' in the second pass), which leave diagonal strokes one pixel thin; `iterations` stops it early | `skimage.morphology.thin` |
+
+The table is scikit-image's own, transcribed from its `_skeletonize_various_cy.pyx` at
+v0.26.0 (BSD); Guo and Hall's two tables are built from the conditions as scikit-image's
+generator builds them. Suite 237 holds both pixel for pixel on five masks (blobs with holes,
+block letters, a disc and a ring, a diagonal band, shapes on the image's border) and `THIN`
+stopped after one and three passes, in f64, f32, 8 bits and as one channel of three.
 
 ## Thresholds
 

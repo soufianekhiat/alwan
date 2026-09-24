@@ -2511,6 +2511,11 @@ alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
  *                               climbing raised to the lowest level that lets it drain: a
  *                               pixel becomes the least, over paths to the border, of the
  *                               highest value on the path
+ *   ALWAN_MORPHOLOGY_SKELETONIZE every shape (non-zero pixels) worn down to a line one pixel
+ *                               wide along its middle, keeping its connections: Zhang and
+ *                               Suen 1984, as scikit-image's skeletonize
+ *   ALWAN_MORPHOLOGY_THIN       the same by Guo and Hall 1989, as scikit-image's thin, which
+ *                               can stop after iterations passes (0: until nothing changes)
  *
  * The element sits with its anchor, (kernel_width / 2, kernel_height / 2), on the pixel and
  * is used as given (not reflected); pixels outside the image take no part; iterations
@@ -2522,7 +2527,9 @@ alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
  * area_closing, diameter_opening and diameter_closing, value for value (suites 219 and
  * 220), except that a threshold above the whole image flattens it to its minimum (maximum),
  * where scikit-image returns 0. FILL_HOLES is scikit-image's reconstruction by erosion from
- * the border (suite 220); its connectivity is that of the paths. The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
+ * the border (suite 220); its connectivity is that of the paths. SKELETONIZE and THIN
+ * treat each channel as a mask, non-zero the shape; a removed pixel becomes 0 and a kept one
+ * keeps its value; pixel for pixel with scikit-image (suite 237). The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
  * rectangle once, an area of 64 or a diameter of 8, 4-connected. ALWAN_E_INVALID for a NULL, a zero size, a
  * channel count out of range, a stride too small, a NaN, a connectivity other than 4 or 8,
  * or an unknown method or shape; ALWAN_E_RANGE for an element over 255 a side or more than
@@ -2539,7 +2546,9 @@ typedef enum {
     ALWAN_MORPHOLOGY_AREA_CLOSE = 8,
     ALWAN_MORPHOLOGY_DIAMETER_OPEN = 9,
     ALWAN_MORPHOLOGY_DIAMETER_CLOSE = 10,
-    ALWAN_MORPHOLOGY_FILL_HOLES = 11
+    ALWAN_MORPHOLOGY_FILL_HOLES = 11,
+    ALWAN_MORPHOLOGY_SKELETONIZE = 12,
+    ALWAN_MORPHOLOGY_THIN = 13
 } alwan_morphology_method;
 
 /* The structuring elements, OpenCV's getStructuringElement and its numbering. */
@@ -2555,7 +2564,8 @@ typedef struct {
     alwan_morphology_shape shape;  /* 0 is RECT; ignored when kernel is given */
     size_t kernel_width;           /* the element's size, 1 to 255; 0 reads as 3 */
     size_t kernel_height;          /* 0 reads as 3 */
-    size_t iterations;             /* how many times each erosion and dilation runs; 0 reads as 1 */
+    size_t iterations;             /* how many times each erosion and dilation runs; 0 reads as 1. THIN: the
+                                    * most passes, 0 until nothing changes */
     unsigned char const *kernel;   /* a caller's element, kernel_width x kernel_height bytes, non-zero
                                     * where it takes part; NULL builds shape */
     size_t area_threshold;         /* AREA_OPEN, AREA_CLOSE: the smallest region kept, in pixels; 0 reads as 64 */
