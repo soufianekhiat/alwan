@@ -1087,11 +1087,31 @@ falls outside the image keeps `fill`.
 |---|---|
 | `MATRIX` | the matrix above |
 | `SWIRL` | `c + R(phi) (p - c)`, `phi = angle f(s)`, `s = 1 - min(abs(p - c) / radius, 1)` and `f(s) = 6s^5 - 15s^4 + 10s^3`: a turn that fades to nothing at the radius with its first and second derivatives |
-| `FIELD` | a sampled map, two doubles per texel: texel `(i, j)` holds the source point of output point `(i + 0.5, j + 0.5)`, read bilinearly between texels and clamped at the edges; a NaN texel has no source (fill) |
+| `FIELD` | a lattice of source points, two doubles each, `field_width x field_height` (the output's size by default, one point a pixel), read by `field_interpolation` (below); a NaN point has no source (fill) |
 | `CALLBACK` | `callback(x, y, &sx, &sy, user)`; a zero return means no source (fill) |
 
-A field is the form a flow field, a UV pass from a renderer or a lens-distortion table
-takes; a callback takes any analytic map.
+A field is the form a flow field, a UV pass from a renderer, a lens-distortion table or a
+mesh warp's control net takes; a callback takes any analytic map.
+
+A field need not have a point for every pixel. A coarse lattice spans the output and is
+read between its points by `field_interpolation`:
+
+| Interpolation | Between the points | Point `(i, j)` sits at |
+|---|---|---|
+| `LINEAR` | bilinear: continuous, the slope jumps at every point, so straight lines bend into polygons | the texel centre `((i + 0.5) ow / gw, (j + 0.5) oh / gh)` |
+| `CATMULL_ROM` | the Catmull-Rom cubic each way: through every point, continuous slope, may overshoot | the texel centre |
+| `BSPLINE` | the uniform cubic B-spline each way: C2 and inside the points' hull, near the points but not through them | the texel centre |
+| `NURBS` | a tensor-product NURBS surface of `field_degree` (1 to 7, 3 by default, fewer than the points each way) on clamped uniform knots, each point weighted by `field_weights` (positive; all 1 when NULL): a weight above 1 pulls the surface toward its point | a control net spanning the output corner to corner: the output's corners go to the corner points and its edges follow the edge rows' curves |
+
+The first three repeat the edge points beyond the lattice. The lattice holds source
+points, so it runs backwards like every map: a mesh warp's net placed over the output says
+where each part of the output takes its picture from.
+
+Suite 235 holds the four against scipy through a ramp image whose bilinear sample is the
+source point itself: `LINEAR` against `RegularGridInterpolator`, `CATMULL_ROM` against
+`CubicHermiteSpline` with Catmull-Rom tangents, `BSPLINE` and `NURBS` against `NdBSpline`
+(the NURBS as the weighted surface divided by the weights' surface), eight lattices from
+3 x 3 of degree 1 to 9 x 7 of degree 5, weighted and not, all within 1.2e-13.
 
 | Field of `alwan_warp_params` | 0 reads as |
 |---|---|
@@ -1101,6 +1121,9 @@ takes; a callback takes any analytic map.
 | `map` | `ALWAN_WARP_MAP_MATRIX`: the matrix above |
 | `swirl_center[2]`, `swirl_radius`, `swirl_angle` | the image centre, half the shorter side, no turn |
 | `field`, `field_row_stride` | required by `ALWAN_WARP_MAP_FIELD` |
+| `field_width`, `field_height` | the output's size: one point a pixel |
+| `field_interpolation` | `ALWAN_WARP_FIELD_LINEAR` |
+| `field_degree`, `field_weights` | NURBS: cubic, every weight 1 |
 | `callback`, `callback_user` | required by `ALWAN_WARP_MAP_CALLBACK` |
 | `integration` | `ALWAN_PIXEL_INTEGRATE_POINT`: one sample at the centre |
 | `kernel` | `ALWAN_PIXEL_KERNEL_BOX`: the pixel's mean |
@@ -1151,7 +1174,11 @@ at every sub-position by the method.
 
 `ADAPTIVE` reads the map, not the picture: a rigid turn, a translation or a mild
 enlargement takes one sample even where the content has sharp edges, and the budget goes
-where the map shrinks or bends. `samples_out` (one byte per pixel, 255 for more) records
+where the map shrinks or bends. The one step it does look for is the source image's own
+edge: a pixel whose footprint straddles it meets the fill in a step that no smoothness of
+the map shows, and 64 shifted points leave that edge grainy (RMS 0.016 against 4096
+points), so it takes four times `samples` (up to 4096), which brings it to 0.005, what 256
+points everywhere reach. Edge pixels are few: on a 360 x 240 turn, 2,000 of 86,400. `samples_out` (one byte per pixel, 255 for more) records
 the count each pixel took, for a heat map. On a 256 x 256 checker of 8-pixel squares under
 a swirl of three turns, against a 48 x 48 grid, bilinear reconstruction:
 

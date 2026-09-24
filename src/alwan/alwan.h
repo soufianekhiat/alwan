@@ -2919,13 +2919,30 @@ typedef enum {
     ALWAN_WARP_MAP_SWIRL = 1,    /* c + R(phi) (p - c), phi = swirl_angle f(1 - r / swirl_radius) with the
                                   * C2 quintic f(s) = 6s^5 - 15s^4 + 10s^3: a rotation of the displacement,
                                   * smooth at the centre and at the radius */
-    ALWAN_WARP_MAP_FIELD = 2,    /* field: out_width x out_height pairs of doubles, texel (i, j) the source
-                                  * point of output point (i + 0.5, j + 0.5), bilinear between texels and
-                                  * clamped at the edges; a NaN texel has no source (fill). A field cannot
-                                  * hold detail finer than its texels, nor know about UV seams */
+    ALWAN_WARP_MAP_FIELD = 2,    /* field: a lattice of source points, field_width x field_height pairs of
+                                  * doubles (the output's size by default: one per pixel, a UV or flow pass),
+                                  * interpolated by field_interpolation; a NaN point has no source (fill).
+                                  * A field cannot hold detail finer than its lattice, nor know about UV
+                                  * seams */
     ALWAN_WARP_MAP_CALLBACK = 3  /* callback(x, y, &sx, &sy, user) for any output point; 0 or a NaN is no
                                   * source */
 } alwan_warp_map;
+
+/* How FIELD reads between its lattice points. LINEAR, CATMULL_ROM and BSPLINE place point
+ * (i, j) at output point ((i + 0.5) out_width / field_width, (j + 0.5) out_height /
+ * field_height), a texel's centre, and repeat the edge points beyond the lattice. NURBS
+ * spans the whole output instead, corner to corner, like a mesh warp's control net. */
+typedef enum {
+    ALWAN_WARP_FIELD_LINEAR = 0,       /* bilinear: the map is continuous, its slope jumps at every point */
+    ALWAN_WARP_FIELD_CATMULL_ROM = 1,  /* the Catmull-Rom cubic (a = -0.5) each way: passes through every point,
+                                        * continuous slope, may overshoot between points */
+    ALWAN_WARP_FIELD_BSPLINE = 2,      /* the uniform cubic B-spline each way: C2, inside the points' hull, near
+                                        * the points but not through them */
+    ALWAN_WARP_FIELD_NURBS = 3         /* a tensor-product NURBS surface of field_degree (3 by default, up to 7)
+                                        * on clamped uniform knots, weighted by field_weights (all 1 when NULL):
+                                        * the output's corners go to the corner points, its edges follow the
+                                        * edge rows' curves */
+} alwan_warp_field_interpolation;
 
 /* How an output pixel is formed from the source (alwan_warp, alwan_resize). */
 typedef enum {
@@ -2939,7 +2956,9 @@ typedef enum {
     ALWAN_PIXEL_INTEGRATE_ADAPTIVE = 3  /* per pixel: one point where the map is locally linear and its footprint
                                          * within a pixel (16 with a kernel other than BOX), else R2 with 4 to
                                          * samples (64) points, from the map's finite-difference Jacobian and
-                                         * second differences, four times as many with a wider kernel */
+                                         * second differences, four times as many with a wider kernel; four
+                                         * times samples (up to 4096) where the footprint straddles the source
+                                         * image's edge, whose step against the fill the map does not show */
 } alwan_pixel_integration;
 
 /* The weight integration gives each point around the output pixel's centre, in output pixels.
@@ -2964,6 +2983,11 @@ typedef struct {
     double swirl_angle;              /* SWIRL: the turn at the centre, radians */
     double const *field;             /* FIELD: see alwan_warp_map */
     size_t field_row_stride;         /* FIELD: in bytes */
+    size_t field_width, field_height;  /* FIELD: the lattice's points each way; 0 reads as the output's size */
+    alwan_warp_field_interpolation field_interpolation;  /* FIELD: 0 is LINEAR */
+    int field_degree;                /* FIELD, NURBS: 1 to 7, below the points each way; 0 reads as 3 */
+    double const *field_weights;     /* FIELD, NURBS: one positive weight a point, or NULL for all 1 */
+    size_t field_weights_row_stride; /* in bytes */
     alwan_warp_callback callback;    /* CALLBACK */
     void *callback_user;
     alwan_pixel_integration integration;  /* 0 is POINT */

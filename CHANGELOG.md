@@ -526,7 +526,11 @@
   the Gaussian leaves about half the box's aliasing under a strong swirl. Straight alpha
   is premultiplied for the mean. `alwan_resize` also
   gains LCD subpixel layouts (RGB, BGR, vertical) through FreeType's default LCD filter, for
-  text. No reference exists; suite 235 holds the properties.
+  text. No reference exists; suite 235 holds the properties. The field map takes a lattice
+  of any size read linearly, by Catmull-Rom, by uniform cubic B-spline or as a weighted
+  NURBS surface of degree 1 to 7 (a mesh warp's control net), each within 1.2e-13 of
+  scipy; the adaptive policy gives four times its cap where a footprint straddles the
+  source image's edge.
 
 - **Ridge filters: `alwan_ridge`.** Frangi, Sato, Meijering and Hessian vesselness over
   several scales, dark or bright ridges; equal to scikit-image's `filters` in double

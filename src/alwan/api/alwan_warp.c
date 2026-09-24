@@ -176,8 +176,101 @@ typedef struct {
     alwan_warp_params const *p;
     double a[8];
     double cx, cy, radius, angle;
-    size_t ow, oh;
+    size_t ow, oh, gw, gh;
 } alwan_wp_map;
+
+static double const *alwan_wp_tex(alwan_wp_map const *m, long i, long j) {
+    i = i < 0 ? 0 : i >= (long)m->gw ? (long)m->gw - 1 : i;
+    j = j < 0 ? 0 : j >= (long)m->gh ? (long)m->gh - 1 : j;
+    return (double const *)((char const *)m->p->field + (size_t)j * m->p->field_row_stride) + 2 * (size_t)i;
+}
+
+/* Knot i of the clamped uniform knot vector for n points of degree d. */
+static double alwan_wp_knot(long i, long n, long d) {
+    return i <= d ? 0.0 : i >= n ? 1.0 : (double)(i - d) / (double)(n - d);
+}
+
+/* The span holding t and the d + 1 B-spline basis values there (Piegl and Tiller, The NURBS
+ * Book, A2.1 and A2.2), on the clamped uniform knots. */
+static long alwan_wp_basis(double t, long n, long d, double *N) {
+    double left[8], right[8];
+    long idx, span, j, r;
+    t = t < 0.0 ? 0.0 : t > 1.0 ? 1.0 : t;
+    idx = (long)floor(t * (double)(n - d));
+    if (idx > n - d - 1) idx = n - d - 1;
+    span = d + idx;
+    N[0] = 1.0;
+    for (j = 1; j <= d; j++) {
+        double saved = 0.0;
+        left[j] = t - alwan_wp_knot(span + 1 - j, n, d);
+        right[j] = alwan_wp_knot(span + j, n, d) - t;
+        for (r = 0; r < j; r++) {
+            double const temp = N[r] / (right[r + 1] + left[j - r]);
+            N[r] = saved + right[r + 1] * temp;
+            saved = left[j - r] * temp;
+        }
+        N[j] = saved;
+    }
+    return span;
+}
+
+/* The field's source point at output point (x, y). */
+static int alwan_wp_field(alwan_wp_map const *m, double x, double y, double *sx, double *sy) {
+    alwan_warp_params const *p = m->p;
+    if (p->field_interpolation == ALWAN_WARP_FIELD_NURBS) {
+        long const d = p->field_degree ? p->field_degree : 3, nu = (long)m->gw, nv = (long)m->gh;
+        double Nu[8], Nv[8], ax = 0.0, ay = 0.0, aw = 0.0;
+        long const su = alwan_wp_basis(x / (double)m->ow, nu, d, Nu), sv = alwan_wp_basis(y / (double)m->oh, nv, d, Nv);
+        long a, b;
+        for (b = 0; b <= d; b++)
+            for (a = 0; a <= d; a++) {
+                long const i = su - d + a, j = sv - d + b;
+                double const *t = alwan_wp_tex(m, i, j);
+                double const wt = p->field_weights ? ((double const *)((char const *)p->field_weights + (size_t)j * p->field_weights_row_stride))[i] : 1.0;
+                double const k = Nu[a] * Nv[b] * wt;
+                ax += k * t[0];
+                ay += k * t[1];
+                aw += k;
+            }
+        *sx = ax / aw;
+        *sy = ay / aw;
+    } else {
+        /* the lattice coordinate: texel centres; exact when the lattice is the output's size */
+        double const fx = m->gw == m->ow ? x - 0.5 : x * (double)m->gw / (double)m->ow - 0.5;
+        double const fy = m->gh == m->oh ? y - 0.5 : y * (double)m->gh / (double)m->oh - 0.5;
+        long const i0 = (long)floor(fx), j0 = (long)floor(fy);
+        double const tx = fx - (double)i0, ty = fy - (double)j0;
+        if (p->field_interpolation == ALWAN_WARP_FIELD_LINEAR) {
+            double const *f00 = alwan_wp_tex(m, i0, j0), *f10 = alwan_wp_tex(m, i0 + 1, j0);
+            double const *f01 = alwan_wp_tex(m, i0, j0 + 1), *f11 = alwan_wp_tex(m, i0 + 1, j0 + 1);
+            *sx = (1 - ty) * ((1 - tx) * f00[0] + tx * f10[0]) + ty * ((1 - tx) * f01[0] + tx * f11[0]);
+            *sy = (1 - ty) * ((1 - tx) * f00[1] + tx * f10[1]) + ty * ((1 - tx) * f01[1] + tx * f11[1]);
+        } else {
+            double wx[4], wy[4], ax = 0.0, ay = 0.0;
+            int a, b;
+            if (p->field_interpolation == ALWAN_WARP_FIELD_CATMULL_ROM) {
+                wx[0] = ((-0.5 * tx + 1.0) * tx - 0.5) * tx, wx[1] = (1.5 * tx - 2.5) * tx * tx + 1.0;
+                wx[2] = ((-1.5 * tx + 2.0) * tx + 0.5) * tx, wx[3] = (0.5 * tx - 0.5) * tx * tx;
+                wy[0] = ((-0.5 * ty + 1.0) * ty - 0.5) * ty, wy[1] = (1.5 * ty - 2.5) * ty * ty + 1.0;
+                wy[2] = ((-1.5 * ty + 2.0) * ty + 0.5) * ty, wy[3] = (0.5 * ty - 0.5) * ty * ty;
+            } else {
+                double const ux = 1.0 - tx, uy = 1.0 - ty;
+                wx[0] = ux * ux * ux / 6.0, wx[1] = ((3.0 * tx - 6.0) * tx * tx + 4.0) / 6.0;
+                wx[2] = (((-3.0 * tx + 3.0) * tx + 3.0) * tx + 1.0) / 6.0, wx[3] = tx * tx * tx / 6.0;
+                wy[0] = uy * uy * uy / 6.0, wy[1] = ((3.0 * ty - 6.0) * ty * ty + 4.0) / 6.0;
+                wy[2] = (((-3.0 * ty + 3.0) * ty + 3.0) * ty + 1.0) / 6.0, wy[3] = ty * ty * ty / 6.0;
+            }
+            for (b = 0; b < 4; b++)
+                for (a = 0; a < 4; a++) {
+                    double const *t = alwan_wp_tex(m, i0 - 1 + a, j0 - 1 + b);
+                    ax += wx[a] * wy[b] * t[0];
+                    ay += wx[a] * wy[b] * t[1];
+                }
+            *sx = ax, *sy = ay;
+        }
+    }
+    return *sx == *sx && *sy == *sy;
+}
 
 /* The source point shown at output point (x, y): 0 when there is none. */
 static int alwan_wp_eval_map(alwan_wp_map const *m, double x, double y, double *sx, double *sy) {
@@ -199,27 +292,8 @@ static int alwan_wp_eval_map(alwan_wp_map const *m, double x, double y, double *
         *sy = m->cy + sn * dx + cs * dy;
         return 1;
     }
-    case ALWAN_WARP_MAP_FIELD: {
-        /* bilinear between the field's texels, texel (i, j) holding the source point of output
-         * point (i + 0.5, j + 0.5), clamped at the edges; a NaN texel is no source */
-        double const fx = x - 0.5, fy = y - 0.5;
-        long i0 = (long)floor(fx), j0 = (long)floor(fy), i1, j1;
-        double const tx = fx - (double)i0, ty = fy - (double)j0;
-        double const *f00, *f10, *f01, *f11;
-        size_t const rs = m->p->field_row_stride;
-        i1 = i0 + 1, j1 = j0 + 1;
-        i0 = i0 < 0 ? 0 : i0 >= (long)m->ow ? (long)m->ow - 1 : i0;
-        i1 = i1 < 0 ? 0 : i1 >= (long)m->ow ? (long)m->ow - 1 : i1;
-        j0 = j0 < 0 ? 0 : j0 >= (long)m->oh ? (long)m->oh - 1 : j0;
-        j1 = j1 < 0 ? 0 : j1 >= (long)m->oh ? (long)m->oh - 1 : j1;
-        f00 = (double const *)((char const *)m->p->field + (size_t)j0 * rs) + 2 * (size_t)i0;
-        f10 = (double const *)((char const *)m->p->field + (size_t)j0 * rs) + 2 * (size_t)i1;
-        f01 = (double const *)((char const *)m->p->field + (size_t)j1 * rs) + 2 * (size_t)i0;
-        f11 = (double const *)((char const *)m->p->field + (size_t)j1 * rs) + 2 * (size_t)i1;
-        *sx = (1 - ty) * ((1 - tx) * f00[0] + tx * f10[0]) + ty * ((1 - tx) * f01[0] + tx * f11[0]);
-        *sy = (1 - ty) * ((1 - tx) * f00[1] + tx * f10[1]) + ty * ((1 - tx) * f01[1] + tx * f11[1]);
-        return *sx == *sx && *sy == *sy;
-    }
+    case ALWAN_WARP_MAP_FIELD:
+        return alwan_wp_field(m, x, y, sx, sy);
     case ALWAN_WARP_MAP_CALLBACK:
         return m->p->callback(x, y, sx, sy, m->p->callback_user) != 0 && *sx == *sx && *sy == *sy;
     default:
@@ -350,7 +424,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
     /* a wider kernel covers more source, so the adaptive count grows with its support */
     double const kscale = kernel == ALWAN_PIXEL_KERNEL_BOX ? 1.0 : 4.0;
     int const disk = p->r2_disk && kernel == ALWAN_PIXEL_KERNEL_BOX;
-    size_t const npts = pol == ALWAN_PIXEL_INTEGRATE_GRID ? 0 : (pol == ALWAN_PIXEL_INTEGRATE_R2 ? r2_n : max_n);
+    size_t const npts = pol == ALWAN_PIXEL_INTEGRATE_GRID ? 0 : (pol == ALWAN_PIXEL_INTEGRATE_R2 ? r2_n : (4 * max_n > 4096 ? 4096 : 4 * max_n));
     double *pts = NULL;
     size_t const ch = im->ch;
     int const alpha = p->alpha_channel && (ch == 2 || ch == 4);
@@ -359,6 +433,8 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
     m.p = p;
     memcpy(m.a, a, sizeof(m.a));
     m.ow = ow, m.oh = oh;
+    m.gw = p->field_width ? p->field_width : ow;
+    m.gh = p->field_height ? p->field_height : oh;
     m.cx = (p->swirl_center[0] != 0.0 || p->swirl_center[1] != 0.0) ? p->swirl_center[0] : (double)ow / 2.0;
     m.cy = (p->swirl_center[0] != 0.0 || p->swirl_center[1] != 0.0) ? p->swirl_center[1] : (double)oh / 2.0;
     m.radius = p->swirl_radius > 0.0 ? p->swirl_radius : (double)(ow < oh ? ow : oh) / 2.0;
@@ -392,6 +468,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                 /* the map's footprint (a finite-difference Jacobian, h = half a pixel) and how
                  * far it is from linear across the pixel (second differences), in source pixels */
                 double q0x, q0y, qpx, qpy, qmx, qmy, rpx, rpy, rmx, rmy, fp, nl, need;
+                int edge = 0;
                 int ok = alwan_wp_eval_map(&m, px, py, &q0x, &q0y);
                 ok &= alwan_wp_eval_map(&m, px + 0.5, py, &qpx, &qpy);
                 ok &= alwan_wp_eval_map(&m, px - 0.5, py, &qmx, &qmy);
@@ -402,10 +479,23 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                 } else {
                     double const jx = hypot(qpx - qmx, qpy - qmy), jy = hypot(rpx - rmx, rpy - rmy);
                     double const hx = hypot(qpx - 2 * q0x + qmx, qpy - 2 * q0y + qmy), hy = hypot(rpx - 2 * q0x + rmx, rpy - 2 * q0y + rmy);
+                    double reach;
                     fp = jx > jy ? jx : jy;
                     nl = hx > hy ? hx : hy;
+                    /* the kernel's footprint in the source straddles the image's edge: the fill
+                     * meets the picture there in a step the map's smoothness does not show */
+                    reach = fp * kr + nl;
+                    if (q0x > -reach && q0y > -reach && q0x < (double)im->w + reach && q0y < (double)im->h + reach &&
+                        !(q0x >= reach && q0y >= reach && q0x <= (double)im->w - reach && q0y <= (double)im->h - reach))
+                        edge = 1;
                 }
-                if (fp <= 1.0 && nl <= tol) {
+                if (edge) {
+                    /* a hard step: its coverage is a fraction that 64 shifted points still leave
+                     * grainy along the edge (RMS 0.016 against 4096 points where 256 leave
+                     * 0.005), and edge pixels are few */
+                    n = 4 * max_n;
+                    if (n > 4096) n = 4096;
+                } else if (fp <= 1.0 && nl <= tol) {
                     /* a box over a linear map is its centre; a wider kernel still has to be drawn,
                      * or the flat parts of the map come out sharper than the rest (16: at the
                      * identity, as close to the kernel as R2 with 16 points, where 8 left 30% more) */
@@ -511,7 +601,24 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
     if ((unsigned)p->map > (unsigned)ALWAN_WARP_MAP_CALLBACK || (unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_ADAPTIVE ||
         (unsigned)p->kernel > (unsigned)ALWAN_PIXEL_KERNEL_GAUSSIAN)
         return ALWAN_E_INVALID;
-    if (p->map == ALWAN_WARP_MAP_FIELD && (!p->field || p->field_row_stride / (2 * sizeof(double)) < ow)) return ALWAN_E_INVALID;
+    if (p->map == ALWAN_WARP_MAP_FIELD) {
+        size_t const gw = p->field_width ? p->field_width : ow, gh = p->field_height ? p->field_height : oh;
+        int const d = p->field_degree ? p->field_degree : 3;
+        if (!p->field || p->field_row_stride / (2 * sizeof(double)) < gw || (unsigned)p->field_interpolation > (unsigned)ALWAN_WARP_FIELD_NURBS)
+            return ALWAN_E_INVALID;
+        if (gw > 1u << 24 || gh > 1u << 24) return ALWAN_E_RANGE;
+        if (p->field_interpolation == ALWAN_WARP_FIELD_NURBS) {
+            if (d < 1 || d > 7 || gw <= (size_t)d || gh <= (size_t)d) return ALWAN_E_RANGE;
+            if (p->field_weights) {
+                if (p->field_weights_row_stride / sizeof(double) < gw) return ALWAN_E_INVALID;
+                for (y = 0; y < gh; y++)
+                    for (x = 0; x < gw; x++) {
+                        double const wt = ((double const *)((char const *)p->field_weights + y * p->field_weights_row_stride))[x];
+                        if (!(wt > 0.0) || !(wt - wt == 0.0)) return ALWAN_E_RANGE;
+                    }
+            }
+        }
+    }
     if (p->map == ALWAN_WARP_MAP_CALLBACK && !p->callback) return ALWAN_E_INVALID;
     if (p->integration == ALWAN_PIXEL_INTEGRATE_GRID && p->samples > 64) return ALWAN_E_RANGE;
     if (p->integration >= ALWAN_PIXEL_INTEGRATE_R2 && p->samples > 4096) return ALWAN_E_RANGE;
