@@ -1173,6 +1173,8 @@ at every sub-position by the method.
 | `GRID` | an n x n grid of cell centres (`samples` is n, 16 by default, up to 64): the brute-force reference |
 | `R2` | `samples` points (16 by default, up to 4096) of Roberts' R2 sequence in antithetic pairs `+d, -d`, so no pair shifts the pixel; the set is shifted toroidally per pixel by a hash of `(x, y, seed)` so neighbours do not share one pattern. `r2_disk` spreads it over the disk of the pixel's area instead, turned per pixel |
 | `ADAPTIVE` | R2 with a count per pixel, from central differences of the map at half a pixel: the footprint (the Jacobian's largest column) and the second difference. A footprint at most 1 with a second difference at most `tolerance` takes one sample; otherwise the first of 4, 8, 16, 32, 64 not below the larger of footprint^2 and second difference / tolerance, capped by `samples`. A kernel other than the box takes 16 at least and four times the count |
+| `EWA` | none: Heckbert's elliptical weighted average weighs the source pixels themselves. The Gaussian kernel is carried into the source by the map's Jacobian at the pixel, a reconstruction Gaussian of bilinear's variance (1/6) is added, and every source pixel under the ellipse (out to 3 sigma) is weighed, those past the image as the fill. The ellipse is widened to 0.36 source pixels squared at least, since a narrower Gaussian summed on the pixel lattice ripples, and narrowed past 16384 source pixels. `method` and `kernel` are not used |
+| `AUTO` | per pixel, `EWA` where the map is locally affine (second difference within `tolerance`) and shrinks every way (the Jacobian's smaller singular value at least 1), `ADAPTIVE` where it curves or enlarges along any axis; the Gaussian kernel throughout, whatever `kernel` says |
 
 `ADAPTIVE` reads the map, not the picture: a rigid turn, a translation or a mild
 enlargement takes one sample even where the content has sharp edges, and the budget goes
@@ -1228,6 +1230,24 @@ climbs well above it as the swirl compresses the pattern, the Gaussian barely le
 At three turns, adaptive with the Gaussian took 58 points a pixel on average and 0.74 s
 against the grid's 2.5 s.
 
+EWA's cost follows the footprint's area in the source, not a sample count, and it is exact
+for an affine map, since one Jacobian then holds for the whole footprint. It is blind to a
+map that curves inside the footprint, and its Gaussian reconstruction is softer than
+bilinear where the map enlarges. `AUTO` gives each pixel the one that suits it. The
+aliasing against the Gaussian kernel's alias-free target, on a checker of 6-pixel squares,
+320 x 240:
+
+| Map | `POINT` | `ADAPTIVE` | `GRID`, 16 | `EWA` | `AUTO` |
+|---|---|---|---|---|---|
+| affine, turned 23 degrees, shrunk 2.6 times | 0.080 | 0.022 | 0.020 | 0.020 | 0.020 |
+| perspective floor to a horizon | 0.089 | 0.045 | 0.043 | 0.057 | 0.045 |
+| swirl, three turns | 0.232 | 0.041 | 0.036 | 0.043 | 0.039 |
+
+On the affine map EWA reaches the 16 x 16 grid in about a sixth of its time. On the floor
+it loses where the floor enlarges toward the viewer, which `AUTO` leaves to `ADAPTIVE`; on
+the swirl it misses the curvature, which `AUTO` also samples, and `AUTO` comes out ahead of
+`ADAPTIVE` alone.
+
 With `alpha_channel` set, the last of two or four channels is straight alpha: the colour is
 premultiplied before the mean and divided after, so colour under zero alpha does not bleed
 into an edge. The mean is of the data's own values; for light-correct integration of
@@ -1241,7 +1261,11 @@ converges to the grid reference under a swirl (RMS 0.029, 0.0032, 0.0006 at 16, 
 the identity, and a NaN texel is fill. For the tent and the Gaussian, a linear ramp comes
 back to 1e-15 through the grid and through R2, one grid cell is the point, R2 converges to
 the weighted grid (RMS 0.037 and 0.040 at 16 points, 0.0015 and 0.0019 at 1024), and
-`ADAPTIVE` never takes fewer than 16 points. Resize's integration and subpixel layouts are held
+`ADAPTIVE` never takes fewer than 16 points. `EWA` keeps a constant to 4e-16, returns a
+linear ramp at the pixel's source point to 2.2e-4 under an affine shrink, lands 0.0004 RMS
+from the Gaussian kernel integrated by a 32 x 32 grid there, and averages a 400-times
+shrink of a pixel checker to 0.5000; every pixel of `AUTO` on a perspective floor is, bit
+for bit, `EWA`'s or `ADAPTIVE`'s. Resize's integration and subpixel layouts are held
 the same way: an integrated box halving is the 2 x 2 mean, a constant stays constant under
 every layout, and RGB and BGR move a thin line's red and blue in opposite directions.
 

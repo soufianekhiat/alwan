@@ -2955,12 +2955,26 @@ typedef enum {
                                          * antithetic pairs (+d, -d: no net shift), moved per pixel by a hash of
                                          * (x, y, seed) so neighbours do not share one pattern (r2_disk: on the
                                          * disk of the pixel's area instead) */
-    ALWAN_PIXEL_INTEGRATE_ADAPTIVE = 3  /* per pixel: one point where the map is locally linear and its footprint
+    ALWAN_PIXEL_INTEGRATE_ADAPTIVE = 3, /* per pixel: one point where the map is locally linear and its footprint
                                          * within a pixel (16 with a kernel other than BOX), else R2 with 4 to
                                          * samples (64) points, from the map's finite-difference Jacobian and
                                          * second differences, four times as many with a wider kernel; four
                                          * times samples (up to 4096) where the footprint straddles the source
                                          * image's edge, whose step against the fill the map does not show */
+    ALWAN_PIXEL_INTEGRATE_EWA = 4,      /* Heckbert's elliptical weighted average: the Gaussian kernel carried into
+                                         * the source by the map's Jacobian at the pixel, plus a reconstruction
+                                         * Gaussian of bilinear's variance (1/6), weighs every source pixel under
+                                         * the ellipse (source pixels past the image count as fill). Cost grows
+                                         * with the footprint, not with a sample count; exact for an affine map,
+                                         * blind to a map that curves inside the footprint, and softer than
+                                         * bilinear where the map enlarges. Ignores method and
+                                         * kernel. The ellipse is widened to 0.36 source pixels squared at least
+                                         * (a narrower Gaussian summed on the pixel lattice ripples) and narrowed
+                                         * past 16384 source pixels */
+    ALWAN_PIXEL_INTEGRATE_AUTO = 5      /* per pixel: EWA where the map is locally affine (second difference within
+                                         * tolerance) and shrinks every way (the Jacobian's smaller singular value
+                                         * at least 1), ADAPTIVE where it curves or enlarges along any axis; the
+                                         * Gaussian kernel throughout */
 } alwan_pixel_integration;
 
 /* The weight integration gives each point around the output pixel's centre, in output pixels.

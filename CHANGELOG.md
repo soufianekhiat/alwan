@@ -530,7 +530,9 @@
   of any size read linearly, by Catmull-Rom, by uniform cubic B-spline or as a weighted
   NURBS surface of degree 1 to 7 (a mesh warp's control net), each within 1.2e-13 of
   scipy; the adaptive policy gives four times its cap where a footprint straddles the
-  source image's edge.
+  source image's edge. `EWA` (Heckbert's elliptical weighted average) filters an affine
+  shrink to the 16 x 16 grid's quality at a sixth of its time, and `AUTO` picks EWA where
+  the map is affine and shrinks every way and the adaptive sampler elsewhere.
 
 - **Ridge filters: `alwan_ridge`.** Frangi, Sato, Meijering and Hessian vesselness over
   several scales, dark or bright ridges; equal to scikit-image's `filters` in double

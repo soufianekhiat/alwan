@@ -423,6 +423,79 @@ static double alwan_wp_kernel_weight(alwan_pixel_kernel kernel, double dx, doubl
     return 1.0;
 }
 
+/* The map shrinks every way at the pixel: the Jacobian's smaller singular value is at
+ * least 1. Where it enlarges along any axis, EWA's Gaussian reconstruction is softer than
+ * bilinear (on a perspective floor that was 0.057 against 0.045 RMS), so AUTO samples. */
+static int alwan_wp_shrinks(double a, double b, double c, double d) {
+    double const s = a * a + b * b + c * c + d * d, det = a * d - b * c;
+    double const disc = s * s - 4.0 * det * det;
+    return 0.5 * (s - sqrt(disc > 0.0 ? disc : 0.0)) >= 1.0;
+}
+
+/* EWA (Heckbert 1989): the Gaussian kernel (s = 0.5 output pixel) carried into the source by
+ * the Jacobian J = [a b; c d], plus a reconstruction Gaussian of bilinear's variance, over the
+ * source pixels' centres; outside the image a source pixel is the fill. Returns how many
+ * source pixels it weighed. */
+static size_t alwan_wp_ewa(double *acc, double *wsum, alwan_wp_img const *im, double const *fill, int alpha, double qx, double qy, double a,
+                           double b, double c, double d) {
+    double sxx = 0.25 * (a * a + b * b) + 1.0 / 6.0, sxy = 0.25 * (a * c + b * d), syy = 0.25 * (c * c + d * d) + 1.0 / 6.0;
+    double const floor_var = 0.36;   /* the lattice sum of exp(-r^2 / 2 s^2) ripples by exp(-2 pi^2 s^2): 8e-4 here */
+    double const cap = 16384.0;
+    double rx, ry, det, ia, ib, ic;
+    size_t const ch = im->ch;
+    size_t count = 0;
+    long i, j, i0, i1, j0, j1;
+    {
+        /* raise either eigenvalue below the floor, along its own axis */
+        double const half = 0.5 * (sxx + syy), disc = sqrt(0.25 * (sxx - syy) * (sxx - syy) + sxy * sxy);
+        double l1 = half + disc, l2 = half - disc, v1x, v1y, nrm;
+        if (l2 < floor_var || l1 < floor_var) {
+            if (fabs(sxy) > 1e-300) v1x = l1 - syy, v1y = sxy;
+            else v1x = sxx >= syy ? 1.0 : 0.0, v1y = sxx >= syy ? 0.0 : 1.0;
+            nrm = sqrt(v1x * v1x + v1y * v1y);
+            v1x /= nrm, v1y /= nrm;
+            l1 = l1 < floor_var ? floor_var : l1;
+            l2 = l2 < floor_var ? floor_var : l2;
+            sxx = l1 * v1x * v1x + l2 * v1y * v1y;
+            syy = l1 * v1y * v1y + l2 * v1x * v1x;
+            sxy = (l1 - l2) * v1x * v1y;
+        }
+    }
+    rx = 3.0 * sqrt(sxx), ry = 3.0 * sqrt(syy);
+    if ((2.0 * rx + 1.0) * (2.0 * ry + 1.0) > cap) {
+        /* narrow the whole ellipse to the cap: the area scales with the covariance */
+        double const s = cap / ((2.0 * rx + 1.0) * (2.0 * ry + 1.0));
+        sxx *= s, sxy *= s, syy *= s;
+        rx = 3.0 * sqrt(sxx), ry = 3.0 * sqrt(syy);
+    }
+    det = sxx * syy - sxy * sxy;
+    ia = syy / det, ib = -sxy / det, ic = sxx / det;
+    i0 = (long)floor(qx - 0.5 - rx), i1 = (long)ceil(qx - 0.5 + rx);
+    j0 = (long)floor(qy - 0.5 - ry), j1 = (long)ceil(qy - 0.5 + ry);
+    *wsum = 0.0;
+    for (j = j0; j <= j1; j++) {
+        double const dy = (double)j + 0.5 - qy;
+        for (i = i0; i <= i1; i++) {
+            double const dx = (double)i + 0.5 - qx;
+            double const q = ia * dx * dx + 2.0 * ib * dx * dy + ic * dy * dy;
+            double wt, v[4];
+            size_t k;
+            if (q > 9.0) continue;
+            wt = exp(-0.5 * q);
+            if (i >= 0 && i < (long)im->w && j >= 0 && j < (long)im->h)
+                for (k = 0; k < ch; k++) v[k] = alwan_wp_px(im, i, j, k);
+            else
+                for (k = 0; k < ch; k++) v[k] = fill[k];
+            if (alpha)
+                for (k = 0; k + 1 < ch; k++) v[k] *= v[ch - 1];
+            for (k = 0; k < ch; k++) acc[k] += wt * v[k];
+            *wsum += wt;
+            count++;
+        }
+    }
+    return count;
+}
+
 static void alwan_wp_store_mean(void *orow, int kind, size_t i, double v) {
     if (kind == 0) ((alwan_f64 *)orow)[i] = v;
     else if (kind == 1) ((alwan_f32 *)orow)[i] = (alwan_f32)v;
@@ -442,7 +515,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
     size_t const max_n = p->samples ? p->samples : 64;
     double const tol = p->tolerance > 0.0 ? p->tolerance : 0.05;
     double const radius = 0.56418958354775628695;   /* 1 / sqrt(pi): the disk of a pixel's area */
-    alwan_pixel_kernel const kernel = p->kernel;
+    alwan_pixel_kernel const kernel = pol == ALWAN_PIXEL_INTEGRATE_AUTO ? ALWAN_PIXEL_KERNEL_GAUSSIAN : p->kernel;
     double const kr = alwan_wp_kernel_radius(kernel);
     /* a wider kernel covers more source, so the adaptive count grows with its support */
     double const kscale = kernel == ALWAN_PIXEL_KERNEL_BOX ? 1.0 : 4.0;
@@ -472,8 +545,9 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
         unsigned char *brow = p->samples_out ? p->samples_out + y * p->samples_out_row_stride : NULL;
         for (x = 0; x < ow; x++) {
             double const px = (double)x + 0.5, py = (double)y + 0.5;
-            double acc[4] = { 0, 0, 0, 0 }, v[4], wsum;
+            double acc[4] = { 0, 0, 0, 0 }, v[4], wsum = 0.0;
             size_t n = 1, k;
+            int ewa_done = 0;
             if (pol == ALWAN_PIXEL_INTEGRATE_POINT) {
                 double sx, sy;
                 if (alwan_wp_eval_map(&m, px, py, &sx, &sy)) {
@@ -487,7 +561,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                 if (brow) brow[x] = 1;
                 continue;
             }
-            if (pol == ALWAN_PIXEL_INTEGRATE_ADAPTIVE) {
+            if (pol == ALWAN_PIXEL_INTEGRATE_ADAPTIVE || pol == ALWAN_PIXEL_INTEGRATE_EWA || pol == ALWAN_PIXEL_INTEGRATE_AUTO) {
                 /* the map's footprint (a finite-difference Jacobian, h = half a pixel) and how
                  * far it is from linear across the pixel (second differences), in source pixels */
                 double q0x, q0y, qpx, qpy, qmx, qmy, rpx, rpy, rmx, rmy, fp, nl, need;
@@ -512,7 +586,12 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                         !(q0x >= reach && q0y >= reach && q0x <= (double)im->w - reach && q0y <= (double)im->h - reach))
                         edge = 1;
                 }
-                if (edge) {
+                if (ok && (pol == ALWAN_PIXEL_INTEGRATE_EWA || (pol == ALWAN_PIXEL_INTEGRATE_AUTO && nl <= tol && alwan_wp_shrinks(qpx - qmx, rpx - rmx, qpy - qmy, rpy - rmy)))) {
+                    /* EWA weighs the source pixels themselves, the fill past the image included,
+                     * so the edge needs nothing of its own */
+                    n = alwan_wp_ewa(acc, &wsum, im, p->fill, alpha, q0x, q0y, qpx - qmx, rpx - rmx, qpy - qmy, rpy - rmy);
+                    ewa_done = 1;
+                } else if (edge) {
                     /* a hard step: its coverage is a fraction that 64 shifted points still leave
                      * grainy along the edge (RMS 0.016 against 4096 points where 256 leave
                      * 0.005), and edge pixels are few */
@@ -542,8 +621,9 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
             } else {
                 n = r2_n;
             }
-            wsum = (double)n;
-            if (n == 1) {
+            if (ewa_done) {
+                /* weighed already */
+            } else if ((wsum = (double)n), n == 1) {
                 alwan_wp_subsample(acc, &m, im, method, px, py);
             } else if (pol == ALWAN_PIXEL_INTEGRATE_GRID) {
                 /* n x n cell centres over the kernel's support, each weighted by the kernel */
@@ -594,7 +674,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                     }
                 }
             }
-            if (n == 1 && alpha)
+            if (n == 1 && alpha && !ewa_done)
                 for (c = 0; c + 1 < ch; c++) acc[c] *= acc[ch - 1];
             for (c = 0; c < ch; c++) acc[c] /= wsum;
             if (alpha) {
@@ -621,7 +701,7 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
     if (!out || !src || w == 0 || h == 0 || ow == 0 || oh == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < ow) return ALWAN_E_INVALID;
     if ((unsigned)method > (unsigned)ALWAN_WARP_BICUBIC) return ALWAN_E_INVALID;
-    if ((unsigned)p->map > (unsigned)ALWAN_WARP_MAP_CALLBACK || (unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_ADAPTIVE ||
+    if ((unsigned)p->map > (unsigned)ALWAN_WARP_MAP_CALLBACK || (unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_AUTO ||
         (unsigned)p->kernel > (unsigned)ALWAN_PIXEL_KERNEL_GAUSSIAN)
         return ALWAN_E_INVALID;
     if (p->map == ALWAN_WARP_MAP_FIELD) {
