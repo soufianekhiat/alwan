@@ -167,7 +167,9 @@ typedef enum {
     ALWAN_DENOISE_DCT = 3,
     ALWAN_DENOISE_WAVELET = 4,
     ALWAN_DENOISE_MEDIAN = 5,
-    ALWAN_DENOISE_TV_BREGMAN = 6
+    ALWAN_DENOISE_TV_BREGMAN = 6,
+    ALWAN_DENOISE_NL_MEANS_DARBON = 7,
+    ALWAN_DENOISE_NL_MEANS_BUADES = 8
 } alwan_denoise_method;
 
 alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -181,19 +183,19 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
 ```
 
 Classic denoisers that fail in different ways (plate 89 of the v3 plates shows them on
-one portrait). `alwan_denoise_u8` runs all seven; `alwan_denoise_{T}` runs
-`TV_CHAMBOLLE`, `DCT`, `WAVELET`, `MEDIAN` and `TV_BREGMAN`, and returns `ALWAN_E_INVALID` for the two whose references work
-on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
+one portrait). `alwan_denoise_u8` runs all nine; `alwan_denoise_{T}` runs every method
+but `NL_MEANS` and `ANISOTROPIC_DIFFUSION`, and returns `ALWAN_E_INVALID` for those two,
+whose references work on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 
 | Field of `alwan_denoise_params` | Method | 0 reads as |
 |---|---|---|
 | `weight` | `TV_CHAMBOLLE` | 0.1 |
 | `tolerance` | `TV_CHAMBOLLE` | 2e-4 (a tiny value runs every iteration) |
 | `iterations` | `TV_CHAMBOLLE` / `ANISOTROPIC_DIFFUSION` | 200 (at most) / 10 |
-| `h` | `NL_MEANS` | 10, in 0..255 units |
-| `template_window`, `search_window` | `NL_MEANS` | 7, 21 |
+| `h` | `NL_MEANS` / `NL_MEANS_DARBON`, `_BUADES` | 10, in 0..255 units / 0.1 in the data's units (25.5 on 8-bit) |
+| `template_window`, `search_window` | `NL_MEANS` / `NL_MEANS_DARBON`, `_BUADES` | 7, 21 / 7, 23 |
 | `alpha`, `k` | `ANISOTROPIC_DIFFUSION` | 0.15, 0.05 |
-| `sigma` | `DCT` / `WAVELET` | 10 for 8-bit data, 10 / 255 for floats / estimated from the image |
+| `sigma` | `DCT` / `WAVELET` / `NL_MEANS_DARBON`, `_BUADES` | 10 for 8-bit data, 10 / 255 for floats / estimated from the image / 0 |
 | `block_size` | `DCT` | 16 |
 | `wavelet` | `WAVELET` | `ALWAN_WAVELET_DB1` (Haar) |
 | `wavelet_levels` | `WAVELET` | the most the image holds, less 3, at least 1 |
@@ -325,6 +327,34 @@ copies of it, so each channel after the first starts from the previous channel's
 Its second and third channels come out 0.016 and 0.020 away from the same channel
 denoised alone, and reversing the channel order changes them. Suite 216 compares colour
 with scikit-image's single-channel calls.
+
+### `NL_MEANS_DARBON`, `NL_MEANS_BUADES`
+
+Non-local means on float data (and on 8-bit through double in 0..1, rounded back): each
+pixel becomes the mean of the pixels within `search_window / 2` of it, each weighted by
+`exp(-d)`, where `d` compares the `template_window` patches around the two over all
+channels, less `2 sigma^2` a sample for a known noise level, and is scaled by `h`. Pixels
+whose neighbourhoods look alike are averaged whatever their distance in the search
+window, so texture and edges that repeat keep their shape where a local filter would blur
+them. A weight past a distance of 5 is 0.
+
+| | `NL_MEANS_DARBON` | `NL_MEANS_BUADES` |
+|---|---|---|
+| Patch distance | the flat mean of the squared differences, over `channels h^2` | weighted by a gaussian of sigma `(template_window - 1) / 4`, summing to `1 / (channels h^2)` |
+| How | every shift at once by an integral image of the squared differences (Darbon et al. 2008), each pair visited once and weighted both ways | patch by patch (Buades, Coll and Morel 2005), a patch's sum stopped once past 5 |
+| Cost a pixel | about the search window's area | that times the patch's area |
+| Precision | double | the data's |
+
+`h` is in the data's units, 0.1 by default (25.5 on 8-bit data), `template_window` 7 (an
+even size is raised by one) and `search_window` 23, a patch distance of 11; `sigma` 0
+subtracts nothing. These are scikit-image's `restoration.denoise_nl_means` with its fast
+mode and with `fast_mode=False`, and suite 231 holds them to it value for value: grey and
+colour, double and float32, patches of 3 to 7, distances of 3 to 11, `h` and `sigma`, and
+8-bit, 12 cases. The exponential is scikit-image's, Schraudolph's approximation (1999), not
+`exp`: the weights follow scikit-image's to the bit. The one exception is `NL_MEANS_BUADES`
+on float32, 3.6e-7 away, because numpy's float32 `exp` builds the gaussian patch kernel a
+unit apart from the C library's. `ALWAN_DENOISE_NL_MEANS` is OpenCV's 8-bit algorithm and
+stays as it was.
 
 ## Local contrast
 

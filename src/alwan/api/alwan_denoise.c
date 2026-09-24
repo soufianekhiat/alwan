@@ -1106,6 +1106,12 @@ static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const 
         return alwan_tvb_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->weight, 5.0),
                              alwan_dn_or(p->tolerance, 1e-3), p->iterations == 0 ? 100 : p->iterations, p->anisotropic,
                              is_f32 ? 1 : 0);
+    case ALWAN_DENOISE_NL_MEANS_DARBON:
+    case ALWAN_DENOISE_NL_MEANS_BUADES:
+        return alwan__denoise_nlm(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                  method == ALWAN_DENOISE_NL_MEANS_BUADES, alwan_dn_or(p->h, 0.1),
+                                  p->template_window == 0 ? 7 : p->template_window,
+                                  p->search_window == 0 ? 11 : p->search_window / 2, p->sigma, is_f32 ? 1 : 0);
     case ALWAN_DENOISE_NL_MEANS:
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION: /* 8-bit only, as their references are */
     default:
@@ -1139,6 +1145,12 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
     case ALWAN_DENOISE_TV_BREGMAN:
         return alwan_tvb_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->weight, 5.0),
                              alwan_dn_or(p->tolerance, 1e-3), p->iterations == 0 ? 100 : p->iterations, p->anisotropic, 2);
+    case ALWAN_DENOISE_NL_MEANS_DARBON:
+    case ALWAN_DENOISE_NL_MEANS_BUADES:
+        return alwan__denoise_nlm(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                  method == ALWAN_DENOISE_NL_MEANS_BUADES, alwan_dn_or(p->h, 25.5) / 255.0,
+                                  p->template_window == 0 ? 7 : p->template_window,
+                                  p->search_window == 0 ? 11 : p->search_window / 2, p->sigma / 255.0, 2);
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION:
         return alwan_ad_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->alpha, 0.15),
                             alwan_dn_or(p->k, 0.05), p->iterations == 0 ? 10 : p->iterations);

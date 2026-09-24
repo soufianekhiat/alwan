@@ -2289,10 +2289,21 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        isotropic or anisotropic; weight is a fidelity
  *                                        weight here, larger keeps more (scikit-image
  *                                        denoise_tv_bregman, suite 216)
+ *   ALWAN_DENOISE_NL_MEANS_DARBON        non-local means on float data: each pixel the
+ *                                        mean of those within search_window / 2 of it,
+ *                                        weighted by exp(-d), d the flat distance between
+ *                                        their template_window patches less 2 sigma^2 a
+ *                                        sample over channels h^2 s^2, every shift at once
+ *                                        by an integral image (Darbon et al. 2008;
+ *                                        scikit-image denoise_nl_means, fast mode, suite 231)
+ *   ALWAN_DENOISE_NL_MEANS_BUADES        the same with the patch distance weighted by a
+ *                                        gaussian (Buades, Coll and Morel 2005; scikit-image
+ *                                        denoise_nl_means, fast_mode off, suite 231); slower
+ *                                        by the patch's area
  *
- * alwan_denoise_u8 runs every method on 8-bit data (TV through double in 0..1, rounded
- * back); alwan_denoise_{T} runs TV_CHAMBOLLE, DCT, WAVELET, MEDIAN and TV_BREGMAN, and ALWAN_E_INVALID for the two
- * methods whose references are 8-bit. src has 1 to 4 channels, each denoised on its own
+ * alwan_denoise_u8 runs every method on 8-bit data (TV and the float NL means through
+ * double in 0..1, rounded back); alwan_denoise_{T} runs every method but NL_MEANS and
+ * ANISOTROPIC_DIFFUSION, and ALWAN_E_INVALID for those two, whose references are 8-bit. src has 1 to 4 channels, each denoised on its own
  * except that NL means and diffusion measure differences over all of them and DCT turns
  * three channels to an opponent space first; rows at the given byte strides. out may be
  * src, except for NL_MEANS. params NULL is every default. */
@@ -2303,7 +2314,9 @@ typedef enum {
     ALWAN_DENOISE_DCT = 3,
     ALWAN_DENOISE_WAVELET = 4,
     ALWAN_DENOISE_MEDIAN = 5,
-    ALWAN_DENOISE_TV_BREGMAN = 6
+    ALWAN_DENOISE_TV_BREGMAN = 6,
+    ALWAN_DENOISE_NL_MEANS_DARBON = 7,
+    ALWAN_DENOISE_NL_MEANS_BUADES = 8
 } alwan_denoise_method;
 
 /* The orthogonal wavelets of ALWAN_DENOISE_WAVELET: Daubechies and symlets. */
@@ -2334,15 +2347,19 @@ typedef struct {
                              * TV_BREGMAN: stop when a sweep's RMS change is at most this; 0 reads as 1e-3 */
     size_t iterations;      /* TV_CHAMBOLLE: at most, 0 reads as 200. ANISOTROPIC_DIFFUSION: 0 reads as 10.
                              * TV_BREGMAN: at most, 0 reads as 100 */
-    double h;               /* NL_MEANS: strength in 0..255 units; 0 reads as 10 */
-    size_t template_window; /* NL_MEANS: patch side, odd; 0 reads as 7 */
-    size_t search_window;   /* NL_MEANS: search side, odd; 0 reads as 21 */
+    double h;               /* NL_MEANS: strength in 0..255 units; 0 reads as 10.
+                             * NL_MEANS_DARBON, _BUADES: in the data's units; 0 reads as 0.1 (25.5 on 8-bit) */
+    size_t template_window; /* NL_MEANS, _DARBON, _BUADES: patch side, odd (an even one is raised by 1),
+                             * at most 63; 0 reads as 7 */
+    size_t search_window;   /* NL_MEANS: search side, odd; 0 reads as 21. NL_MEANS_DARBON, _BUADES: the
+                             * search side, 2 d + 1 for a patch distance d up to 255; 0 reads as 23 (d = 11) */
     double alpha;           /* ANISOTROPIC_DIFFUSION: step, 0.1 to 0.2 keeps it stable; 0 reads as 0.15 */
     double k;               /* ANISOTROPIC_DIFFUSION: edge threshold, a fraction of full scale per channel;
                              * 0 reads as 0.05 */
-    double sigma;           /* DCT, WAVELET: the noise's standard deviation in the data's units (0..255
-                             * for 8-bit). DCT: 0 reads as 10 for 8-bit data, 10 / 255 for floats.
-                             * WAVELET: 0 estimates it from the finest diagonal sub-band */
+    double sigma;           /* DCT, WAVELET, NL_MEANS_DARBON, _BUADES: the noise's standard deviation in the
+                             * data's units (0..255 for 8-bit). DCT: 0 reads as 10 for 8-bit data, 10 / 255
+                             * for floats. WAVELET: 0 estimates it from the finest diagonal sub-band.
+                             * NL means: 0 subtracts nothing */
     size_t block_size;      /* DCT: the side of the DCT block, 2 to 64, at most the image's sides;
                              * 0 reads as 16 */
     int wavelet;            /* WAVELET: an alwan_wavelet; 0 is ALWAN_WAVELET_DB1 (Haar), scikit-image's

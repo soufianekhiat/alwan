@@ -147,6 +147,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_region_props.c
   src/alwan/api/alwan_corner.c
   src/alwan/api/alwan_texture.c
+  src/alwan/api/alwan_denoise_nlm.c
   src/alwan/api/alwan_edge_filter.c
   src/alwan/api/alwan_guided_filter.c
   src/alwan/api/alwan_histogram_match.c

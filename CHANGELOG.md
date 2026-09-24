@@ -511,6 +511,10 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Non-local means on float data: `ALWAN_DENOISE_NL_MEANS_DARBON` and `NL_MEANS_BUADES`**
+  join `alwan_denoise`, scikit-image's `denoise_nl_means` in its fast mode and with
+  gaussian-weighted patches, value for value (suite 231).
+
 - **Texture codes: `alwan_texture`.** Local binary patterns: default, rotation invariant,
   uniform, non-rotation-invariant uniform and variance; value for value with scikit-image's
   `feature.local_binary_pattern` (suite 230).
