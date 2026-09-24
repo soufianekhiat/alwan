@@ -2855,6 +2855,42 @@ alwan_status alwan_resize_f32(alwan_f32 *out, size_t out_row_stride, size_t out_
 alwan_status alwan_resize_f64(alwan_f64 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_resize_method method, alwan_resize_params const *params);
 alwan_status alwan_resize_u8(unsigned char *out, size_t out_row_stride, size_t out_width, size_t out_height, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_resize_method method, alwan_resize_params const *params);
 
+/* Warping: an image resampled through an affine or perspective map: a rotation, a shear,
+ * a keystone correction, a registration. Each output pixel's centre (x + 0.5, y + 0.5) is
+ * carried into the source by matrix,
+ *
+ *   affine       (m0 x + m1 y + m2, m3 x + m4 y + m5)
+ *   perspective  the same divided by m6 x + m7 y + 1
+ *
+ * and the source sampled there by the method; a point outside the image leaves fill.
+ *
+ *   ALWAN_WARP_NEAREST   the pixel under the point
+ *   ALWAN_WARP_BILINEAR  the four around it
+ *   ALWAN_WARP_BICUBIC   the sixteen around it, Catmull-Rom (a = -0.5)
+ *
+ * As Pillow's Image.transform (AFFINE, PERSPECTIVE) value for value (suite 234), its edge
+ * rules and its nearest-neighbour fixed point included; 8-bit results truncated (bicubic
+ * clamped first). No filtering against aliasing: to shrink much, resize first
+ * (alwan_resize). Channels are independent. out must not overlap src. ALWAN_E_INVALID for
+ * a NULL, a zero size, a channel count out of range, a stride too small, a NaN or infinite
+ * value, or an unknown method; ALWAN_E_RANGE for a side over 2^24 or a non-finite matrix. */
+typedef enum {
+    ALWAN_WARP_NEAREST = 0,
+    ALWAN_WARP_BILINEAR = 1,
+    ALWAN_WARP_BICUBIC = 2
+} alwan_warp_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double matrix[8];  /* output pixel to source point, as above; all 0 is the identity */
+    int perspective;   /* non-zero uses m6 and m7; 0 the affine map */
+    double fill[4];    /* per channel, in the data's units, where the point falls outside */
+} alwan_warp_params;
+
+alwan_status alwan_warp_f32(alwan_f32 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_warp_method method, alwan_warp_params const *params);
+alwan_status alwan_warp_f64(alwan_f64 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_warp_method method, alwan_warp_params const *params);
+alwan_status alwan_warp_u8(unsigned char *out, size_t out_row_stride, size_t out_width, size_t out_height, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_warp_method method, alwan_warp_params const *params);
+
 /* Texture codes: a code for every pixel of one channel describing the pattern of its
  * neighbourhood, for texture classification, matching and segmentation (a histogram of
  * the codes over a region is its texture descriptor). out receives doubles (out_row_stride

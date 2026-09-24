@@ -1038,6 +1038,52 @@ in double and lands within 1.0e-7 of Pillow's float32 results, their rounding. A
 size and box is a copy. Pillow premultiplies RGBA by its alpha before resampling; alwan
 treats the fourth channel like the others, so premultiply first where alpha matters.
 
+## Warping
+
+```c
+typedef enum {
+    ALWAN_WARP_NEAREST = 0, ALWAN_WARP_BILINEAR = 1, ALWAN_WARP_BICUBIC = 2
+} alwan_warp_method;
+
+alwan_status alwan_warp_{T}(alwan_{T} *out, size_t out_row_stride, size_t out_width, size_t out_height,
+                            alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                            size_t width, size_t height,
+                            alwan_warp_method method, alwan_warp_params const *params);
+alwan_status alwan_warp_u8(...);   /* same, unsigned char pixels */
+```
+
+An image resampled through an affine or perspective map: a rotation, a shear, a keystone
+correction, a registration found elsewhere. The map runs backwards, from each output pixel
+to the source point it shows: the centre `(x + 0.5, y + 0.5)` of output pixel `(x, y)` goes
+to `(m0 x + m1 y + m2, m3 x + m4 y + m5)`, divided for a perspective map by
+`m6 x + m7 y + 1`. The source is sampled there by the method, and an output whose point
+falls outside the image keeps `fill`.
+
+| Field of `alwan_warp_params` | 0 reads as |
+|---|---|
+| `matrix[8]` | all 0: the identity |
+| `perspective` | 0: the affine map, `m6` and `m7` unused |
+| `fill[4]` | 0 in every channel |
+
+`NEAREST` takes the pixel under the point, `BILINEAR` the four around it, `BICUBIC` the
+sixteen by the Catmull-Rom cubic (`a = -0.5`). Nothing filters against aliasing, so a map
+that shrinks much should follow a reduction by `alwan_resize`. To rotate the picture
+counter-clockwise by `t` about `(cx, cy)`, the matrix is `cos t, -sin t,
+cx - cx cos t + cy sin t, sin t, cos t, cy - cx sin t - cy cos t`, which is what Pillow's
+`Image.rotate` builds.
+
+This is Pillow's `Image.transform` with its `AFFINE` and `PERSPECTIVE` methods, value for
+value, and suite 234 holds it there: rotations with `Image.rotate`'s own matrices, a scale
+with a flip, a shear, a translation far enough to leave nearest's fixed-point range, a
+larger output and a keystone, through the three methods on 8-bit grey, RGB and
+four-channel images and float32 grey, with and without a fill colour, 53 cases. It follows
+Pillow's edge rules (columns clamped, a missing lower row repeating the upper), its three
+nearest-neighbour routes for affine maps (a pure scale, 16.16 fixed point, double), 8-bit
+results truncated with bicubic clamped first, and on float32 its horizontal stage in float
+arithmetic, as its macros compute it on `FLOAT32` pixels. The double entry point computes
+in double throughout and agrees with Pillow's float32 to 1.3e-7. Pillow premultiplies RGBA
+before a bilinear or bicubic transform; alwan's channels are independent.
+
 ## Segmentation
 
 ```c

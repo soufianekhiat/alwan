@@ -511,6 +511,9 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Warping: `alwan_warp`.** Affine and perspective maps with nearest, bilinear or bicubic
+  sampling and a fill colour; value for value with Pillow's `Image.transform` (suite 234).
+
 - **Resizing: `alwan_resize`.** Nearest, box, bilinear, Hamming, bicubic and Lanczos, with
   antialiasing when shrinking and a source box; value for value with Pillow's
   `Image.resize` on 8-bit and float32 data (suite 233).
