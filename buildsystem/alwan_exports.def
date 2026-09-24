@@ -1252,6 +1252,9 @@ EXPORTS
     alwan_michelson_contrast_f64
     alwan_mired_to_cct_f32
     alwan_mired_to_cct_f64
+    alwan_morphology_f32
+    alwan_morphology_f64
+    alwan_morphology_u8
     alwan_munsell_to_xyz_f32
     alwan_munsell_to_xyz_f64
     alwan_munsell_value_f32

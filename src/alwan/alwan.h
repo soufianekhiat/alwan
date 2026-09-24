@@ -2467,6 +2467,57 @@ typedef struct {
 alwan_status alwan_inpaint_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
 alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
 
+/* Morphology: grey-level erosion and dilation and their composites, for cleaning a
+ * selection mask or a matte, and for pulling out detail smaller than a shape. Each of 1 to
+ * 4 channels on its own; out may be src.
+ *
+ *   ALWAN_MORPHOLOGY_ERODE      the minimum over the structuring element
+ *   ALWAN_MORPHOLOGY_DILATE     the maximum over it
+ *   ALWAN_MORPHOLOGY_OPEN       erode then dilate: bright specks smaller than it removed
+ *   ALWAN_MORPHOLOGY_CLOSE      dilate then erode: dark holes and gaps smaller than it filled
+ *   ALWAN_MORPHOLOGY_GRADIENT   dilate - erode: the outline of every edge
+ *   ALWAN_MORPHOLOGY_TOP_HAT    src - open: the bright detail smaller than the element
+ *   ALWAN_MORPHOLOGY_BLACK_HAT  close - src: the dark detail smaller than it
+ *
+ * The element sits with its anchor, (kernel_width / 2, kernel_height / 2), on the pixel and
+ * is used as given (not reflected); pixels outside the image take no part; iterations
+ * repeats each erosion and dilation. As OpenCV's erode, dilate and morphologyEx, value for
+ * value (suite 217). The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
+ * rectangle once. ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a
+ * stride too small, a NaN, or an unknown method or shape; ALWAN_E_RANGE for an element
+ * over 255 a side or more than 1000 iterations. */
+typedef enum {
+    ALWAN_MORPHOLOGY_ERODE = 0,
+    ALWAN_MORPHOLOGY_DILATE = 1,
+    ALWAN_MORPHOLOGY_OPEN = 2,
+    ALWAN_MORPHOLOGY_CLOSE = 3,
+    ALWAN_MORPHOLOGY_GRADIENT = 4,
+    ALWAN_MORPHOLOGY_TOP_HAT = 5,
+    ALWAN_MORPHOLOGY_BLACK_HAT = 6
+} alwan_morphology_method;
+
+/* The structuring elements, OpenCV's getStructuringElement and its numbering. */
+typedef enum {
+    ALWAN_MORPHOLOGY_RECT = 0,
+    ALWAN_MORPHOLOGY_CROSS = 1,   /* the anchor's row and column */
+    ALWAN_MORPHOLOGY_ELLIPSE = 2, /* inscribed in the kernel_width x kernel_height box */
+    ALWAN_MORPHOLOGY_DIAMOND = 3  /* |dx| + |dy| <= kernel_height / 2 */
+} alwan_morphology_shape;
+
+/* A zero field is its default. */
+typedef struct {
+    alwan_morphology_shape shape;  /* 0 is RECT; ignored when kernel is given */
+    size_t kernel_width;           /* the element's size, 1 to 255; 0 reads as 3 */
+    size_t kernel_height;          /* 0 reads as 3 */
+    size_t iterations;             /* how many times each erosion and dilation runs; 0 reads as 1 */
+    unsigned char const *kernel;   /* a caller's element, kernel_width x kernel_height bytes, non-zero
+                                    * where it takes part; NULL builds shape */
+} alwan_morphology_params;
+
+alwan_status alwan_morphology_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
+alwan_status alwan_morphology_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
+alwan_status alwan_morphology_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since no method looks at neighbours). out may be src.

@@ -537,6 +537,57 @@ to 5.8e-15 on grey and colour images with scattered spots, a diagonal scratch, a
 block and a mask along the top edge into a corner, and to 9.5e-7 on float32, which
 scikit-image solves in float32.
 
+## Morphology
+
+```c
+typedef enum {
+    ALWAN_MORPHOLOGY_ERODE = 0, ALWAN_MORPHOLOGY_DILATE = 1,
+    ALWAN_MORPHOLOGY_OPEN = 2, ALWAN_MORPHOLOGY_CLOSE = 3,
+    ALWAN_MORPHOLOGY_GRADIENT = 4,
+    ALWAN_MORPHOLOGY_TOP_HAT = 5, ALWAN_MORPHOLOGY_BLACK_HAT = 6
+} alwan_morphology_method;
+
+typedef enum {
+    ALWAN_MORPHOLOGY_RECT = 0, ALWAN_MORPHOLOGY_CROSS = 1,
+    ALWAN_MORPHOLOGY_ELLIPSE = 2, ALWAN_MORPHOLOGY_DIAMOND = 3
+} alwan_morphology_shape;
+
+alwan_status alwan_morphology_{T}(alwan_{T} *out, size_t out_row_stride,
+                                  alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                  size_t width, size_t height,
+                                  alwan_morphology_method method,
+                                  alwan_morphology_params const *params);
+alwan_status alwan_morphology_u8(...);   /* same, unsigned char pixels */
+```
+
+Grey-level erosion (the minimum over a structuring element) and dilation (the maximum),
+and what is built from them: opening (erode, then dilate) removes bright specks smaller
+than the element and leaves larger shapes as they were; closing (dilate, then erode) fills
+dark holes and gaps smaller than it; the gradient (dilate minus erode) outlines every edge;
+the top-hat (the image minus its opening) and black-hat (its closing minus the image) keep
+only the bright or dark detail smaller than the element. The everyday use beside this
+library's keyers and selections is cleaning a mask: an opening then a closing takes the
+speckle off a hard key and closes its pinholes. Each channel on its own; `out` may be
+`src`.
+
+| Field of `alwan_morphology_params` | 0 reads as |
+|---|---|
+| `shape` | `RECT` |
+| `kernel_width`, `kernel_height` | 3, 3 (1 to 255) |
+| `iterations` | 1: each erosion and dilation runs once |
+| `kernel` | NULL: build `shape`; otherwise the caller's element, `kernel_width x kernel_height` bytes |
+
+The element's anchor is `(kernel_width / 2, kernel_height / 2)`, off centre for an even
+size, and the element is used as given, not reflected, for dilation as for erosion. Pixels
+outside the image take no part. The shapes are OpenCV's `getStructuringElement`, the
+ellipse rasterised row by row as OpenCV rounds it. This is OpenCV's `erode`, `dilate` and
+`morphologyEx` with their default border, and suite 217 holds it to them value for value:
+all seven operations, the four shapes at odd and even sizes, up to three iterations and an
+asymmetric caller's element, on 8-bit grey, colour and a speckled mask and on float32. The
+8-bit composites saturate at 0 and 255 as OpenCV's do. A caller's element that reaches no
+pixel of the image leaves that pixel as it was, where OpenCV writes its border value; the
+four shapes always include the anchor.
+
 ## Colour transfer
 
 ```c

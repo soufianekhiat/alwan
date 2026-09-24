@@ -481,6 +481,11 @@
   scikit-image's `restoration.inpaint_biharmonic` to 5.8e-15 (suite 215), its range clip
   switchable.
 
+- **Morphology: `alwan_morphology`.** Erode, dilate, open, close, gradient, top-hat and
+  black-hat on float and 8-bit images, with OpenCV's rectangle, cross, ellipse and diamond
+  elements or a caller's own, for cleaning keys and mattes; value for value with OpenCV's
+  `morphologyEx` (suite 217).
+
 - **Local contrast: `alwan_local_contrast`.** One entry point per data type (float,
   8-bit, 16-bit) with a method enum: the local Laplacian filter (Paris et al. 2011, the fast
   form of Aubry et al. 2014, following MATLAB's `locallapfilt` to 1.5e-6, suite 198) and
