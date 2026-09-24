@@ -737,6 +737,45 @@ numpy's `reflect` (the edge sample not repeated), summed in double. On float32 d
 is no 8-bit entry point, since scikit-image converts 8-bit data to double: convert it and,
 for Sauvola, pass `r = 127.5`, the value scikit-image uses for 8-bit data.
 
+## Segmentation
+
+```c
+typedef enum {
+    ALWAN_SEGMENT_CONNECTED = 0
+} alwan_segment_method;
+
+alwan_status alwan_segment_{T}(uint32_t *labels, size_t labels_row_stride, size_t *count_out,
+                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                               size_t width, size_t height,
+                               alwan_segment_method method,
+                               alwan_segment_params const *params);
+alwan_status alwan_segment_u8(...);   /* same, unsigned char pixels */
+```
+
+An image divided into regions, one `uint32_t` label a pixel: 0 for background, 1 to
+`*count_out` for the regions. `labels_row_stride` is in bytes, as every stride here is;
+`count_out` may be NULL.
+
+| Field of `alwan_segment_params` | 0 reads as |
+|---|---|
+| `connectivity` | 8, scikit-image's default for `label`; or 4 |
+| `background` | 0: pixels equal to it in every channel stay 0 |
+| `label_background` | 0: non-zero labels the background's regions too |
+
+### `CONNECTED`
+
+The connected components of equal pixels: every region is a set of pixels with the same
+value in every channel, each reachable from the others through such pixels. After
+`alwan_threshold` it gives a mask's objects, which `alwan_morphology`'s area operators
+can then filter by size; on a quantised or palette image it gives the flat regions of each
+colour. Regions are numbered in the raster order of their first pixel. This is
+scikit-image's `measure.label`, and suite 223 holds it to it label for label and count
+for count: a thresholded mask at both connectivities, a quantised luma with backgrounds of
+0 and 3 and with the background labelled, float32, and colour (which the reference packs
+into one integer a pixel, since scikit-image reads a colour array as a volume). One
+union-find pass joins each pixel to its equal neighbours already visited, and a second
+numbers the roots.
+
 ## Background estimation
 
 ```c

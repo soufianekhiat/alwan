@@ -1671,6 +1671,9 @@ EXPORTS
     alwan_scatter3_f64
     alwan_scotopic_luminance_f32
     alwan_scotopic_luminance_f64
+    alwan_segment_f32
+    alwan_segment_f64
+    alwan_segment_u8
     alwan_select_distance_f32
     alwan_select_distance_f64
     alwan_select_example_f32
