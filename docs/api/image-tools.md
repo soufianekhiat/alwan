@@ -737,6 +737,47 @@ numpy's `reflect` (the edge sample not repeated), summed in double. On float32 d
 is no 8-bit entry point, since scikit-image converts 8-bit data to double: convert it and,
 for Sauvola, pass `r = 127.5`, the value scikit-image uses for 8-bit data.
 
+## Gradient
+
+```c
+typedef enum {
+    ALWAN_GRADIENT_SOBEL = 0, ALWAN_GRADIENT_SCHARR = 1, ALWAN_GRADIENT_PREWITT = 2,
+    ALWAN_GRADIENT_FARID = 3, ALWAN_GRADIENT_ROBERTS = 4
+} alwan_gradient_method;
+
+alwan_status alwan_gradient_{T}(alwan_{T} *out, size_t out_row_stride,
+                                alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                size_t width, size_t height,
+                                alwan_gradient_method method,
+                                alwan_gradient_params const *params);
+```
+
+The derivative of each channel by a small kernel: the gradient magnitude by default, or one
+signed derivative. The magnitude is the relief `alwan_segment`'s watershed floods to
+divide an image along its edges, and the input to edge maps and detail measures. `out` may
+be `src`.
+
+| Method | Kernel |
+|---|---|
+| `SOBEL` | `[1, 0, -1]` across, `[1, 2, 1] / 4` along |
+| `SCHARR` | `[1, 0, -1]` across, `[3, 10, 3] / 16` along: the most nearly rotation-invariant of the 3 x 3 kernels |
+| `PREWITT` | `[1, 0, -1]` across, `[1, 1, 1] / 3` along |
+| `FARID` | Farid and Simoncelli's 5-tap derivative and interpolator (2004), optimised for rotation invariance |
+| `ROBERTS` | the diagonal differences `[[1, 0], [0, -1]]` and `[[0, 1], [-1, 0]]` |
+
+`params->component`: 0 (the default) for the magnitude `sqrt(d0^2 + d1^2) / sqrt(2)`; 1
+for the signed derivative down the rows (for `ROBERTS` the first diagonal); 2 for the
+derivative across the columns (the second diagonal).
+
+This is scikit-image's `filters.sobel`, `scharr`, `prewitt`, `farid`, `roberts`,
+`roberts_pos_diag` and `roberts_neg_diag` (the components are their `axis=0` and `axis=1`),
+and suite 225 holds all of them to it value for value: every method's magnitude and both
+components, double and float32, colour channel by channel, and an image smaller than
+Farid's kernel, 40 cases. The kernels are applied as scipy's `ndimage.convolve` applies
+them (flipped, zero weights skipped, the rest summed in raster order in double) with its
+`reflect` edge; the magnitude is formed in the data's precision. There is no 8-bit entry
+point: scikit-image divides 8-bit data by 255 first, and so should the caller.
+
 ## Segmentation
 
 ```c

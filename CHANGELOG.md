@@ -500,6 +500,10 @@
   neighbourhood: gaussian, mean, median, Niblack and Sauvola; value for value with
   scikit-image's `threshold_local`, `threshold_niblack` and `threshold_sauvola` (suite 222).
 
+- **Gradient: `alwan_gradient`.** Sobel, Scharr, Prewitt, Farid and Roberts, magnitude or
+  one signed derivative; value for value with scikit-image's `filters` edge operators
+  (suite 225).
+
 - **Segmentation: `alwan_segment`.** Labelled regions as `uint32_t`, first
   `ALWAN_SEGMENT_CONNECTED`, the connected components of equal pixels (colour included),
   4- or 8-connected; label for label with scikit-image's `measure.label` (suite 223).

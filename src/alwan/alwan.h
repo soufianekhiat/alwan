@@ -2665,6 +2665,38 @@ typedef struct {
 alwan_status alwan_threshold_local_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_local_method method, alwan_threshold_local_params const *params);
 alwan_status alwan_threshold_local_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_local_method method, alwan_threshold_local_params const *params);
 
+/* Gradient: an image's derivative by a small kernel, its magnitude by default, for edges,
+ * for a watershed's relief (alwan_segment) or for a measure of detail. Each channel on its
+ * own; out may be src.
+ *
+ *   ALWAN_GRADIENT_SOBEL    [1, 0, -1] across, [1, 2, 1] / 4 along
+ *   ALWAN_GRADIENT_SCHARR   [1, 0, -1] across, [3, 10, 3] / 16 along: the most rotation-invariant 3 x 3
+ *   ALWAN_GRADIENT_PREWITT  [1, 0, -1] across, [1, 1, 1] / 3 along
+ *   ALWAN_GRADIENT_FARID    Farid and Simoncelli's 5-tap derivative and interpolator
+ *   ALWAN_GRADIENT_ROBERTS  the two 2 x 2 diagonal differences
+ *
+ * The magnitude is sqrt(d0^2 + d1^2) / sqrt(2). As scikit-image's filters.sobel, scharr,
+ * prewitt, farid, roberts, roberts_pos_diag and roberts_neg_diag, value for value (suite
+ * 225), the image extended by scipy's "reflect". 8-bit data: divide by 255 into float, as
+ * scikit-image does. ALWAN_E_INVALID for a NULL, a zero size, a channel count out of
+ * range, a stride too small, a NaN or infinite value, an unknown method or component. */
+typedef enum {
+    ALWAN_GRADIENT_SOBEL = 0,
+    ALWAN_GRADIENT_SCHARR = 1,
+    ALWAN_GRADIENT_PREWITT = 2,
+    ALWAN_GRADIENT_FARID = 3,
+    ALWAN_GRADIENT_ROBERTS = 4
+} alwan_gradient_method;
+
+/* A zero field is its default. */
+typedef struct {
+    int component;  /* 0 the magnitude; 1 the signed derivative down the rows (ROBERTS: the
+                     * [[1, 0], [0, -1]] diagonal); 2 across the columns (ROBERTS: [[0, 1], [-1, 0]]) */
+} alwan_gradient_params;
+
+alwan_status alwan_gradient_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_gradient_method method, alwan_gradient_params const *params);
+alwan_status alwan_gradient_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_gradient_method method, alwan_gradient_params const *params);
+
 /* Segmentation: an image divided into labelled regions. labels receives one uint32_t a
  * pixel (labels_row_stride in bytes), 0 for background (or a watershed line); count_out,
  * when not NULL, the largest label, which for CONNECTED and for WATERSHED's own markers

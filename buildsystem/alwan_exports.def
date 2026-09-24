@@ -750,6 +750,8 @@ EXPORTS
     alwan_gamut_volume_ratio_f32
     alwan_gamut_volume_ratio_f64
     alwan_get_build_info
+    alwan_gradient_f32
+    alwan_gradient_f64
     alwan_grading_apply_f32
     alwan_grading_apply_f64
     alwan_grading_f32_map_interleave
