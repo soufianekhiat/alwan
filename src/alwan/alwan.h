@@ -2864,6 +2864,7 @@ typedef struct {
                                     * reconstructed by nearest (NEAREST, BOX), bilinear (BILINEAR, HAMMING) or
                                     * bicubic (BICUBIC, LANCZOS) */
     int kernel;                    /* an alwan_pixel_kernel, as alwan_warp_params.kernel; 0 is BOX */
+    int sequence;                  /* an alwan_pixel_sequence, as alwan_warp_params.sequence; 0 is R2 */
     size_t samples;                /* as alwan_warp_params.samples */
     unsigned seed;                 /* as alwan_warp_params.seed */
     int alpha_channel;             /* as alwan_warp_params.alpha_channel, for integration */
@@ -2951,12 +2952,12 @@ typedef enum {
     ALWAN_PIXEL_INTEGRATE_POINT = 0,    /* one sample at the pixel's centre (Pillow's) */
     ALWAN_PIXEL_INTEGRATE_GRID = 1,     /* samples x samples sub-positions, 16 x 16 by default: the brute-force
                                          * reference */
-    ALWAN_PIXEL_INTEGRATE_R2 = 2,       /* samples points of the R2 sequence (16 by default) over the pixel, in
-                                         * antithetic pairs (+d, -d: no net shift), moved per pixel by a hash of
-                                         * (x, y, seed) so neighbours do not share one pattern (r2_disk: on the
-                                         * disk of the pixel's area instead) */
+    ALWAN_PIXEL_INTEGRATE_QMC = 2,      /* samples low-discrepancy points of sequence (16 by default) drawn from the
+                                         * kernel, made different per pixel by a hash of (x, y, seed) so neighbours
+                                         * do not share one pattern (disk: over the disk of the pixel's area
+                                         * instead); R2 in antithetic pairs (+d, -d: no net shift) */
     ALWAN_PIXEL_INTEGRATE_ADAPTIVE = 3, /* per pixel: one point where the map is locally linear and its footprint
-                                         * within a pixel (16 with a kernel other than BOX), else R2 with 4 to
+                                         * within a pixel (16 with a kernel other than BOX), else QMC with 4 to
                                          * samples (64) points, from the map's finite-difference Jacobian and
                                          * second differences, four times as many with a wider kernel; four
                                          * times samples (up to 4096) where the footprint straddles the source
@@ -2986,6 +2987,16 @@ typedef enum {
     ALWAN_PIXEL_KERNEL_GAUSSIAN = 2   /* exp(-r^2 / (2 s^2)), s = 0.5 pixel, cut at r = 1.5 */
 } alwan_pixel_kernel;
 
+/* The low-discrepancy points QMC, ADAPTIVE and AUTO draw. */
+typedef enum {
+    ALWAN_PIXEL_SEQUENCE_R2 = 0,     /* Roberts' R2 (the plastic constant), shifted toroidally per pixel
+                                      * (Cranley-Patterson): any count, even coverage at every length */
+    ALWAN_PIXEL_SEQUENCE_SOBOL = 1   /* the first two Sobol dimensions, shuffled and Owen-scrambled per pixel
+                                      * (Burley 2020's hash-based nested uniform scrambling), unpaired: at a
+                                      * power of two the points form a (0, m, 2)-net, and under the box kernel
+                                      * the error falls faster than R2's (a third of it at 1024 points) */
+} alwan_pixel_sequence;
+
 typedef int (*alwan_warp_callback)(double x, double y, double *source_x, double *source_y, void *user);
 
 /* A zero field is its default. */
@@ -3007,16 +3018,17 @@ typedef struct {
     alwan_warp_callback callback;    /* CALLBACK */
     void *callback_user;
     alwan_pixel_integration integration;  /* 0 is POINT */
-    alwan_pixel_kernel kernel;       /* GRID, R2, ADAPTIVE: 0 is BOX. GRID lays its n x n cells over the kernel's
-                                      * support and weights them; R2 draws its points from the kernel, so each
+    alwan_pixel_kernel kernel;       /* GRID, QMC, ADAPTIVE: 0 is BOX. GRID lays its n x n cells over the kernel's
+                                      * support and weights them; QMC draws its points from the kernel, so each
                                       * weighs the same */
-    size_t samples;                  /* GRID: per side, up to 64; R2: points; ADAPTIVE: the most points; see above */
+    alwan_pixel_sequence sequence;   /* QMC, ADAPTIVE, AUTO: 0 is R2 */
+    size_t samples;                  /* GRID: per side, up to 64; QMC: points; ADAPTIVE: the most points; see above */
     double tolerance;                /* ADAPTIVE: the second difference, in source pixels, below which the map
                                       * counts as linear; 0 reads as 0.05 */
-    unsigned seed;                   /* R2, ADAPTIVE: the per-pixel shift's seed */
-    int r2_disk;                     /* R2, ADAPTIVE with the BOX kernel: non-zero spreads the points over the disk
-                                      * of the pixel's area (a round kernel, turned per pixel); 0 over the square
-                                      * pixel, GRID's kernel */
+    unsigned seed;                   /* QMC, ADAPTIVE, AUTO: seeds the per-pixel shift or scrambling */
+    int disk;                        /* QMC, ADAPTIVE with the BOX kernel: non-zero spreads the points over the disk
+                                      * of the pixel's area (a round kernel); 0 over the square pixel, GRID's
+                                      * kernel */
     int alpha_channel;               /* non-zero: the last of 2 or 4 channels is alpha, and integration runs on
                                       * premultiplied colour */
     unsigned char *samples_out;      /* optional: the points each output pixel took (255 for 255 or more) */

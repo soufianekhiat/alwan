@@ -532,7 +532,9 @@
   scipy; the adaptive policy gives four times its cap where a footprint straddles the
   source image's edge. `EWA` (Heckbert's elliptical weighted average) filters an affine
   shrink to the 16 x 16 grid's quality at a sixth of its time, and `AUTO` picks EWA where
-  the map is affine and shrinks every way and the adaptive sampler elsewhere.
+  the map is affine and shrinks every way and the adaptive sampler elsewhere. The sampled
+  policies draw R2 or an Owen-scrambled Sobol net (`sequence`); under the box kernel
+  Sobol leaves a third of R2's error at 1024 points. The fixed-count policy is `QMC`.
 
 - **Ridge filters: `alwan_ridge`.** Frangi, Sato, Meijering and Hessian vesselness over
   several scales, dark or bright ridges; equal to scikit-image's `filters` in double

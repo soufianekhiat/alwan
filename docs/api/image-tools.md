@@ -1129,9 +1129,10 @@ source point itself: `LINEAR` against `RegularGridInterpolator`, `CATMULL_ROM` a
 | `callback`, `callback_user` | required by `ALWAN_WARP_MAP_CALLBACK` |
 | `integration` | `ALWAN_PIXEL_INTEGRATE_POINT`: one sample at the centre |
 | `kernel` | `ALWAN_PIXEL_KERNEL_BOX`: the pixel's mean |
-| `samples` | 16 x 16 for `GRID`, 16 for `R2`, a cap of 64 for `ADAPTIVE` |
+| `sequence` | `ALWAN_PIXEL_SEQUENCE_R2` |
+| `samples` | 16 x 16 for `GRID`, 16 for `QMC`, a cap of 64 for `ADAPTIVE` |
 | `tolerance` | 0.05 source pixels |
-| `seed`, `r2_disk` | seed 0, points over the square pixel (`r2_disk` applies to the box only) |
+| `seed`, `disk` | seed 0, points over the square pixel (`disk` applies to the box only) |
 | `alpha_channel` | 0: channels independent |
 | `samples_out`, `samples_out_row_stride` | not written |
 
@@ -1171,8 +1172,8 @@ at every sub-position by the method.
 |---|---|
 | `POINT` | the centre; Pillow's transform for a matrix map |
 | `GRID` | an n x n grid of cell centres (`samples` is n, 16 by default, up to 64): the brute-force reference |
-| `R2` | `samples` points (16 by default, up to 4096) of Roberts' R2 sequence in antithetic pairs `+d, -d`, so no pair shifts the pixel; the set is shifted toroidally per pixel by a hash of `(x, y, seed)` so neighbours do not share one pattern. `r2_disk` spreads it over the disk of the pixel's area instead, turned per pixel |
-| `ADAPTIVE` | R2 with a count per pixel, from central differences of the map at half a pixel: the footprint (the Jacobian's largest column) and the second difference. A footprint at most 1 with a second difference at most `tolerance` takes one sample; otherwise the first of 4, 8, 16, 32, 64 not below the larger of footprint^2 and second difference / tolerance, capped by `samples`. A kernel other than the box takes 16 at least and four times the count |
+| `QMC` | `samples` low-discrepancy points (16 by default, up to 4096) of `sequence`, made different per pixel by a hash of `(x, y, seed)` so neighbours do not share one pattern (below). `disk` spreads them over the disk of the pixel's area instead |
+| `ADAPTIVE` | `QMC` with a count per pixel, from central differences of the map at half a pixel: the footprint (the Jacobian's largest column) and the second difference. A footprint at most 1 with a second difference at most `tolerance` takes one sample; otherwise the first of 4, 8, 16, 32, 64 not below the larger of footprint^2 and second difference / tolerance, capped by `samples`. A kernel other than the box takes 16 at least and four times the count |
 | `EWA` | none: Heckbert's elliptical weighted average weighs the source pixels themselves. The Gaussian kernel is carried into the source by the map's Jacobian at the pixel, a reconstruction Gaussian of bilinear's variance (1/6) is added, and every source pixel under the ellipse (out to 3 sigma) is weighed, those past the image as the fill. The ellipse is widened to 0.36 source pixels squared at least, since a narrower Gaussian summed on the pixel lattice ripples, and narrowed past 16384 source pixels. `method` and `kernel` are not used |
 | `AUTO` | per pixel, `EWA` where the map is locally affine (second difference within `tolerance`) and shrinks every way (the Jacobian's smaller singular value at least 1), `ADAPTIVE` where it curves or enlarges along any axis; the Gaussian kernel throughout, whatever `kernel` says |
 
@@ -1189,11 +1190,35 @@ a swirl of three turns, against a 48 x 48 grid, bilinear reconstruction:
 | Integration | Mean samples | RMS inside the swirl |
 |---|---|---|
 | `POINT` | 1 | 0.349 |
-| `R2`, 16 | 16 | 0.059 |
+| `QMC`, R2, 16 | 16 | 0.059 |
 | `GRID`, 4 | 16 | 0.031 |
 | `ADAPTIVE`, cap 64 | 37.7 | 0.020 |
-| `R2`, 64 | 64 | 0.017 |
+| `QMC`, R2, 64 | 64 | 0.017 |
 | `GRID`, 16 | 256 | 0.0009 |
+
+`sequence` sets the points `QMC`, `ADAPTIVE` and `AUTO` draw:
+
+| Sequence | Points | Per pixel |
+|---|---|---|
+| `R2` | Roberts' R2 (the plastic constant), in antithetic pairs `+d, -d`, so no pair shifts the pixel | shifted toroidally by the pixel's hash (Cranley-Patterson), or turned on the disk |
+| `SOBOL` | the first two Sobol dimensions, a (0, m, 2)-net at a power of two, unpaired | the index shuffled and each coordinate Owen-scrambled by the pixel's hash, after Burley's hash-based nested uniform scrambling (JCGT 2020) |
+
+A scrambled net is unbiased as it stands, and adding its reflection back breaks its
+strata: paired, Sobol left 0.0009 RMS at 1024 points on a three-turn swirl of a checker,
+unpaired 0.0006, so Sobol draws the net alone. Against a 48 x 48 grid on that swirl
+(256 x 256, 8-pixel squares), RMS inside the swirl:
+
+| Points | R2, box | Sobol, box | R2, Gaussian | Sobol, Gaussian |
+|---|---|---|---|---|
+| 16 | 0.059 | 0.046 | 0.074 | 0.071 |
+| 64 | 0.017 | 0.014 | 0.027 | 0.025 |
+| 256 | 0.0061 | 0.0030 | 0.0087 | 0.0074 |
+| 1024 | 0.0020 | 0.0006 | 0.0024 | 0.0021 |
+
+Under the box kernel Sobol's error falls faster, a third of R2's at 1024 points; under the
+Gaussian, whose Box-Muller map bends the strata, the gain is small. A Sobol point costs
+about twice an R2 one (the scrambling hashes), which still leaves Sobol ahead at equal time
+under the box. `ADAPTIVE` with Sobol went from 0.0195 to 0.0150 there.
 
 `kernel` sets the weight each sub-position takes, in output pixels around the centre:
 
@@ -1203,9 +1228,9 @@ a swirl of three turns, against a 48 x 48 grid, bilinear reconstruction:
 | `TENT` | `(1 - abs(dx)) (1 - abs(dy))` | two pixels each way |
 | `GAUSSIAN` | `exp(-r^2 / (2 s^2))`, `s = 0.5` | a disk of radius 1.5 |
 
-`GRID` lays its cells over the kernel's support and weights them; `R2` draws its points
+`GRID` lays its cells over the kernel's support and weights them; `QMC` draws its points
 from the kernel through its inverse distribution (Box-Muller for the Gaussian, cut at
-`3 s`), so every point weighs the same and the antithetic pairs still cancel. The box is
+`3 s`), so every point weighs the same and R2's antithetic pairs still cancel. The box is
 the pixel's exact area mean, but its flat, abrupt response lets detail finer than a pixel
 fold back as moire even when the mean is computed exactly; the tent and the Gaussian
 overlap the neighbours and fall off smoothly, trading a little softness for much less
@@ -1257,7 +1282,8 @@ No library carries this integration to compare with; suite 235 holds its propert
 instead: `POINT` through a callback or a field that encode a matrix equals the matrix path,
 `GRID` with one sample equals `POINT`, antithetic R2 returns a linear ramp to 3e-16, R2
 converges to the grid reference under a swirl (RMS 0.029, 0.0032, 0.0006 at 16, 256 and
-2048 points), `ADAPTIVE` takes one sample past the swirl and more inside it, a zero angle is
+2048 points) and Sobol faster (0.017, 0.0006, 0.0001), a seed repeats an image and another
+seed changes it, `ADAPTIVE` takes one sample past the swirl and more inside it, a zero angle is
 the identity, and a NaN texel is fill. For the tent and the Gaussian, a linear ramp comes
 back to 1e-15 through the grid and through R2, one grid cell is the point, R2 converges to
 the weighted grid (RMS 0.037 and 0.040 at 16 points, 0.0015 and 0.0019 at 1024), and

@@ -138,6 +138,7 @@ static alwan_status alwan_rs_integrate(void *out, size_t out_rs, size_t ow, size
     wp.matrix[5] = (double)by0;
     wp.integration = p->integration;
     wp.kernel = (alwan_pixel_kernel)p->kernel;
+    wp.sequence = (alwan_pixel_sequence)p->sequence;
     wp.samples = p->samples;
     wp.seed = p->seed;
     wp.alpha_channel = p->alpha_channel;

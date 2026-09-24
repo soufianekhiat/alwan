@@ -360,36 +360,73 @@ static uint32_t alwan_wp_hash(uint32_t x) {
     return x;
 }
 
+/* A point of the unit square taken to the unit disk by Shirley and Chiu's concentric map. */
+static void alwan_wp_concentric(double u, double v, double *x, double *y) {
+    double const pi = 3.14159265358979323846, a = 2.0 * u - 1.0, b = 2.0 * v - 1.0;
+    double r, phi;
+    if (a == 0.0 && b == 0.0) {
+        *x = *y = 0.0;
+        return;
+    }
+    if (fabs(a) > fabs(b)) {
+        r = a;
+        phi = (pi / 4.0) * (b / a);
+    } else {
+        r = b;
+        phi = pi / 2.0 - (pi / 4.0) * (a / b);
+    }
+    *x = r * cos(phi);
+    *y = r * sin(phi);
+}
+
 /* The first k points of the R2 sequence (Roberts 2018, the plastic constant) in the unit
- * square, or (disk) taken to the unit disk by Shirley and Chiu's concentric map. */
+ * square, or (disk) taken to the unit disk. */
 static void alwan_wp_r2_points(double *pts, size_t k, int disk) {
-    double const g = 1.32471795724474602596, a1 = 1.0 / g, a2 = 1.0 / (g * g), pi = 3.14159265358979323846;
+    double const g = 1.32471795724474602596, a1 = 1.0 / g, a2 = 1.0 / (g * g);
     size_t n;
     for (n = 0; n < k; n++) {
-        double u = 0.5 + (double)(n + 1) * a1, v = 0.5 + (double)(n + 1) * a2, a, b, r, phi;
+        double u = 0.5 + (double)(n + 1) * a1, v = 0.5 + (double)(n + 1) * a2;
         u -= floor(u);
         v -= floor(v);
-        if (!disk) {
-            pts[2 * n] = u;
-            pts[2 * n + 1] = v;
-            continue;
-        }
-        a = 2.0 * u - 1.0;
-        b = 2.0 * v - 1.0;
-        if (a == 0.0 && b == 0.0) {
-            pts[2 * n] = pts[2 * n + 1] = 0.0;
-            continue;
-        }
-        if (fabs(a) > fabs(b)) {
-            r = a;
-            phi = (pi / 4.0) * (b / a);
-        } else {
-            r = b;
-            phi = pi / 2.0 - (pi / 4.0) * (a / b);
-        }
-        pts[2 * n] = r * cos(phi);
-        pts[2 * n + 1] = r * sin(phi);
+        if (disk) alwan_wp_concentric(u, v, &pts[2 * n], &pts[2 * n + 1]);
+        else pts[2 * n] = u, pts[2 * n + 1] = v;
     }
+}
+
+/* Owen-scrambled Sobol points in two dimensions, after Burley, "Practical Hash-based Owen
+ * Scrambling" (JCGT 9(4), 2020): the index shuffled and each coordinate scrambled by nested
+ * uniform scrambling, the Laine-Karras hash applied to the bit-reversed value. */
+static uint32_t alwan_wp_reverse_bits(uint32_t x) {
+    x = ((x >> 1) & 0x55555555U) | ((x & 0x55555555U) << 1);
+    x = ((x >> 2) & 0x33333333U) | ((x & 0x33333333U) << 2);
+    x = ((x >> 4) & 0x0F0F0F0FU) | ((x & 0x0F0F0F0FU) << 4);
+    x = ((x >> 8) & 0x00FF00FFU) | ((x & 0x00FF00FFU) << 8);
+    return (x >> 16) | (x << 16);
+}
+
+static uint32_t alwan_wp_owen(uint32_t x, uint32_t seed) {
+    x = alwan_wp_reverse_bits(x);
+    x += seed;
+    x ^= x * 0x6c50b47cU;
+    x ^= x * 0xb82f1e52U;
+    x ^= x * 0xc7afe638U;
+    x ^= x * 0x8d22f6e6U;
+    return alwan_wp_reverse_bits(x);
+}
+
+static uint32_t alwan_wp_hash_combine(uint32_t seed, uint32_t v) {
+    return seed ^ (v + (seed << 6) + (seed >> 2));
+}
+
+static void alwan_wp_sobol2(uint32_t index, uint32_t seed, double *u, double *v) {
+    uint32_t i = alwan_wp_owen(index, seed), x = alwan_wp_reverse_bits(i), y = 0U, d = 0x80000000U;
+    /* the second dimension: direction numbers of x + 1, each the last xor itself shifted */
+    for (; i; i >>= 1, d ^= d >> 1)
+        if (i & 1U) y ^= d;
+    x = alwan_wp_owen(x, alwan_wp_hash_combine(seed, 0U));
+    y = alwan_wp_owen(y, alwan_wp_hash_combine(seed, 1U));
+    *u = (double)x / 4294967296.0;
+    *v = (double)y / 4294967296.0;
 }
 
 /* A point of the unit square carried to an offset drawn from the kernel (inverse CDFs), so
@@ -519,8 +556,9 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
     double const kr = alwan_wp_kernel_radius(kernel);
     /* a wider kernel covers more source, so the adaptive count grows with its support */
     double const kscale = kernel == ALWAN_PIXEL_KERNEL_BOX ? 1.0 : 4.0;
-    int const disk = p->r2_disk && kernel == ALWAN_PIXEL_KERNEL_BOX;
-    size_t const npts = pol == ALWAN_PIXEL_INTEGRATE_GRID ? 0 : (pol == ALWAN_PIXEL_INTEGRATE_R2 ? r2_n : (4 * max_n > 4096 ? 4096 : 4 * max_n));
+    int const disk = p->disk && kernel == ALWAN_PIXEL_KERNEL_BOX;
+    int const sobol = p->sequence == ALWAN_PIXEL_SEQUENCE_SOBOL;
+    size_t const npts = pol == ALWAN_PIXEL_INTEGRATE_GRID || sobol ? 0 : (pol == ALWAN_PIXEL_INTEGRATE_QMC ? r2_n : (4 * max_n > 4096 ? 4096 : 4 * max_n));
     double *pts = NULL;
     size_t const ch = im->ch;
     int const alpha = p->alpha_channel && (ch == 2 || ch == 4);
@@ -642,35 +680,55 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                         wsum += wk;
                     }
             } else {
-                /* antithetic R2 pairs, every pair's mean offset exactly zero: over the square
+                /* R2: antithetic pairs, every pair's mean offset exactly zero, over the square
                  * pixel shifted toroidally by a per-pixel hash (Cranley-Patterson), or on the disk
-                 * of the pixel's area turned by a per-pixel hashed angle */
+                 * of the pixel's area turned by a per-pixel hashed angle. Sobol: n points of one
+                 * net, shuffled and Owen-scrambled by the per-pixel hash; the scrambled net is
+                 * unbiased as it stands, and pairing it with its reflection breaks its strata
+                 * (at 1024 points on a swirl, 0.0009 RMS paired against 0.0006 unpaired) */
                 uint32_t const hs = alwan_wp_hash((uint32_t)x * 73856093U ^ (uint32_t)y * 19349663U ^ p->seed);
-                double const h1 = (double)hs / 4294967296.0, h2 = (double)alwan_wp_hash(hs ^ 0x9e3779b9U) / 4294967296.0;
-                double const phi = 6.28318530717958647692 * h1;
-                double const cs = cos(phi), sn = sin(phi);
-                size_t const pairs = n / 2;
-                if (n % 2) {
-                    alwan_wp_subsample(v, &m, im, method, px, py);
-                    if (alpha)
-                        for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
-                    for (c = 0; c < ch; c++) acc[c] += v[c];
-                }
-                for (k = 0; k < pairs; k++) {
-                    double ox, oy;
-                    if (disk) {
-                        ox = radius * (cs * pts[2 * k] - sn * pts[2 * k + 1]);
-                        oy = radius * (sn * pts[2 * k] + cs * pts[2 * k + 1]);
-                    } else {
-                        double const u = pts[2 * k] + h1, w2 = pts[2 * k + 1] + h2;
-                        alwan_wp_kernel_offset(kernel, u - floor(u), w2 - floor(w2), &ox, &oy);
-                    }
-                    int s;
-                    for (s = -1; s <= 1; s += 2) {
-                        alwan_wp_subsample(v, &m, im, method, px + s * ox, py + s * oy);
+                if (sobol) {
+                    for (k = 0; k < n; k++) {
+                        double u, w2, ox, oy;
+                        alwan_wp_sobol2((uint32_t)k, hs, &u, &w2);
+                        if (disk) {
+                            alwan_wp_concentric(u, w2, &ox, &oy);
+                            ox *= radius, oy *= radius;
+                        } else {
+                            alwan_wp_kernel_offset(kernel, u, w2, &ox, &oy);
+                        }
+                        alwan_wp_subsample(v, &m, im, method, px + ox, py + oy);
                         if (alpha)
                             for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
                         for (c = 0; c < ch; c++) acc[c] += v[c];
+                    }
+                } else {
+                    double const h1 = (double)hs / 4294967296.0, h2 = (double)alwan_wp_hash(hs ^ 0x9e3779b9U) / 4294967296.0;
+                    double const phi = 6.28318530717958647692 * h1;
+                    double const cs = cos(phi), sn = sin(phi);
+                    size_t const pairs = n / 2;
+                    if (n % 2) {
+                        alwan_wp_subsample(v, &m, im, method, px, py);
+                        if (alpha)
+                            for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
+                        for (c = 0; c < ch; c++) acc[c] += v[c];
+                    }
+                    for (k = 0; k < pairs; k++) {
+                        double ox, oy;
+                        int sg;
+                        if (disk) {
+                            ox = radius * (cs * pts[2 * k] - sn * pts[2 * k + 1]);
+                            oy = radius * (sn * pts[2 * k] + cs * pts[2 * k + 1]);
+                        } else {
+                            double const u = pts[2 * k] + h1, w2 = pts[2 * k + 1] + h2;
+                            alwan_wp_kernel_offset(kernel, u - floor(u), w2 - floor(w2), &ox, &oy);
+                        }
+                        for (sg = -1; sg <= 1; sg += 2) {
+                            alwan_wp_subsample(v, &m, im, method, px + sg * ox, py + sg * oy);
+                            if (alpha)
+                                for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
+                            for (c = 0; c < ch; c++) acc[c] += v[c];
+                        }
                     }
                 }
             }
@@ -724,7 +782,8 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
     }
     if (p->map == ALWAN_WARP_MAP_CALLBACK && !p->callback) return ALWAN_E_INVALID;
     if (p->integration == ALWAN_PIXEL_INTEGRATE_GRID && p->samples > 64) return ALWAN_E_RANGE;
-    if (p->integration >= ALWAN_PIXEL_INTEGRATE_R2 && p->samples > 4096) return ALWAN_E_RANGE;
+    if (p->integration >= ALWAN_PIXEL_INTEGRATE_QMC && p->samples > 4096) return ALWAN_E_RANGE;
+    if ((unsigned)p->sequence > (unsigned)ALWAN_PIXEL_SEQUENCE_SOBOL) return ALWAN_E_INVALID;
     if (!(p->swirl_radius >= 0.0) || !(p->swirl_angle - p->swirl_angle == 0.0) || !(p->tolerance >= 0.0)) return ALWAN_E_RANGE;
     if (w > 1u << 24 || h > 1u << 24 || ow > 1u << 24 || oh > 1u << 24) return ALWAN_E_RANGE;
     for (i = 0; i < 8; i++) {
