@@ -2628,6 +2628,43 @@ alwan_status alwan_threshold_f32(double *threshold_out, alwan_f32 const *src, si
 alwan_status alwan_threshold_f64(double *threshold_out, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_method method, alwan_threshold_params const *params);
 alwan_status alwan_threshold_u8(double *threshold_out, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_method method, alwan_threshold_params const *params);
 
+/* Local thresholds: a threshold for every pixel from its neighbourhood, for a page or a
+ * frame whose light changes across it. out receives the threshold image, `channels`
+ * values a pixel; a pixel is foreground where it is above its threshold. out may be src.
+ *
+ *   ALWAN_THRESHOLD_LOCAL_GAUSSIAN  a gaussian-weighted mean of the block, minus offset
+ *   ALWAN_THRESHOLD_LOCAL_MEAN      the block's mean, minus offset
+ *   ALWAN_THRESHOLD_LOCAL_MEDIAN    the block's median, minus offset
+ *   ALWAN_THRESHOLD_LOCAL_NIBLACK   m - k s, the block's mean and standard deviation
+ *   ALWAN_THRESHOLD_LOCAL_SAUVOLA   m (1 + k (s / r - 1)), for text on an uneven page
+ *
+ * As scikit-image's filters.threshold_local, threshold_niblack and threshold_sauvola,
+ * value for value (suite 222), including their edges: the first three extend the image as
+ * scipy's "reflect" (the edge sample repeated), the last two as numpy's (not repeated).
+ * 8-bit data: convert to double first, as scikit-image does, and give Sauvola r = 127.5.
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
+ * small, a NaN or infinite value, or an unknown method; ALWAN_E_RANGE for an even
+ * block_size or one over 1023, a sigma negative or over 256, or a NaN parameter. */
+typedef enum {
+    ALWAN_THRESHOLD_LOCAL_GAUSSIAN = 0,
+    ALWAN_THRESHOLD_LOCAL_MEAN = 1,
+    ALWAN_THRESHOLD_LOCAL_MEDIAN = 2,
+    ALWAN_THRESHOLD_LOCAL_NIBLACK = 3,
+    ALWAN_THRESHOLD_LOCAL_SAUVOLA = 4
+} alwan_threshold_local_method;
+
+/* A zero field is its default. */
+typedef struct {
+    size_t block_size;  /* the odd side of the neighbourhood, 1 to 1023; 0 reads as 15 */
+    double offset;      /* GAUSSIAN, MEAN, MEDIAN: subtracted from the threshold */
+    double sigma;       /* GAUSSIAN: 0 reads as (block_size - 1) / 6 */
+    double k;           /* NIBLACK, SAUVOLA: 0 reads as 0.2 */
+    double r;           /* SAUVOLA: the standard deviation's dynamic range; 0 reads as 1, as for float data */
+} alwan_threshold_local_params;
+
+alwan_status alwan_threshold_local_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_local_method method, alwan_threshold_local_params const *params);
+alwan_status alwan_threshold_local_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_local_method method, alwan_threshold_local_params const *params);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since no method looks at neighbours). out may be src.

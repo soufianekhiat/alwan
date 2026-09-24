@@ -688,6 +688,55 @@ returns its value, as scikit-image's Otsu, Li and triangle do; its Yen, isodata 
 look at a histogram widened by half a unit either side there. `ISODATA` without a level and
 `MINIMUM` without two maxima return `ALWAN_E_RANGE`, where scikit-image raises.
 
+## Local thresholds
+
+```c
+typedef enum {
+    ALWAN_THRESHOLD_LOCAL_GAUSSIAN = 0, ALWAN_THRESHOLD_LOCAL_MEAN = 1,
+    ALWAN_THRESHOLD_LOCAL_MEDIAN = 2, ALWAN_THRESHOLD_LOCAL_NIBLACK = 3,
+    ALWAN_THRESHOLD_LOCAL_SAUVOLA = 4
+} alwan_threshold_local_method;
+
+alwan_status alwan_threshold_local_{T}(alwan_{T} *out, size_t out_row_stride,
+                                       alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                       size_t width, size_t height,
+                                       alwan_threshold_local_method method,
+                                       alwan_threshold_local_params const *params);
+```
+
+A threshold for every pixel from the `block_size x block_size` neighbourhood around it,
+where one level for the whole image (`alwan_threshold`) cannot follow a change of light.
+`out` is the threshold image; a pixel is foreground where it is above its threshold.
+Each channel on its own; `out` may be `src`.
+
+| Method | Threshold |
+|---|---|
+| `GAUSSIAN` | the gaussian-weighted mean of the block, sigma `(block_size - 1) / 6` by default, minus `offset` |
+| `MEAN` | the block's mean, minus `offset` |
+| `MEDIAN` | the block's median, minus `offset` |
+| `NIBLACK` | `m - k s`, the block's mean and standard deviation (Niblack 1986) |
+| `SAUVOLA` | `m (1 + k (s / r - 1))`: lower than the mean where the block is flat, so a page's plain paper stays background (Sauvola and Pietikainen 2000) |
+
+| Field of `alwan_threshold_local_params` | 0 reads as |
+|---|---|
+| `block_size` | 15; odd, 1 to 1023 |
+| `offset` | 0 |
+| `sigma` | `(block_size - 1) / 6`, covering the block to three sigma |
+| `k` | 0.2 (a k of 0 is not expressible; `MEAN` is Niblack's with it) |
+| `r` | 1, the dynamic range scikit-image gives float data |
+
+This is scikit-image's `filters.threshold_local` with its gaussian, mean and median
+methods, `threshold_niblack` and `threshold_sauvola`, and suite 222 holds all five to them
+value for value (45 cases: double and float32, blocks of 3 to 51, an image smaller than the
+block, colour). The first three are scipy's filters, columns and then rows, each pass kept
+in the data's precision, the image extended by scipy's `reflect` (the edge sample
+repeated); the gaussian is scipy's kernel truncated at four sigma. Niblack's and Sauvola's
+mean and deviation come from scikit-image's integral images of the image padded by
+numpy's `reflect` (the edge sample not repeated), summed in double. On float32 data
+`offset`, `k` and `r` are rounded to float first, as numpy does with a Python number. There
+is no 8-bit entry point, since scikit-image converts 8-bit data to double: convert it and,
+for Sauvola, pass `r = 127.5`, the value scikit-image uses for 8-bit data.
+
 ## Background estimation
 
 ```c

@@ -496,6 +496,10 @@
   isodata, triangle, minimum or the mean, for making a mask; value for value with
   scikit-image's `filters.threshold_*`, whose float32 arithmetic it follows (suite 221).
 
+- **Local thresholds: `alwan_threshold_local`.** A threshold image from each pixel's
+  neighbourhood: gaussian, mean, median, Niblack and Sauvola; value for value with
+  scikit-image's `threshold_local`, `threshold_niblack` and `threshold_sauvola` (suite 222).
+
 - **Background estimation: `alwan_background`.** The slowly varying background of an image,
   to take out uneven illumination; `ALWAN_BACKGROUND_ROLLING_BALL` first, a ball or an
   ellipsoid, value for value with scikit-image's `restoration.rolling_ball` (suite 218).
