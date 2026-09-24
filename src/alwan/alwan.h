@@ -2930,7 +2930,9 @@ typedef enum {
 
 /* How FIELD reads between its lattice points. LINEAR, CATMULL_ROM and BSPLINE place point
  * (i, j) at output point ((i + 0.5) out_width / field_width, (j + 0.5) out_height /
- * field_height), a texel's centre, and repeat the edge points beyond the lattice. NURBS
+ * field_height), a texel's centre, and continue the lattice past its edge along the edge's
+ * slope (point -1 is 2 p0 - p1, point -2 is 3 p0 - 2 p1), so a map affine near its edge
+ * stays affine past it and a coarse net does not smear its border. NURBS
  * spans the whole output instead, corner to corner, like a mesh warp's control net. */
 typedef enum {
     ALWAN_WARP_FIELD_LINEAR = 0,       /* bilinear: the map is continuous, its slope jumps at every point */

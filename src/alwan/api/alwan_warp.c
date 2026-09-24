@@ -179,10 +179,31 @@ typedef struct {
     size_t ow, oh, gw, gh;
 } alwan_wp_map;
 
-static double const *alwan_wp_tex(alwan_wp_map const *m, long i, long j) {
-    i = i < 0 ? 0 : i >= (long)m->gw ? (long)m->gw - 1 : i;
-    j = j < 0 ? 0 : j >= (long)m->gh ? (long)m->gh - 1 : j;
+static double const *alwan_wp_texel(alwan_wp_map const *m, long i, long j) {
     return (double const *)((char const *)m->p->field + (size_t)j * m->p->field_row_stride) + 2 * (size_t)i;
+}
+
+/* Lattice point (i, j), continued beyond the lattice along the edge's slope, each way in
+ * turn: a map that is affine near its edge stays affine past it. */
+static void alwan_wp_tex(alwan_wp_map const *m, long i, long j, double *t) {
+    long const gw = (long)m->gw, gh = (long)m->gh;
+    long const ic = i < 0 ? 0 : i >= gw ? gw - 1 : i, jc = j < 0 ? 0 : j >= gh ? gh - 1 : j;
+    long const in = gw < 2 ? ic : (i < 0 ? 1 : gw - 2), jn = gh < 2 ? jc : (j < 0 ? 1 : gh - 2);
+    double const di = (double)(i - ic), dj = (double)(j - jc);   /* how far past the edge, signed */
+    double const *a = alwan_wp_texel(m, ic, jc);
+    int k;
+    for (k = 0; k < 2; k++) {
+        double v = a[k];
+        if (di != 0.0 && gw > 1) v += di * (a[k] - alwan_wp_texel(m, in, jc)[k]) * (i < 0 ? -1.0 : 1.0);
+        if (dj != 0.0 && gh > 1) {
+            /* the neighbouring row, continued along x the same way */
+            double const *b = alwan_wp_texel(m, ic, jn);
+            double w = b[k];
+            if (di != 0.0 && gw > 1) w += di * (b[k] - alwan_wp_texel(m, in, jn)[k]) * (i < 0 ? -1.0 : 1.0);
+            v += dj * (v - w) * (j < 0 ? -1.0 : 1.0);
+        }
+        t[k] = v;
+    }
 }
 
 /* Knot i of the clamped uniform knot vector for n points of degree d. */
@@ -225,7 +246,7 @@ static int alwan_wp_field(alwan_wp_map const *m, double x, double y, double *sx,
         for (b = 0; b <= d; b++)
             for (a = 0; a <= d; a++) {
                 long const i = su - d + a, j = sv - d + b;
-                double const *t = alwan_wp_tex(m, i, j);
+                double const *t = alwan_wp_texel(m, i, j);
                 double const wt = p->field_weights ? ((double const *)((char const *)p->field_weights + (size_t)j * p->field_weights_row_stride))[i] : 1.0;
                 double const k = Nu[a] * Nv[b] * wt;
                 ax += k * t[0];
@@ -241,8 +262,9 @@ static int alwan_wp_field(alwan_wp_map const *m, double x, double y, double *sx,
         long const i0 = (long)floor(fx), j0 = (long)floor(fy);
         double const tx = fx - (double)i0, ty = fy - (double)j0;
         if (p->field_interpolation == ALWAN_WARP_FIELD_LINEAR) {
-            double const *f00 = alwan_wp_tex(m, i0, j0), *f10 = alwan_wp_tex(m, i0 + 1, j0);
-            double const *f01 = alwan_wp_tex(m, i0, j0 + 1), *f11 = alwan_wp_tex(m, i0 + 1, j0 + 1);
+            double f00[2], f10[2], f01[2], f11[2];
+            alwan_wp_tex(m, i0, j0, f00), alwan_wp_tex(m, i0 + 1, j0, f10);
+            alwan_wp_tex(m, i0, j0 + 1, f01), alwan_wp_tex(m, i0 + 1, j0 + 1, f11);
             *sx = (1 - ty) * ((1 - tx) * f00[0] + tx * f10[0]) + ty * ((1 - tx) * f01[0] + tx * f11[0]);
             *sy = (1 - ty) * ((1 - tx) * f00[1] + tx * f10[1]) + ty * ((1 - tx) * f01[1] + tx * f11[1]);
         } else {
@@ -262,7 +284,8 @@ static int alwan_wp_field(alwan_wp_map const *m, double x, double y, double *sx,
             }
             for (b = 0; b < 4; b++)
                 for (a = 0; a < 4; a++) {
-                    double const *t = alwan_wp_tex(m, i0 - 1 + a, j0 - 1 + b);
+                    double t[2];
+                    alwan_wp_tex(m, i0 - 1 + a, j0 - 1 + b, t);
                     ax += wx[a] * wy[b] * t[0];
                     ay += wx[a] * wy[b] * t[1];
                 }

@@ -1103,7 +1103,9 @@ read between its points by `field_interpolation`:
 | `BSPLINE` | the uniform cubic B-spline each way: C2 and inside the points' hull, near the points but not through them | the texel centre |
 | `NURBS` | a tensor-product NURBS surface of `field_degree` (1 to 7, 3 by default, fewer than the points each way) on clamped uniform knots, each point weighted by `field_weights` (positive; all 1 when NULL): a weight above 1 pulls the surface toward its point | a control net spanning the output corner to corner: the output's corners go to the corner points and its edges follow the edge rows' curves |
 
-The first three repeat the edge points beyond the lattice. The lattice holds source
+The first three continue the lattice past its edge along the edge's slope (point -1 is
+`2 p0 - p1`, point -2 is `3 p0 - 2 p1`): a map affine near its edge stays affine past it,
+and a coarse net does not smear the half cell between its outer points and the border. The lattice holds source
 points, so it runs backwards like every map: a mesh warp's net placed over the output says
 where each part of the output takes its picture from.
 
