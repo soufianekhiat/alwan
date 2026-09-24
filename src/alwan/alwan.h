@@ -2697,6 +2697,33 @@ typedef struct {
 alwan_status alwan_gradient_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_gradient_method method, alwan_gradient_params const *params);
 alwan_status alwan_gradient_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_gradient_method method, alwan_gradient_params const *params);
 
+/* Edge detection: a binary edge map of one channel, edges receiving 1 on an edge and 0
+ * elsewhere (edges_row_stride in bytes).
+ *
+ *   ALWAN_EDGE_DETECT_CANNY  Canny's detector: gaussian smoothing, the Sobel gradient,
+ *                            non-maximum suppression across the gradient, and hysteresis
+ *                            between a low and a high threshold on its magnitude. As
+ *                            scikit-image's feature.canny, pixel for pixel (suite 226).
+ *
+ * Thresholds are in the data's units: 8-bit thresholds are divided by 255, as scikit-image
+ * divides them, the image by 255 likewise. ALWAN_E_INVALID for a NULL, a zero size, a
+ * channel count other than 1, a stride too small, a NaN or infinite value, or an unknown
+ * method; ALWAN_E_RANGE for a sigma negative or over 64, or a high threshold below the low. */
+typedef enum {
+    ALWAN_EDGE_DETECT_CANNY = 0
+} alwan_edge_detect_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double sigma;           /* CANNY: the smoothing's standard deviation in pixels; 0 reads as 1 */
+    double low_threshold;   /* CANNY: on the gradient magnitude; 0 reads as 0.1 of the float range (25.5 on 8-bit) */
+    double high_threshold;  /* CANNY: 0 reads as 0.2 of the float range (51 on 8-bit) */
+} alwan_edge_detect_params;
+
+alwan_status alwan_edge_detect_f32(unsigned char *edges, size_t edges_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_edge_detect_method method, alwan_edge_detect_params const *params);
+alwan_status alwan_edge_detect_f64(unsigned char *edges, size_t edges_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_edge_detect_method method, alwan_edge_detect_params const *params);
+alwan_status alwan_edge_detect_u8(unsigned char *edges, size_t edges_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_edge_detect_method method, alwan_edge_detect_params const *params);
+
 /* Segmentation: an image divided into labelled regions. labels receives one uint32_t a
  * pixel (labels_row_stride in bytes), 0 for background (or a watershed line); count_out,
  * when not NULL, the largest label, which for CONNECTED and for WATERSHED's own markers

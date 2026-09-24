@@ -627,6 +627,9 @@ EXPORTS
     alwan_dng_xyz_to_camera_matrix_f64
     alwan_dominant_wavelength_f32
     alwan_dominant_wavelength_f64
+    alwan_edge_detect_f32
+    alwan_edge_detect_f64
+    alwan_edge_detect_u8
     alwan_edge_filter_f32
     alwan_edge_filter_f64
     alwan_ellipse_canonical_f32

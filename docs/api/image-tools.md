@@ -778,6 +778,49 @@ them (flipped, zero weights skipped, the rest summed in raster order in double) 
 `reflect` edge; the magnitude is formed in the data's precision. There is no 8-bit entry
 point: scikit-image divides 8-bit data by 255 first, and so should the caller.
 
+## Edge detection
+
+```c
+typedef enum {
+    ALWAN_EDGE_DETECT_CANNY = 0
+} alwan_edge_detect_method;
+
+alwan_status alwan_edge_detect_{T}(unsigned char *edges, size_t edges_row_stride,
+                                   alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                   size_t width, size_t height,
+                                   alwan_edge_detect_method method,
+                                   alwan_edge_detect_params const *params);
+alwan_status alwan_edge_detect_u8(...);   /* same, unsigned char pixels */
+```
+
+A binary edge map of one channel (`channels` must be 1): 1 on an edge, 0 elsewhere.
+
+| Field of `alwan_edge_detect_params` | 0 reads as |
+|---|---|
+| `sigma` | 1: the smoothing's standard deviation in pixels, up to 64 |
+| `low_threshold` | 0.1 of the float range (25.5 on 8-bit data) |
+| `high_threshold` | 0.2 of the float range (51 on 8-bit data) |
+
+### `CANNY`
+
+Canny's detector (1986): the channel smoothed by a gaussian, its Sobel gradient,
+non-maximum suppression that keeps a pixel only where its magnitude is at least that of
+the two points a pixel away along the gradient (interpolated between the neighbours they
+fall between), and hysteresis: of the pixels left above the low threshold, the
+8-connected pieces that hold a pixel at or above the high threshold. The result is edges
+one pixel wide that run on through weak stretches but do not start in them. The border
+row and column are never edges.
+
+This is scikit-image's `feature.canny`, and suite 226 holds it to it pixel for pixel: double
+at sigmas of 0.5 to 2.5 with default and chosen thresholds, float32, 8-bit with thresholds
+in 8-bit units, and an image smaller than the smoothing, 12 cases. The smoothing has a zero
+edge and is divided by the same smoothing of an all-ones image, so the border does not
+darken; the gradient is scipy's `ndimage.sobel` with its `reflect` edge; each pass is kept
+in the data's precision; and the suppression follows scikit-image's Cython, whose low
+threshold is a C `float` whatever the data. 8-bit data is multiplied by `1 / 255` and its
+thresholds divided by 255, as scikit-image does. scikit-image's quantile thresholds and
+mask are not carried.
+
 ## Segmentation
 
 ```c
