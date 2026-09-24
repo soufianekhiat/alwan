@@ -9194,6 +9194,46 @@ alwan_status alwan_rayleigh_spd_f32(alwan_f32 wavelength_start, alwan_f32 wavele
                         alwan_atmosphere_params_f32 const *params,
                         alwan_f32 *out, int *out_count);
 
+/* Thin films and multilayers: the reflectance and transmittance of plane parallel layers
+ * between an incident medium and a substrate, the colours of soap bubbles, oil films,
+ * coatings and oxidised metal. By the transfer-matrix method as Byrnes writes it (arXiv
+ * 1603.02720; his tmm package): complex angles per wavelength, the forward branch chosen
+ * in the incident medium and the substrate, Fresnel's coefficients, a phase through each
+ * layer, R = |M10 / M00|^2 and T = |1 / M00|^2 Re(n_s cos theta_s) / Re(n_0 cos theta_0).
+ * As Byrnes's tmm (suite 240), and as colour's multilayer_tmm where colour is exact (lossless
+ * media, or normal incidence; colour takes every angle from the real index at the first
+ * wavelength).
+ *
+ * R and T receive two values per wavelength, s then p. The media run incident medium,
+ * layers, substrate; each index is n + i k. theta_degrees is the angle in the incident
+ * medium, which must be lossless. ALWAN_E_INVALID for a NULL, no wavelength or under two
+ * media, a NaN index; ALWAN_E_RANGE for a wavelength, a thickness or an angle out of range,
+ * or an absorbing incident medium. */
+typedef struct {
+    double const *n;         /* the real index of each medium */
+    double const *k;         /* the extinction coefficient of each, or NULL for none */
+    size_t row_stride;       /* 0: one value a medium for every wavelength; otherwise the count of values
+                              * between media, each medium's values over the wavelengths in a row */
+    size_t media_count;      /* 2 or more: the incident medium, the layers, the substrate */
+    double const *thickness; /* media_count - 2 layer thicknesses, in the wavelengths' unit (nm) */
+} alwan_multilayer;
+
+alwan_status alwan_multilayer_tmm_f64(double *R, double *T, double const *wavelengths, size_t count, alwan_multilayer const *stack, double theta_degrees);
+alwan_status alwan_multilayer_tmm_f32(float *R, float *T, float const *wavelengths, size_t count, alwan_multilayer const *stack, float theta_degrees);
+
+/* Fresnel's amplitude coefficients from a lossless medium n1 into n2 + i k2 at
+ * theta_degrees: amplitudes receives r_s, r_p, t_s, t_p, each as real then imaginary part
+ * (8 values), in Byrnes's sign convention (r_p = (n2 cos i - n1 cos t) / (n2 cos i + n1 cos t);
+ * colour's is its negative, which no reflectance sees). */
+alwan_status alwan_fresnel_f64(double *amplitudes, double n1, double k1, double n2, double k2, double theta_degrees);
+alwan_status alwan_fresnel_f32(float *amplitudes, float n1, float k1, float n2, float k2, float theta_degrees);
+
+/* The refractive index of water at a wavelength (nm), a temperature (K) and a density
+ * (kg / m^3), by Schiebener et al.'s molar refraction (1990), as colour's
+ * light_water_refractive_index_Schiebener1990: about 1.333 at 589 nm, 294 K, 1000 kg / m^3. */
+alwan_status alwan_water_refractive_index_f64(double *n_out, double wavelength_nm, double temperature_k, double density_kg_m3);
+alwan_status alwan_water_refractive_index_f32(float *n_out, float wavelength_nm, float temperature_k, float density_kg_m3);
+
 /* ----------------------------------------------------------------
  * ACES Fixed Functions (RRT Components)
  * Reference: OpenColorIO, Academy Color Encoding System

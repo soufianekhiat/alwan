@@ -717,6 +717,8 @@ EXPORTS
     alwan_float_to_uint_f64
     alwan_focal_plane_exposure_f32
     alwan_focal_plane_exposure_f64
+    alwan_fresnel_f32
+    alwan_fresnel_f64
     alwan_gain_map_apply_f32_map_interleave
     alwan_gain_map_apply_f64_map_interleave
     alwan_gain_map_encode_f32_map_interleave
@@ -1268,6 +1270,8 @@ EXPORTS
     alwan_morphology_f32
     alwan_morphology_f64
     alwan_morphology_u8
+    alwan_multilayer_tmm_f32
+    alwan_multilayer_tmm_f64
     alwan_munsell_to_xyz_f32
     alwan_munsell_to_xyz_f64
     alwan_munsell_value_f32
@@ -1956,6 +1960,8 @@ EXPORTS
     alwan_warp_f32
     alwan_warp_f64
     alwan_warp_u8
+    alwan_water_refractive_index_f32
+    alwan_water_refractive_index_f64
     alwan_wcag_contrast_ratio_f32
     alwan_wcag_contrast_ratio_f64
     alwan_weber_contrast_f32

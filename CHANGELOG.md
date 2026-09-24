@@ -515,6 +515,13 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Thin films and multilayers: `alwan_multilayer_tmm`, `alwan_fresnel`,
+  `alwan_water_refractive_index`.** Interference colour by the transfer-matrix method with
+  complex angles per wavelength (absorbing layers at an angle, total internal reflection,
+  dispersion), within 1.6e-14 of Byrnes's tmm; colour's multilayer_tmm agrees where its
+  real-angle model is exact. Fresnel's amplitudes, and the index of water by Schiebener 1990
+  (suite 240).
+
 - **XYZ to reflectance by Meng 2015: `alwan_xyz_to_spectrum_meng2015`.** The smoothest
   non-negative reflectance with a given XYZ, solved exactly as the quadratic programme it is
   (an active-set method): feasible to 3e-15, its KKT conditions met, its objective never

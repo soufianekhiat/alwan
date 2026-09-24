@@ -949,5 +949,6 @@ The inverse of the demosaicers, and what their tests mosaic their inputs with.
 - [CCT & Light Quality](cct-light-quality.md): CRI, TM-30, SSI, metamerism
 - [Color Spaces](color-spaces.md): XYZ conversions
 - [Atmospheric Optics](atmosphere.md): Rayleigh scattering
+- [Thin Films and Multilayers](thin-films.md): interference colour, Fresnel, the index of water
 - [Precision and Limits](../precision-and-limits.md): `_f32`/`_f64` and f64-facade behaviour
 - [Data Management](../data-management.md): embedded CMF, illuminant, and spectral LUT data
