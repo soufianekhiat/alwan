@@ -617,6 +617,9 @@ EXPORTS
     alwan_display_model_invert_f64
     alwan_display_primaries_spd_f32
     alwan_display_primaries_spd_f64
+    alwan_distance_transform_f32
+    alwan_distance_transform_f64
+    alwan_distance_transform_u8
     alwan_dng_camera_neutral_to_xy_f32
     alwan_dng_camera_neutral_to_xy_f64
     alwan_dng_camera_to_xyz_matrix_f32

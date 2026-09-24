@@ -3077,6 +3077,38 @@ alwan_status alwan_texture_f32(double *out, size_t out_row_stride, alwan_f32 con
 alwan_status alwan_texture_f64(double *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
 alwan_status alwan_texture_u8(double *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
 
+/* Distance transforms: for every feature pixel, its distance to the nearest background
+ * pixel, in out (one double a pixel, out_row_stride in bytes, whatever the source's type).
+ * A pixel is background when every channel equals params->background; the image's border
+ * is not background. As scipy.ndimage's transforms, value for value (suite 236).
+ *
+ *   ALWAN_DISTANCE_EUCLIDEAN   exact, in the pixel's own width and height (sampling):
+ *                              distance_transform_edt
+ *   ALWAN_DISTANCE_CITYBLOCK   |dx| + |dy| in pixels: distance_transform_cdt, taxicab
+ *   ALWAN_DISTANCE_CHESSBOARD  max(|dx|, |dy|) in pixels: distance_transform_cdt, chessboard
+ *
+ * With no background pixel every distance is +infinity. signed_distance gives background
+ * pixels minus their distance to the nearest feature: a signed distance field, positive
+ * inside, for masks, outlines, feathering and text. ALWAN_E_INVALID for a NULL, a zero size,
+ * a channel count out of range, a stride too small, a NaN or infinite value or background,
+ * an unknown method; ALWAN_E_RANGE for a sampling not positive and finite. */
+typedef enum {
+    ALWAN_DISTANCE_EUCLIDEAN = 0,
+    ALWAN_DISTANCE_CITYBLOCK = 1,
+    ALWAN_DISTANCE_CHESSBOARD = 2
+} alwan_distance_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double background;      /* the value of a background pixel, in every channel, in the data's units */
+    double sampling[2];     /* EUCLIDEAN: a pixel's width and height; 0 reads as 1 */
+    int signed_distance;    /* non-zero: background pixels take minus their distance to the features */
+} alwan_distance_params;
+
+alwan_status alwan_distance_transform_f32(double *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_distance_method method, alwan_distance_params const *params);
+alwan_status alwan_distance_transform_f64(double *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_distance_method method, alwan_distance_params const *params);
+alwan_status alwan_distance_transform_u8(double *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_distance_method method, alwan_distance_params const *params);
+
 /* Segmentation: an image divided into labelled regions. labels receives one uint32_t a
  * pixel (labels_row_stride in bytes), 0 for background (or a watershed line); count_out,
  * when not NULL, the largest label, which for CONNECTED and for WATERSHED's own markers

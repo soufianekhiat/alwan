@@ -511,6 +511,10 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Distance transforms: `alwan_distance_transform`.** Euclidean (exact, with anisotropic
+  pixels), city-block and chessboard, and a signed distance field; equal to
+  `scipy.ndimage`'s transforms (suite 236).
+
 - **Warping: `alwan_warp`.** Affine and perspective maps with nearest, bilinear or bicubic
   sampling and a fill colour; value for value with Pillow's `Image.transform` (suite 234).
 

@@ -1295,6 +1295,51 @@ for bit, `EWA`'s or `ADAPTIVE`'s. Resize's integration and subpixel layouts are 
 the same way: an integrated box halving is the 2 x 2 mean, a constant stays constant under
 every layout, and RGB and BGR move a thin line's red and blue in opposite directions.
 
+## Distance transforms
+
+```c
+typedef enum {
+    ALWAN_DISTANCE_EUCLIDEAN = 0, ALWAN_DISTANCE_CITYBLOCK = 1, ALWAN_DISTANCE_CHESSBOARD = 2
+} alwan_distance_method;
+
+alwan_status alwan_distance_transform_{T}(double *out, size_t out_row_stride,
+                                          alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                          size_t width, size_t height,
+                                          alwan_distance_method method, alwan_distance_params const *params);
+alwan_status alwan_distance_transform_u8(double *out, ...);   /* same, unsigned char pixels */
+```
+
+For every feature pixel, its distance to the nearest background pixel, one double a pixel
+whatever the source's type. A pixel is background when every channel equals `background`;
+the image's border is not background. The distances feather a mask, grow or shrink a
+shape by a threshold on them, find a shape's thickness, and with `signed_distance` give a
+signed distance field (positive inside, negative outside), the form text is often stored
+in for rendering at any size.
+
+| Method | Distance | As |
+|---|---|---|
+| `EUCLIDEAN` | the straight-line distance, in the pixel's width and height (`sampling`) | `scipy.ndimage.distance_transform_edt` |
+| `CITYBLOCK` | `abs(dx) + abs(dy)` in pixels | `distance_transform_cdt`, taxicab |
+| `CHESSBOARD` | `max(abs(dx), abs(dy))` in pixels | `distance_transform_cdt`, chessboard |
+
+| Field of `alwan_distance_params` | 0 reads as |
+|---|---|
+| `background` | 0 in every channel |
+| `sampling[2]` | square pixels of side 1 (Euclidean only) |
+| `signed_distance` | distances for the features only, 0 on the background |
+
+The Euclidean distance is exact: Felzenszwalb and Huttenlocher's lower envelope of
+parabolas, one pass down the columns and one along the rows on squared distances, so with
+unit sampling every value is the correctly rounded square root of an integer. The other two
+are exact for their metrics after a forward and a backward chamfer pass. With no background
+pixel every distance is +infinity; scipy's EDT then measures from a point outside the image
+and its CDT returns -1, so that case is alwan's own.
+
+Suite 236 holds all three to scipy on sixteen cases: blobs, rectangles and discs, a lone
+background pixel, a background other than 0, three 8-bit channels, two anisotropic
+samplings and the signed field (as `edt(features) - edt(background)`). Every value is
+equal but the sampled ones, which agree to 1.8e-15.
+
 ## Segmentation
 
 ```c
