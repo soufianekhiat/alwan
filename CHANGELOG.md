@@ -516,6 +516,11 @@
   gives superpixels by k-means over position and channels, label for label with
   scikit-image's `segmentation.slic` (Lab conversion left to the caller; suite 227).
 
+- **Region properties: `alwan_region_props`.** Area, box, centroid, intensity mean, minimum
+  and maximum, orientation, axis lengths, eccentricity, perimeter and equivalent diameter
+  of every region of a label image; against scikit-image's `measure.regionprops` (suite
+  228).
+
 - **Background estimation: `alwan_background`.** The slowly varying background of an image,
   to take out uneven illumination; `ALWAN_BACKGROUND_ROLLING_BALL` first, a ball or an
   ellipsoid, value for value with scikit-image's `restoration.rolling_ball` (suite 218).

@@ -1471,6 +1471,9 @@ EXPORTS
     alwan_rayleigh_spd_f64
     alwan_rec2100_surround_f32
     alwan_rec2100_surround_f64
+    alwan_region_props_f32
+    alwan_region_props_f64
+    alwan_region_props_u8
     alwan_reinhard_calibrated_f32
     alwan_reinhard_calibrated_f64
     alwan_relative_luminance_f32

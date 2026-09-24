@@ -2782,6 +2782,40 @@ alwan_status alwan_segment_f32(uint32_t *labels, size_t labels_row_stride, size_
 alwan_status alwan_segment_f64(uint32_t *labels, size_t labels_row_stride, size_t *count_out, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_segment_method method, alwan_segment_params const *params);
 alwan_status alwan_segment_u8(uint32_t *labels, size_t labels_row_stride, size_t *count_out, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_segment_method method, alwan_segment_params const *params);
 
+/* Region properties: measurements of every region of a label image (alwan_segment's
+ * output), one entry per label present, in increasing label order.
+ *
+ * props receives up to capacity entries and count_out (when not NULL) the number of
+ * regions; with props NULL and capacity 0 the call only counts. intensity may be NULL (the
+ * intensity fields are then 0); otherwise `channels` values a pixel at intensity_row_stride
+ * bytes, and each region's mean, minimum and maximum are taken per channel.
+ *
+ * As scikit-image's measure.regionprops (suite 228): area, bbox, centroid, intensity_min
+ * and intensity_max exactly, intensity_mean as numpy forms it, the shape measures (from the
+ * central moments; scikit-image's eigenvalues come from LAPACK) and the perimeter to
+ * rounding. ALWAN_E_INVALID for a NULL labels, a zero size, a channel count out of range
+ * with an intensity image, a stride too small, or props NULL with a capacity;
+ * ALWAN_E_RANGE when there are more regions than capacity, or 2^32 - 1 pixels or more. */
+typedef struct {
+    uint32_t label;
+    size_t area;                 /* pixels */
+    size_t bbox[4];              /* min row, min column, max row + 1, max column + 1 */
+    double centroid[2];          /* row, column */
+    double intensity_mean[4];    /* per channel */
+    double intensity_min[4];
+    double intensity_max[4];
+    double orientation;          /* radians, (-pi/2, pi/2]: the angle from the rows' axis (axis 0) to the major axis */
+    double axis_major_length;    /* of the ellipse with the region's second moments */
+    double axis_minor_length;
+    double eccentricity;         /* 0 for a circle, towards 1 for a line */
+    double perimeter;            /* the 4-connected border, diagonal steps sqrt(2) */
+    double equivalent_diameter;  /* of the circle with the region's area */
+} alwan_region_props;
+
+alwan_status alwan_region_props_f32(alwan_region_props *props, size_t capacity, size_t *count_out, uint32_t const *labels, size_t labels_row_stride, alwan_f32 const *intensity, size_t intensity_row_stride, size_t channels, size_t width, size_t height);
+alwan_status alwan_region_props_f64(alwan_region_props *props, size_t capacity, size_t *count_out, uint32_t const *labels, size_t labels_row_stride, alwan_f64 const *intensity, size_t intensity_row_stride, size_t channels, size_t width, size_t height);
+alwan_status alwan_region_props_u8(alwan_region_props *props, size_t capacity, size_t *count_out, uint32_t const *labels, size_t labels_row_stride, unsigned char const *intensity, size_t intensity_row_stride, size_t channels, size_t width, size_t height);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since no method looks at neighbours). out may be src.

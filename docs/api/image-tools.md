@@ -917,6 +917,45 @@ the merging off, and a short run, 11 cases. It follows scikit-image's Cython: th
 its `regular_grid`, the grid step held as a C `float` in the spatial weight, the distances
 in the data's precision, and the merging's capped breadth-first fill.
 
+## Region properties
+
+```c
+alwan_status alwan_region_props_{T}(alwan_region_props *props, size_t capacity, size_t *count_out,
+                                    uint32_t const *labels, size_t labels_row_stride,
+                                    alwan_{T} const *intensity, size_t intensity_row_stride,
+                                    size_t channels, size_t width, size_t height);
+alwan_status alwan_region_props_u8(...);   /* same, unsigned char intensity */
+```
+
+Measurements of every region of a label image, such as `alwan_segment` produces: one
+`alwan_region_props` a label present, in increasing label order, 0 being background. Call
+with `props` NULL and `capacity` 0 to count the regions first; too small a capacity returns
+`ALWAN_E_RANGE` with the count in `*count_out`. `intensity` may be NULL; otherwise each
+region's mean, minimum and maximum are taken in each of its `channels`.
+
+| Field | Meaning |
+|---|---|
+| `label`, `area` | the label and its pixel count |
+| `bbox` | min row, min column, max row + 1, max column + 1 |
+| `centroid` | row, column |
+| `intensity_mean`, `_min`, `_max` | per channel |
+| `orientation` | radians in (-pi/2, pi/2], from the rows' axis to the major axis |
+| `axis_major_length`, `axis_minor_length` | of the ellipse with the region's second moments |
+| `eccentricity` | 0 for a circle, towards 1 for a line |
+| `perimeter` | along the 4-connected border, diagonal steps counted sqrt(2) |
+| `equivalent_diameter` | of the circle with the region's area |
+
+These are scikit-image's `measure.regionprops` (`label`, `area`, `bbox`, `centroid`,
+`intensity_mean`, `intensity_min`, `intensity_max`, `orientation`, `axis_major_length`,
+`axis_minor_length`, `eccentricity`, `perimeter`, `equivalent_diameter_area`), and suite
+228 holds them to it on SLIC, connected-component and watershed label images with grey,
+colour and no intensity, double, float32 and 8-bit, 10 cases. The counts, boxes,
+centroids and intensity statistics are equal (the mean summed as numpy sums it: pairwise
+for one channel, a running sum per channel for several). The shape measures come from
+the central moments with the inertia tensor's eigenvalues in closed form, where
+scikit-image uses einsum and LAPACK, and agree to 6e-15; the perimeter, a weighted
+histogram scikit-image sums by BLAS, to the same.
+
 ## Background estimation
 
 ```c
