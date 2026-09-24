@@ -144,6 +144,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_segment.c
   src/alwan/api/alwan_distance.c
   src/alwan/api/alwan_vignette.c
+  src/alwan/api/alwan_spectrum_meng2015.c
   src/alwan/api/alwan_gradient.c
   src/alwan/api/alwan_edge_detect.c
   src/alwan/api/alwan_region_props.c

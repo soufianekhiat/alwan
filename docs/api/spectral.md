@@ -423,6 +423,44 @@ alwan_status alwan_optimize_spectrum_for_xyz_f64(alwan_spd_f64 *spd_out,
 
 Find a smooth SPD whose tristimulus integral matches `target_xyz` (least-squares). `spd_out` **must be pre-allocated** (`alwan_spd_create_f64`) with the desired wavelength range/count. Multiple spectra metamerise to the same XYZ; this returns one solution.
 
+### alwan_xyz_to_spectrum_meng2015
+
+```c
+typedef struct {
+    alwan_observer_type observer;      /* 0: CIE 1931 2 degree */
+    alwan_spd_f64 const *illuminant;   /* NULL: D65 */
+    double wavelength_min, wavelength_max, interval;   /* 0: 360, 780, 5 */
+} alwan_meng2015_params;
+
+alwan_status alwan_xyz_to_spectrum_meng2015_f64(alwan_spd_f64 *out_spd, alwan_xyz_f64 const *xyz,
+                                                alwan_meng2015_params const *params, alwan_ctx *ctx);
+```
+
+The smoothest non-negative reflectance with a given XYZ (Meng, Simon, Hanika and
+Dachsbacher 2015): `R` minimising the sum of squared differences between neighbouring
+samples, subject to its XYZ under the illuminant and observer being `xyz` and every sample
+non-negative. The XYZ is on the Y = 1 scale (a perfect reflector has Y = 1) and integrated
+as colour's `sd_to_XYZ_integration` does, a plain sum over the samples. `out_spd` is created
+by the call on the grid in `params` (360-780 nm at 5 nm by default, as colour's) and
+destroyed by the caller. `ALWAN_E_RANGE` for an XYZ no non-negative reflectance reaches.
+
+This is a convex quadratic programme and alwan solves it exactly. Where the
+equality-constrained minimum is already non-negative, that is the answer. Otherwise a
+feasible start comes from non-negative least squares (Lawson and Hanson), and a primal
+active-set method (Nocedal and Wright, algorithm 16.3) finishes at the optimum. On
+saturated colours the non-negativity binds, so the closed-form equality-only solution
+would be a different estimator.
+
+colour solves the same problem with SLSQP from a spectrum of ones and stops at a tolerance,
+up to 5.2e-3 from the optimum on a ColorChecker; tightening it moves colour towards alwan's
+answer (1.6e-3 at 1e-10, 7e-4 at 1e-13) until SLSQP no longer converges. So suite 239 does
+not pin colour's iterate. It pins what defines the answer, with the constraint matrix built
+exactly as colour builds it, over 24 ColorChecker patches, black and a near white: the XYZ
+met to 3.1e-15, every sample non-negative, the KKT conditions (stationarity on the free
+samples to 6.5e-13 of the gradient, every multiplier on the bound non-negative), and an
+objective never above colour's, which is up to 8.1e-6 above alwan's. alwan takes 14 ms for
+the 24 patches where colour takes 32 s.
+
 ### alwan_metamerism_index
 
 ```c

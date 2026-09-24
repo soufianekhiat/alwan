@@ -5631,6 +5631,29 @@ alwan_status alwan_xyz_to_spectrum_otsu2018_f32(alwan_spd_f32 *out_spd, alwan_xy
 alwan_status alwan_xyz_to_spectrum_otsu2018_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t *band_count);
 alwan_status alwan_xyz_to_spectrum_otsu2018_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t *band_count);
 
+/* Meng 2015: the smoothest non-negative reflectance with a given XYZ
+ * Reference: Meng, Simon, Hanika and Dachsbacher. "Physically Meaningful Rendering
+ * using Tristimulus Colours" (Computer Graphics Forum 34(4), 2015)
+ *
+ * R minimising sum_i (R[i + 1] - R[i])^2 subject to its XYZ under the illuminant and
+ * observer being xyz (on the Y = 1 scale: a perfect reflector has Y = 1, colour's
+ * sd_to_XYZ_integration, a plain sum over the samples) and R >= 0. Solved exactly as the
+ * convex quadratic programme it is (an active-set method), where colour's SLSQP stops at a
+ * tolerance; the non-negativity binds on saturated colours. out_spd is created by the call
+ * on the params' grid (360-780 nm at 5 nm by default) and destroyed by the caller.
+ * ALWAN_E_RANGE when no non-negative reflectance has that XYZ, or for a grid outside
+ * 360-830 nm or not a whole number of intervals. */
+typedef struct {
+    alwan_observer_type observer;       /* 0 is CIE 1931 2 degree */
+    alwan_spd_f64 const *illuminant;    /* NULL is D65 */
+    double wavelength_min;              /* 0 reads as 360 */
+    double wavelength_max;              /* 0 reads as 780 */
+    double interval;                    /* 0 reads as 5 */
+} alwan_meng2015_params;
+
+alwan_status alwan_xyz_to_spectrum_meng2015_f64(alwan_spd_f64 *out_spd, alwan_xyz_f64 const *xyz, alwan_meng2015_params const *params, alwan_ctx *ctx);
+alwan_status alwan_xyz_to_spectrum_meng2015_f32(alwan_spd_f32 *out_spd, alwan_xyz_f32 const *xyz, alwan_meng2015_params const *params, alwan_ctx *ctx);
+
 /* Jakob2019 gamut enum - specifies which RGB color space to use for spectral upsampling */
 typedef enum {
 	ALWAN_JAKOB2019_SRGB = 0,        /* sRGB (standard RGB, Rec.709 primaries) */

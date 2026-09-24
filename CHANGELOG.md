@@ -515,6 +515,11 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **XYZ to reflectance by Meng 2015: `alwan_xyz_to_spectrum_meng2015`.** The smoothest
+  non-negative reflectance with a given XYZ, solved exactly as the quadratic programme it is
+  (an active-set method): feasible to 3e-15, its KKT conditions met, its objective never
+  above colour's SLSQP iterate, which stops up to 5e-3 away (suite 239).
+
 - **Vignetting: `alwan_vignette`.** Characterise a lens's falloff from a flat field (a
   parabola, a hyperbolic cosine, a bicubic spline of the smoothed field, or radial basis
   functions) and divide it out of any frame; equal to colour-hdri's `distortion.vignette`
