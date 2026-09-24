@@ -1854,6 +1854,9 @@ EXPORTS
     alwan_table_interp_3d_tetrahedral_f64
     alwan_table_interp_3d_trilinear_f32
     alwan_table_interp_3d_trilinear_f64
+    alwan_threshold_f32
+    alwan_threshold_f64
+    alwan_threshold_u8
     alwan_tm30_rf_f32
     alwan_tm30_rf_f64
     alwan_tm30_specification_f32

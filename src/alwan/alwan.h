@@ -2586,6 +2586,48 @@ alwan_status alwan_background_f32(alwan_f32 *out, size_t out_row_stride, alwan_f
 alwan_status alwan_background_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_background_method method, alwan_background_params const *params);
 alwan_status alwan_background_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_background_method method, alwan_background_params const *params);
 
+/* Global thresholds: one level per channel that splits it into foreground and background,
+ * for a mask from a luma, a matte or a scan. threshold_out receives `channels` values; a
+ * pixel is foreground where it is above its channel's threshold.
+ *
+ *   ALWAN_THRESHOLD_OTSU      the level maximising the between-class variance
+ *   ALWAN_THRESHOLD_LI        Li's iterative minimum cross entropy
+ *   ALWAN_THRESHOLD_YEN       Yen's maximum correlation criterion
+ *   ALWAN_THRESHOLD_ISODATA   Ridler and Calvard's: the lowest level halfway between the
+ *                             means below and above it
+ *   ALWAN_THRESHOLD_TRIANGLE  Zack's: furthest below the line from the peak to the far tail
+ *   ALWAN_THRESHOLD_MINIMUM   Prewitt's: the valley of the histogram smoothed until bimodal
+ *   ALWAN_THRESHOLD_MEAN      the mean
+ *
+ * The histogram, on 8-bit data one bin per level from the channel's minimum to its maximum
+ * and on float data `bins` bins over [min, max], and each method's arithmetic are
+ * scikit-image's filters.threshold_*, value for value (suite 221). A constant channel
+ * returns its value. ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range,
+ * a stride too small, a NaN or infinite value, or an unknown method; ALWAN_E_RANGE for bins
+ * outside 2 to 65536, a negative tolerance, and when ISODATA finds no level or MINIMUM no
+ * two maxima within max_iterations. */
+typedef enum {
+    ALWAN_THRESHOLD_OTSU = 0,
+    ALWAN_THRESHOLD_LI = 1,
+    ALWAN_THRESHOLD_YEN = 2,
+    ALWAN_THRESHOLD_ISODATA = 3,
+    ALWAN_THRESHOLD_TRIANGLE = 4,
+    ALWAN_THRESHOLD_MINIMUM = 5,
+    ALWAN_THRESHOLD_MEAN = 6
+} alwan_threshold_method;
+
+/* A zero field is its default. */
+typedef struct {
+    size_t bins;            /* float data: histogram bins, 2 to 65536; 0 reads as 256. 8-bit data: ignored */
+    double tolerance;       /* LI: stop when t moves by no more; 0 reads as half the smallest gap between
+                             * values (0.5 on 8-bit data) */
+    size_t max_iterations;  /* MINIMUM: smoothing passes; 0 reads as 10000 */
+} alwan_threshold_params;
+
+alwan_status alwan_threshold_f32(double *threshold_out, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_method method, alwan_threshold_params const *params);
+alwan_status alwan_threshold_f64(double *threshold_out, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_method method, alwan_threshold_params const *params);
+alwan_status alwan_threshold_u8(double *threshold_out, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_method method, alwan_threshold_params const *params);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since no method looks at neighbours). out may be src.

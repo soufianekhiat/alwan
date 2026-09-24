@@ -492,6 +492,10 @@
   level that lets it drain to the border; value for value with scikit-image's
   `diameter_opening`, `diameter_closing` and `reconstruction` (suite 220).
 
+- **Global thresholds: `alwan_threshold`.** One level per channel by Otsu, Li, Yen,
+  isodata, triangle, minimum or the mean, for making a mask; value for value with
+  scikit-image's `filters.threshold_*`, whose float32 arithmetic it follows (suite 221).
+
 - **Background estimation: `alwan_background`.** The slowly varying background of an image,
   to take out uneven illumination; `ALWAN_BACKGROUND_ROLLING_BALL` first, a ball or an
   ellipsoid, value for value with scikit-image's `restoration.rolling_ball` (suite 218).

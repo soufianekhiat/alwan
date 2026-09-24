@@ -639,6 +639,55 @@ image from a seed equal to the image on the border and its maximum inside, which
 scikit-image's own recipe; suite 220 holds it to `morphology.reconstruction` that way, value
 for value. An image one or two pixels across is all border and comes back unchanged.
 
+## Thresholds
+
+```c
+typedef enum {
+    ALWAN_THRESHOLD_OTSU = 0, ALWAN_THRESHOLD_LI = 1, ALWAN_THRESHOLD_YEN = 2,
+    ALWAN_THRESHOLD_ISODATA = 3, ALWAN_THRESHOLD_TRIANGLE = 4,
+    ALWAN_THRESHOLD_MINIMUM = 5, ALWAN_THRESHOLD_MEAN = 6
+} alwan_threshold_method;
+
+alwan_status alwan_threshold_{T}(double *threshold_out,
+                                 alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                 size_t width, size_t height,
+                                 alwan_threshold_method method,
+                                 alwan_threshold_params const *params);
+alwan_status alwan_threshold_u8(...);   /* same, unsigned char pixels */
+```
+
+One level per channel that splits it into a background and a foreground, the pixels above
+it: the automatic step before a mask is cleaned by `alwan_morphology`. `threshold_out`
+receives `channels` values.
+
+| Method | The level it chooses |
+|---|---|
+| `OTSU` | the one maximising the variance between the two classes (Otsu 1979) |
+| `LI` | Li's minimum cross entropy, iterated from the mean: `t <- (mb - mf) / (ln mb - ln mf)` over the class means (Li and Tam 1998) |
+| `YEN` | the maximum of Yen's correlation criterion (Yen, Chang and Chang 1995) |
+| `ISODATA` | the lowest level halfway, to within a bin, between the means below and above it (Ridler and Calvard 1978) |
+| `TRIANGLE` | the level furthest below the line from the histogram's peak to the end of its longer tail (Zack et al. 1977): for one bright or dark population on a long tail |
+| `MINIMUM` | the valley between the two maxima of the histogram smoothed by a 3-tap mean until it has two (Prewitt and Mendelsohn 1966): for two clear populations |
+| `MEAN` | the mean |
+
+| Field of `alwan_threshold_params` | 0 reads as |
+|---|---|
+| `bins` | 256: float data only, 2 to 65536 |
+| `tolerance` | `LI`: half the smallest gap between two values (0.5 on 8-bit data) |
+| `max_iterations` | `MINIMUM`: 10000 smoothing passes |
+
+The histogram is scikit-image's: on 8-bit data one bin per level from the channel's
+minimum to its maximum (`bins` is not used), on float data `bins` equal bins over the
+channel's range with edges and placement as `numpy.histogram` computes them, a threshold
+being a bin centre. The arithmetic follows scikit-image's `filters.threshold_*`
+operation for operation, including where it works in float32 (the counts and their
+running sums, and all of Yen's criterion) and numpy's pairwise summation for the means, so
+suite 221 holds all seven methods to it value for value: 8-bit, double and float32 luma, a
+bimodal image, 64 bins and 8-bit colour channel by channel, 56 cases. A constant channel
+returns its value, as scikit-image's Otsu, Li and triangle do; its Yen, isodata and minimum
+look at a histogram widened by half a unit either side there. `ISODATA` without a level and
+`MINIMUM` without two maxima return `ALWAN_E_RANGE`, where scikit-image raises.
+
 ## Background estimation
 
 ```c
