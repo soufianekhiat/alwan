@@ -336,7 +336,9 @@ pixel becomes the mean of the pixels within `search_window / 2` of it, each weig
 channels, less `2 sigma^2` a sample for a known noise level, and is scaled by `h`. Pixels
 whose neighbourhoods look alike are averaged whatever their distance in the search
 window, so texture and edges that repeat keep their shape where a local filter would blur
-them. A weight past a distance of 5 is 0.
+them. A weight past a distance of 5 is 0. The weight is the exact `exp(-d)`; set
+`nl_means_fast_exp` to weigh by scikit-image's Schraudolph approximation (1999) instead, a
+few percent off `exp`, when its results are wanted to the bit.
 
 | | `NL_MEANS_DARBON` | `NL_MEANS_BUADES` |
 |---|---|---|
@@ -350,11 +352,11 @@ even size is raised by one) and `search_window` 23, a patch distance of 11; `sig
 subtracts nothing. These are scikit-image's `restoration.denoise_nl_means` with its fast
 mode and with `fast_mode=False`, and suite 231 holds them to it value for value: grey and
 colour, double and float32, patches of 3 to 7, distances of 3 to 11, `h` and `sigma`, and
-8-bit, 12 cases. The exponential is scikit-image's, Schraudolph's approximation (1999), not
-`exp`: the weights follow scikit-image's to the bit. The one exception is `NL_MEANS_BUADES`
+8-bit, 12 cases. With `nl_means_fast_exp` every value is equal but for `NL_MEANS_BUADES`
 on float32, 3.6e-7 away, because numpy's float32 `exp` builds the gaussian patch kernel a
-unit apart from the C library's. `ALWAN_DENOISE_NL_MEANS` is OpenCV's 8-bit algorithm and
-stays as it was.
+unit apart from the C library's. With the exact `exp`, the default, the same cases land
+within 3e-3 of scikit-image's, the reach of its approximation. `ALWAN_DENOISE_NL_MEANS` is
+OpenCV's 8-bit algorithm and stays as it was.
 
 ## Local contrast
 

@@ -2295,7 +2295,8 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        their template_window patches less 2 sigma^2 a
  *                                        sample over channels h^2 s^2, every shift at once
  *                                        by an integral image (Darbon et al. 2008;
- *                                        scikit-image denoise_nl_means, fast mode, suite 231)
+ *                                        scikit-image denoise_nl_means, fast mode, to the bit
+ *                                        with nl_means_fast_exp, suite 231)
  *   ALWAN_DENOISE_NL_MEANS_BUADES        the same with the patch distance weighted by a
  *                                        gaussian (Buades, Coll and Morel 2005; scikit-image
  *                                        denoise_nl_means, fast_mode off, suite 231); slower
@@ -2369,6 +2370,9 @@ typedef struct {
     int wavelet_hard;       /* WAVELET: non-zero thresholds hard; 0 soft */
     size_t kernel_size;     /* MEDIAN: the window's side, odd, 3 to 255; 0 reads as 3 */
     int anisotropic;        /* TV_BREGMAN: non-zero penalises |u_x| + |u_y|; 0 the isotropic |grad u| */
+    int nl_means_fast_exp;  /* NL_MEANS_DARBON, _BUADES: non-zero weighs by scikit-image's Schraudolph
+                             * approximation of exp, a few percent off, to reproduce its results to the
+                             * bit; 0 the exact exp */
 } alwan_denoise_params;
 
 alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);

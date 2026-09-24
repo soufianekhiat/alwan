@@ -20,9 +20,10 @@
  *           sigma (s - 1) / 4 normalised to 1 / (channels h^2), in the data's precision,
  *           padded by s / 2; a patch stops being summed once its distance passes 5.
  *
- * Both give zero weight past a distance of 5, and both take the exponential as
- * scikit-image does, by Schraudolph's approximation (1999): the double whose high word is
- * (int32)(2^20 / ln 2 * y) + 1072632447 and whose low word is 0.
+ * Both give zero weight past a distance of 5. The weight is exp(-distance); with fast_exp
+ * set it is scikit-image's Schraudolph approximation (1999) instead, the double whose high
+ * word is (int32)(2^20 / ln 2 * y) + 1072632447 and whose low word is 0, a few percent off
+ * exp, which reproduces scikit-image's results to the bit.
  */
 
 #include "../alwan.h"
@@ -39,6 +40,10 @@ static double alwan_nlm_fast_exp(double y) {
     double d;
     memcpy(&d, &bits, sizeof(d));
     return d;
+}
+
+static double alwan_nlm_exp(double y, int fast) {
+    return fast ? alwan_nlm_fast_exp(y) : exp(y);
 }
 
 static double alwan_nlm_r(double x, int f32) {
@@ -82,7 +87,8 @@ static double alwan_nlm_pairwise(double const *a, size_t n, int f32) {
 }
 
 /* img: h x w x ch doubles (the data's values), res receives the result in the same layout. */
-static alwan_status alwan_nlm_darbon(double *res, double const *img, size_t w, size_t h, size_t ch, size_t s, size_t d, double hh, double var) {
+static alwan_status alwan_nlm_darbon(double *res, double const *img, size_t w, size_t h, size_t ch, size_t s, size_t d, double hh, double var,
+                                     int fast) {
     size_t const offset = s / 2, pad = offset + d + 1, pw = w + 2 * pad, ph = h + 2 * pad, np_ = pw * ph;
     double *padded = (double *)ALWAN_ALLOC(alwan_safe_array_size(np_, (2 * ch + 2) * sizeof(double)), sizeof(double));
     double *weights, *integral, *result;
@@ -135,7 +141,7 @@ static alwan_status alwan_nlm_darbon(double *res, double const *img, size_t w, s
                     long const col_shift = col + t_col;
                     dist = (dist > 0.0 ? dist : 0.0) / h2s2;
                     if (dist > 5.0) continue;
-                    wgt = alpha * alwan_nlm_fast_exp(-dist);
+                    wgt = alpha * alwan_nlm_exp(-dist, fast);
                     weights[(size_t)row * pw + (size_t)col] += wgt;
                     weights[(size_t)row_shift * pw + (size_t)col_shift] += wgt;
                     for (c = 0; c < ch; c++) {
@@ -157,7 +163,7 @@ static alwan_status alwan_nlm_darbon(double *res, double const *img, size_t w, s
 }
 
 static alwan_status alwan_nlm_buades(double *res, double const *img, size_t w, size_t h, size_t ch, size_t s, size_t d, double hh, double var,
-                                     int f32) {
+                                     int f32, int fast) {
     size_t const offset = s / 2, pw = w + 2 * offset, ph = h + 2 * offset;
     double *padded = (double *)ALWAN_ALLOC(alwan_safe_array_size(pw * ph * ch + s * s + ch, sizeof(double)), sizeof(double));
     double *wk, *nv, A, two_a2, sum, scale;
@@ -205,7 +211,7 @@ static alwan_status alwan_nlm_buades(double *res, double const *img, size_t w, s
                                 dist = alwan_nlm_r(dist + alwan_nlm_r(wk[a * s + b] * alwan_nlm_r(alwan_nlm_r(t * t, f32) - var, f32), f32), f32);
                             }
                     }
-                    wgt = cut ? 0.0 : alwan_nlm_r(alwan_nlm_fast_exp(-(0.0 > dist ? 0.0 : dist)), f32);
+                    wgt = cut ? 0.0 : alwan_nlm_r(alwan_nlm_exp(-(0.0 > dist ? 0.0 : dist), fast), f32);
                     wsum = alwan_nlm_r(wsum + wgt, f32);
                     for (c = 0; c < ch; c++) nv[c] = alwan_nlm_r(nv[c] + alwan_nlm_r(wgt * padded[((i + offset) * pw + j + offset) * ch + c], f32), f32);
                 }
@@ -218,7 +224,7 @@ static alwan_status alwan_nlm_buades(double *res, double const *img, size_t w, s
 }
 
 alwan_status alwan__denoise_nlm(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h, int buades,
-                                double hh, size_t s, size_t d, double sigma, int kind) {
+                                double hh, size_t s, size_t d, double sigma, int fast_exp, int kind) {
     size_t const elem = kind == 0 ? sizeof(alwan_f64) : kind == 1 ? sizeof(alwan_f32) : 1u;
     size_t const n = w * h;
     double *img, *res;
@@ -243,8 +249,8 @@ alwan_status alwan__denoise_nlm(void *out, size_t out_rs, void const *src, size_
             img[y * w * ch + x] = v;
         }
     }
-    st = buades ? alwan_nlm_buades(res, img, w, h, ch, s, d, hh, sigma * sigma, kind == 1)
-                : alwan_nlm_darbon(res, img, w, h, ch, s, d, hh, sigma * sigma);
+    st = buades ? alwan_nlm_buades(res, img, w, h, ch, s, d, hh, sigma * sigma, kind == 1, fast_exp != 0)
+                : alwan_nlm_darbon(res, img, w, h, ch, s, d, hh, sigma * sigma, fast_exp != 0);
     if (st == ALWAN_OK) {
         for (y = 0; y < h; y++) {
             char *row = (char *)out + y * out_rs;
