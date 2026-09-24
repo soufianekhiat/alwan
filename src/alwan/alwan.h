@@ -2482,17 +2482,27 @@ alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
  *                               lowered to the level of its surroundings, whatever its
  *                               shape; larger regions untouched
  *   ALWAN_MORPHOLOGY_AREA_CLOSE the same for dark regions: holes of fewer pixels filled
+ *   ALWAN_MORPHOLOGY_DIAMETER_OPEN  as AREA_OPEN, a region judged by the longer side of its
+ *                               bounding box against diameter_threshold: a thin line as long
+ *                               as the threshold survives, a compact blob as wide does too
+ *   ALWAN_MORPHOLOGY_DIAMETER_CLOSE the same for dark regions
+ *   ALWAN_MORPHOLOGY_FILL_HOLES every dark region the image's border cannot reach without
+ *                               climbing raised to the lowest level that lets it drain: a
+ *                               pixel becomes the least, over paths to the border, of the
+ *                               highest value on the path
  *
  * The element sits with its anchor, (kernel_width / 2, kernel_height / 2), on the pixel and
  * is used as given (not reflected); pixels outside the image take no part; iterations
  * repeats each erosion and dilation. As OpenCV's erode, dilate and morphologyEx, value for
  * value (suite 217). The area operators take no element: a region is a connected set of
  * pixels at or above a level (at or below, for AREA_CLOSE), 4- or 8-connected, and a pixel
- * becomes the highest level at which its region has area_threshold pixels or more. As
- * scikit-image's area_opening and area_closing, value for value (suite 219), except that
- * a threshold above the whole image's area flattens it to its minimum (maximum), where
- * scikit-image returns 0. The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
- * rectangle once, or an area of 64, 4-connected. ALWAN_E_INVALID for a NULL, a zero size, a
+ * becomes the highest level at which its region has area_threshold pixels or more (a
+ * bounding box diameter_threshold long, for DIAMETER_*). As scikit-image's area_opening,
+ * area_closing, diameter_opening and diameter_closing, value for value (suites 219 and
+ * 220), except that a threshold above the whole image flattens it to its minimum (maximum),
+ * where scikit-image returns 0. FILL_HOLES is scikit-image's reconstruction by erosion from
+ * the border (suite 220); its connectivity is that of the paths. The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
+ * rectangle once, an area of 64 or a diameter of 8, 4-connected. ALWAN_E_INVALID for a NULL, a zero size, a
  * channel count out of range, a stride too small, a NaN, a connectivity other than 4 or 8,
  * or an unknown method or shape; ALWAN_E_RANGE for an element over 255 a side or more than
  * 1000 iterations. */
@@ -2505,7 +2515,10 @@ typedef enum {
     ALWAN_MORPHOLOGY_TOP_HAT = 5,
     ALWAN_MORPHOLOGY_BLACK_HAT = 6,
     ALWAN_MORPHOLOGY_AREA_OPEN = 7,
-    ALWAN_MORPHOLOGY_AREA_CLOSE = 8
+    ALWAN_MORPHOLOGY_AREA_CLOSE = 8,
+    ALWAN_MORPHOLOGY_DIAMETER_OPEN = 9,
+    ALWAN_MORPHOLOGY_DIAMETER_CLOSE = 10,
+    ALWAN_MORPHOLOGY_FILL_HOLES = 11
 } alwan_morphology_method;
 
 /* The structuring elements, OpenCV's getStructuringElement and its numbering. */
@@ -2525,7 +2538,9 @@ typedef struct {
     unsigned char const *kernel;   /* a caller's element, kernel_width x kernel_height bytes, non-zero
                                     * where it takes part; NULL builds shape */
     size_t area_threshold;         /* AREA_OPEN, AREA_CLOSE: the smallest region kept, in pixels; 0 reads as 64 */
-    unsigned connectivity;         /* AREA_OPEN, AREA_CLOSE: 4 or 8 neighbours; 0 reads as 4 */
+    unsigned connectivity;         /* AREA_*, DIAMETER_*, FILL_HOLES: 4 or 8 neighbours; 0 reads as 4 */
+    size_t diameter_threshold;     /* DIAMETER_OPEN, DIAMETER_CLOSE: the shortest bounding-box side kept, in
+                                    * pixels, as the longer of width and height; 0 reads as 8 */
 } alwan_morphology_params;
 
 alwan_status alwan_morphology_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);

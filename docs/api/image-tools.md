@@ -545,7 +545,9 @@ typedef enum {
     ALWAN_MORPHOLOGY_OPEN = 2, ALWAN_MORPHOLOGY_CLOSE = 3,
     ALWAN_MORPHOLOGY_GRADIENT = 4,
     ALWAN_MORPHOLOGY_TOP_HAT = 5, ALWAN_MORPHOLOGY_BLACK_HAT = 6,
-    ALWAN_MORPHOLOGY_AREA_OPEN = 7, ALWAN_MORPHOLOGY_AREA_CLOSE = 8
+    ALWAN_MORPHOLOGY_AREA_OPEN = 7, ALWAN_MORPHOLOGY_AREA_CLOSE = 8,
+    ALWAN_MORPHOLOGY_DIAMETER_OPEN = 9, ALWAN_MORPHOLOGY_DIAMETER_CLOSE = 10,
+    ALWAN_MORPHOLOGY_FILL_HOLES = 11
 } alwan_morphology_method;
 
 typedef enum {
@@ -578,7 +580,8 @@ speckle off a hard key and closes its pinholes. Each channel on its own; `out` m
 | `iterations` | 1: each erosion and dilation runs once |
 | `kernel` | NULL: build `shape`; otherwise the caller's element, `kernel_width x kernel_height` bytes |
 | `area_threshold` | 64: `AREA_OPEN` and `AREA_CLOSE`, the smallest region kept, in pixels |
-| `connectivity` | 4: `AREA_OPEN` and `AREA_CLOSE`, 4 or 8 neighbours |
+| `connectivity` | 4: `AREA_*`, `DIAMETER_*` and `FILL_HOLES`, 4 or 8 neighbours |
+| `diameter_threshold` | 8: `DIAMETER_OPEN` and `DIAMETER_CLOSE`, the shortest region kept, as the longer side of its bounding box |
 
 The element's anchor is `(kernel_width / 2, kernel_height / 2)`, off centre for an even
 size, and the element is used as given, not reflected, for dilation as for erosion. Pixels
@@ -613,6 +616,28 @@ flattens it to its minimum (maximum for `AREA_CLOSE`), where scikit-image return
 scikit-image closes a float image as `1 - opening(1 - x)`, which gives back `x` only to
 rounding, where alwan negates, which is exact. Each channel is its own image, where
 scikit-image would read a colour array as a volume.
+
+### `DIAMETER_OPEN`, `DIAMETER_CLOSE`
+
+The same tree, with each region judged by the longer side of its bounding box,
+`max(width, height)` in pixels, against `diameter_threshold`. A one-pixel line as long as the
+threshold survives, where the area operators would need the threshold's worth of pixels:
+scratches, hairs and wires stay while dots and specks of the same pixel count go. Suite 220
+holds them to scikit-image's `diameter_opening` and `diameter_closing` value for value on
+the same kinds of image as suite 219, with the same two differences.
+
+### `FILL_HOLES`
+
+Every dark region the border cannot reach without climbing is raised to the lowest level
+that lets it drain: each pixel becomes the least, over paths to the border, of the highest
+value on the path. On a mask this fills every enclosed hole whatever its size; on a grey
+image it fills pits and basins to their rims, and subtracting the image from the result
+leaves only what was enclosed. The connectivity is that of the paths, so a ring whose wall
+touches itself only at a corner holds 4-connected and drains 8-connected. It is computed by
+a priority flood from the border pixels, and it is the reconstruction by erosion of the
+image from a seed equal to the image on the border and its maximum inside, which is
+scikit-image's own recipe; suite 220 holds it to `morphology.reconstruction` that way, value
+for value. An image one or two pixels across is all border and comes back unchanged.
 
 ## Background estimation
 

@@ -487,6 +487,10 @@
   `morphologyEx` (suite 217). `ALWAN_MORPHOLOGY_AREA_OPEN` and `AREA_CLOSE` remove bright
   or dark regions below a pixel count whatever their shape, 4- or 8-connected, by the
   max-tree; value for value with scikit-image's `area_opening` and `area_closing` (suite 219).
+  `DIAMETER_OPEN` and `DIAMETER_CLOSE` judge a region by its bounding box instead, so thin
+  lines survive while specks go, and `FILL_HOLES` raises every enclosed dark region to the
+  level that lets it drain to the border; value for value with scikit-image's
+  `diameter_opening`, `diameter_closing` and `reconstruction` (suite 220).
 
 - **Background estimation: `alwan_background`.** The slowly varying background of an image,
   to take out uneven illumination; `ALWAN_BACKGROUND_ROLLING_BALL` first, a ball or an

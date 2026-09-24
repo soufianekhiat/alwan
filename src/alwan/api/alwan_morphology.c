@@ -30,7 +30,15 @@
  * region its area; a node of fewer than area_threshold pixels takes its parent's output,
  * from the root down, so a pixel ends at the highest level at which its region is large
  * enough. AREA_CLOSE is the same on the negated image. The root keeps its level whatever
- * its area; scikit-image sets it to 0 when the threshold exceeds the image.
+ * its area; scikit-image sets it to 0 when the threshold exceeds the image. DIAMETER_OPEN
+ * and DIAMETER_CLOSE are the same tree with each node's bounding box in place of its area,
+ * judged by max(width, height), as scikit-image's diameter_opening (suite 220).
+ *
+ * FILL_HOLES is a priority flood: the border pixels enter a min-heap at their values, and
+ * each pixel taken from it gives its unvisited neighbours max(their value, its own). A pixel
+ * ends at the least, over paths to the border, of the highest value along the path, which
+ * is the reconstruction by erosion of the image from a seed that is the image on the border
+ * and its maximum inside, as scikit-image's morphology.reconstruction computes it.
  */
 
 #include "../alwan.h"
@@ -136,12 +144,13 @@ static size_t alwan_mo_find(size_t *zpar, size_t p) {
     return r;
 }
 
-/* Area opening of one w x h plane f (row-major, contiguous) into out. work holds 3 w h
- * size_t and px w h entries. */
-static void alwan_mo_area_plane(double *out, double const *f, size_t w, size_t h, size_t area_threshold, int eight,
-                                size_t *work, alwan_mo_px *px) {
+/* Area (diameter 0) or diameter (1) opening of one w x h plane f (row-major, contiguous)
+ * into out. work holds 7 w h size_t and px w h entries. */
+static void alwan_mo_area_plane(double *out, double const *f, size_t w, size_t h, size_t threshold, int eight,
+                                int diameter, size_t *work, alwan_mo_px *px) {
     size_t const n = w * h;
     size_t *parent = work, *zpar = work + n, *area = work + 2 * n;
+    size_t *x0 = work + 3 * n, *x1 = work + 4 * n, *y0 = work + 5 * n, *y1 = work + 6 * n;
     size_t k;
     static int const dx[8] = { -1, 1, 0, 0, -1, 1, -1, 1 }, dy[8] = { 0, 0, -1, 1, -1, -1, 1, 1 };
     int const nn = eight ? 8 : 4;
@@ -157,6 +166,8 @@ static void alwan_mo_area_plane(double *out, double const *f, size_t w, size_t h
         parent[p] = p;
         zpar[p] = p;
         area[p] = 1;
+        x0[p] = x1[p] = x;
+        y0[p] = y1[p] = y;
         for (d = 0; d < nn; d++) {
             long const sx = (long)x + dx[d], sy = (long)y + dy[d];
             size_t q, r;
@@ -175,23 +186,34 @@ static void alwan_mo_area_plane(double *out, double const *f, size_t w, size_t h
         size_t const p = px[k].i, q = parent[p];
         if (f[parent[q]] == f[q]) parent[p] = parent[q];
     }
-    /* areas, children before parents */
+    /* areas and bounding boxes, children before parents */
     for (k = 0; k + 1 < n; k++) {
-        size_t const p = px[k].i;
-        area[parent[p]] += area[p];
+        size_t const p = px[k].i, q = parent[p];
+        area[q] += area[p];
+        if (x0[p] < x0[q]) x0[q] = x0[p];
+        if (x1[p] > x1[q]) x1[q] = x1[p];
+        if (y0[p] < y0[q]) y0[q] = y0[p];
+        if (y1[p] > y1[q]) y1[q] = y1[p];
+    }
+    if (diameter) {
+        for (k = 0; k < n; k++) {
+            size_t const bw = x1[k] - x0[k], bh = y1[k] - y0[k];
+            area[k] = (bw > bh ? bw : bh) + 1;
+        }
     }
     /* filter, root first: the root keeps its level */
     for (k = n; k-- > 0;) {
         size_t const p = px[k].i, q = parent[p];
         if (q == p) out[p] = f[p];
         else if (f[q] == f[p]) out[p] = out[q];   /* a pixel of its node's level */
-        else out[p] = area[p] >= area_threshold ? f[p] : out[q];
+        else out[p] = area[p] >= threshold ? f[p] : out[q];
     }
 }
 
-static alwan_status alwan_mo_area(double *a, size_t w, size_t h, size_t ch, size_t area_threshold, int eight, int close) {
+static alwan_status alwan_mo_area(double *a, size_t w, size_t h, size_t ch, size_t threshold, int eight, int close,
+                                  int diameter) {
     size_t const n = w * h;
-    size_t *work = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(n, 3 * sizeof(size_t)), sizeof(size_t));
+    size_t *work = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(n, 7 * sizeof(size_t)), sizeof(size_t));
     alwan_mo_px *px = (alwan_mo_px *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(alwan_mo_px)), sizeof(double));
     double *f = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * sizeof(double)), sizeof(double));
     size_t c, i;
@@ -204,12 +226,89 @@ static alwan_status alwan_mo_area(double *a, size_t w, size_t h, size_t ch, size
     for (c = 0; c < ch; c++) {
         double *o = f + n;
         for (i = 0; i < n; i++) f[i] = close ? -a[i * ch + c] : a[i * ch + c];
-        alwan_mo_area_plane(o, f, w, h, area_threshold, eight, work, px);
+        alwan_mo_area_plane(o, f, w, h, threshold, eight, diameter, work, px);
         for (i = 0; i < n; i++) a[i * ch + c] = close ? -o[i] : o[i];
     }
     ALWAN_FREE(work);
     ALWAN_FREE(px);
     ALWAN_FREE(f);
+    return ALWAN_OK;
+}
+
+/* Min-heap of pixels by value, ties by index. */
+static void alwan_mo_heap_push(alwan_mo_px *hp, size_t *len, alwan_mo_px e) {
+    size_t i = (*len)++;
+    while (i > 0) {
+        size_t const up = (i - 1) / 2;
+        if (hp[up].v < e.v || (hp[up].v == e.v && hp[up].i < e.i)) break;
+        hp[i] = hp[up];
+        i = up;
+    }
+    hp[i] = e;
+}
+
+static alwan_mo_px alwan_mo_heap_pop(alwan_mo_px *hp, size_t *len) {
+    alwan_mo_px const top = hp[0], e = hp[--(*len)];
+    size_t i = 0;
+    for (;;) {
+        size_t c = 2 * i + 1;
+        if (c >= *len) break;
+        if (c + 1 < *len && (hp[c + 1].v < hp[c].v || (hp[c + 1].v == hp[c].v && hp[c + 1].i < hp[c].i))) c++;
+        if (e.v < hp[c].v || (e.v == hp[c].v && e.i < hp[c].i)) break;
+        hp[i] = hp[c];
+        i = c;
+    }
+    hp[i] = e;
+    return top;
+}
+
+/* Fill holes of every channel of a (w x h x ch) in place: a priority flood from the border. */
+static alwan_status alwan_mo_fill(double *a, size_t w, size_t h, size_t ch, int eight) {
+    size_t const n = w * h;
+    alwan_mo_px *hp = (alwan_mo_px *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(alwan_mo_px)), sizeof(double));
+    unsigned char *seen = (unsigned char *)ALWAN_ALLOC(n, sizeof(double));
+    static int const dx[8] = { -1, 1, 0, 0, -1, 1, -1, 1 }, dy[8] = { 0, 0, -1, 1, -1, -1, 1, 1 };
+    int const nn = eight ? 8 : 4;
+    size_t c, i;
+    if (!hp || !seen) {
+        ALWAN_FREE(hp);
+        ALWAN_FREE(seen);
+        return ALWAN_E_NOMEM;
+    }
+    for (c = 0; c < ch; c++) {
+        size_t len = 0;
+        memset(seen, 0, n);
+        for (i = 0; i < n; i++) {
+            size_t const x = i % w, y = i / w;
+            if (x == 0 || y == 0 || x + 1 == w || y + 1 == h) {
+                alwan_mo_px e;
+                e.v = a[i * ch + c];
+                e.i = i;
+                seen[i] = 1;
+                alwan_mo_heap_push(hp, &len, e);
+            }
+        }
+        while (len) {
+            alwan_mo_px const e = alwan_mo_heap_pop(hp, &len);
+            size_t const x = e.i % w, y = e.i / w;
+            int d;
+            for (d = 0; d < nn; d++) {
+                long const sx = (long)x + dx[d], sy = (long)y + dy[d];
+                size_t q;
+                alwan_mo_px o;
+                if (sx < 0 || sy < 0 || sx >= (long)w || sy >= (long)h) continue;
+                q = (size_t)sy * w + (size_t)sx;
+                if (seen[q]) continue;
+                seen[q] = 1;
+                if (a[q * ch + c] < e.v) a[q * ch + c] = e.v;
+                o.v = a[q * ch + c];
+                o.i = q;
+                alwan_mo_heap_push(hp, &len, o);
+            }
+        }
+    }
+    ALWAN_FREE(hp);
+    ALWAN_FREE(seen);
     return ALWAN_OK;
 }
 
@@ -227,7 +326,7 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
     size_t x, y, i;
     if (!out || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / ch / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_AREA_CLOSE) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_FILL_HOLES) return ALWAN_E_INVALID;
     if (p->connectivity != 0 && p->connectivity != 4 && p->connectivity != 8) return ALWAN_E_INVALID;
     if (!p->kernel && (unsigned)p->shape > (unsigned)ALWAN_MORPHOLOGY_DIAMOND) return ALWAN_E_INVALID;
     if (kw > 255 || kh > 255 || iterations > 1000) return ALWAN_E_RANGE;
@@ -279,9 +378,19 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
         for (i = 0; i < n; i++) a[i] = a[i] - b[i];
         break;
     case ALWAN_MORPHOLOGY_AREA_OPEN:
-    case ALWAN_MORPHOLOGY_AREA_CLOSE: {
-        alwan_status const st = alwan_mo_area(a, w, h, ch, p->area_threshold ? p->area_threshold : 64, p->connectivity == 8,
-                                              method == ALWAN_MORPHOLOGY_AREA_CLOSE);
+    case ALWAN_MORPHOLOGY_AREA_CLOSE:
+    case ALWAN_MORPHOLOGY_DIAMETER_OPEN:
+    case ALWAN_MORPHOLOGY_DIAMETER_CLOSE:
+    case ALWAN_MORPHOLOGY_FILL_HOLES: {
+        int const diameter = method == ALWAN_MORPHOLOGY_DIAMETER_OPEN || method == ALWAN_MORPHOLOGY_DIAMETER_CLOSE;
+        alwan_status const st =
+            method == ALWAN_MORPHOLOGY_FILL_HOLES
+                ? alwan_mo_fill(a, w, h, ch, p->connectivity == 8)
+                : alwan_mo_area(a, w, h, ch,
+                                diameter ? (p->diameter_threshold ? p->diameter_threshold : 8)
+                                         : (p->area_threshold ? p->area_threshold : 64),
+                                p->connectivity == 8,
+                                method == ALWAN_MORPHOLOGY_AREA_CLOSE || method == ALWAN_MORPHOLOGY_DIAMETER_CLOSE, diameter);
         if (st != ALWAN_OK) {
             ALWAN_FREE(a);
             return st;
