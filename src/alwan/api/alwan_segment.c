@@ -14,6 +14,10 @@
  *              label of the basin that reaches it first; optionally compact, or with the
  *              one-pixel lines between basins left 0. As scikit-image's
  *              segmentation.watershed, label for label (suite 224).
+ *   SLIC       superpixels: k-means over position and the channels from a regular grid
+ *              of seeds, each pixel searched only by the seeds within two grid steps, then
+ *              pieces too small merged into a neighbour. As scikit-image's
+ *              segmentation.slic without its Lab conversion, label for label (suite 227).
  *
  * CONNECTED is union-find over one raster pass (each pixel joined to its equal neighbours
  * already visited: left and above, and above-left and above-right when 8-connected), then
@@ -27,10 +31,19 @@
  * parent's. The markers found when the caller gives none are scikit-image's local_minima:
  * plateaus whose other neighbours are all higher, a plateau at the image's maximum
  * disqualified where it touches the border.
+ *
+ * SLIC follows scikit-image's _slic_cython and _enforce_label_connectivity_cython: the
+ * image rescaled to [0, 1] over all channels and multiplied by 1 / compactness, the seeds
+ * scikit-image's regular_grid of the shape (1, height, width), the grid step a C float in
+ * the spatial weight, the distances in the data's precision, the centres the running sums
+ * over the raster divided by the counts, and the clean-up a breadth-first fill capped at
+ * max_size_factor times the mean size that hands pieces under min_size_factor times it to
+ * the last neighbouring piece it met.
  */
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include <float.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
@@ -274,6 +287,243 @@ nomem:
     return ALWAN_E_NOMEM;
 }
 
+static double alwan_sg_r(double x, int f32) {
+    return f32 ? (double)(float)x : x;
+}
+
+/* scikit-image's regular_grid over (1, h, w): the start and step along each of the three. */
+static void alwan_sg_grid(long start[3], long stepv[3], double stepf[3], size_t h, size_t w, size_t n_points) {
+    double const shape[3] = { 1.0, (double)h, (double)w };
+    double sorted[3], steps[3], space = (double)h * (double)w;
+    int order[3] = { 0, 1, 2 }, rank[3], i, j, dim;
+    /* argsort of 3, stable (numpy sorts short arrays by insertion) */
+    for (i = 1; i < 3; i++)
+        for (j = i; j > 0 && shape[order[j - 1]] > shape[order[j]]; j--) {
+            int const t = order[j];
+            order[j] = order[j - 1];
+            order[j - 1] = t;
+        }
+    for (i = 0; i < 3; i++) sorted[i] = shape[order[i]];
+    for (i = 0; i < 3; i++) rank[order[i]] = i;
+    if (space <= (double)n_points) {
+        for (i = 0; i < 3; i++) start[i] = 0, stepv[i] = 1, stepf[i] = 1.0;
+        return;
+    }
+    for (i = 0; i < 3; i++) steps[i] = pow(space / (double)n_points, 1.0 / 3.0);
+    if (sorted[0] < steps[0] || sorted[1] < steps[1] || sorted[2] < steps[2]) {
+        for (dim = 0; dim < 3; dim++) {
+            double sp = 1.0;
+            steps[dim] = sorted[dim];
+            for (i = dim + 1; i < 3; i++) sp *= sorted[i];
+            for (i = dim + 1; i < 3; i++) steps[i] = pow(sp / (double)n_points, 1.0 / (double)(3 - dim - 1));
+            if (sorted[0] >= steps[0] && sorted[1] >= steps[1] && sorted[2] >= steps[2]) break;
+        }
+    }
+    for (i = 0; i < 3; i++) {
+        double const s = steps[rank[i]];
+        start[i] = (long)floor(s / 2.0);
+        stepv[i] = (long)nearbyint(s);   /* numpy's round: half to even */
+        stepf[i] = (double)stepv[i];
+    }
+}
+
+/* SLIC of the w x h x ch image v into labels. */
+static alwan_status alwan_sg_slic(uint32_t *labels, size_t labels_rs, size_t *count_out, double *v, size_t w, size_t h, size_t ch,
+                                  alwan_segment_params const *p, int kind) {
+    int const f32 = kind == 1;
+    size_t const n = w * h, nf = 3 + ch;
+    size_t const n_req = p->n_segments ? p->n_segments : 100;
+    size_t const max_iter = p->max_iterations ? p->max_iterations : 10;
+    double const compactness = p->compactness > 0.0 ? p->compactness : 10.0;
+    double const min_f = p->min_size_factor > 0.0 ? p->min_size_factor : 0.5;
+    double const max_f = p->max_size_factor > 0.0 ? p->max_size_factor : 3.0;
+    long start[3], stepv[3];
+    double stepf[3], vmin, vmax, step_max, ratio, spatial_weight;
+    float step32;
+    size_t nseg, i, k, c, x, y, it;
+    double *seg = NULL, *dist = NULL, *maxdc = NULL;
+    size_t *cnt = NULL, *near = NULL, *conn = NULL, *coord = NULL;
+    alwan_status st = ALWAN_E_NOMEM;
+    alwan_sg_grid(start, stepv, stepf, h, w, n_req);
+    nseg = (1 > start[0] ? (size_t)((1 - 1 - start[0]) / stepv[0] + 1) : 0) * ((h - 1 - (size_t)start[1]) / (size_t)stepv[1] + 1) *
+           ((w - 1 - (size_t)start[2]) / (size_t)stepv[2] + 1);
+    if (nseg == 0) return ALWAN_E_RANGE;
+    /* rescale to [0, 1] over every channel, then by 1 / compactness */
+    vmin = vmax = v[0];
+    for (i = 1; i < n * ch; i++) {
+        if (v[i] < vmin) vmin = v[i];
+        if (v[i] > vmax) vmax = v[i];
+    }
+    ratio = 1.0 / compactness;
+    for (i = 0; i < n * ch; i++) {
+        double t = alwan_sg_r(v[i] - vmin, f32);
+        if (vmax != vmin) t = alwan_sg_r(t / alwan_sg_r(vmax - vmin, f32), f32);
+        v[i] = alwan_sg_r(t * alwan_sg_r(ratio, f32), f32);
+    }
+    seg = (double *)ALWAN_ALLOC(alwan_safe_array_size(nseg, (nf + 1) * sizeof(double)), sizeof(double));
+    dist = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
+    cnt = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(nseg, sizeof(size_t)), sizeof(size_t));
+    near = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * sizeof(size_t)), sizeof(size_t));
+    if (!seg || !dist || !cnt || !near) goto done;
+    maxdc = seg + nseg * nf;
+    conn = near + n;
+    k = 0;
+    for (y = (size_t)start[1]; y < h; y += (size_t)stepv[1])
+        for (x = (size_t)start[2]; x < w; x += (size_t)stepv[2]) {
+            seg[k * nf + 0] = (double)start[0];
+            seg[k * nf + 1] = (double)y;
+            seg[k * nf + 2] = (double)x;
+            for (c = 0; c < ch; c++) seg[k * nf + 3 + c] = 0.0;
+            maxdc[k] = 1.0;
+            k++;
+        }
+    step_max = stepf[0] > stepf[1] ? stepf[0] : stepf[1];
+    if (stepf[2] > step_max) step_max = stepf[2];
+    step32 = (float)step_max;
+    spatial_weight = alwan_sg_r(1.0 / (double)(float)(step32 * step32), f32);
+    for (i = 0; i < n; i++) near[i] = 0;   /* start_label - 1 */
+    for (it = 0; it < max_iter; it++) {
+        int change = 0;
+        for (i = 0; i < n; i++) dist[i] = f32 ? (double)HUGE_VALF : DBL_MAX;
+        for (k = 0; k < nseg; k++) {
+            double const cz = seg[k * nf], cy = seg[k * nf + 1], cx = seg[k * nf + 2];
+            double lo, hi;
+            long y0, y1, x0, x1;
+            size_t zz;
+            if (cy != cy) continue;   /* an emptied centre never takes a pixel */
+            /* depth 1: z is 0, and the z range is kept only to decide whether the seed
+             * reaches it */
+            lo = alwan_sg_r(cz - 2.0 * (double)stepv[0], f32);
+            hi = alwan_sg_r(cz + 2.0 * (double)stepv[0] + 1.0, f32);
+            if (!((long)(0.0 > lo ? 0.0 : lo) < (long)(hi < 1.0 ? hi : 1.0))) continue;
+            zz = 0;
+            y0 = (long)(0.0 > alwan_sg_r(cy - 2.0 * (double)stepv[1], f32) ? 0.0 : alwan_sg_r(cy - 2.0 * (double)stepv[1], f32));
+            y1 = (long)((double)h < alwan_sg_r(cy + 2.0 * (double)stepv[1] + 1.0, f32) ? (double)h : alwan_sg_r(cy + 2.0 * (double)stepv[1] + 1.0, f32));
+            x0 = (long)(0.0 > alwan_sg_r(cx - 2.0 * (double)stepv[2], f32) ? 0.0 : alwan_sg_r(cx - 2.0 * (double)stepv[2], f32));
+            x1 = (long)((double)w < alwan_sg_r(cx + 2.0 * (double)stepv[2] + 1.0, f32) ? (double)w : alwan_sg_r(cx + 2.0 * (double)stepv[2] + 1.0, f32));
+            {
+                double dz = alwan_sg_r(cz - (double)zz, f32);
+                long yy, xx;
+                dz = alwan_sg_r(dz * dz, f32);
+                for (yy = y0; yy < y1; yy++) {
+                    double dy = alwan_sg_r(cy - (double)yy, f32);
+                    dy = alwan_sg_r(dy * dy, f32);
+                    for (xx = x0; xx < x1; xx++) {
+                        size_t const o = (size_t)yy * w + (size_t)xx;
+                        double dx = alwan_sg_r(cx - (double)xx, f32), dc, d;
+                        dx = alwan_sg_r(dx * dx, f32);
+                        d = alwan_sg_r(alwan_sg_r(alwan_sg_r(dz + dy, f32) + dx, f32) * spatial_weight, f32);
+                        dc = 0.0;
+                        for (c = 0; c < ch; c++) {
+                            double const t = alwan_sg_r(v[o * ch + c] - seg[k * nf + 3 + c], f32);
+                            dc = alwan_sg_r(dc + alwan_sg_r(t * t, f32), f32);
+                        }
+                        if (p->slic_zero) dc = alwan_sg_r(dc / maxdc[k], f32);
+                        d = alwan_sg_r(d + dc, f32);
+                        if (dist[o] > d) {
+                            near[o] = k + 1;
+                            dist[o] = d;
+                            change = 1;
+                        }
+                    }
+                }
+            }
+        }
+        if (!change) break;
+        for (k = 0; k < nseg; k++) {
+            cnt[k] = 0;
+            for (c = 0; c < nf; c++) seg[k * nf + c] = 0.0;
+        }
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++) {
+                size_t const o = y * w + x;
+                double *s;
+                if (!near[o]) continue;   /* unreached pixels keep label 0, as scikit-image's would index -1 */
+                k = near[o] - 1;
+                s = seg + k * nf;
+                cnt[k]++;
+                s[0] = alwan_sg_r(s[0] + 0.0, f32);
+                s[1] = alwan_sg_r(s[1] + (double)y, f32);
+                s[2] = alwan_sg_r(s[2] + (double)x, f32);
+                for (c = 0; c < ch; c++) s[3 + c] = alwan_sg_r(s[3 + c] + v[o * ch + c], f32);
+            }
+        for (k = 0; k < nseg; k++)
+            for (c = 0; c < nf; c++) seg[k * nf + c] = alwan_sg_r(seg[k * nf + c] / (double)cnt[k], f32);
+        if (p->slic_zero) {
+            for (i = 0; i < n; i++) {
+                double dc = 0.0;
+                if (!near[i]) continue;
+                k = near[i] - 1;
+                for (c = 0; c < ch; c++) {
+                    double const t = alwan_sg_r(v[i * ch + c] - seg[k * nf + 3 + c], f32);
+                    dc = alwan_sg_r(dc + alwan_sg_r(t * t, f32), f32);
+                }
+                if (maxdc[k] < dc) maxdc[k] = dc;
+            }
+        }
+    }
+    /* connectivity */
+    if (!p->keep_disconnected) {
+        double const segsize = (double)n / (double)nseg;
+        size_t const min_size = (size_t)(min_f * segsize), max_size = (size_t)(max_f * segsize);
+        size_t cur = 1;
+        static int const ddx[6] = { 1, -1, 0, 0, 0, 0 }, ddy[6] = { 0, 0, 1, -1, 0, 0 }, ddz[6] = { 0, 0, 0, 0, 1, -1 };
+        coord = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(max_size + 1, sizeof(size_t)), sizeof(size_t));
+        if (!coord) goto done;
+        for (i = 0; i < n; i++) conn[i] = 0;
+        for (i = 0; i < n; i++) {
+            size_t adjacent, label, size = 1, visited = 0;
+            if (near[i] == 0 || conn[i] > 0) continue;
+            adjacent = cur;
+            label = near[i];
+            conn[i] = cur;
+            coord[0] = i;
+            while (visited < size && size < max_size) {
+                int d;
+                for (d = 0; d < 6; d++) {
+                    long const yy = (long)(coord[visited] / w) + ddy[d], xx = (long)(coord[visited] % w) + ddx[d];
+                    size_t q;
+                    if (ddz[d] != 0 || xx < 0 || yy < 0 || xx >= (long)w || yy >= (long)h) continue;
+                    q = (size_t)yy * w + (size_t)xx;
+                    if (near[q] == label && conn[q] == 0) {
+                        conn[q] = cur;
+                        coord[size++] = q;
+                        if (size >= max_size) break;
+                    } else if (conn[q] > 0 && conn[q] != cur) {
+                        adjacent = conn[q];
+                    }
+                }
+                visited++;
+            }
+            if (size < min_size) {
+                for (k = 0; k < size; k++) conn[coord[k]] = adjacent;
+            } else {
+                cur++;
+            }
+        }
+        memcpy(near, conn, n * sizeof(size_t));
+    }
+    {
+        size_t maxl = 0;
+        for (y = 0; y < h; y++) {
+            uint32_t *row = (uint32_t *)((char *)labels + y * labels_rs);
+            for (x = 0; x < w; x++) {
+                row[x] = (uint32_t)near[y * w + x];
+                if (row[x] > maxl) maxl = row[x];
+            }
+        }
+        if (count_out) *count_out = maxl;
+    }
+    st = ALWAN_OK;
+done:
+    ALWAN_FREE(coord);
+    ALWAN_FREE(seg);
+    ALWAN_FREE(dist);
+    ALWAN_FREE(cnt);
+    ALWAN_FREE(near);
+    return st;
+}
+
 static alwan_status alwan_sg_run(uint32_t *labels, size_t labels_rs, size_t *count_out, void const *src, size_t src_rs, size_t ch,
                                  size_t w, size_t h, alwan_segment_method method, alwan_segment_params const *params, int kind) {
     alwan_segment_params const zero = { 0 };
@@ -287,7 +537,10 @@ static alwan_status alwan_sg_run(uint32_t *labels, size_t labels_rs, size_t *cou
     size_t x, y, c, i, count = 0;
     if (!labels || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || labels_rs / sizeof(uint32_t) < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_SEGMENT_WATERSHED) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_SEGMENT_SLIC) return ALWAN_E_INVALID;
+    if (method == ALWAN_SEGMENT_SLIC && (!(p->compactness >= 0.0) || !(p->min_size_factor >= 0.0) || !(p->max_size_factor >= 0.0) ||
+                                         p->max_iterations > 100000))
+        return ALWAN_E_RANGE;
     if (method == ALWAN_SEGMENT_WATERSHED && (ch != 1 || !(p->compactness >= 0.0))) return ALWAN_E_INVALID;
     if (p->connectivity != 0 && p->connectivity != 4 && p->connectivity != 8) return ALWAN_E_INVALID;
     if (n >= (size_t)0xFFFFFFFFu) return ALWAN_E_RANGE;
@@ -313,6 +566,16 @@ static alwan_status alwan_sg_run(uint32_t *labels, size_t labels_rs, size_t *cou
             }
             v[y * w * ch + x] = s;
         }
+    }
+    if (method == ALWAN_SEGMENT_SLIC) {
+        alwan_status st;
+        if (kind == 2)
+            for (i = 0; i < n * ch; i++) v[i] = v[i] * (1.0 / 255.0);   /* img_as_float */
+        st = alwan_sg_slic(labels, labels_rs, count_out, v, w, h, ch, p, kind);
+        ALWAN_FREE(v);
+        ALWAN_FREE(par);
+        ALWAN_FREE(bg);
+        return st;
     }
     if (method == ALWAN_SEGMENT_WATERSHED) {
         alwan_status const st = alwan_sg_watershed(labels, labels_rs, count_out, v, w, h, p);

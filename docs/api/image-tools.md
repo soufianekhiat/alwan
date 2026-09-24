@@ -826,7 +826,8 @@ mask are not carried.
 ```c
 typedef enum {
     ALWAN_SEGMENT_CONNECTED = 0,
-    ALWAN_SEGMENT_WATERSHED = 1
+    ALWAN_SEGMENT_WATERSHED = 1,
+    ALWAN_SEGMENT_SLIC = 2
 } alwan_segment_method;
 
 alwan_status alwan_segment_{T}(uint32_t *labels, size_t labels_row_stride, size_t *count_out,
@@ -850,6 +851,12 @@ may be NULL, receives the largest label: the number of regions for `CONNECTED`, 
 | `markers`, `markers_row_stride` | `WATERSHED`: NULL, flood from the local minima; otherwise a `uint32_t` image of labels, 0 where unmarked |
 | `compactness` | `WATERSHED`: 0, the classic flood |
 | `watershed_line` | `WATERSHED`: 0; non-zero leaves the pixels between basins 0 |
+| `compactness` | `SLIC`: 10 |
+| `n_segments` | `SLIC`: 100 seeds asked for; the grid gives about that many |
+| `max_iterations` | `SLIC`: 10 |
+| `slic_zero` | `SLIC`: 0; non-zero scales each superpixel's colour distance by its largest (SLIC-zero) |
+| `keep_disconnected` | `SLIC`: 0; non-zero skips the merging of small and disconnected pieces |
+| `min_size_factor`, `max_size_factor` | `SLIC`: 0.5 and 3 times the mean superpixel size |
 
 ### `CONNECTED`
 
@@ -887,6 +894,25 @@ its minima at both connectivities, an image quantised to 16 levels where ties ar
 everywhere, a caller's markers numbered with gaps, compact floods, watershed lines,
 float32 and 8-bit, 15 cases. A constant image has no minima (scikit-image disqualifies a
 plateau at the image's maximum where it meets the border) and stays 0.
+
+### `SLIC`
+
+Superpixels by simple linear iterative clustering (Achanta et al. 2012): seeds on a
+regular grid of about `n_segments` cells, then k-means over position and every channel, each
+pixel compared only with the seeds within two grid steps. The distance is the squared
+spatial distance over the squared grid step plus the squared channel distance, the image
+first rescaled to [0, 1] and divided by `compactness`: a high compactness gives square
+cells, a low one cells that follow the colour. A last pass merges each piece smaller than
+`min_size_factor` of the mean size, or cut off from its superpixel, into a neighbour, so
+the labels run from 1 to `*count_out` with none missing.
+
+Distances are measured in the channels as given: pass Lab (converted with alwan) for
+perceptual superpixels on colour, as scikit-image does by default. This is scikit-image's
+`segmentation.slic` with `convert2lab=False`, and suite 227 holds it to it label for label:
+grey and colour, 30 to 250 segments, compactness 0.05 to 10, float32, 8-bit, SLIC-zero,
+the merging off, and a short run, 11 cases. It follows scikit-image's Cython: the seeds from
+its `regular_grid`, the grid step held as a C `float` in the spatial weight, the distances
+in the data's precision, and the merging's capped breadth-first fill.
 
 ## Background estimation
 

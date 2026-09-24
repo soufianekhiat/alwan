@@ -512,7 +512,9 @@
   4- or 8-connected; label for label with scikit-image's `measure.label` (suite 223).
   `ALWAN_SEGMENT_WATERSHED` floods one channel from the caller's markers or its local
   minima, optionally compact or with watershed lines; label for label with scikit-image's
-  `segmentation.watershed`, whose heap order it follows (suite 224).
+  `segmentation.watershed`, whose heap order it follows (suite 224). `ALWAN_SEGMENT_SLIC`
+  gives superpixels by k-means over position and channels, label for label with
+  scikit-image's `segmentation.slic` (Lab conversion left to the caller; suite 227).
 
 - **Background estimation: `alwan_background`.** The slowly varying background of an image,
   to take out uneven illumination; `ALWAN_BACKGROUND_ROLLING_BALL` first, a ball or an

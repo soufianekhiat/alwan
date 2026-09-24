@@ -2743,13 +2743,21 @@ alwan_status alwan_edge_detect_u8(unsigned char *edges, size_t edges_row_stride,
  *                            the pixels between basins 0. As scikit-image's
  *                            segmentation.watershed, label for label (suite 224); flood it
  *                            with a gradient magnitude to segment an image by its edges.
+ *   ALWAN_SEGMENT_SLIC       superpixels: k-means over position and every channel from a
+ *                            regular grid of about n_segments seeds, compactness trading
+ *                            colour against distance, then pieces under min_size_factor
+ *                            of the mean size merged into a neighbour. Give it Lab (or any
+ *                            space the caller wants distances in). As scikit-image's
+ *                            segmentation.slic with convert2lab off, label for label (suite
+ *                            227).
  *
  * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
  * small, a NaN, a connectivity other than 4 or 8, an unknown method, or for WATERSHED more
  * than one channel or a negative compactness; ALWAN_E_RANGE for 2^32 - 1 pixels or more. */
 typedef enum {
     ALWAN_SEGMENT_CONNECTED = 0,
-    ALWAN_SEGMENT_WATERSHED = 1
+    ALWAN_SEGMENT_WATERSHED = 1,
+    ALWAN_SEGMENT_SLIC = 2
 } alwan_segment_method;
 
 /* A zero field is its default. */
@@ -2760,8 +2768,14 @@ typedef struct {
     int label_background;   /* CONNECTED: non-zero labels the background's regions too */
     uint32_t const *markers;   /* WATERSHED: width x height labels, 0 unmarked; NULL uses the local minima */
     size_t markers_row_stride; /* WATERSHED: in bytes */
-    double compactness;     /* WATERSHED: 0 for the classic flood */
+    double compactness;     /* WATERSHED: 0 for the classic flood. SLIC: 0 reads as 10 */
     int watershed_line;     /* WATERSHED: non-zero leaves the lines between basins 0 */
+    size_t n_segments;      /* SLIC: the seeds asked for; 0 reads as 100 */
+    size_t max_iterations;  /* SLIC: k-means passes; 0 reads as 10 */
+    int slic_zero;          /* SLIC: non-zero scales each colour distance by its superpixel's largest (SLIC-zero) */
+    int keep_disconnected;  /* SLIC: non-zero skips the merging of small and disconnected pieces */
+    double min_size_factor; /* SLIC: pieces under this times the mean size merge; 0 reads as 0.5 */
+    double max_size_factor; /* SLIC: the largest piece one fill grows, times the mean size; 0 reads as 3 */
 } alwan_segment_params;
 
 alwan_status alwan_segment_f32(uint32_t *labels, size_t labels_row_stride, size_t *count_out, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_segment_method method, alwan_segment_params const *params);
