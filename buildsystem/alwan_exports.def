@@ -406,6 +406,8 @@ EXPORTS
     alwan_constancy_params_init
     alwan_content_light_level_compute_f32
     alwan_content_light_level_compute_f64
+    alwan_corner_response_f32
+    alwan_corner_response_f64
     alwan_cqs_calculate_f32
     alwan_cqs_calculate_f64
     alwan_create

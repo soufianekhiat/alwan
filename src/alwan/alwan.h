@@ -2724,6 +2724,40 @@ alwan_status alwan_edge_detect_f32(unsigned char *edges, size_t edges_row_stride
 alwan_status alwan_edge_detect_f64(unsigned char *edges, size_t edges_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_edge_detect_method method, alwan_edge_detect_params const *params);
 alwan_status alwan_edge_detect_u8(unsigned char *edges, size_t edges_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_edge_detect_method method, alwan_edge_detect_params const *params);
 
+/* Corner response: how strongly each pixel of one channel is a corner, from the structure
+ * tensor (the gaussian-smoothed products of the Sobel derivatives), for feature points,
+ * registration or a measure of texture. out may be src.
+ *
+ *   ALWAN_CORNER_HARRIS             det - k trace^2 (or 2 det / (trace + eps))
+ *   ALWAN_CORNER_SHI_TOMASI         the tensor's smaller eigenvalue
+ *   ALWAN_CORNER_KITCHEN_ROSENFELD  the curvature of the level line times the gradient,
+ *                                   from second derivatives, no smoothing
+ *   ALWAN_CORNER_FOERSTNER          det / trace (component 0) or 4 det / trace^2 (1)
+ *
+ * As scikit-image's feature.corner_harris, corner_shi_tomasi, corner_kitchen_rosenfeld
+ * and corner_foerstner, value for value (suite 229). 8-bit data: divide by 255 into float,
+ * as scikit-image does. ALWAN_E_INVALID for a NULL, a zero size, a channel count other
+ * than 1, a stride too small, a NaN or infinite value, an unknown method or component;
+ * ALWAN_E_RANGE for a sigma negative or over 64, a NaN k or a negative eps. */
+typedef enum {
+    ALWAN_CORNER_HARRIS = 0,
+    ALWAN_CORNER_SHI_TOMASI = 1,
+    ALWAN_CORNER_KITCHEN_ROSENFELD = 2,
+    ALWAN_CORNER_FOERSTNER = 3
+} alwan_corner_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double sigma;           /* the structure tensor's smoothing; 0 reads as 1 */
+    double k;               /* HARRIS: 0 reads as 0.05 */
+    int harris_normalised;  /* HARRIS: non-zero gives 2 det / (trace + eps) */
+    double eps;             /* HARRIS normalised: 0 reads as 1e-6 */
+    int component;          /* FOERSTNER: 0 the error ellipse size w, 1 its roundness q */
+} alwan_corner_params;
+
+alwan_status alwan_corner_response_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_corner_method method, alwan_corner_params const *params);
+alwan_status alwan_corner_response_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_corner_method method, alwan_corner_params const *params);
+
 /* Segmentation: an image divided into labelled regions. labels receives one uint32_t a
  * pixel (labels_row_stride in bytes), 0 for background (or a watershed line); count_out,
  * when not NULL, the largest label, which for CONNECTED and for WATERSHED's own markers

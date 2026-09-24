@@ -821,6 +821,51 @@ threshold is a C `float` whatever the data. 8-bit data is multiplied by `1 / 255
 thresholds divided by 255, as scikit-image does. scikit-image's quantile thresholds and
 mask are not carried.
 
+## Corner response
+
+```c
+typedef enum {
+    ALWAN_CORNER_HARRIS = 0, ALWAN_CORNER_SHI_TOMASI = 1,
+    ALWAN_CORNER_KITCHEN_ROSENFELD = 2, ALWAN_CORNER_FOERSTNER = 3
+} alwan_corner_method;
+
+alwan_status alwan_corner_response_{T}(alwan_{T} *out, size_t out_row_stride,
+                                       alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                       size_t width, size_t height,
+                                       alwan_corner_method method,
+                                       alwan_corner_params const *params);
+```
+
+How strongly each pixel of one channel (`channels` must be 1) is a corner: large where the
+image changes in two directions at once, near zero on flat ground and along straight
+edges. The local maxima of the response are the feature points of registration and
+tracking. `out` may be `src`.
+
+| Method | Response |
+|---|---|
+| `HARRIS` | `det - k trace^2` of the structure tensor (Harris and Stephens 1988); with `harris_normalised`, `2 det / (trace + eps)` (Noble 1989) |
+| `SHI_TOMASI` | the tensor's smaller eigenvalue (Shi and Tomasi 1994) |
+| `KITCHEN_ROSENFELD` | `(Ixx Iy^2 + Iyy Ix^2 - 2 Ixy Ix Iy) / (Ix^2 + Iy^2)`, the level line's curvature times the gradient, from second derivatives without smoothing; 0 where the gradient is |
+| `FOERSTNER` | `det / trace`, the size of the error ellipse (`component` 0), or `4 det / trace^2`, its roundness in [0, 1] (`component` 1); 0 where the trace is |
+
+| Field of `alwan_corner_params` | 0 reads as |
+|---|---|
+| `sigma` | 1: the structure tensor's smoothing, up to 64 |
+| `k` | 0.05 |
+| `harris_normalised` | 0: the `k` form |
+| `eps` | 1e-6 |
+| `component` | 0 |
+
+The structure tensor is scikit-image's: scipy's `ndimage.sobel` down the rows and across
+the columns with a zero edge, and the three products of the two derivatives each smoothed
+by scipy's gaussian with a zero edge, in the data's precision. This is scikit-image's
+`feature.corner_harris`, `corner_shi_tomasi`, `corner_kitchen_rosenfeld` and
+`corner_foerstner`, and suite 229 holds all of them to it value for value: double and
+float32, Harris at three sigmas, another `k` and normalised, both Foerstner components,
+and a checkerboard, 17 cases. The zero edge makes the image's border read as a step, so
+the response is not zero there even on a constant image. There is no 8-bit entry point;
+scikit-image divides 8-bit data by 255 first.
+
 ## Segmentation
 
 ```c
