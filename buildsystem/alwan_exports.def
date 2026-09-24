@@ -102,6 +102,9 @@ EXPORTS
     alwan_average_illuminance_f64
     alwan_average_luminance_f32
     alwan_average_luminance_f64
+    alwan_background_f32
+    alwan_background_f64
+    alwan_background_u8
     alwan_bake_1dlut_f32
     alwan_bake_1dlut_f64
     alwan_bake_2dlut_f32

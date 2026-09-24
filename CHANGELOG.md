@@ -486,6 +486,10 @@
   elements or a caller's own, for cleaning keys and mattes; value for value with OpenCV's
   `morphologyEx` (suite 217).
 
+- **Background estimation: `alwan_background`.** The slowly varying background of an image,
+  to take out uneven illumination; `ALWAN_BACKGROUND_ROLLING_BALL` first, a ball or an
+  ellipsoid, value for value with scikit-image's `restoration.rolling_ball` (suite 218).
+
 - **Local contrast: `alwan_local_contrast`.** One entry point per data type (float,
   8-bit, 16-bit) with a method enum: the local Laplacian filter (Paris et al. 2011, the fast
   form of Aubry et al. 2014, following MATLAB's `locallapfilt` to 1.5e-6, suite 198) and

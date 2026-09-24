@@ -138,6 +138,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_deconvolve.c
   src/alwan/api/alwan_inpaint.c
   src/alwan/api/alwan_morphology.c
+  src/alwan/api/alwan_background.c
   src/alwan/api/alwan_edge_filter.c
   src/alwan/api/alwan_guided_filter.c
   src/alwan/api/alwan_histogram_match.c

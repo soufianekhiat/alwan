@@ -588,6 +588,54 @@ asymmetric caller's element, on 8-bit grey, colour and a speckled mask and on fl
 pixel of the image leaves that pixel as it was, where OpenCV writes its border value; the
 four shapes always include the anchor.
 
+## Background estimation
+
+```c
+typedef enum {
+    ALWAN_BACKGROUND_ROLLING_BALL = 0
+} alwan_background_method;
+
+alwan_status alwan_background_{T}(alwan_{T} *out, size_t out_row_stride,
+                                  alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                  size_t width, size_t height,
+                                  alwan_background_method method,
+                                  alwan_background_params const *params);
+alwan_status alwan_background_u8(...);   /* same, unsigned char pixels */
+```
+
+The slowly varying background of an image, returned as an image: subtract it (or divide
+by it) to take out uneven illumination, a scanned print or film frame lit unevenly, a copy
+stand's vignetting, the shading across a photographed document. Each channel on its own;
+`out` may be `src`.
+
+| Field of `alwan_background_params` | 0 reads as |
+|---|---|
+| `radius` | 100: the ball's radius, in pixels and in the data's units alike |
+| `ellipsoid_width`, `ellipsoid_height` | 0: use the ball; otherwise the ellipsoid's size in pixels |
+| `ellipsoid_intensity` | the ellipsoid's semi-axis along the data, in the data's units (required with it) |
+
+### `ROLLING_BALL`
+
+A ball pushed up under the image, seen as a surface whose height is the value. At each
+pixel the background is the height the top of the ball reaches when it is centred beneath
+that pixel and touches the surface from below:
+`min over the ball's offsets o of img(p + o) + k(0) - k(o)`, with `k(o) = sqrt(r^2 - |o|^2)`
+and pixels outside the image not counted. Objects narrower than the ball keep it from
+rising into them, so they are left out of the background. This is a grey erosion by the
+ball's surface, which is scikit-image's `restoration.rolling_ball`; ImageJ's "Subtract
+Background" goes on to dilate by the same ball (an opening), which follows the surface more
+closely. On a slope `s` the ball's top sits `r (sqrt(1 + s^2) - 1)` below the surface.
+
+Because the ball is round in pixels and in value at once, its radius is a length in both:
+a radius of 50 on data in 0..1 is a flat disc. Scale the data to the ball, or use the
+ellipsoid, whose `ellipsoid_intensity` sets its height apart from its footprint. The cost
+is about `pi r^2` a pixel, as scikit-image's; shrink the image first for a large radius.
+8-bit results are truncated, as scikit-image's cast back truncates.
+
+Suite 218 holds it to scikit-image value for value in double and 8-bit (balls of radius 5
+to 30 and 7.5, an image smaller than the ball, 8-bit colour), the ellipsoid to 1.4e-14 and
+float32, which scikit-image computes in float32, to 3.8e-6 on values up to 255.
+
 ## Colour transfer
 
 ```c

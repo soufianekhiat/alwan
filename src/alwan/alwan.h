@@ -2518,6 +2518,45 @@ alwan_status alwan_morphology_f32(alwan_f32 *out, size_t out_row_stride, alwan_f
 alwan_status alwan_morphology_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
 alwan_status alwan_morphology_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
 
+/* Background estimation: the slowly varying background of an image, to subtract (or divide)
+ * out uneven illumination: a scanned print or film frame lit unevenly, a copy stand's
+ * vignetting, a document's shading. The result is the background itself. Each of 1 to 4
+ * channels on its own; out may be src.
+ *
+ *   ALWAN_BACKGROUND_ROLLING_BALL  a ball (or an ellipsoid) pushed up under the image
+ *                                  surface: at each pixel the height its top reaches when
+ *                                  centred there, min over the kernel of img(p + o) + k(0) -
+ *                                  k(o), pixels outside the image not counted. A grey erosion
+ *                                  by the kernel's surface, as scikit-image's
+ *                                  restoration.rolling_ball computes it (suite 218); ImageJ's
+ *                                  Subtract Background also dilates back, an opening. The
+ *                                  ball should be wider than the objects to keep out of the
+ *                                  background, and its radius is in the data's units as well
+ *                                  as in pixels, so scale the data or use the ellipsoid
+ *                                  (whose height is set apart from its width). Cost about
+ *                                  pi r^2 a pixel. 8-bit results are truncated, as
+ *                                  scikit-image's are
+ *
+ * params NULL is a ball of radius 100. ALWAN_E_INVALID for a NULL, a zero size, a channel
+ * count out of range, a stride too small, a non-finite value or an unknown method;
+ * ALWAN_E_RANGE for a radius not above 0 or above 2000, or an ellipsoid over 4001 wide or
+ * high or of intensity not above 0. */
+typedef enum {
+    ALWAN_BACKGROUND_ROLLING_BALL = 0
+} alwan_background_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double radius;              /* ROLLING_BALL: the ball's radius, pixels and data units alike; 0 reads as 100 */
+    size_t ellipsoid_width;     /* ROLLING_BALL: non-zero uses an ellipsoid of this width in pixels instead */
+    size_t ellipsoid_height;    /* its height in pixels */
+    double ellipsoid_intensity; /* its semi-axis along the data, in the data's units */
+} alwan_background_params;
+
+alwan_status alwan_background_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_background_method method, alwan_background_params const *params);
+alwan_status alwan_background_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_background_method method, alwan_background_params const *params);
+alwan_status alwan_background_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_background_method method, alwan_background_params const *params);
+
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a
  * width and height, since no method looks at neighbours). out may be src.
