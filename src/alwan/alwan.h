@@ -2817,6 +2817,44 @@ typedef struct {
 alwan_status alwan_ridge_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_ridge_method method, alwan_ridge_params const *params);
 alwan_status alwan_ridge_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_ridge_method method, alwan_ridge_params const *params);
 
+/* Resizing: an image resampled to out_width x out_height, each channel on its own. Every
+ * method but NEAREST is a separable convolution whose filter widens with the reduction
+ * factor when shrinking, so that it averages rather than aliases (antialiasing).
+ *
+ *   ALWAN_RESIZE_NEAREST   the nearest source sample
+ *   ALWAN_RESIZE_BOX       the box filter: each output the mean of the source it covers
+ *   ALWAN_RESIZE_BILINEAR  the triangle filter
+ *   ALWAN_RESIZE_HAMMING   a Hamming-windowed sinc of support 1: sharper than bilinear
+ *   ALWAN_RESIZE_BICUBIC   Keys' cubic convolution, a = -0.5
+ *   ALWAN_RESIZE_LANCZOS   the Lanczos-3 windowed sinc: the sharpest, with the most ringing
+ *
+ * As Pillow's Image.resize, value for value (suite 233): its filters and supports, its
+ * weights, horizontal pass first, the passes a size leaves unchanged skipped, 8-bit data
+ * in 22-bit fixed point clipped to 8 bits after each pass, float32 through double sums
+ * stored in float32 between passes. double keeps its intermediate in double. Channels are
+ * independent: premultiply an alpha channel first for resampling with transparency. out
+ * must not overlap src unless the sizes are equal. ALWAN_E_INVALID for a NULL, a zero
+ * size, a channel count out of range, a stride too small, a NaN or infinite value, or an
+ * unknown method; ALWAN_E_RANGE for a side over 2^24 or a box outside the image or empty. */
+typedef enum {
+    ALWAN_RESIZE_NEAREST = 0,
+    ALWAN_RESIZE_BOX = 1,
+    ALWAN_RESIZE_BILINEAR = 2,
+    ALWAN_RESIZE_HAMMING = 3,
+    ALWAN_RESIZE_BICUBIC = 4,
+    ALWAN_RESIZE_LANCZOS = 5
+} alwan_resize_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double box[4];  /* the source region resampled, x0, y0, x1, y1 in pixels (fractions allowed; held as
+                     * float, as Pillow holds it); all 0 is the whole image */
+} alwan_resize_params;
+
+alwan_status alwan_resize_f32(alwan_f32 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_resize_method method, alwan_resize_params const *params);
+alwan_status alwan_resize_f64(alwan_f64 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_resize_method method, alwan_resize_params const *params);
+alwan_status alwan_resize_u8(unsigned char *out, size_t out_row_stride, size_t out_width, size_t out_height, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_resize_method method, alwan_resize_params const *params);
+
 /* Texture codes: a code for every pixel of one channel describing the pattern of its
  * neighbourhood, for texture classification, matching and segmentation (a histogram of
  * the codes over a region is its texture descriptor). out receives doubles (out_row_stride

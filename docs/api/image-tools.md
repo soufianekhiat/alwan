@@ -993,6 +993,51 @@ correctly rounded value that the C library's `expf` gives, so `FRANGI` agrees to
 `HESSIAN` then turns the pixels where `FRANGI` rounds to exactly 0 on one side only into
 1, 4.8% of the float32 case.
 
+## Resizing
+
+```c
+typedef enum {
+    ALWAN_RESIZE_NEAREST = 0, ALWAN_RESIZE_BOX = 1, ALWAN_RESIZE_BILINEAR = 2,
+    ALWAN_RESIZE_HAMMING = 3, ALWAN_RESIZE_BICUBIC = 4, ALWAN_RESIZE_LANCZOS = 5
+} alwan_resize_method;
+
+alwan_status alwan_resize_{T}(alwan_{T} *out, size_t out_row_stride, size_t out_width, size_t out_height,
+                              alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                              size_t width, size_t height,
+                              alwan_resize_method method, alwan_resize_params const *params);
+alwan_status alwan_resize_u8(...);   /* same, unsigned char pixels */
+```
+
+An image resampled to `out_width x out_height`, 1 to 4 channels each on its own. Every
+method but `NEAREST` is a separable convolution whose filter is stretched by the reduction
+factor when shrinking, so each output averages all the source it covers and fine detail
+does not alias into moire; enlarging uses the filter at its own width.
+
+| Method | Filter | Support |
+|---|---|---|
+| `NEAREST` | the nearest sample | |
+| `BOX` | 1 on (-0.5, 0.5]: the mean of the covered area when shrinking | 0.5 |
+| `BILINEAR` | the triangle `1 - |x|` | 1 |
+| `HAMMING` | a Hamming-windowed sinc: sharper than bilinear at the same cost | 1 |
+| `BICUBIC` | Keys' cubic convolution, `a = -0.5` | 2 |
+| `LANCZOS` | `sinc(x) sinc(x / 3)`: the sharpest, with the most ringing at edges | 3 |
+
+`params->box` resamples a region of the source, `x0, y0, x1, y1` in pixels with fractions
+allowed; all zero is the whole image. The resampling happens in the data's own values:
+for an energy-correct result on display-encoded colour, convert to linear light first and
+back after (alwan's transfer functions do both).
+
+This is Pillow's `Image.resize` (libImaging's Resample.c and its nearest-neighbour scale),
+and suite 233 holds it there value for value: every filter on 8-bit grey, colour and
+four-channel images and float32 grey, shrinking by non-integer factors, enlarging, one
+side only and a fractional box, 72 cases. It follows Pillow's weights and its arithmetic:
+the horizontal pass first, a pass whose size and box leave the axis unchanged skipped,
+8-bit data in 22-bit fixed point clipped to 8 bits after each pass, float32 through double
+sums stored in float32 between the passes. The double entry point keeps its intermediate
+in double and lands within 1.0e-7 of Pillow's float32 results, their rounding. A request for the source's own
+size and box is a copy. Pillow premultiplies RGBA by its alpha before resampling; alwan
+treats the fourth channel like the others, so premultiply first where alpha matters.
+
 ## Segmentation
 
 ```c
