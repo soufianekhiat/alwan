@@ -1663,6 +1663,8 @@ EXPORTS
     alwan_rgb_to_ycocg_f64_map_planar
     alwan_rgb_to_ycocg_map_interleave_ex
     alwan_rgb_to_ycocg_map_planar_ex
+    alwan_ridge_f32
+    alwan_ridge_f64
     alwan_rlab_forward_f32
     alwan_rlab_forward_f32_map_interleave
     alwan_rlab_forward_f64

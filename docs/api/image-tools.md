@@ -945,6 +945,54 @@ does not wrap from the last neighbour to the first. scikit-image recommends inte
 images, since on float data neighbours that differ from the centre by rounding alone flip
 bits.
 
+## Ridge filters
+
+```c
+typedef enum {
+    ALWAN_RIDGE_FRANGI = 0, ALWAN_RIDGE_SATO = 1,
+    ALWAN_RIDGE_MEIJERING = 2, ALWAN_RIDGE_HESSIAN = 3
+} alwan_ridge_method;
+
+alwan_status alwan_ridge_{T}(alwan_{T} *out, size_t out_row_stride,
+                             alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                             size_t width, size_t height,
+                             alwan_ridge_method method, alwan_ridge_params const *params);
+```
+
+How strongly each pixel of one channel (`channels` must be 1) lies on a ridge: a line, a
+vessel, a crease, a fibre, a scratch. At each scale in `sigmas` the Hessian's two
+eigenvalues say how the image curves along and across the pixel's strongest direction; a
+ridge curves strongly across and little along. The largest answer over the scales is kept,
+so each ridge answers at the scale of its own width. Dark ridges on a light ground by
+default, which is where the Hessian across the ridge is positive; `bright_ridges` looks for
+the opposite. `out` may be `src`.
+
+| Method | Response |
+|---|---|
+| `FRANGI` | Frangi et al. 1998, 0 to 1: `exp(-rb^2 / 2 beta^2) (1 - exp(-s^2 / 2 gamma^2))`, `rb` the eigenvalues' ratio (blobness), `s` their norm (structuredness) |
+| `SATO` | Sato et al. 1998: `sigma^2` times the larger eigenvalue, floored at 0 |
+| `MEIJERING` | Meijering et al. 2004 (neuriteness): of `l1 + alpha l2` and `l2 + alpha l1` the one larger in magnitude, floored at 0, normalised to 1 at each scale |
+| `HESSIAN` | `FRANGI` with `gamma` 15, and 1 where that is 0 |
+
+| Field of `alwan_ridge_params` | 0 reads as |
+|---|---|
+| `sigmas`, `sigma_count` | NULL: 1, 3, 5, 7, 9 |
+| `alpha` | `MEIJERING`: 1 / 3 (`FRANGI` has no use for it in 2-D) |
+| `beta` | 0.5 |
+| `gamma` | `FRANGI`: half the largest Hessian norm at the first scale; `HESSIAN`: 15 |
+| `bright_ridges` | 0: dark ridges |
+
+This is scikit-image's `filters.frangi`, `sato`, `meijering` and `hessian`, the Hessian from
+two first-order gaussian derivatives at `sigma / sqrt(2)` as scipy's `gaussian_filter`
+computes them (truncated at 8 standard deviations, 100 at a sigma of 1 or less, with its
+`reflect` edge) and its eigenvalues in closed form. Suite 232 holds them to it on a frame's
+luma and on dark lines of three widths, 19 cases: `FRANGI`, `SATO` and `HESSIAN` in double
+equal, `MEIJERING` to 1.1e-16 (scikit-image mixes the eigenvalues through BLAS). On float32
+scikit-image calls numpy's float32 `exp`, whose AVX2 kernel is a unit or two from the
+correctly rounded value that the C library's `expf` gives, so `FRANGI` agrees to 1.2e-7;
+`HESSIAN` then turns the pixels where `FRANGI` rounds to exactly 0 on one side only into
+1, 4.8% of the float32 case.
+
 ## Segmentation
 
 ```c

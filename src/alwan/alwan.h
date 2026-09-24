@@ -2779,6 +2779,44 @@ typedef struct {
 alwan_status alwan_corner_response_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_corner_method method, alwan_corner_params const *params);
 alwan_status alwan_corner_response_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_corner_method method, alwan_corner_params const *params);
 
+/* Ridge filters: how strongly each pixel of one channel lies on a ridge (a line, a vessel,
+ * a crease, a fibre), from the Hessian's eigenvalues at each of several scales, the largest
+ * answer over the scales. Dark ridges on a light ground by default; bright_ridges for the
+ * other way round. out may be src.
+ *
+ *   ALWAN_RIDGE_FRANGI     Frangi et al. 1998: the eigenvalue ratio's blobness against the
+ *                          norm's structuredness, 0 to 1
+ *   ALWAN_RIDGE_SATO       Sato et al. 1998: sigma^2 times the larger eigenvalue, floored at 0
+ *   ALWAN_RIDGE_MEIJERING  Meijering et al. 2004: neuriteness, the eigenvalues mixed by
+ *                          alpha, normalised to 1 at each scale
+ *   ALWAN_RIDGE_HESSIAN    Frangi with gamma 15, and 1 where that is 0
+ *
+ * As scikit-image's filters.frangi, sato, meijering and hessian (suite 232): the Hessian
+ * from gaussian derivatives as scipy computes them, the image extended by "reflect".
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count other than 1, a stride too
+ * small, a NaN or infinite value, an unknown method, or sigmas given with a count of 0;
+ * ALWAN_E_RANGE for a sigma not in (0, 64] or a negative alpha, beta or gamma. */
+typedef enum {
+    ALWAN_RIDGE_FRANGI = 0,
+    ALWAN_RIDGE_SATO = 1,
+    ALWAN_RIDGE_MEIJERING = 2,
+    ALWAN_RIDGE_HESSIAN = 3
+} alwan_ridge_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double const *sigmas;  /* the scales, in pixels; NULL reads as 1, 3, 5, 7, 9 */
+    size_t sigma_count;
+    double alpha;          /* FRANGI: 0 reads as 0.5 (unused in 2-D). MEIJERING: 0 reads as 1 / 3 */
+    double beta;           /* FRANGI, HESSIAN: the blobness weight; 0 reads as 0.5 */
+    double gamma;          /* FRANGI: the structuredness weight; 0 reads as half the largest Hessian norm
+                            * at the first scale. HESSIAN: 0 reads as 15 */
+    int bright_ridges;     /* non-zero looks for bright ridges on a dark ground */
+} alwan_ridge_params;
+
+alwan_status alwan_ridge_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_ridge_method method, alwan_ridge_params const *params);
+alwan_status alwan_ridge_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_ridge_method method, alwan_ridge_params const *params);
+
 /* Texture codes: a code for every pixel of one channel describing the pattern of its
  * neighbourhood, for texture classification, matching and segmentation (a histogram of
  * the codes over a region is its texture descriptor). out receives doubles (out_row_stride

@@ -511,6 +511,10 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Ridge filters: `alwan_ridge`.** Frangi, Sato, Meijering and Hessian vesselness over
+  several scales, dark or bright ridges; equal to scikit-image's `filters` in double
+  (suite 232).
+
 - **Non-local means on float data: `ALWAN_DENOISE_NL_MEANS_DARBON` and `NL_MEANS_BUADES`**
   join `alwan_denoise`, scikit-image's `denoise_nl_means` in its fast mode and with
   gaussian-weighted patches; weighed by the exact `exp`, or by scikit-image's Schraudolph
