@@ -22,6 +22,14 @@
  * NEAREST takes the source sample at (int)(position), the position starting at half a step
  * and advancing a step at a time as Pillow's scale loop does; a position past the image
  * leaves the output 0. A request for the source's own size and box returns a copy.
+ *
+ * With integration other than POINT, each output pixel is instead the mean of the source at
+ * sub-positions of the pixel (alwan_warp's output-space integration, the scale as its map),
+ * reconstructed by nearest (NEAREST, BOX), bilinear (BILINEAR, HAMMING) or bicubic
+ * (BICUBIC, LANCZOS). With a subpixel layout the image is first resampled to three times
+ * the output along the stripes, then each colour channel takes its own subpixel through
+ * FreeType's default LCD filter (8, 77, 86, 77, 8) / 256 across the subpixels, so text keeps
+ * about three times the resolution across the stripes on an LCD with that layout.
  */
 
 #include "../alwan.h"
@@ -115,6 +123,81 @@ static double alwan_rs_get(void const *p, int kind, size_t i) {
 }
 
 static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                                 alwan_resize_method method, alwan_resize_params const *params, int kind);
+
+/* Integration: the scale as an alwan_warp map. */
+static alwan_status alwan_rs_integrate(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w,
+                                       size_t h, alwan_resize_method method, alwan_resize_params const *p, float bx0, float by0, float bx1,
+                                       float by1, int kind) {
+    alwan_warp_params wp;
+    alwan_warp_method wm;
+    memset(&wp, 0, sizeof(wp));
+    wp.matrix[0] = (double)(bx1 - bx0) / (double)ow;
+    wp.matrix[2] = (double)bx0;
+    wp.matrix[4] = (double)(by1 - by0) / (double)oh;
+    wp.matrix[5] = (double)by0;
+    wp.integration = p->integration;
+    wp.samples = p->samples;
+    wp.seed = p->seed;
+    wp.alpha_channel = p->alpha_channel;
+    wm = (method == ALWAN_RESIZE_NEAREST || method == ALWAN_RESIZE_BOX) ? ALWAN_WARP_NEAREST
+         : (method == ALWAN_RESIZE_BILINEAR || method == ALWAN_RESIZE_HAMMING) ? ALWAN_WARP_BILINEAR
+                                                                                : ALWAN_WARP_BICUBIC;
+    return alwan__warp_run(out, out_rs, ow, oh, src, src_rs, ch, w, h, wm, &wp, kind);
+}
+
+/* FreeType's default LCD filter (FT_LCD_FILTER_DEFAULT), across the subpixels. */
+static alwan_status alwan_rs_subpixel(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w,
+                                      size_t h, alwan_resize_method method, alwan_resize_params const *p, int kind) {
+    static double const lcd[5] = { 8.0 / 256.0, 77.0 / 256.0, 86.0 / 256.0, 77.0 / 256.0, 8.0 / 256.0 };
+    int const vertical = p->subpixel == ALWAN_SUBPIXEL_VRGB || p->subpixel == ALWAN_SUBPIXEL_VBGR;
+    int const reversed = p->subpixel == ALWAN_SUBPIXEL_BGR || p->subpixel == ALWAN_SUBPIXEL_VBGR;
+    size_t const tw = vertical ? ow : 3 * ow, th = vertical ? 3 * oh : oh;
+    alwan_resize_params q = *p;
+    double *dsrc, *t;
+    size_t x, y, c;
+    alwan_status st;
+    dsrc = (double *)ALWAN_ALLOC(alwan_safe_array_size(w * h * ch + tw * th * ch, sizeof(double)), sizeof(double));
+    if (!dsrc) return ALWAN_E_NOMEM;
+    t = dsrc + w * h * ch;
+    for (y = 0; y < h; y++) {
+        char const *row = (char const *)src + y * src_rs;
+        for (x = 0; x < w * ch; x++)
+            dsrc[y * w * ch + x] = kind == 0 ? ((alwan_f64 const *)row)[x] : kind == 1 ? (double)((alwan_f32 const *)row)[x]
+                                                                                   : (double)((unsigned char const *)row)[x];
+    }
+    q.subpixel = ALWAN_SUBPIXEL_NONE;
+    st = alwan_rs_run(t, tw * ch * sizeof(double), tw, th, dsrc, w * ch * sizeof(double), ch, w, h, method, &q, 0);
+    if (st == ALWAN_OK) {
+        for (y = 0; y < oh; y++) {
+            char *orow = (char *)out + y * out_rs;
+            for (x = 0; x < ow; x++) {
+                for (c = 0; c < ch; c++) {
+                    /* channel c's subpixel within the pixel; a fourth channel (alpha) sits at the middle */
+                    long const sub = c >= 3 ? 1 : reversed ? 2 - (long)c : (long)c;
+                    long const base = 3 * (long)(vertical ? y : x) + sub, lim = 3 * (long)(vertical ? oh : ow) - 1;
+                    double v = 0.0;
+                    int k;
+                    for (k = -2; k <= 2; k++) {
+                        long i = base + k;
+                        i = i < 0 ? 0 : i > lim ? lim : i;
+                        v += lcd[k + 2] * (vertical ? t[((size_t)i * tw + x) * ch + c] : t[((size_t)y * tw + (size_t)i) * ch + c]);
+                    }
+                    if (kind == 0) ((alwan_f64 *)orow)[x * ch + c] = v;
+                    else if (kind == 1) ((alwan_f32 *)orow)[x * ch + c] = (alwan_f32)v;
+                    else {
+                        double const r = floor(v + 0.5);
+                        ((unsigned char *)orow)[x * ch + c] = (unsigned char)(r < 0.0 ? 0.0 : r > 255.0 ? 255.0 : r);
+                    }
+                }
+            }
+        }
+    }
+    ALWAN_FREE(dsrc);
+    return st;
+}
+
+static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_resize_method method, alwan_resize_params const *params, int kind) {
     alwan_resize_params const zero = { { 0 } };
     alwan_resize_params const *p = params ? params : &zero;
@@ -128,6 +211,9 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
     if ((unsigned)method > (unsigned)ALWAN_RESIZE_LANCZOS) return ALWAN_E_INVALID;
     if (w > 1u << 24 || h > 1u << 24 || ow > 1u << 24 || oh > 1u << 24) return ALWAN_E_RANGE;
     if (!(bx0 >= 0.0f) || !(by0 >= 0.0f) || !(bx1 <= (float)w) || !(by1 <= (float)h) || !(bx1 > bx0) || !(by1 > by0)) return ALWAN_E_RANGE;
+    if ((unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_ADAPTIVE || (unsigned)p->subpixel > (unsigned)ALWAN_SUBPIXEL_VBGR)
+        return ALWAN_E_INVALID;
+    if (p->subpixel != ALWAN_SUBPIXEL_NONE && ch < 3) return ALWAN_E_INVALID;
     for (y = 0; y < h; y++) {
         char const *row = (char const *)src + y * src_rs;
         for (x = 0; x < w * ch; x++) {
@@ -135,6 +221,9 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
             if (!(v - v == 0.0)) return ALWAN_E_INVALID;
         }
     }
+    if (p->subpixel != ALWAN_SUBPIXEL_NONE) return alwan_rs_subpixel(out, out_rs, ow, oh, src, src_rs, ch, w, h, method, p, kind);
+    if (p->integration != ALWAN_PIXEL_INTEGRATE_POINT)
+        return alwan_rs_integrate(out, out_rs, ow, oh, src, src_rs, ch, w, h, method, p, bx0, by0, bx1, by1, kind);
     /* the source's own size and box: a copy */
     if (ow == w && oh == h && bx0 == 0.0f && by0 == 0.0f && bx1 == (float)w && by1 == (float)h) {
         for (y = 0; y < h; y++) memmove((char *)out + y * out_rs, (char const *)src + y * src_rs, w * ch * elem);

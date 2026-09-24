@@ -22,11 +22,32 @@
  *
  * A point outside the image leaves the output at `fill`. 8-bit results are truncated
  * (bicubic clamped first), float32 results stored from double, as Pillow's are.
+ *
+ * Beyond Pillow: the map may also be a swirl, a sampled field of source points or a
+ * caller's function, and each output pixel may be integrated rather than point-sampled
+ * (output-space subpixel integration): the pixel's sub-positions are offset BEFORE the map,
+ * each carried to the source and reconstructed there, and the results averaged, so a map
+ * that is far from linear inside one pixel (a swirl's centre, a lens, a displacement) is
+ * averaged through its actual shape rather than through a linear footprint.
+ *
+ *   GRID      an n x n grid of sub-positions over the pixel: the brute-force reference
+ *   R2        n points of the R2 sequence on the disk of the pixel's area, in antithetic
+ *             pairs (+d, -d, so the mean offset is exactly zero), turned by a hashed angle
+ *             per pixel so neighbouring pixels do not share one pattern
+ *   ADAPTIVE  the map's footprint (a finite-difference Jacobian at half a pixel) and its
+ *             departure from linear (second differences), both in source pixels, choose
+ *             one point where the map is locally linear and within a pixel, otherwise 4 to
+ *             64 R2 points, enough to cover the footprint's area and its curvature
+ *
+ * An integrated result is the mean in the data's own values (8-bit rounded to nearest):
+ * integrate in linear light, and with alpha_channel set the colour is integrated
+ * premultiplied by the last channel.
  */
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include <math.h>
+#include <stdint.h>
 #include <string.h>
 
 #define ALWAN_WP_COORD(v) ((v) < 0.0 ? -1 : (long)(v))
@@ -70,8 +91,9 @@ static double alwan_wp_cubic(double v1, double v2, double v3, double v4, double 
     return p1 + d * (p2 + d * (p3 + d * p4));
 }
 
-/* Pillow's bilinear and bicubic filters: 0 when (xin, yin) is outside, else 1 and out set. */
-static int alwan_wp_sample(void *orow, size_t ox, alwan_wp_img const *im, double xin, double yin, int cubic) {
+/* Pillow's bilinear and bicubic filters, evaluated into v[channel] (not yet stored): 0 when
+ * (xin, yin) is outside, else 1. */
+static int alwan_wp_eval(double *vout, alwan_wp_img const *im, double xin, double yin, int cubic) {
     long x, y;
     double dx, dy;
     size_t c;
@@ -98,8 +120,7 @@ static int alwan_wp_sample(void *orow, size_t ox, alwan_wp_img const *im, double
             } else {
                 v2 = v1;
             }
-            v1 = v1 + (v2 - v1) * dy;
-            alwan_wp_store(orow, im->kind, ox * im->ch + c, v1, 0);
+            vout[c] = v1 + (v2 - v1) * dy;
         }
     } else {
         long xs[4], k;
@@ -119,9 +140,18 @@ static int alwan_wp_sample(void *orow, size_t ox, alwan_wp_img const *im, double
                     v[k] = v[k - 1];
                 }
             }
-            alwan_wp_store(orow, im->kind, ox * im->ch + c, alwan_wp_cubic(v[0], v[1], v[2], v[3], dy, 0), 1);
+            vout[c] = alwan_wp_cubic(v[0], v[1], v[2], v[3], dy, 0);
         }
     }
+    return 1;
+}
+
+/* The filter sampled and stored as Pillow stores it (8-bit truncated, bicubic clamped). */
+static int alwan_wp_sample(void *orow, size_t ox, alwan_wp_img const *im, double xin, double yin, int cubic) {
+    double v[4];
+    size_t c;
+    if (!alwan_wp_eval(v, im, xin, yin, cubic)) return 0;
+    for (c = 0; c < im->ch; c++) alwan_wp_store(orow, im->kind, ox * im->ch + c, v[c], cubic);
     return 1;
 }
 
@@ -139,6 +169,287 @@ static long alwan_wp_fix(double v) {
     return ALWAN_WP_FLOOR(t);
 }
 
+/* ------------------------------------------------------------------------------------ */
+/* Maps other than the matrix, and output-space integration                             */
+
+typedef struct {
+    alwan_warp_params const *p;
+    double a[8];
+    double cx, cy, radius, angle;
+    size_t ow, oh;
+} alwan_wp_map;
+
+/* The source point shown at output point (x, y): 0 when there is none. */
+static int alwan_wp_eval_map(alwan_wp_map const *m, double x, double y, double *sx, double *sy) {
+    switch (m->p->map) {
+    case ALWAN_WARP_MAP_SWIRL: {
+        /* c + R(phi(r)) (p - c), phi = angle f(1 - r / R), f the C2 quintic 6s^5 - 15s^4 + 10s^3:
+         * a rotation of the displacement, no atan2 and no singularity at the centre */
+        double const dx = x - m->cx, dy = y - m->cy, r = sqrt(dx * dx + dy * dy);
+        double s = 1.0 - r / m->radius, phi, cs, sn;
+        if (s <= 0.0) {
+            *sx = x, *sy = y;
+            return 1;
+        }
+        if (s > 1.0) s = 1.0;
+        phi = m->angle * (s * s * s * (s * (s * 6.0 - 15.0) + 10.0));
+        cs = cos(phi);
+        sn = sin(phi);
+        *sx = m->cx + cs * dx - sn * dy;
+        *sy = m->cy + sn * dx + cs * dy;
+        return 1;
+    }
+    case ALWAN_WARP_MAP_FIELD: {
+        /* bilinear between the field's texels, texel (i, j) holding the source point of output
+         * point (i + 0.5, j + 0.5), clamped at the edges; a NaN texel is no source */
+        double const fx = x - 0.5, fy = y - 0.5;
+        long i0 = (long)floor(fx), j0 = (long)floor(fy), i1, j1;
+        double const tx = fx - (double)i0, ty = fy - (double)j0;
+        double const *f00, *f10, *f01, *f11;
+        size_t const rs = m->p->field_row_stride;
+        i1 = i0 + 1, j1 = j0 + 1;
+        i0 = i0 < 0 ? 0 : i0 >= (long)m->ow ? (long)m->ow - 1 : i0;
+        i1 = i1 < 0 ? 0 : i1 >= (long)m->ow ? (long)m->ow - 1 : i1;
+        j0 = j0 < 0 ? 0 : j0 >= (long)m->oh ? (long)m->oh - 1 : j0;
+        j1 = j1 < 0 ? 0 : j1 >= (long)m->oh ? (long)m->oh - 1 : j1;
+        f00 = (double const *)((char const *)m->p->field + (size_t)j0 * rs) + 2 * (size_t)i0;
+        f10 = (double const *)((char const *)m->p->field + (size_t)j0 * rs) + 2 * (size_t)i1;
+        f01 = (double const *)((char const *)m->p->field + (size_t)j1 * rs) + 2 * (size_t)i0;
+        f11 = (double const *)((char const *)m->p->field + (size_t)j1 * rs) + 2 * (size_t)i1;
+        *sx = (1 - ty) * ((1 - tx) * f00[0] + tx * f10[0]) + ty * ((1 - tx) * f01[0] + tx * f11[0]);
+        *sy = (1 - ty) * ((1 - tx) * f00[1] + tx * f10[1]) + ty * ((1 - tx) * f01[1] + tx * f11[1]);
+        return *sx == *sx && *sy == *sy;
+    }
+    case ALWAN_WARP_MAP_CALLBACK:
+        return m->p->callback(x, y, sx, sy, m->p->callback_user) != 0 && *sx == *sx && *sy == *sy;
+    default:
+        if (m->p->perspective) {
+            double const d = m->a[6] * x + m->a[7] * y + 1;
+            *sx = (m->a[0] * x + m->a[1] * y + m->a[2]) / d;
+            *sy = (m->a[3] * x + m->a[4] * y + m->a[5]) / d;
+        } else {
+            *sx = m->a[0] * x + m->a[1] * y + m->a[2];
+            *sy = m->a[3] * x + m->a[4] * y + m->a[5];
+        }
+        return 1;
+    }
+}
+
+/* One sub-sample: the map at (x, y), the source reconstructed there, or the fill. */
+static void alwan_wp_subsample(double *v, alwan_wp_map const *m, alwan_wp_img const *im, alwan_warp_method method, double x, double y) {
+    double sx, sy;
+    size_t c;
+    if (alwan_wp_eval_map(m, x, y, &sx, &sy)) {
+        if (method == ALWAN_WARP_NEAREST) {
+            long const xi = ALWAN_WP_COORD(sx), yi = ALWAN_WP_COORD(sy);
+            if (xi >= 0 && xi < (long)im->w && yi >= 0 && yi < (long)im->h) {
+                for (c = 0; c < im->ch; c++) v[c] = alwan_wp_px(im, xi, yi, c);
+                return;
+            }
+        } else if (alwan_wp_eval(v, im, sx, sy, method == ALWAN_WARP_BICUBIC)) {
+            return;
+        }
+    }
+    for (c = 0; c < im->ch; c++) v[c] = m->p->fill[c];
+}
+
+/* A 32-bit integer hash (Wellons' lowbias32), for the per-pixel rotation of the R2 set. */
+static uint32_t alwan_wp_hash(uint32_t x) {
+    x ^= x >> 16;
+    x *= 0x7feb352dU;
+    x ^= x >> 15;
+    x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
+
+/* The first k points of the R2 sequence (Roberts 2018, the plastic constant) in the unit
+ * square, or (disk) taken to the unit disk by Shirley and Chiu's concentric map. */
+static void alwan_wp_r2_points(double *pts, size_t k, int disk) {
+    double const g = 1.32471795724474602596, a1 = 1.0 / g, a2 = 1.0 / (g * g), pi = 3.14159265358979323846;
+    size_t n;
+    for (n = 0; n < k; n++) {
+        double u = 0.5 + (double)(n + 1) * a1, v = 0.5 + (double)(n + 1) * a2, a, b, r, phi;
+        u -= floor(u);
+        v -= floor(v);
+        if (!disk) {
+            pts[2 * n] = u;
+            pts[2 * n + 1] = v;
+            continue;
+        }
+        a = 2.0 * u - 1.0;
+        b = 2.0 * v - 1.0;
+        if (a == 0.0 && b == 0.0) {
+            pts[2 * n] = pts[2 * n + 1] = 0.0;
+            continue;
+        }
+        if (fabs(a) > fabs(b)) {
+            r = a;
+            phi = (pi / 4.0) * (b / a);
+        } else {
+            r = b;
+            phi = pi / 2.0 - (pi / 4.0) * (a / b);
+        }
+        pts[2 * n] = r * cos(phi);
+        pts[2 * n + 1] = r * sin(phi);
+    }
+}
+
+static void alwan_wp_store_mean(void *orow, int kind, size_t i, double v) {
+    if (kind == 0) ((alwan_f64 *)orow)[i] = v;
+    else if (kind == 1) ((alwan_f32 *)orow)[i] = (alwan_f32)v;
+    else {
+        double const t = floor(v + 0.5);
+        ((unsigned char *)orow)[i] = (unsigned char)(t < 0.0 ? 0.0 : t > 255.0 ? 255.0 : t);
+    }
+}
+
+/* The general path: any map, any integration policy. */
+static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t oh, alwan_wp_img const *im, alwan_warp_method method,
+                                     alwan_warp_params const *p, double const a[8]) {
+    alwan_wp_map m;
+    alwan_pixel_integration const pol = p->integration;
+    size_t const grid_n = p->samples ? p->samples : 16;
+    size_t const r2_n = p->samples ? p->samples : 16;
+    size_t const max_n = p->samples ? p->samples : 64;
+    double const tol = p->tolerance > 0.0 ? p->tolerance : 0.05;
+    double const radius = 0.56418958354775628695;   /* 1 / sqrt(pi): the disk of a pixel's area */
+    size_t const npts = pol == ALWAN_PIXEL_INTEGRATE_GRID ? 0 : (pol == ALWAN_PIXEL_INTEGRATE_R2 ? r2_n : max_n);
+    double *pts = NULL;
+    size_t const ch = im->ch;
+    int const alpha = p->alpha_channel && (ch == 2 || ch == 4);
+    size_t x, y, c;
+    memset(&m, 0, sizeof(m));
+    m.p = p;
+    memcpy(m.a, a, sizeof(m.a));
+    m.ow = ow, m.oh = oh;
+    m.cx = (p->swirl_center[0] != 0.0 || p->swirl_center[1] != 0.0) ? p->swirl_center[0] : (double)ow / 2.0;
+    m.cy = (p->swirl_center[0] != 0.0 || p->swirl_center[1] != 0.0) ? p->swirl_center[1] : (double)oh / 2.0;
+    m.radius = p->swirl_radius > 0.0 ? p->swirl_radius : (double)(ow < oh ? ow : oh) / 2.0;
+    m.angle = p->swirl_angle;
+    if (npts) {
+        pts = (double *)ALWAN_ALLOC(alwan_safe_array_size(npts, 2 * sizeof(double)), sizeof(double));
+        if (!pts) return ALWAN_E_NOMEM;
+        alwan_wp_r2_points(pts, npts / 2 + 1, p->r2_disk);
+    }
+    for (y = 0; y < oh; y++) {
+        char *orow = (char *)out + y * out_rs;
+        unsigned char *brow = p->samples_out ? p->samples_out + y * p->samples_out_row_stride : NULL;
+        for (x = 0; x < ow; x++) {
+            double const px = (double)x + 0.5, py = (double)y + 0.5;
+            double acc[4] = { 0, 0, 0, 0 }, v[4];
+            size_t n = 1, k;
+            if (pol == ALWAN_PIXEL_INTEGRATE_POINT) {
+                double sx, sy;
+                if (alwan_wp_eval_map(&m, px, py, &sx, &sy)) {
+                    if (method == ALWAN_WARP_NEAREST) {
+                        long const xi = ALWAN_WP_COORD(sx), yi = ALWAN_WP_COORD(sy);
+                        if (xi >= 0 && xi < (long)im->w && yi >= 0 && yi < (long)im->h) alwan_wp_copy_px(orow, x, im, xi, yi);
+                    } else {
+                        alwan_wp_sample(orow, x, im, sx, sy, method == ALWAN_WARP_BICUBIC);
+                    }
+                }
+                if (brow) brow[x] = 1;
+                continue;
+            }
+            if (pol == ALWAN_PIXEL_INTEGRATE_ADAPTIVE) {
+                /* the map's footprint (a finite-difference Jacobian, h = half a pixel) and how
+                 * far it is from linear across the pixel (second differences), in source pixels */
+                double q0x, q0y, qpx, qpy, qmx, qmy, rpx, rpy, rmx, rmy, fp, nl, need;
+                int ok = alwan_wp_eval_map(&m, px, py, &q0x, &q0y);
+                ok &= alwan_wp_eval_map(&m, px + 0.5, py, &qpx, &qpy);
+                ok &= alwan_wp_eval_map(&m, px - 0.5, py, &qmx, &qmy);
+                ok &= alwan_wp_eval_map(&m, px, py + 0.5, &rpx, &rpy);
+                ok &= alwan_wp_eval_map(&m, px, py - 0.5, &rmx, &rmy);
+                if (!ok) {
+                    fp = 1e9, nl = 1e9;   /* the map loses the source somewhere in the pixel */
+                } else {
+                    double const jx = hypot(qpx - qmx, qpy - qmy), jy = hypot(rpx - rmx, rpy - rmy);
+                    double const hx = hypot(qpx - 2 * q0x + qmx, qpy - 2 * q0y + qmy), hy = hypot(rpx - 2 * q0x + rmx, rpy - 2 * q0y + rmy);
+                    fp = jx > jy ? jx : jy;
+                    nl = hx > hy ? hx : hy;
+                }
+                if (fp <= 1.0 && nl <= tol) {
+                    n = 1;
+                } else {
+                    static size_t const budget[5] = { 4, 8, 16, 32, 64 };
+                    int b;
+                    need = fp * fp > nl / tol ? fp * fp : nl / tol;
+                    n = 64;
+                    for (b = 0; b < 5; b++)
+                        if ((double)budget[b] >= need) {
+                            n = budget[b];
+                            break;
+                        }
+                    if (n > max_n) n = max_n;
+                }
+            } else if (pol == ALWAN_PIXEL_INTEGRATE_GRID) {
+                n = grid_n * grid_n;
+            } else {
+                n = r2_n;
+            }
+            if (n == 1) {
+                alwan_wp_subsample(acc, &m, im, method, px, py);
+            } else if (pol == ALWAN_PIXEL_INTEGRATE_GRID) {
+                size_t i, j;
+                for (j = 0; j < grid_n; j++)
+                    for (i = 0; i < grid_n; i++) {
+                        alwan_wp_subsample(v, &m, im, method, (double)x + ((double)i + 0.5) / (double)grid_n,
+                                           (double)y + ((double)j + 0.5) / (double)grid_n);
+                        if (alpha)
+                            for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
+                        for (c = 0; c < ch; c++) acc[c] += v[c];
+                    }
+            } else {
+                /* antithetic R2 pairs, every pair's mean offset exactly zero: over the square
+                 * pixel shifted toroidally by a per-pixel hash (Cranley-Patterson), or on the disk
+                 * of the pixel's area turned by a per-pixel hashed angle */
+                uint32_t const hs = alwan_wp_hash((uint32_t)x * 73856093U ^ (uint32_t)y * 19349663U ^ p->seed);
+                double const h1 = (double)hs / 4294967296.0, h2 = (double)alwan_wp_hash(hs ^ 0x9e3779b9U) / 4294967296.0;
+                double const phi = 6.28318530717958647692 * h1;
+                double const cs = cos(phi), sn = sin(phi);
+                size_t const pairs = n / 2;
+                if (n % 2) {
+                    alwan_wp_subsample(v, &m, im, method, px, py);
+                    if (alpha)
+                        for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
+                    for (c = 0; c < ch; c++) acc[c] += v[c];
+                }
+                for (k = 0; k < pairs; k++) {
+                    double ox, oy;
+                    if (p->r2_disk) {
+                        ox = radius * (cs * pts[2 * k] - sn * pts[2 * k + 1]);
+                        oy = radius * (sn * pts[2 * k] + cs * pts[2 * k + 1]);
+                    } else {
+                        ox = pts[2 * k] + h1;
+                        oy = pts[2 * k + 1] + h2;
+                        ox = ox - floor(ox) - 0.5;
+                        oy = oy - floor(oy) - 0.5;
+                    }
+                    int s;
+                    for (s = -1; s <= 1; s += 2) {
+                        alwan_wp_subsample(v, &m, im, method, px + s * ox, py + s * oy);
+                        if (alpha)
+                            for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
+                        for (c = 0; c < ch; c++) acc[c] += v[c];
+                    }
+                }
+            }
+            if (n == 1 && alpha)
+                for (c = 0; c + 1 < ch; c++) acc[c] *= acc[ch - 1];
+            for (c = 0; c < ch; c++) acc[c] /= (double)n;
+            if (alpha) {
+                double const al = acc[ch - 1];
+                for (c = 0; c + 1 < ch; c++) acc[c] = al > 0.0 ? acc[c] / al : 0.0;
+            }
+            for (c = 0; c < ch; c++) alwan_wp_store_mean(orow, im->kind, x * ch + c, acc[c]);
+            if (brow) brow[x] = (unsigned char)(n > 255 ? 255 : n);
+        }
+    }
+    ALWAN_FREE(pts);
+    return ALWAN_OK;
+}
+
 static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_warp_method method, alwan_warp_params const *params, int kind) {
     alwan_warp_params const zero = { { 0 } };
@@ -151,6 +462,13 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
     if (!out || !src || w == 0 || h == 0 || ow == 0 || oh == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < ow) return ALWAN_E_INVALID;
     if ((unsigned)method > (unsigned)ALWAN_WARP_BICUBIC) return ALWAN_E_INVALID;
+    if ((unsigned)p->map > (unsigned)ALWAN_WARP_MAP_CALLBACK || (unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_ADAPTIVE)
+        return ALWAN_E_INVALID;
+    if (p->map == ALWAN_WARP_MAP_FIELD && (!p->field || p->field_row_stride / (2 * sizeof(double)) < ow)) return ALWAN_E_INVALID;
+    if (p->map == ALWAN_WARP_MAP_CALLBACK && !p->callback) return ALWAN_E_INVALID;
+    if (p->integration == ALWAN_PIXEL_INTEGRATE_GRID && p->samples > 64) return ALWAN_E_RANGE;
+    if (p->integration >= ALWAN_PIXEL_INTEGRATE_R2 && p->samples > 4096) return ALWAN_E_RANGE;
+    if (!(p->swirl_radius >= 0.0) || !(p->swirl_angle - p->swirl_angle == 0.0) || !(p->tolerance >= 0.0)) return ALWAN_E_RANGE;
     if (w > 1u << 24 || h > 1u << 24 || ow > 1u << 24 || oh > 1u << 24) return ALWAN_E_RANGE;
     for (i = 0; i < 8; i++) {
         if (!(p->matrix[i] - p->matrix[i] == 0.0)) return ALWAN_E_RANGE;
@@ -177,6 +495,10 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
                 else ((unsigned char *)orow)[x * ch + c] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
             }
     }
+    if (p->map != ALWAN_WARP_MAP_MATRIX || p->integration != ALWAN_PIXEL_INTEGRATE_POINT)
+        return alwan_wp_general(out, out_rs, ow, oh, &im, method, p, a);
+    if (p->samples_out)
+        for (y = 0; y < oh; y++) memset(p->samples_out + y * p->samples_out_row_stride, 1, ow);
     if (method == ALWAN_WARP_NEAREST && !p->perspective) {
         if (a[1] == 0.0 && a[3] == 0.0) {
             /* ImagingScaleAffine */
@@ -254,6 +576,11 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
         }
     }
     return ALWAN_OK;
+}
+
+alwan_status alwan__warp_run(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                            alwan_warp_method method, alwan_warp_params const *params, int kind) {
+    return alwan_wp_run(out, out_rs, ow, oh, src, src_rs, ch, w, h, method, params, kind);
 }
 
 alwan_status alwan_warp_u8(unsigned char *out, size_t out_row_stride, size_t out_width, size_t out_height, unsigned char const *src,

@@ -2845,10 +2845,33 @@ typedef enum {
     ALWAN_RESIZE_LANCZOS = 5
 } alwan_resize_method;
 
+/* LCD subpixel layouts for alwan_resize: the order of the red, green and blue stripes
+ * within a pixel, horizontal or vertical (V). */
+typedef enum {
+    ALWAN_SUBPIXEL_NONE = 0,
+    ALWAN_SUBPIXEL_RGB = 1,
+    ALWAN_SUBPIXEL_BGR = 2,
+    ALWAN_SUBPIXEL_VRGB = 3,
+    ALWAN_SUBPIXEL_VBGR = 4
+} alwan_subpixel_layout;
+
 /* A zero field is its default. */
 typedef struct {
     double box[4];  /* the source region resampled, x0, y0, x1, y1 in pixels (fractions allowed; held as
                      * float, as Pillow holds it); all 0 is the whole image */
+    int integration;               /* an alwan_pixel_integration (see alwan_warp); 0 is POINT, Pillow's
+                                    * resampling. Otherwise each output pixel is integrated over sub-positions,
+                                    * reconstructed by nearest (NEAREST, BOX), bilinear (BILINEAR, HAMMING) or
+                                    * bicubic (BICUBIC, LANCZOS) */
+    size_t samples;                /* as alwan_warp_params.samples */
+    unsigned seed;                 /* as alwan_warp_params.seed */
+    int alpha_channel;             /* as alwan_warp_params.alpha_channel, for integration */
+    alwan_subpixel_layout subpixel;  /* 0 none. Otherwise, for 3 or 4 channels (the first three red, green,
+                                    * blue): resample to three times the output along the stripes, then give each
+                                    * colour channel its own subpixel through FreeType's default LCD filter
+                                    * (8, 77, 86, 77, 8) / 256: text on an LCD of that layout keeps about three
+                                    * times the resolution across the stripes, at the price of colour fringes on
+                                    * any other display */
 } alwan_resize_params;
 
 alwan_status alwan_resize_f32(alwan_f32 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_resize_method method, alwan_resize_params const *params);
@@ -2873,18 +2896,76 @@ alwan_status alwan_resize_u8(unsigned char *out, size_t out_row_stride, size_t o
  * clamped first). No filtering against aliasing: to shrink much, resize first
  * (alwan_resize). Channels are independent. out must not overlap src. ALWAN_E_INVALID for
  * a NULL, a zero size, a channel count out of range, a stride too small, a NaN or infinite
- * value, or an unknown method; ALWAN_E_RANGE for a side over 2^24 or a non-finite matrix. */
+ * value, or an unknown method, map or integration, a field or callback missing; ALWAN_E_RANGE
+ * for a side over 2^24, a non-finite matrix or swirl, or too many samples.
+ *
+ * The map may also be one of the others below, and the pixel integrated rather than
+ * point-sampled (output-space subpixel integration): each output pixel becomes the mean of
+ * the source at many sub-positions of the pixel, each carried through the map on its own,
+ * which is what a map that curves inside one pixel (a swirl's centre, a strong lens, a
+ * displacement field) needs; a linear footprint filter cannot follow that curvature. See
+ * alwan_pixel_integration. The integrated result is the mean of the method's samples in
+ * the data's own values: integrate in linear light, and premultiplied (alpha_channel). */
 typedef enum {
     ALWAN_WARP_NEAREST = 0,
     ALWAN_WARP_BILINEAR = 1,
     ALWAN_WARP_BICUBIC = 2
 } alwan_warp_method;
 
+/* Where each output point takes its source point from. */
+typedef enum {
+    ALWAN_WARP_MAP_MATRIX = 0,   /* matrix[8] (and perspective), as above */
+    ALWAN_WARP_MAP_SWIRL = 1,    /* c + R(phi) (p - c), phi = swirl_angle f(1 - r / swirl_radius) with the
+                                  * C2 quintic f(s) = 6s^5 - 15s^4 + 10s^3: a rotation of the displacement,
+                                  * smooth at the centre and at the radius */
+    ALWAN_WARP_MAP_FIELD = 2,    /* field: out_width x out_height pairs of doubles, texel (i, j) the source
+                                  * point of output point (i + 0.5, j + 0.5), bilinear between texels and
+                                  * clamped at the edges; a NaN texel has no source (fill). A field cannot
+                                  * hold detail finer than its texels, nor know about UV seams */
+    ALWAN_WARP_MAP_CALLBACK = 3  /* callback(x, y, &sx, &sy, user) for any output point; 0 or a NaN is no
+                                  * source */
+} alwan_warp_map;
+
+/* How an output pixel is formed from the source (alwan_warp, alwan_resize). */
+typedef enum {
+    ALWAN_PIXEL_INTEGRATE_POINT = 0,    /* one sample at the pixel's centre (Pillow's) */
+    ALWAN_PIXEL_INTEGRATE_GRID = 1,     /* samples x samples sub-positions, 16 x 16 by default: the brute-force
+                                         * reference */
+    ALWAN_PIXEL_INTEGRATE_R2 = 2,       /* samples points of the R2 sequence (16 by default) over the pixel, in
+                                         * antithetic pairs (+d, -d: no net shift), moved per pixel by a hash of
+                                         * (x, y, seed) so neighbours do not share one pattern (r2_disk: on the
+                                         * disk of the pixel's area instead) */
+    ALWAN_PIXEL_INTEGRATE_ADAPTIVE = 3  /* per pixel: one point where the map is locally linear and its footprint
+                                         * within a pixel, else R2 with 4 to samples (64) points, from the
+                                         * map's finite-difference Jacobian and second differences */
+} alwan_pixel_integration;
+
+typedef int (*alwan_warp_callback)(double x, double y, double *source_x, double *source_y, void *user);
+
 /* A zero field is its default. */
 typedef struct {
     double matrix[8];  /* output pixel to source point, as above; all 0 is the identity */
     int perspective;   /* non-zero uses m6 and m7; 0 the affine map */
     double fill[4];    /* per channel, in the data's units, where the point falls outside */
+    alwan_warp_map map;              /* 0 is the matrix */
+    double swirl_center[2];          /* SWIRL: in output pixels; (0, 0) reads as the output's centre */
+    double swirl_radius;             /* SWIRL: 0 reads as half the output's shorter side */
+    double swirl_angle;              /* SWIRL: the turn at the centre, radians */
+    double const *field;             /* FIELD: see alwan_warp_map */
+    size_t field_row_stride;         /* FIELD: in bytes */
+    alwan_warp_callback callback;    /* CALLBACK */
+    void *callback_user;
+    alwan_pixel_integration integration;  /* 0 is POINT */
+    size_t samples;                  /* GRID: per side, up to 64; R2: points; ADAPTIVE: the most points; see above */
+    double tolerance;                /* ADAPTIVE: the second difference, in source pixels, below which the map
+                                      * counts as linear; 0 reads as 0.05 */
+    unsigned seed;                   /* R2, ADAPTIVE: the per-pixel shift's seed */
+    int r2_disk;                     /* R2, ADAPTIVE: non-zero spreads the points over the disk of the pixel's area
+                                      * (a round kernel, turned per pixel); 0 over the square pixel, GRID's kernel */
+    int alpha_channel;               /* non-zero: the last of 2 or 4 channels is alpha, and integration runs on
+                                      * premultiplied colour */
+    unsigned char *samples_out;      /* optional: the points each output pixel took (255 for 255 or more) */
+    size_t samples_out_row_stride;
 } alwan_warp_params;
 
 alwan_status alwan_warp_f32(alwan_f32 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_warp_method method, alwan_warp_params const *params);

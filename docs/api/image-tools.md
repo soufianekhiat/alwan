@@ -1038,6 +1038,28 @@ in double and lands within 1.0e-7 of Pillow's float32 results, their rounding. A
 size and box is a copy. Pillow premultiplies RGBA by its alpha before resampling; alwan
 treats the fourth channel like the others, so premultiply first where alpha matters.
 
+Two options leave Pillow's resampling for other ends. `integration` (an
+`alwan_pixel_integration`, see Warping) makes each output pixel the mean of the source over
+its own area, through `alwan_warp`'s integration with the scale as the map: the source is
+reconstructed at sub-positions of the output pixel by nearest (`NEAREST`, `BOX`), bilinear
+(`BILINEAR`, `HAMMING`) or bicubic (`BICUBIC`, `LANCZOS`), and `samples`, `seed` and
+`alpha_channel` mean what they mean there. `GRID` with `BOX` at an integer factor is the
+block mean exactly.
+
+`subpixel` is for text shown on an LCD. With a layout (`ALWAN_SUBPIXEL_RGB`, `BGR`, or the
+vertical `VRGB`, `VBGR`), the image is resampled to three times the output along the
+stripes, and each of the first three channels then takes the value at its own subpixel
+through FreeType's default LCD filter, `(8, 77, 86, 77, 8) / 256` across the subpixels; a
+fourth channel sits at the middle one. Glyph edges keep about three times the resolution
+across the stripes on a display of that layout, and show coloured fringes on any other.
+It needs three or four channels.
+
+| Field of `alwan_resize_params` | 0 reads as |
+|---|---|
+| `box[4]` | the whole image |
+| `integration`, `samples`, `seed`, `alpha_channel` | `POINT`: Pillow's resampling |
+| `subpixel` | `ALWAN_SUBPIXEL_NONE` |
+
 ## Warping
 
 ```c
@@ -1059,15 +1081,38 @@ to `(m0 x + m1 y + m2, m3 x + m4 y + m5)`, divided for a perspective map by
 `m6 x + m7 y + 1`. The source is sampled there by the method, and an output whose point
 falls outside the image keeps `fill`.
 
+`map` chooses where the source points come from:
+
+| Map | The source point of output point `p` |
+|---|---|
+| `MATRIX` | the matrix above |
+| `SWIRL` | `c + R(phi) (p - c)`, `phi = angle f(s)`, `s = 1 - min(abs(p - c) / radius, 1)` and `f(s) = 6s^5 - 15s^4 + 10s^3`: a turn that fades to nothing at the radius with its first and second derivatives |
+| `FIELD` | a sampled map, two doubles per texel: texel `(i, j)` holds the source point of output point `(i + 0.5, j + 0.5)`, read bilinearly between texels and clamped at the edges; a NaN texel has no source (fill) |
+| `CALLBACK` | `callback(x, y, &sx, &sy, user)`; a zero return means no source (fill) |
+
+A field is the form a flow field, a UV pass from a renderer or a lens-distortion table
+takes; a callback takes any analytic map.
+
 | Field of `alwan_warp_params` | 0 reads as |
 |---|---|
 | `matrix[8]` | all 0: the identity |
 | `perspective` | 0: the affine map, `m6` and `m7` unused |
 | `fill[4]` | 0 in every channel |
+| `map` | `ALWAN_WARP_MAP_MATRIX`: the matrix above |
+| `swirl_center[2]`, `swirl_radius`, `swirl_angle` | the image centre, half the shorter side, no turn |
+| `field`, `field_row_stride` | required by `ALWAN_WARP_MAP_FIELD` |
+| `callback`, `callback_user` | required by `ALWAN_WARP_MAP_CALLBACK` |
+| `integration` | `ALWAN_PIXEL_INTEGRATE_POINT`: one sample at the centre |
+| `samples` | 16 x 16 for `GRID`, 16 for `R2`, a cap of 64 for `ADAPTIVE` |
+| `tolerance` | 0.05 source pixels |
+| `seed`, `r2_disk` | seed 0, points over the square pixel |
+| `alpha_channel` | 0: channels independent |
+| `samples_out`, `samples_out_row_stride` | not written |
 
 `NEAREST` takes the pixel under the point, `BILINEAR` the four around it, `BICUBIC` the
-sixteen by the Catmull-Rom cubic (`a = -0.5`). Nothing filters against aliasing, so a map
-that shrinks much should follow a reduction by `alwan_resize`. To rotate the picture
+sixteen by the Catmull-Rom cubic (`a = -0.5`). With `POINT` integration nothing filters
+against aliasing, so a map that shrinks much should follow a reduction by `alwan_resize`,
+or integrate. To rotate the picture
 counter-clockwise by `t` about `(cx, cy)`, the matrix is `cos t, -sin t,
 cx - cx cos t + cy sin t, sin t, cos t, cy - cx sin t - cy cos t`, which is what Pillow's
 `Image.rotate` builds.
@@ -1082,7 +1127,55 @@ nearest-neighbour routes for affine maps (a pure scale, 16.16 fixed point, doubl
 results truncated with bicubic clamped first, and on float32 its horizontal stage in float
 arithmetic, as its macros compute it on `FLOAT32` pixels. The double entry point computes
 in double throughout and agrees with Pillow's float32 to 1.3e-7. Pillow premultiplies RGBA
-before a bilinear or bicubic transform; alwan's channels are independent.
+before a bilinear or bicubic transform; alwan's channels are independent at `POINT`.
+
+### Output-space integration
+
+A point sample of a map that compresses or bends the image aliases: a swirl's centre turns
+into noise, fine text under a strong shrink breaks up. `integration` makes each output
+pixel the mean of the source over the pixel's own area,
+
+    C(p) = mean over d in the pixel of I(W(p + d)),
+
+with the sub-offset `d` added before the map, so the map's own curvature is integrated and
+any map (matrix, swirl, field, callback) takes it the same way. The source is reconstructed
+at every sub-position by the method.
+
+| Integration | Sub-positions |
+|---|---|
+| `POINT` | the centre; Pillow's transform for a matrix map |
+| `GRID` | an n x n grid of cell centres (`samples` is n, 16 by default, up to 64): the brute-force reference |
+| `R2` | `samples` points (16 by default, up to 4096) of Roberts' R2 sequence in antithetic pairs `+d, -d`, so no pair shifts the pixel; the set is shifted toroidally per pixel by a hash of `(x, y, seed)` so neighbours do not share one pattern. `r2_disk` spreads it over the disk of the pixel's area instead, turned per pixel |
+| `ADAPTIVE` | R2 with a count per pixel, from central differences of the map at half a pixel: the footprint (the Jacobian's largest column) and the second difference. A footprint at most 1 with a second difference at most `tolerance` takes one sample; otherwise the first of 4, 8, 16, 32, 64 not below the larger of footprint^2 and second difference / tolerance, capped by `samples` |
+
+`ADAPTIVE` reads the map, not the picture: a rigid turn, a translation or a mild
+enlargement takes one sample even where the content has sharp edges, and the budget goes
+where the map shrinks or bends. `samples_out` (one byte per pixel, 255 for more) records
+the count each pixel took, for a heat map. On a 256 x 256 checker of 8-pixel squares under
+a swirl of three turns, against a 48 x 48 grid, bilinear reconstruction:
+
+| Integration | Mean samples | RMS inside the swirl |
+|---|---|---|
+| `POINT` | 1 | 0.349 |
+| `R2`, 16 | 16 | 0.059 |
+| `GRID`, 4 | 16 | 0.031 |
+| `ADAPTIVE`, cap 64 | 37.7 | 0.020 |
+| `R2`, 64 | 64 | 0.017 |
+| `GRID`, 16 | 256 | 0.0009 |
+
+With `alpha_channel` set, the last of two or four channels is straight alpha: the colour is
+premultiplied before the mean and divided after, so colour under zero alpha does not bleed
+into an edge. The mean is of the data's own values; for light-correct integration of
+display-encoded colour, convert to linear light first.
+
+No library carries this integration to compare with; suite 235 holds its properties
+instead: `POINT` through a callback or a field that encode a matrix equals the matrix path,
+`GRID` with one sample equals `POINT`, antithetic R2 returns a linear ramp to 3e-16, R2
+converges to the grid reference under a swirl (RMS 0.029, 0.0032, 0.0006 at 16, 256 and
+2048 points), `ADAPTIVE` takes one sample past the swirl and more inside it, a zero angle is
+the identity, and a NaN texel is fill. Resize's integration and subpixel layouts are held
+the same way: an integrated box halving is the 2 x 2 mean, a constant stays constant under
+every layout, and RGB and BGR move a thin line's red and blue in opposite directions.
 
 ## Segmentation
 

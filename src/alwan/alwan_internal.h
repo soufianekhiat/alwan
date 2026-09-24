@@ -50,6 +50,9 @@ alwan_status alwan__fgs_run(void *out, size_t out_row_stride, void const *src, s
 /* alwan_l0_smooth.c: ALWAN_EDGE_FILTER_L0_SMOOTH */
 alwan_status alwan__l0_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                            double lambda, double kappa, int is_f32);
+/* alwan_warp.c: alwan_warp's engine for alwan_resize's integration; kind 0 f64, 1 f32, 2 u8 */
+alwan_status alwan__warp_run(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                            alwan_warp_method method, alwan_warp_params const *params, int kind);
 /* alwan_denoise_nlm.c: ALWAN_DENOISE_NL_MEANS_DARBON (buades 0) and _BUADES (1); kind 0 f64,
  * 1 f32, 2 u8 (through double in 0..1, rounded back) */
 alwan_status alwan__denoise_nlm(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h, int buades,

@@ -518,6 +518,14 @@
   antialiasing when shrinking and a source box; value for value with Pillow's
   `Image.resize` on 8-bit and float32 data (suite 233).
 
+- **Output-space subpixel integration for `alwan_warp` and `alwan_resize`.** Each output
+  pixel the mean of the source over its own area, the sub-offsets taken before the map, by
+  a grid, antithetic R2 points shifted per pixel, or an adaptive count from the map's
+  footprint and curvature; for any map: the matrix, a C2 swirl, a sampled field (flow, UV
+  pass) or a callback. Straight alpha is premultiplied for the mean. `alwan_resize` also
+  gains LCD subpixel layouts (RGB, BGR, vertical) through FreeType's default LCD filter, for
+  text. No reference exists; suite 235 holds the properties.
+
 - **Ridge filters: `alwan_ridge`.** Frangi, Sato, Meijering and Hessian vesselness over
   several scales, dark or bright ridges; equal to scikit-image's `filters` in double
   (suite 232).
