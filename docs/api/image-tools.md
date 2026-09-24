@@ -1544,6 +1544,62 @@ Suite 218 holds it to scikit-image value for value in double and 8-bit (balls of
 to 30 and 7.5, an image smaller than the ball, 8-bit colour), the ellipsoid to 1.4e-14 and
 float32, which scikit-image computes in float32, to 3.8e-6 on values up to 255.
 
+## Vignetting
+
+```c
+typedef enum {
+    ALWAN_VIGNETTE_PARABOLIC = 0, ALWAN_VIGNETTE_HYPERBOLIC_COSINE = 1,
+    ALWAN_VIGNETTE_BIVARIATE_SPLINE = 2, ALWAN_VIGNETTE_RBF = 3
+} alwan_vignette_method;
+
+alwan_status alwan_vignette_characterise_{T}(alwan_vignette **out, alwan_{T} const *flat, size_t row_stride,
+                                             size_t channels, size_t width, size_t height,
+                                             alwan_vignette_method method, alwan_vignette_params const *params,
+                                             alwan_ctx *ctx);
+alwan_status alwan_vignette_correct_{T}(alwan_{T} *out, size_t out_row_stride,
+                                        alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                                        size_t width, size_t height, alwan_vignette const *vignette);
+alwan_status alwan_vignette_evaluate(double *out, size_t out_row_stride, size_t width, size_t height,
+                                     size_t channel, alwan_vignette const *vignette);
+alwan_status alwan_vignette_principal_point(double *xy, alwan_vignette const *vignette);
+void alwan_vignette_destroy(alwan_vignette *vignette, alwan_ctx *ctx);
+```
+
+A lens passes less light towards the corners of the frame. Shoot a flat field (an evenly
+lit, featureless surface: a light box, a white wall, an overcast sky through a diffuser)
+through the lens, characterise it once, and divide the falloff out of every other frame
+shot through that lens at that aperture. Coordinates are fractions of the frame, so one
+characterisation corrects frames of any size with the same channel count. The principal
+point, where the falloff centres, is the centroid of the flat field's brightest pixels
+(their median over the channels above `threshold` times the largest).
+
+| Method | The falloff | Fitted by |
+|---|---|---|
+| `PARABOLIC` | `(a_x2 x^2 + a_x1 x + a_x0) / 2 + (a_y2 y^2 + a_y1 y + a_y0) / 2` about the principal point | least squares within colour-hdri's bounds, exactly |
+| `HYPERBOLIC_COSINE` | `1 - cosh(r_x (x - 0.5 - x_0)) cosh(r_y (y - 0.5 - y_0)) + c` | Levenberg-Marquardt within colour-hdri's bounds |
+| `BIVARIATE_SPLINE` | the flat field itself, smoothed (a Gaussian of `denoise_sigma`, 6), kept at `samples` (50) points on its longer side, smoothed again (`post_denoise_sigma`, 1), read back through the interpolating bicubic spline | nothing to fit: any shape of falloff |
+| `RBF` | colour-hdri's samples of the smoothed flat field (two on each diagonal, ten along each edge, a polar grid of 7 radii by 21 angles about the principal point) through the cubic radial basis function with a linear tail and `smoothing` (0.001) | one linear system |
+
+The two fitted surfaces are bounded as colour-hdri bounds them, which expects a flat field
+near 1 at its brightest; a parabola fits a lens's falloff poorly, and its constant often
+rests on the bound of 0.9. The spline follows any falloff, and the radial basis function
+any smooth one. A correction is the frame divided by the surface, channel by channel; 8-bit
+data are read as value / 255 and written back rounded and saturated.
+
+This is colour-hdri's `distortion.vignette`, and suite 238 holds each method to it on three
+flat fields made by its own `apply_radial_gradient` (square, wide with an off-centre
+channel, grey and off-centre): the spline to 2.3e-15, the radial basis function to 2.5e-14
+(its jitter is colour-hdri's own draw, exported to `data/vignette/rbf_jitter.csv`), the
+hyperbolic cosine to 5.7e-8 and the parabola to 1.7e-9, their optimisers' tolerance, and
+every principal point equal. The spline is FITPACK's interpolation with s = 0, which is the
+not-a-knot cubic along each axis; the radial basis function is scipy's `RBFInterpolator`
+system, its polynomial on coordinates scaled to [-1, 1], solved by LU with partial pivoting.
+One difference is deliberate: on a frame that is not square, colour-hdri's 2D functions
+subtract the principal point's row fraction from the column coordinate and its column
+fraction from the row. alwan pairs them the right way round, and the suite's parabola on
+those frames is colour-hdri's own function, bounds and `curve_fit` with the point paired
+that way.
+
 ## Colour transfer
 
 ```c

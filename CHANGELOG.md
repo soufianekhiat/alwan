@@ -515,6 +515,12 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Vignetting: `alwan_vignette`.** Characterise a lens's falloff from a flat field (a
+  parabola, a hyperbolic cosine, a bicubic spline of the smoothed field, or radial basis
+  functions) and divide it out of any frame; equal to colour-hdri's `distortion.vignette`
+  (suite 238), the spline and RBF to rounding. colour-hdri swaps the principal point's axes
+  on frames that are not square; alwan does not.
+
 - **Distance transforms: `alwan_distance_transform`.** Euclidean (exact, with anisotropic
   pixels), city-block and chessboard, and a signed distance field; equal to
   `scipy.ndimage`'s transforms (suite 236).

@@ -2617,6 +2617,60 @@ alwan_status alwan_background_f32(alwan_f32 *out, size_t out_row_stride, alwan_f
 alwan_status alwan_background_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_background_method method, alwan_background_params const *params);
 alwan_status alwan_background_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_background_method method, alwan_background_params const *params);
 
+/* Vignetting: the light a lens loses towards the corners, characterised from a flat-field
+ * frame (an evenly lit, featureless surface shot through the lens) and divided out of other
+ * frames. As colour-hdri's distortion.vignette (suite 238). Characterise once, correct any
+ * number of frames, of any size, with the same channel count; destroy when done.
+ *
+ *   ALWAN_VIGNETTE_PARABOLIC          a parabola each way about the principal point, fitted
+ *                                     to every pixel by least squares
+ *   ALWAN_VIGNETTE_HYPERBOLIC_COSINE  1 - cosh(r_x (x - 0.5 - x_0)) cosh(r_y (y - 0.5 - y_0)) + c,
+ *                                     fitted within colour-hdri's bounds
+ *   ALWAN_VIGNETTE_BIVARIATE_SPLINE   the flat field itself, smoothed and kept at `samples`
+ *                                     points on its longer side, read back through the
+ *                                     interpolating bicubic spline: any shape of falloff
+ *   ALWAN_VIGNETTE_RBF                colour-hdri's pattern of samples of the smoothed flat
+ *                                     field (diagonals, edges, a polar grid about the principal
+ *                                     point), interpolated by the cubic radial basis function
+ *                                     with a linear tail, as scipy's RBFInterpolator
+ *
+ * The principal point is the centroid of the brightest pixels (median over the channels
+ * above threshold times the largest). A corrected frame is the frame over the fitted
+ * surface. 8-bit data are read as value / 255 and written back rounded and saturated.
+ * ALWAN_E_INVALID for a NULL, a side under 2, a channel count out of range or unlike the
+ * characterisation's, a stride too small, a NaN or infinite value, an unknown method;
+ * ALWAN_E_RANGE for a parameter out of range, a spline grid under 4 a side or a system that
+ * cannot be solved. */
+typedef enum {
+    ALWAN_VIGNETTE_PARABOLIC = 0,
+    ALWAN_VIGNETTE_HYPERBOLIC_COSINE = 1,
+    ALWAN_VIGNETTE_BIVARIATE_SPLINE = 2,
+    ALWAN_VIGNETTE_RBF = 3
+} alwan_vignette_method;
+
+/* A zero field is its default. */
+typedef struct {
+    double threshold;           /* the principal point's brightest pixels, a fraction of the largest; 0 reads as 0.99 */
+    double denoise_sigma;       /* BIVARIATE_SPLINE, RBF: the Gaussian smoothing the flat field, in pixels; 0 reads as 6 */
+    double post_denoise_sigma;  /* BIVARIATE_SPLINE: the Gaussian smoothing the grid, in grid points; 0 reads as 1 */
+    size_t samples;             /* BIVARIATE_SPLINE: the grid's points on the longer side; 0 reads as 50 */
+    double smoothing;           /* RBF: added to the kernel matrix's diagonal; 0 reads as 0.001 */
+} alwan_vignette_params;
+
+typedef struct alwan_vignette alwan_vignette;
+
+alwan_status alwan_vignette_characterise_f32(alwan_vignette **out, alwan_f32 const *flat, size_t row_stride, size_t channels, size_t width, size_t height, alwan_vignette_method method, alwan_vignette_params const *params, alwan_ctx *ctx);
+alwan_status alwan_vignette_characterise_f64(alwan_vignette **out, alwan_f64 const *flat, size_t row_stride, size_t channels, size_t width, size_t height, alwan_vignette_method method, alwan_vignette_params const *params, alwan_ctx *ctx);
+alwan_status alwan_vignette_characterise_u8(alwan_vignette **out, unsigned char const *flat, size_t row_stride, size_t channels, size_t width, size_t height, alwan_vignette_method method, alwan_vignette_params const *params, alwan_ctx *ctx);
+alwan_status alwan_vignette_correct_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_vignette const *vignette);
+alwan_status alwan_vignette_correct_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_vignette const *vignette);
+alwan_status alwan_vignette_correct_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_vignette const *vignette);
+/* The fitted surface of one channel over a width x height frame (doubles, out_row_stride in bytes). */
+alwan_status alwan_vignette_evaluate(double *out, size_t out_row_stride, size_t width, size_t height, size_t channel, alwan_vignette const *vignette);
+/* The principal point: column and row, as fractions of the frame. */
+alwan_status alwan_vignette_principal_point(double *xy, alwan_vignette const *vignette);
+void alwan_vignette_destroy(alwan_vignette *vignette, alwan_ctx *ctx);
+
 /* Global thresholds: one level per channel that splits it into foreground and background,
  * for a mask from a luma, a matte or a scan. threshold_out receives `channels` values; a
  * pixel is foreground where it is above its channel's threshold.

@@ -1944,6 +1944,15 @@ EXPORTS
     alwan_view_transform_f64_map_interleave
     alwan_view_transform_f64_map_planar
     alwan_view_transform_map_interleave_ex
+    alwan_vignette_characterise_f32
+    alwan_vignette_characterise_f64
+    alwan_vignette_characterise_u8
+    alwan_vignette_correct_f32
+    alwan_vignette_correct_f64
+    alwan_vignette_correct_u8
+    alwan_vignette_destroy
+    alwan_vignette_evaluate
+    alwan_vignette_principal_point
     alwan_warp_f32
     alwan_warp_f64
     alwan_warp_u8
