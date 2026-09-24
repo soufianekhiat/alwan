@@ -484,7 +484,9 @@
 - **Morphology: `alwan_morphology`.** Erode, dilate, open, close, gradient, top-hat and
   black-hat on float and 8-bit images, with OpenCV's rectangle, cross, ellipse and diamond
   elements or a caller's own, for cleaning keys and mattes; value for value with OpenCV's
-  `morphologyEx` (suite 217).
+  `morphologyEx` (suite 217). `ALWAN_MORPHOLOGY_AREA_OPEN` and `AREA_CLOSE` remove bright
+  or dark regions below a pixel count whatever their shape, 4- or 8-connected, by the
+  max-tree; value for value with scikit-image's `area_opening` and `area_closing` (suite 219).
 
 - **Background estimation: `alwan_background`.** The slowly varying background of an image,
   to take out uneven illumination; `ALWAN_BACKGROUND_ROLLING_BALL` first, a ball or an

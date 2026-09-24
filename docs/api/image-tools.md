@@ -544,7 +544,8 @@ typedef enum {
     ALWAN_MORPHOLOGY_ERODE = 0, ALWAN_MORPHOLOGY_DILATE = 1,
     ALWAN_MORPHOLOGY_OPEN = 2, ALWAN_MORPHOLOGY_CLOSE = 3,
     ALWAN_MORPHOLOGY_GRADIENT = 4,
-    ALWAN_MORPHOLOGY_TOP_HAT = 5, ALWAN_MORPHOLOGY_BLACK_HAT = 6
+    ALWAN_MORPHOLOGY_TOP_HAT = 5, ALWAN_MORPHOLOGY_BLACK_HAT = 6,
+    ALWAN_MORPHOLOGY_AREA_OPEN = 7, ALWAN_MORPHOLOGY_AREA_CLOSE = 8
 } alwan_morphology_method;
 
 typedef enum {
@@ -576,6 +577,8 @@ speckle off a hard key and closes its pinholes. Each channel on its own; `out` m
 | `kernel_width`, `kernel_height` | 3, 3 (1 to 255) |
 | `iterations` | 1: each erosion and dilation runs once |
 | `kernel` | NULL: build `shape`; otherwise the caller's element, `kernel_width x kernel_height` bytes |
+| `area_threshold` | 64: `AREA_OPEN` and `AREA_CLOSE`, the smallest region kept, in pixels |
+| `connectivity` | 4: `AREA_OPEN` and `AREA_CLOSE`, 4 or 8 neighbours |
 
 The element's anchor is `(kernel_width / 2, kernel_height / 2)`, off centre for an even
 size, and the element is used as given, not reflected, for dilation as for erosion. Pixels
@@ -587,6 +590,29 @@ asymmetric caller's element, on 8-bit grey, colour and a speckled mask and on fl
 8-bit composites saturate at 0 and 255 as OpenCV's do. A caller's element that reaches no
 pixel of the image leaves that pixel as it was, where OpenCV writes its border value; the
 four shapes always include the anchor.
+
+### `AREA_OPEN`, `AREA_CLOSE`
+
+The element-based opening removes what is narrower than its element, so a long thin bright
+line and a small round speck of the same pixel count are treated apart. The area operators
+count pixels instead and take no element. A region is a connected set of pixels at or above
+some level (4- or 8-connected); `AREA_OPEN` lowers every pixel to the highest level at
+which its region still has `area_threshold` pixels or more, so a bright region of fewer
+pixels sinks to its surroundings whatever its shape, and every region at least that large,
+thin or not, keeps its value and its outline exactly. `AREA_CLOSE` does the same for dark
+regions: it fills holes of fewer pixels. On a key it removes specks and pinholes below a
+size without rounding the corners of what it keeps.
+
+The regions come from the image's max-tree (Berger et al. 2007), built by union-find over
+the pixels in decreasing order, so the cost is a sort and near-linear after it. This is
+scikit-image's `morphology.area_opening` and `area_closing`, and suite 219 holds it to them
+value for value: thresholds of 16 to 500, both connectivities, a frame at whole levels and
+at 12 levels where ties are everywhere, an unrounded frame, float32 and 8-bit colour. Two
+differences, both outside what the suite compares: a threshold above the whole image's area
+flattens it to its minimum (maximum for `AREA_CLOSE`), where scikit-image returns 0; and
+scikit-image closes a float image as `1 - opening(1 - x)`, which gives back `x` only to
+rounding, where alwan negates, which is exact. Each channel is its own image, where
+scikit-image would read a colour array as a volume.
 
 ## Background estimation
 

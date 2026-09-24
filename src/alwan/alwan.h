@@ -2478,14 +2478,24 @@ alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
  *   ALWAN_MORPHOLOGY_GRADIENT   dilate - erode: the outline of every edge
  *   ALWAN_MORPHOLOGY_TOP_HAT    src - open: the bright detail smaller than the element
  *   ALWAN_MORPHOLOGY_BLACK_HAT  close - src: the dark detail smaller than it
+ *   ALWAN_MORPHOLOGY_AREA_OPEN  every bright region of fewer than area_threshold pixels
+ *                               lowered to the level of its surroundings, whatever its
+ *                               shape; larger regions untouched
+ *   ALWAN_MORPHOLOGY_AREA_CLOSE the same for dark regions: holes of fewer pixels filled
  *
  * The element sits with its anchor, (kernel_width / 2, kernel_height / 2), on the pixel and
  * is used as given (not reflected); pixels outside the image take no part; iterations
  * repeats each erosion and dilation. As OpenCV's erode, dilate and morphologyEx, value for
- * value (suite 217). The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
- * rectangle once. ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a
- * stride too small, a NaN, or an unknown method or shape; ALWAN_E_RANGE for an element
- * over 255 a side or more than 1000 iterations. */
+ * value (suite 217). The area operators take no element: a region is a connected set of
+ * pixels at or above a level (at or below, for AREA_CLOSE), 4- or 8-connected, and a pixel
+ * becomes the highest level at which its region has area_threshold pixels or more. As
+ * scikit-image's area_opening and area_closing, value for value (suite 219), except that
+ * a threshold above the whole image's area flattens it to its minimum (maximum), where
+ * scikit-image returns 0. The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
+ * rectangle once, or an area of 64, 4-connected. ALWAN_E_INVALID for a NULL, a zero size, a
+ * channel count out of range, a stride too small, a NaN, a connectivity other than 4 or 8,
+ * or an unknown method or shape; ALWAN_E_RANGE for an element over 255 a side or more than
+ * 1000 iterations. */
 typedef enum {
     ALWAN_MORPHOLOGY_ERODE = 0,
     ALWAN_MORPHOLOGY_DILATE = 1,
@@ -2493,7 +2503,9 @@ typedef enum {
     ALWAN_MORPHOLOGY_CLOSE = 3,
     ALWAN_MORPHOLOGY_GRADIENT = 4,
     ALWAN_MORPHOLOGY_TOP_HAT = 5,
-    ALWAN_MORPHOLOGY_BLACK_HAT = 6
+    ALWAN_MORPHOLOGY_BLACK_HAT = 6,
+    ALWAN_MORPHOLOGY_AREA_OPEN = 7,
+    ALWAN_MORPHOLOGY_AREA_CLOSE = 8
 } alwan_morphology_method;
 
 /* The structuring elements, OpenCV's getStructuringElement and its numbering. */
@@ -2512,6 +2524,8 @@ typedef struct {
     size_t iterations;             /* how many times each erosion and dilation runs; 0 reads as 1 */
     unsigned char const *kernel;   /* a caller's element, kernel_width x kernel_height bytes, non-zero
                                     * where it takes part; NULL builds shape */
+    size_t area_threshold;         /* AREA_OPEN, AREA_CLOSE: the smallest region kept, in pixels; 0 reads as 64 */
+    unsigned connectivity;         /* AREA_OPEN, AREA_CLOSE: 4 or 8 neighbours; 0 reads as 4 */
 } alwan_morphology_params;
 
 alwan_status alwan_morphology_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
