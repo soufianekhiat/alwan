@@ -451,8 +451,11 @@
   DCT denoising (Yu and Sapiro 2011, OpenCV's `xphoto::dctDenoising` to 5e-7, suite 204;
   OpenCV's last row and column come out 0 or NaN, these do not) and wavelet shrinkage
   (BayesShrink or VisuShrink, soft or hard, Daubechies db1 to db8 and symlets sym2 to sym8,
-  scikit-image's `denoise_wavelet` to 1.1e-15, suite 206) and the median filter (equal to
-  OpenCV's `medianBlur` and SciPy's `median_filter`, suite 211).
+  scikit-image's `denoise_wavelet` to 1.1e-15, suite 206), the median filter (equal to
+  OpenCV's `medianBlur` and SciPy's `median_filter`, suite 211) and split Bregman total
+  variation (Goldstein and Osher 2009, isotropic or anisotropic, bit for bit with
+  scikit-image's `denoise_tv_bregman` per channel, suite 216; its `channel_axis` path
+  carries one channel's state into the next, alwan's does not).
 
 - **Edge-aware smoothing: `alwan_edge_filter`.** One entry point with a method enum and a
   parameter struct whose zero fields are each paper's defaults: the guided filter (He et al.

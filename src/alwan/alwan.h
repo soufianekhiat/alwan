@@ -2284,9 +2284,14 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        outliers (hot pixels, salt and pepper) and keeps
  *                                        step edges (OpenCV medianBlur, scipy.ndimage
  *                                        median_filter, suite 211)
+ *   ALWAN_DENOISE_TV_BREGMAN             total variation again, weight / 2 |u - f|^2 +
+ *                                        |grad u|, by split Bregman (Goldstein and Osher 2009),
+ *                                        isotropic or anisotropic; weight is a fidelity
+ *                                        weight here, larger keeps more (scikit-image
+ *                                        denoise_tv_bregman, suite 216)
  *
  * alwan_denoise_u8 runs every method on 8-bit data (TV through double in 0..1, rounded
- * back); alwan_denoise_{T} runs TV_CHAMBOLLE, DCT, WAVELET and MEDIAN, and ALWAN_E_INVALID for the two
+ * back); alwan_denoise_{T} runs TV_CHAMBOLLE, DCT, WAVELET, MEDIAN and TV_BREGMAN, and ALWAN_E_INVALID for the two
  * methods whose references are 8-bit. src has 1 to 4 channels, each denoised on its own
  * except that NL means and diffusion measure differences over all of them and DCT turns
  * three channels to an opponent space first; rows at the given byte strides. out may be
@@ -2297,7 +2302,8 @@ typedef enum {
     ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
     ALWAN_DENOISE_DCT = 3,
     ALWAN_DENOISE_WAVELET = 4,
-    ALWAN_DENOISE_MEDIAN = 5
+    ALWAN_DENOISE_MEDIAN = 5,
+    ALWAN_DENOISE_TV_BREGMAN = 6
 } alwan_denoise_method;
 
 /* The orthogonal wavelets of ALWAN_DENOISE_WAVELET: Daubechies and symlets. */
@@ -2321,10 +2327,13 @@ typedef enum {
 
 /* Each method reads its own fields; a zero field is its default. */
 typedef struct {
-    double weight;          /* TV_CHAMBOLLE: fidelity against smoothness, values in 0..1; 0 reads as 0.1 */
+    double weight;          /* TV_CHAMBOLLE: smoothness against fidelity, values in 0..1; 0 reads as 0.1.
+                             * TV_BREGMAN: fidelity against smoothness, larger keeps more; 0 reads as 5 */
     double tolerance;       /* TV_CHAMBOLLE: stop when the energy changes by less than this times its first
-                             * value; 0 reads as 2e-4 (a tiny value runs every iteration) */
-    size_t iterations;      /* TV_CHAMBOLLE: at most, 0 reads as 200. ANISOTROPIC_DIFFUSION: 0 reads as 10 */
+                             * value; 0 reads as 2e-4 (a tiny value runs every iteration).
+                             * TV_BREGMAN: stop when a sweep's RMS change is at most this; 0 reads as 1e-3 */
+    size_t iterations;      /* TV_CHAMBOLLE: at most, 0 reads as 200. ANISOTROPIC_DIFFUSION: 0 reads as 10.
+                             * TV_BREGMAN: at most, 0 reads as 100 */
     double h;               /* NL_MEANS: strength in 0..255 units; 0 reads as 10 */
     size_t template_window; /* NL_MEANS: patch side, odd; 0 reads as 7 */
     size_t search_window;   /* NL_MEANS: search side, odd; 0 reads as 21 */
@@ -2342,6 +2351,7 @@ typedef struct {
     int wavelet_visushrink; /* WAVELET: non-zero thresholds by VisuShrink; 0 by BayesShrink */
     int wavelet_hard;       /* WAVELET: non-zero thresholds hard; 0 soft */
     size_t kernel_size;     /* MEDIAN: the window's side, odd, 3 to 255; 0 reads as 3 */
+    int anisotropic;        /* TV_BREGMAN: non-zero penalises |u_x| + |u_y|; 0 the isotropic |grad u| */
 } alwan_denoise_params;
 
 alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);

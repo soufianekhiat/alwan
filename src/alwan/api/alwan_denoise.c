@@ -917,6 +917,130 @@ static alwan_status alwan_med_float(void *out, size_t out_rs, void const *src, s
     return ALWAN_OK;
 }
 
+/*
+ * Total variation by split Bregman (Goldstein and Osher, SIAM J. Imaging Sciences 2009),
+ * as scikit-image's restoration.denoise_tv_bregman computes it (_denoise_cy.pyx), which
+ * suite 216 holds this to. Each channel alone:
+ *
+ *   minimise  weight / 2 |u - f|^2 + |grad u|     (isotropic; anisotropic |u_x| + |u_y|)
+ *
+ * by Gauss-Seidel sweeps over the pixels in row order, lambda = 2 weight:
+ *
+ *   u   = (lambda (sum of the four neighbours + dx(x-1) - dx + dy(y-1) - dy
+ *                  - bx(x-1) + bx - by(y-1) + by) + weight f) / (weight + 4 lambda)
+ *   d   = the shrunk forward differences plus b: isotropically, with t = grad u + b and
+ *         s = |t|, d = s lambda t / (s lambda + 1), scikit-image's form; anisotropically,
+ *         each component soft-thresholded at 1 / lambda
+ *   b  += grad u - d
+ *
+ * until the root mean square of a sweep's change falls to eps or max iterations. weight is a
+ * fidelity weight: larger keeps more of the image. The image sits in a frame one pixel wide
+ * that the sweeps never update: the top row and left column hold the image's second row
+ * and column, the bottom row and right column its last, the corners 0, as scikit-image
+ * sets them.
+ */
+static void alwan_tvb_plane(double *img_out, double const *f, size_t w, size_t h, double weight, double eps,
+                            size_t max_iter, int aniso, double *mem) {
+    size_t const W = w + 2, H = h + 2, N = W * H;
+    double *u = mem, *dx = u + N, *dy = dx + N, *bx = dy + N, *by = bx + N;
+    double const lam = 2.0 * weight, norm = weight + 4.0 * lam;
+    double rmse = DBL_MAX;
+    size_t it = 0, x, y;
+    for (x = 0; x < 5 * N; x++) mem[x] = 0.0;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) u[(y + 1) * W + x + 1] = f[y * w + x];
+    for (x = 0; x < w; x++) {
+        u[x + 1] = f[w + x];                     /* the second row */
+        u[(H - 1) * W + x + 1] = f[(h - 1) * w + x];
+    }
+    for (y = 0; y < h; y++) {
+        u[(y + 1) * W] = f[y * w + 1];           /* the second column */
+        u[(y + 1) * W + W - 1] = f[y * w + w - 1];
+    }
+    while (it < max_iter && rmse > eps) {
+        rmse = 0.0;
+        for (y = 1; y <= h; y++) {
+            for (x = 1; x <= w; x++) {
+                size_t const i = y * W + x;
+                double const uprev = u[i];
+                double const ux = u[i + 1] - uprev, uy = u[i + W] - uprev;
+                double const unew = (lam * (u[i + W] + u[i - W] + u[i + 1] + u[i - 1] + dx[i - 1] - dx[i] + dy[i - W] - dy[i]
+                                            - bx[i - 1] + bx[i] - by[i - W] + by[i])
+                                     + weight * f[(y - 1) * w + (x - 1)]) / norm;
+                double const bxx = bx[i], byy = by[i];
+                double dxx, dyy, t;
+                u[i] = unew;
+                t = unew - uprev;
+                rmse += t * t;
+                if (!aniso) {
+                    double const tx = ux + bxx, ty = uy + byy, s = sqrt(tx * tx + ty * ty);
+                    dxx = s * lam * tx / (s * lam + 1.0);
+                    dyy = s * lam * ty / (s * lam + 1.0);
+                } else {
+                    double s = ux + bxx;
+                    dxx = s > 1.0 / lam ? s - 1.0 / lam : s < -1.0 / lam ? s + 1.0 / lam : 0.0;
+                    s = uy + byy;
+                    dyy = s > 1.0 / lam ? s - 1.0 / lam : s < -1.0 / lam ? s + 1.0 / lam : 0.0;
+                }
+                dx[i] = dxx;
+                dy[i] = dyy;
+                bx[i] += ux - dxx;
+                by[i] += uy - dyy;
+            }
+        }
+        rmse = sqrt(rmse / (double)(w * h));
+        it++;
+    }
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) img_out[y * w + x] = u[(y + 1) * W + x + 1];
+}
+
+static alwan_status alwan_tvb_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                                  double weight, double eps, size_t max_iter, int aniso, int kind /* 0 f64, 1 f32, 2 u8 */) {
+    size_t const elem = kind == 0 ? sizeof(alwan_f64) : kind == 1 ? sizeof(alwan_f32) : 1u;
+    size_t const n = w * h;
+    double *plane, *res, *mem;
+    size_t c, x, y;
+    if (!out || !src || w < 2 || h < 2 || ch == 0 || ch > 4 || n / w != h) return ALWAN_E_INVALID;
+    if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
+    if (!alwan_dn_finite(weight) || !(weight > 0.0) || !alwan_dn_finite(eps) || eps < 0.0) return ALWAN_E_RANGE;
+    plane = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * sizeof(double)) +
+                                      alwan_safe_array_size((w + 2) * (h + 2), 5 * sizeof(double)), sizeof(double));
+    if (!plane) return ALWAN_E_NOMEM;
+    res = plane + n;
+    mem = res + n;
+    for (c = 0; c < ch; c++) {
+        for (y = 0; y < h; y++) {
+            char const *row = (char const *)src + y * src_rs;
+            for (x = 0; x < w; x++) {
+                double const v = kind == 0 ? ((alwan_f64 const *)row)[x * ch + c]
+                               : kind == 1 ? (double)((alwan_f32 const *)row)[x * ch + c]
+                                           : (double)((unsigned char const *)row)[x * ch + c] / 255.0;
+                if (!alwan_dn_finite(v)) {
+                    ALWAN_FREE(plane);
+                    return ALWAN_E_INVALID;
+                }
+                plane[y * w + x] = v;
+            }
+        }
+        alwan_tvb_plane(res, plane, w, h, weight, eps, max_iter, aniso, mem);
+        for (y = 0; y < h; y++) {
+            char *row = (char *)out + y * out_rs;
+            for (x = 0; x < w; x++) {
+                double const v = res[y * w + x];
+                if (kind == 0) {
+                    ((alwan_f64 *)row)[x * ch + c] = v;
+                } else if (kind == 1) {
+                    ((alwan_f32 *)row)[x * ch + c] = (alwan_f32)v;
+                } else {
+                    double fl = floor(v * 255.0 + 0.5);
+                    ((unsigned char *)row)[x * ch + c] = (unsigned char)(fl < 0.0 ? 0.0 : fl > 255.0 ? 255.0 : fl);
+                }
+            }
+        }
+    }
+    ALWAN_FREE(plane);
+    return ALWAN_OK;
+}
+
 static int alwan_med_size(size_t k) {
     return k >= 3 && k <= 255 && (k & 1u);
 }
@@ -978,6 +1102,10 @@ static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const 
         if (!alwan_med_size(k)) return ALWAN_E_RANGE;
         return alwan_med_float(out, out_row_stride, src, src_row_stride, channels, width, height, k, is_f32);
     }
+    case ALWAN_DENOISE_TV_BREGMAN:
+        return alwan_tvb_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->weight, 5.0),
+                             alwan_dn_or(p->tolerance, 1e-3), p->iterations == 0 ? 100 : p->iterations, p->anisotropic,
+                             is_f32 ? 1 : 0);
     case ALWAN_DENOISE_NL_MEANS:
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION: /* 8-bit only, as their references are */
     default:
@@ -1008,6 +1136,9 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
         if (!alwan_med_size(k)) return ALWAN_E_RANGE;
         return alwan_med_u8(out, out_row_stride, src, src_row_stride, channels, width, height, k);
     }
+    case ALWAN_DENOISE_TV_BREGMAN:
+        return alwan_tvb_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->weight, 5.0),
+                             alwan_dn_or(p->tolerance, 1e-3), p->iterations == 0 ? 100 : p->iterations, p->anisotropic, 2);
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION:
         return alwan_ad_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->alpha, 0.15),
                             alwan_dn_or(p->k, 0.05), p->iterations == 0 ? 10 : p->iterations);

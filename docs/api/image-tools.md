@@ -166,7 +166,8 @@ typedef enum {
     ALWAN_DENOISE_ANISOTROPIC_DIFFUSION = 2,
     ALWAN_DENOISE_DCT = 3,
     ALWAN_DENOISE_WAVELET = 4,
-    ALWAN_DENOISE_MEDIAN = 5
+    ALWAN_DENOISE_MEDIAN = 5,
+    ALWAN_DENOISE_TV_BREGMAN = 6
 } alwan_denoise_method;
 
 alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -179,9 +180,9 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
                               alwan_denoise_method method, alwan_denoise_params const *params);
 ```
 
-Six classic denoisers that fail in different ways (plate 89 of the v3 plates shows five
-of them on one portrait). `alwan_denoise_u8` runs all six; `alwan_denoise_{T}` runs
-`TV_CHAMBOLLE`, `DCT`, `WAVELET` and `MEDIAN`, and returns `ALWAN_E_INVALID` for the two whose references work
+Classic denoisers that fail in different ways (plate 89 of the v3 plates shows them on
+one portrait). `alwan_denoise_u8` runs all seven; `alwan_denoise_{T}` runs
+`TV_CHAMBOLLE`, `DCT`, `WAVELET`, `MEDIAN` and `TV_BREGMAN`, and returns `ALWAN_E_INVALID` for the two whose references work
 on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 
 | Field of `alwan_denoise_params` | Method | 0 reads as |
@@ -198,6 +199,8 @@ on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 | `wavelet_levels` | `WAVELET` | the most the image holds, less 3, at least 1 |
 | `wavelet_visushrink`, `wavelet_hard` | `WAVELET` | BayesShrink, soft |
 | `kernel_size` | `MEDIAN` | 3 (odd, 3 to 255) |
+| `weight`, `tolerance`, `iterations` | `TV_BREGMAN` | 5 (fidelity: larger keeps more), 1e-3, 100 |
+| `anisotropic` | `TV_BREGMAN` | 0: the isotropic `|grad u|` |
 
 ### `TV_CHAMBOLLE`
 
@@ -296,6 +299,32 @@ of each window. Suite 211 is equal, value for value, to OpenCV's `medianBlur` on
 grey and colour images at sizes 3 to 21, to `scipy.ndimage.median_filter` with
 `mode='nearest'` on float64 at 3 to 9, and to `medianBlur` on float32 at 3 and 5 (the sizes
 OpenCV takes float32 at).
+
+### `TV_BREGMAN`
+
+The same total-variation model as `TV_CHAMBOLLE`, written the other way round,
+`weight / 2 |u - f|^2 + |grad u|`, and solved by split Bregman (Goldstein and Osher, SIAM
+J. Imaging Sciences 2009): Gauss-Seidel sweeps for `u`, a shrinkage of the gradient plus
+its Bregman variable for `d`, and the Bregman update, repeated until a sweep's RMS change
+falls to `tolerance` or `iterations` have run. `weight` weighs fidelity here, so a larger
+value keeps more of the image, where Chambolle's `weight` weighs smoothness.
+`anisotropic` penalises `|u_x| + |u_y|`, which prefers edges along the axes; the default
+isotropic form treats every direction alike.
+
+It follows scikit-image's `restoration.denoise_tv_bregman` (its Cython kernel) sweep for
+sweep: the frame of one pixel scikit-image surrounds the image with (the second row and
+column at the top and left, the last at the bottom and right, zero corners, never
+updated), and its isotropic shrinkage `s lambda t / (s lambda + 1)`. Suite 216 agrees to
+the last bit in double on grey and colour images, both forms, and stops decided by either
+limit; within half a level in 8-bit and 2.4e-7 in float32, which scikit-image computes in
+float32.
+
+Colour is each channel alone, from zero. scikit-image 0.26's `channel_axis` path is not:
+it reuses one output buffer across channels and its kernel starts the Bregman variables as
+copies of it, so each channel after the first starts from the previous channel's result.
+Its second and third channels come out 0.016 and 0.020 away from the same channel
+denoised alone, and reversing the channel order changes them. Suite 216 compares colour
+with scikit-image's single-channel calls.
 
 ## Local contrast
 
