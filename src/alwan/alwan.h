@@ -2758,6 +2758,44 @@ typedef struct {
 alwan_status alwan_corner_response_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_corner_method method, alwan_corner_params const *params);
 alwan_status alwan_corner_response_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_corner_method method, alwan_corner_params const *params);
 
+/* Texture codes: a code for every pixel of one channel describing the pattern of its
+ * neighbourhood, for texture classification, matching and segmentation (a histogram of
+ * the codes over a region is its texture descriptor). out receives doubles (out_row_stride
+ * in bytes) whatever the input.
+ *
+ *   ALWAN_TEXTURE_LBP              local binary pattern: P neighbours on a circle of
+ *                                  radius R, bit p set where neighbour p is at least the
+ *                                  centre, the code sum of bit p times 2^p
+ *   ALWAN_TEXTURE_LBP_ROR          the smallest rotation of that code: rotation invariant
+ *   ALWAN_TEXTURE_LBP_UNIFORM      the count of set bits for patterns with at most two
+ *                                  changes, else P + 1: rotation invariant, P + 2 codes
+ *   ALWAN_TEXTURE_LBP_NRI_UNIFORM  the uniform patterns told apart by rotation too,
+ *                                  P (P - 1) + 3 codes
+ *   ALWAN_TEXTURE_LBP_VAR          the neighbours' variance, contrast without pattern; NaN
+ *                                  where it is 0
+ *
+ * As scikit-image's feature.local_binary_pattern, value for value (suite 230): the
+ * neighbours interpolated bilinearly with 0 outside the image. ALWAN_E_INVALID for a NULL,
+ * a zero size, a channel count other than 1, a stride too small, a NaN or infinite value,
+ * or an unknown method; ALWAN_E_RANGE for more than 31 points or a negative radius. */
+typedef enum {
+    ALWAN_TEXTURE_LBP = 0,
+    ALWAN_TEXTURE_LBP_ROR = 1,
+    ALWAN_TEXTURE_LBP_UNIFORM = 2,
+    ALWAN_TEXTURE_LBP_NRI_UNIFORM = 3,
+    ALWAN_TEXTURE_LBP_VAR = 4
+} alwan_texture_method;
+
+/* A zero field is its default. */
+typedef struct {
+    size_t points;  /* P, 1 to 31; 0 reads as 8 */
+    double radius;  /* R in pixels; 0 reads as 1 */
+} alwan_texture_params;
+
+alwan_status alwan_texture_f32(double *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
+alwan_status alwan_texture_f64(double *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
+alwan_status alwan_texture_u8(double *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
+
 /* Segmentation: an image divided into labelled regions. labels receives one uint32_t a
  * pixel (labels_row_stride in bytes), 0 for background (or a watershed line); count_out,
  * when not NULL, the largest label, which for CONNECTED and for WATERSHED's own markers

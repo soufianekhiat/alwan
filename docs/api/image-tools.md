@@ -866,6 +866,53 @@ and a checkerboard, 17 cases. The zero edge makes the image's border read as a s
 the response is not zero there even on a constant image. There is no 8-bit entry point;
 scikit-image divides 8-bit data by 255 first.
 
+## Texture codes
+
+```c
+typedef enum {
+    ALWAN_TEXTURE_LBP = 0, ALWAN_TEXTURE_LBP_ROR = 1, ALWAN_TEXTURE_LBP_UNIFORM = 2,
+    ALWAN_TEXTURE_LBP_NRI_UNIFORM = 3, ALWAN_TEXTURE_LBP_VAR = 4
+} alwan_texture_method;
+
+alwan_status alwan_texture_{T}(double *out, size_t out_row_stride,
+                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                               size_t width, size_t height,
+                               alwan_texture_method method,
+                               alwan_texture_params const *params);
+alwan_status alwan_texture_u8(...);   /* same, unsigned char pixels */
+```
+
+A code for every pixel of one channel (`channels` must be 1) describing the pattern of its
+neighbourhood; a histogram of the codes over a region is that region's texture, the
+descriptor of texture classification and matching. `out` is doubles for every input type,
+since codes pass 255 for more than 8 points and the variance is real.
+
+The local binary pattern (Ojala, Pietikainen and Maenpaa 2002) samples `points` neighbours
+on a circle of `radius` pixels, bilinearly interpolated with 0 outside the image, and sets
+bit p where neighbour p is at least the centre. It sees the pattern and not the contrast,
+so it is unchanged by any increasing change of the levels: exposure, gamma, a tone curve.
+
+| Method | Code |
+|---|---|
+| `LBP` | sum of bit p times 2^p, 0 to 2^P - 1 |
+| `LBP_ROR` | the smallest of the code's P rotations: invariant to rotating the image |
+| `LBP_UNIFORM` | the number of set bits for a uniform pattern (at most two changes along p = 0 .. P - 1), else P + 1: rotation invariant, P + 2 codes |
+| `LBP_NRI_UNIFORM` | uniform patterns told apart by their rotation as well, P (P - 1) + 3 codes |
+| `LBP_VAR` | the neighbours' variance (ddof 0), the contrast the others ignore; NaN where it is 0 |
+
+| Field of `alwan_texture_params` | 0 reads as |
+|---|---|
+| `points` | 8; up to 31 |
+| `radius` | 1 |
+
+This is scikit-image's `feature.local_binary_pattern` value for value, and suite 230 holds
+it there: 8-bit luma with a flat patch through every method at (8, 1) and (16, 2), other
+circles up to (24, 3), and double and float32, 18 cases. The neighbour offsets are rounded
+to 5 decimals as scikit-image rounds them, and the uniform count, like scikit-image's,
+does not wrap from the last neighbour to the first. scikit-image recommends integer
+images, since on float data neighbours that differ from the centre by rounding alone flip
+bits.
+
 ## Segmentation
 
 ```c

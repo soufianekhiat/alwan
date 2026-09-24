@@ -1867,6 +1867,9 @@ EXPORTS
     alwan_table_interp_3d_tetrahedral_f64
     alwan_table_interp_3d_trilinear_f32
     alwan_table_interp_3d_trilinear_f64
+    alwan_texture_f32
+    alwan_texture_f64
+    alwan_texture_u8
     alwan_threshold_f32
     alwan_threshold_f64
     alwan_threshold_local_f32

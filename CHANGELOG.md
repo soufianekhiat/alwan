@@ -511,6 +511,10 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Texture codes: `alwan_texture`.** Local binary patterns: default, rotation invariant,
+  uniform, non-rotation-invariant uniform and variance; value for value with scikit-image's
+  `feature.local_binary_pattern` (suite 230).
+
 - **Segmentation: `alwan_segment`.** Labelled regions as `uint32_t`, first
   `ALWAN_SEGMENT_CONNECTED`, the connected components of equal pixels (colour included),
   4- or 8-connected; label for label with scikit-image's `measure.label` (suite 223).
