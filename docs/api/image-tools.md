@@ -907,7 +907,10 @@ cells, a low one cells that follow the colour. A last pass merges each piece sma
 the labels run from 1 to `*count_out` with none missing.
 
 Distances are measured in the channels as given: pass Lab (converted with alwan) for
-perceptual superpixels on colour, as scikit-image does by default. This is scikit-image's
+perceptual superpixels on colour, as scikit-image does by default. The rescaling to
+[0, 1] comes first, over every channel together; scikit-image rescales before its own Lab
+conversion, so its compactness of 10 acts on Lab's range of about 100 to 150. On a Lab
+image passed here the same balance is a compactness of about 0.07 (10 over the range). This is scikit-image's
 `segmentation.slic` with `convert2lab=False`, and suite 227 holds it to it label for label:
 grey and colour, 30 to 250 segments, compactness 0.05 to 10, float32, 8-bit, SLIC-zero,
 the merging off, and a short run, 11 cases. It follows scikit-image's Cython: the seeds from
