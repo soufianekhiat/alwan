@@ -569,13 +569,20 @@ term by the S/P ratio where the standard has `L_s`.
 
 **Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL output, `L_p <= 0` or `S_P < 0`.
 
-### alwan_csf (simplified)
+### alwan_csf
 
 ```c
 alwan_scalar alwan_csf(alwan_scalar spatial_frequency, alwan_scalar luminance);
 ```
 
-Simplified contrast sensitivity function. Quick estimate without full Barten parameterization.
+Barten (1999) at a luminance, for a 60 degree square field: the pupil diameter
+(`alwan_pupil_diameter_barten1999`), the retinal illuminance (Stiles-Crawford applied) and
+the line-spread sigma (sigma_0 = 0.5/60, C_ab = 0.08/60) all follow `luminance`, the other
+parameters are `alwan_csf_barten1999_params_default`'s. It equals colour-science's
+contrast_sensitivity_function_Barten1999 built the same way, to 1.7e-15 relative (suite
+265). Returns a negative value for a frequency outside [0.1, 60] cycles per degree or a
+luminance outside [0.01, 10000] cd/m^2. Until 2026-09-25 this ran an invented formula
+labelled "simplified Barten", 0.0011 to 2720 times the model.
 
 ---
 

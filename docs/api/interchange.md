@@ -384,11 +384,14 @@ alwan_status alwan_video_encode_{T}(void *out, alwan_{T} const *rgb_linear, size
   rejected.
 - `space` -- supplies the OETF only
 - `range` -- `ALWAN_VIDEO_RANGE_FULL` or `ALWAN_VIDEO_RANGE_NARROW`
-- `bit_depth` -- 8, 10, 12 or 16; `<= 0` derives from `out_fmt`
+- `bit_depth` -- 8, 10, 12 or 16; `<= 0` derives from `out_fmt`. A `U8` buffer
+  takes 8 only; a deeper depth is `ALWAN_E_INVALID`.
 - `ctx` -- ignored. NULL is safe.
 
 Per pixel: three scalar OETF calls, then a store. Integer stores round with
-`+0.5` and truncate.
+`+0.5` and truncate. Narrow range clamps integer codes to 16..235 x 2^(N-8), where
+colour-science's full_to_legal keeps footroom and headroom; inside that range the codes
+equal colour's for sRGB, BT.709 and BT.2020 at 8 to 16 bits (suite 265).
 
 > **No gamut conversion happens.** The function reads `desc.oetf` from the space
 > descriptor and nothing else. The primaries, white point, `rgb_to_xyz` and
@@ -404,7 +407,11 @@ alwan_status alwan_video_decode_{T}(alwan_{T} *rgb_linear, void const *in, size_
                                     alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 ```
 
-The mirror of encode, using `desc.eotf`.
+The mirror of encode, using `desc.eotf`, which for BT.709 and BT.2020 is the inverse of
+the camera curve (the OETF), not the BT.1886 display EOTF.
+BT.709's OETF jumps from 0.081 to 0.0812479 at its break; a code in that gap decodes on
+the power segment, where colour-science's oetf_inverse_BT709 takes the linear one, up to
+5.5e-5 apart. Elsewhere decoding agrees with colour to 5.6e-16 (suite 265).
 
 **Parameters:**
 - `rgb_linear` -- output, `count * 3` elements. Unit depends on `space`; see
@@ -415,7 +422,8 @@ The mirror of encode, using `desc.eotf`.
   rejected.
 - `space` -- supplies the EOTF only. No gamut conversion happens.
 - `range` -- `ALWAN_VIDEO_RANGE_FULL` or `ALWAN_VIDEO_RANGE_NARROW`
-- `bit_depth` -- 8, 10, 12 or 16; `<= 0` derives from `in_fmt`
+- `bit_depth` -- 8, 10, 12 or 16; `<= 0` derives from `in_fmt`. A `U8` buffer
+  takes 8 only.
 - `ctx` -- ignored. NULL is safe.
 
 ### Round trips

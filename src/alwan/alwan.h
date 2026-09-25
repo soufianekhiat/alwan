@@ -5333,7 +5333,10 @@ alwan_status alwan_cfa_bayer_demosaic_f32(alwan_f32 *rgb_out, size_t rgb_row_str
  * ---------------------------------------------------------------- */
 
 /* Analyze SPD shape characteristics
- * Computes peak wavelength, FWHM, centroid, and bandwidth
+ * peak: the first maximum sample and its wavelength; FWHM: between the half-maximum
+ * crossings nearest the peak on each side, each interpolated linearly between samples;
+ * centroid: the value-weighted mean wavelength; bandwidth: the sampled range,
+ * wavelength_max - wavelength_min.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if SPD is invalid */
 alwan_status alwan_spd_analyze_shape_f64(alwan_spd_shape_f64 *shape_out, alwan_spd_f64 const *spd);
 alwan_status alwan_spd_analyze_shape_f32(alwan_spd_shape_f32 *shape_out, alwan_spd_f32 const *spd);
@@ -5520,7 +5523,10 @@ int alwan_is_within_pointer_gamut_xyz_f32(alwan_xyz_f32 const *xyz);
 alwan_vec2_f64 const* alwan_pointer_gamut_boundary(size_t *count_out);
 
 /* Get CIE 1931 spectral locus xy chromaticity for a given wavelength
- * Computes xy chromaticity from CIE 1931 2 deg observer CMFs for monochromatic light
+ * Computes xy chromaticity from CIE 1931 2 deg observer CMFs for monochromatic light.
+ * At whole nanometres it is the CMF table's chromaticity (colour's XYZ_to_xy exactly);
+ * between them it interpolates xy linearly, where colour interpolates the CMFs first,
+ * within 1.6e-4 of it (suite 265).
  * xy_out: output xy chromaticity coordinates
  * wavelength: wavelength in nm (360-830nm)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID if wavelength out of range */
@@ -8073,8 +8079,12 @@ alwan_status alwan_tm30_specification_f32(alwan_tm30_f32 *spec_out, alwan_spd_f3
 alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 const *reference_spd, alwan_ctx *ctx);
 alwan_f32 alwan_ssi_calculate_f32(alwan_spd_f32 const *test_spd, alwan_spd_f32 const *reference_spd, alwan_ctx *ctx);
 
-/* CIE Special Metamerism Index: Change in Illuminant */
-/* Quantifies color mismatch when samples that match under reference illuminant are viewed under test illuminant */
+/* CIE special metamerism index, change in illuminant (CIE 015): dE*ab between the two
+ * specimens under the test illuminant, against its white, after CIE 015's multiplicative
+ * correction for a pair that does not match exactly under the reference illuminant (the
+ * sample's test-illuminant X, Y, Z each times reference / sample under the reference
+ * illuminant). Until 2026-09-25 the reference illuminant was ignored and any residual
+ * mismatch under it was counted as metamerism. */
 /* sample_reflectance: reflectance spectrum of sample
  * reference_reflectance: reflectance spectrum of reference
  * reference_illuminant: illuminant under which samples match (e.g., D65)
@@ -8628,11 +8638,15 @@ alwan_status alwan_luminaire_flux(double *flux, alwan_luminaire const *lum, alwa
 
 /* Contrast Sensitivity Function (CSF) */
 
-/* Calculate contrast sensitivity for spatial frequency (simplified model)
+/* Contrast sensitivity at a spatial frequency and luminance: Barten's (1999) model for a
+ * 60 degree square field, as colour-science's contrast_sensitivity_function_Barten1999,
+ * with the pupil diameter (alwan_pupil_diameter_barten1999), the retinal illuminance
+ * (Stiles-Crawford applied) and the line-spread sigma all derived from the luminance;
+ * alwan_csf_barten1999 takes every parameter. Until 2026-09-25 this ran an invented
+ * approximation labelled Barten, 0.0011 to 2720 times the model's value.
  * spatial_frequency: spatial frequency in cycles per degree [0.1, 60]
  * luminance: background luminance in cd/m^2 [0.01, 10000]
- * Returns contrast sensitivity (1/contrast_threshold), or negative on error
- * Uses simplified Barten CSF model (1999) */
+ * Returns contrast sensitivity (1/contrast_threshold), or negative outside those ranges */
 alwan_f32 alwan_csf_f32(alwan_f32 spatial_frequency, alwan_f32 luminance);
 alwan_f64 alwan_csf_f64(alwan_f64 spatial_frequency, alwan_f64 luminance);
 
@@ -11458,7 +11472,10 @@ alwan_status alwan_content_light_level_compute_f64(alwan_content_light_level_f64
 alwan_status alwan_hero_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 u);
 alwan_status alwan_hero_wavelength_sample_f32(alwan_f32 *lambda_out, alwan_f32 u);
 
-/* Convert single wavelength to XYZ via Wyman 2013 analytic CMF fit */
+/* Convert single wavelength to XYZ via Wyman, Sloan and Shirley's analytic fit to the CIE
+ * 1931 2 deg CMFs ("Simple Analytic Approximations to the CIE XYZ Color Matching
+ * Functions", JCGT 2(2), 2013): the multi-lobe piecewise Gaussians of Equation (4) with
+ * Table 1's coefficients, a fit, not the tabulated observer */
 void alwan_hero_wavelength_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_f32 lambda);
 void alwan_hero_wavelength_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_f64 lambda);
 
@@ -12822,7 +12839,7 @@ alwan_status alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, 
  *
  * Combines transfer function + range scaling + quantization.
  * Pipeline: encode = linear -> OETF -> range scale -> quantize
- *           decode = dequantize -> range unscale -> EOTF -> linear
+ *           decode = dequantize -> range unscale -> inverse OETF -> linear
  * ---------------------------------------------------------------- */
 
 /* Encode: linear RGB -> video signal (TF + range + quantization).
@@ -12832,8 +12849,12 @@ alwan_status alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, 
  * out_fmt: output pixel format (U8, U16, F32, F64)
  * space: RGB color space (determines OETF)
  * range: ALWAN_VIDEO_RANGE_FULL or ALWAN_VIDEO_RANGE_NARROW
- * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from out_fmt
- * ctx: context for space descriptor lookup */
+ * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from out_fmt. A U8 buffer takes
+ *            8 only (ALWAN_E_INVALID otherwise: deeper codes do not fit a byte).
+ * ctx: context for space descriptor lookup
+ * Integer codes are round(v x scale + offset), half up. NARROW clamps integer codes to the
+ * nominal 16..235 x 2^(N-8), where colour-science's full_to_legal keeps the footroom and
+ * headroom; within the nominal range the two agree code for code (suite 265). */
 alwan_status alwan_video_encode_f64(void *out, alwan_f64 const *rgb_linear, size_t count, alwan_pixel_format out_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 alwan_status alwan_video_encode_f32(void *out, alwan_f32 const *rgb_linear, size_t count, alwan_pixel_format out_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 
@@ -12842,10 +12863,15 @@ alwan_status alwan_video_encode_f32(void *out, alwan_f32 const *rgb_linear, size
  * in: input buffer (3-channel packed pixels in in_fmt)
  * count: number of pixels
  * in_fmt: input pixel format (U8, U16, F32, F64)
- * space: RGB color space (determines EOTF)
+ * space: RGB color space (its inverse OETF: for BT.709 and BT.2020 that is the inverse of
+ *        the camera curve, not the BT.1886 display EOTF)
  * range: ALWAN_VIDEO_RANGE_FULL or ALWAN_VIDEO_RANGE_NARROW
- * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from in_fmt
- * ctx: context for space descriptor lookup */
+ * bit_depth: video bit depth (8, 10, 12, 16); 0 = derive from in_fmt. A U8 buffer takes
+ *            8 only (ALWAN_E_INVALID otherwise).
+ * ctx: context for space descriptor lookup
+ * BT.709's OETF jumps from 0.081 to 0.0812479 at its break; a code in that gap is inverted
+ * on the power segment (colour-science uses the linear one, up to 5.5e-5 apart) and has no
+ * preimage under the OETF either way. */
 alwan_status alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, size_t count, alwan_pixel_format in_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 alwan_status alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, size_t count, alwan_pixel_format in_fmt, alwan_rgb_space space, alwan_video_range range, int bit_depth, alwan_ctx *ctx);
 

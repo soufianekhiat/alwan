@@ -2,6 +2,24 @@
 
 ### Fixed: output differs
 
+- **`alwan_csf_{T}` was not Barten's model.** It documented "simplified Barten CSF model
+  (1999)" and ran a formula of its own that no edition of Barten's work contains, from 0.0011
+  to 2720 times the model's sensitivity over its range (1000 cd/m^2 at 4 cycles per degree:
+  120742 against 768.66). It is now `alwan_csf_barten1999_{T}` for a 60 degree field with the pupil
+  (`alwan_pupil_diameter_barten1999`), the retinal illuminance (Stiles-Crawford applied)
+  and the line-spread sigma taken from the luminance, as colour-science's
+  contrast_sensitivity_function_Barten1999 with those parts: 1.7e-15 relative over 105
+  frequency and luminance pairs (suite 265). The core helper `alwan_csf_simple_v` is gone.
+
+- **`alwan_metamerism_index_{T}` ignored its reference illuminant.** Any pair gave the same
+  index whatever the reference, and a pair that did not match under it had that mismatch
+  counted as metamerism. It now applies CIE 015's multiplicative correction (the sample's
+  X, Y, Z under the test illuminant each times reference / sample under the reference
+  illuminant) before dE*ab under the test illuminant. A pair of smooth reflectances under A
+  moved from 15.78 (any reference) to 4.88 with D65 as reference and 2.59 with F2; two flat
+  greys of different lightness, which the old suite asserted above 10, are now 0. Suite 265
+  holds it to the index composed by hand from alwan's XYZ integration, to 1e-12.
+
 - **alwan_gamut_map_advanced_{T} methods 2 to 7 did not compute what they were named.**
   ADAPTIVE_CUSP, SGCK and HPMINDE were one projection toward the Oklab cusp, and
   CHROMA_COMPRESS and LIGHTNESS_PRESERVE another; ADAPTIVE_L0 and ADAPTIVE_CUSP never used
@@ -671,6 +689,15 @@
   A silent no-op would have left the tables in while the build believed them out.
 
 ### Fixed
+
+- **`alwan_video_encode_{T}` and `alwan_video_decode_{T}` accepted a deeper bit depth
+  on a U8 buffer.** Codes above 255 were written into bytes without
+  an error. A U8 buffer now takes bit depth 8 only (`ALWAN_E_INVALID` otherwise). The codes
+  themselves agree with colour-science's OETFs and full_to_legal code for code for sRGB,
+  BT.709 and BT.2020, full and narrow, 8 to 16 bits; decoding agrees to 5.6e-16 except in
+  the gap of BT.709's OETF (0.081 to 0.0812479), where colour inverts on the linear segment
+  and alwan on the power one, 5.5e-5 apart (suite 265). The header now says decoding uses
+  the inverse OETF, not BT.1886.
 
 - **`alwan_xyz_to_spectrum_meng2015` read through a caller's illuminant unchecked.** An
   illuminant with `values` NULL was dereferenced; one with a single sample, equal or NaN

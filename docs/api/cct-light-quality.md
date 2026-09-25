@@ -423,9 +423,14 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance,
                                      alwan_ctx *ctx);
 ```
 
-CIE Special Metamerism Index (change in illuminant): quantifies color mismatch when
-samples that match under a reference illuminant are viewed under a test illuminant.
-Returns the metamerism index as DeltaE*ab under the test illuminant, or negative on error.
+CIE special metamerism index, change in illuminant (CIE 015): the colour difference under
+a test illuminant of two specimens that match under a reference illuminant. A pair that
+does not match exactly under the reference gets CIE 015's multiplicative correction: the
+sample's X, Y, Z under the test illuminant are each multiplied by reference / sample under
+the reference illuminant, so the residual reference mismatch is not counted. The index is
+DeltaE*ab between the corrected sample and the reference under the test illuminant, against
+its white; negative on error, including a sample with a zero tristimulus value under the
+reference illuminant. Two greys of different lightness therefore give 0.
 
 ---
 

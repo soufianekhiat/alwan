@@ -351,36 +351,6 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_csf_barten1999)(
     return (M_opt / p.k) / ALWAN_CORE_SQRT(noise);
 }
 
-/* Barten-inspired simplified CSF model for fast approximation.
- * Not a direct implementation of Barten 1999; constants are fitted to
- * qualitatively match the full model without integration overhead.
- * For accurate CSF evaluation use alwan_csf_barten1999() instead.
- * Rolloff constants: low-freq (-3dB at 0.5 cpd), noise floor phi_0=3e-8,
- * detection threshold multiplier k=3. */
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_csf_simple)(
-    ALWAN_CORE_T spatial_frequency, ALWAN_CORE_T luminance)
-{
-    ALWAN_CORE_T f = spatial_frequency;
-    ALWAN_CORE_T L = luminance;
-
-    ALWAN_CORE_T log_L = ALWAN_CORE_LOG10(L);
-    ALWAN_CORE_T d = ALWAN_CORE_LITERAL(5.0) - ALWAN_CORE_LITERAL(3.0) * ALWAN_CORE_TANH(ALWAN_CORE_LITERAL(0.4) * log_L);
-    ALWAN_CORE_T pupil_area = ALWAN_CORE_PI * d * d / ALWAN_CORE_LITERAL(4.0);
-    ALWAN_CORE_T E = L * pupil_area;
-
-    ALWAN_CORE_T low_freq_atten  = f / (f + ALWAN_CORE_LITERAL(0.5));
-    ALWAN_CORE_T high_freq_atten = ALWAN_CORE_EXP(ALWAN_CORE_LITERAL(-0.005) * f * f);
-    ALWAN_CORE_T M_opt = low_freq_atten * high_freq_atten;
-
-    ALWAN_CORE_T phi_0 = ALWAN_CORE_LITERAL(3.0e-8);
-    ALWAN_CORE_T k = ALWAN_CORE_LITERAL(3.0);
-    ALWAN_CORE_T noise_photon = phi_0 / (E + ALWAN_CORE_LITERAL(1e-10));
-    ALWAN_CORE_T noise_neural = ALWAN_CORE_ONE / k;
-    ALWAN_CORE_T noise_total = ALWAN_CORE_SQRT(noise_photon * noise_photon + noise_neural * noise_neural);
-
-    return (M_opt * E) / (noise_total + ALWAN_CORE_LITERAL(1e-10)) * ALWAN_CORE_LITERAL(10.0);
-}
-
 /* ================================================================
  * WCAG 2.x Contrast Ratio
  * ================================================================ */

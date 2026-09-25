@@ -287,23 +287,6 @@ ALWAN_INLINE alwan_scalar alwan_csf_barten1999_v(
     return (M_opt / p.k) / ALWAN_SQRT(noise);
 }
 
-ALWAN_INLINE alwan_scalar alwan_csf_simple_v(
-    alwan_scalar spatial_frequency, alwan_scalar luminance) {
-    alwan_scalar f = spatial_frequency; alwan_scalar L = luminance;
-    alwan_scalar log_L = ALWAN_LOG10(L);
-    alwan_scalar d = ALWAN_LITERAL(5.0) - ALWAN_LITERAL(3.0) * ALWAN_TANH(ALWAN_LITERAL(0.4) * log_L);
-    alwan_scalar pupil_area = ALWAN_PI * d * d / ALWAN_LITERAL(4.0);
-    alwan_scalar E = L * pupil_area;
-    alwan_scalar low_freq_atten = f / (f + ALWAN_LITERAL(0.5));
-    alwan_scalar high_freq_atten = ALWAN_EXP(ALWAN_LITERAL(-0.005) * f * f);
-    alwan_scalar M_opt = low_freq_atten * high_freq_atten;
-    alwan_scalar phi_0 = ALWAN_LITERAL(3.0e-8); alwan_scalar k = ALWAN_LITERAL(3.0);
-    alwan_scalar noise_photon = phi_0 / (E + ALWAN_LITERAL(1e-10));
-    alwan_scalar noise_neural = ALWAN_ONE / k;
-    alwan_scalar noise_total = ALWAN_SQRT(noise_photon * noise_photon + noise_neural * noise_neural);
-    return (M_opt * E) / (noise_total + ALWAN_LITERAL(1e-10)) * ALWAN_LITERAL(10.0);
-}
-
 ALWAN_INLINE alwan_scalar alwan_wcag_contrast_ratio_v(alwan_scalar Y1, alwan_scalar Y2) {
     alwan_scalar L1 = ALWAN_SELECT(Y1 > Y2, Y1, Y2);
     alwan_scalar L2 = ALWAN_SELECT(Y1 > Y2, Y2, Y1);

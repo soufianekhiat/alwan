@@ -309,6 +309,9 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_luminous_flux_lef)(ALWAN_CORE_T *flux_ou
  * Contrast Sensitivity Function (CSF)
  * ================================================================ */
 
+void ALWAN_CORE_FNLIT(alwan_csf_barten1999_params_default)(ALWAN_CORE_FNLIT(alwan_csf_barten1999_params) *params);
+ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_csf_barten1999)(ALWAN_CORE_T u, ALWAN_CORE_FNLIT(alwan_csf_barten1999_params) const *params);
+
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_csf)(ALWAN_CORE_T spatial_frequency, ALWAN_CORE_T luminance) {
     if (spatial_frequency < ALWAN_CORE_LITERAL(0.1) || spatial_frequency > ALWAN_CORE_LITERAL(60.0)) {
         return ALWAN_CORE_LITERAL(-1.0);
@@ -317,7 +320,18 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_csf)(ALWAN_CORE_T spatial_frequency, ALWAN_C
         return ALWAN_CORE_LITERAL(-1.0);
     }
 
-    return ALWAN_CORE_FNVLIT(alwan_csf_simple)(spatial_frequency, luminance);
+    {
+        /* Barten (1999) for a 60 degree square field at this luminance, as colour-science's
+         * contrast_sensitivity_function_Barten1999 with the pupil, the retinal illuminance
+         * (Stiles-Crawford applied) and the line-spread sigma all following L. */
+        ALWAN_CORE_FNLIT(alwan_csf_barten1999_params) prm;
+        ALWAN_CORE_T const d = ALWAN_CORE_FNVLIT(alwan_pupil_diameter_barten1999)(luminance, ALWAN_CORE_LITERAL(60.0), ALWAN_CORE_LITERAL(-1.0));
+        ALWAN_CORE_FNLIT(alwan_csf_barten1999_params_default)(&prm);
+        prm.sigma = ALWAN_CORE_FNVLIT(alwan_sigma_barten1999)(ALWAN_CORE_LITERAL(0.5) / ALWAN_CORE_LITERAL(60.0),
+                                                            ALWAN_CORE_LITERAL(0.08) / ALWAN_CORE_LITERAL(60.0), d);
+        prm.E = ALWAN_CORE_FNVLIT(alwan_retinal_illuminance_barten1999)(luminance, d, ALWAN_CORE_ONE);
+        return ALWAN_CORE_FNLIT(alwan_csf_barten1999)(spatial_frequency, &prm);
+    }
 }
 
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_pupil_diameter_barten1999)(ALWAN_CORE_T L,

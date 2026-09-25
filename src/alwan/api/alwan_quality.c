@@ -1082,6 +1082,25 @@ alwan_f64 alwan_metamerism_index_f64(alwan_spd_f64 const *sample_reflectance, al
         return ALWAN_LITERAL(-1.0);
     }
 
+    /* Step 2b: CIE 015's multiplicative correction for a pair that does not match exactly
+     * under the reference illuminant: the sample's tristimulus values under the test
+     * illuminant are scaled by reference / sample under the reference illuminant, channel by
+     * channel, so the residual reference-illuminant mismatch is not counted as metamerism.
+     * Until 2026-09-25 the reference illuminant was not used at all. */
+    {
+        alwan_xyz_f64 xyz_sample_ref, xyz_ref_ref;
+        status = alwan_xyz_from_spd_f64(&xyz_sample_ref, sample_reflectance, reference_illuminant, observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+        if (status != ALWAN_OK) return ALWAN_LITERAL(-1.0);
+        status = alwan_xyz_from_spd_f64(&xyz_ref_ref, reference_reflectance, reference_illuminant, observer, ALWAN_INTEGRATE_TRAPEZOID, ALWAN_LITERAL(0.0), ctx);
+        if (status != ALWAN_OK) return ALWAN_LITERAL(-1.0);
+        if (!(xyz_sample_ref.x > ALWAN_LITERAL(0.0) && xyz_sample_ref.y > ALWAN_LITERAL(0.0) && xyz_sample_ref.z > ALWAN_LITERAL(0.0))) {
+            return ALWAN_LITERAL(-1.0);
+        }
+        xyz_sample_test.x *= xyz_ref_ref.x / xyz_sample_ref.x;
+        xyz_sample_test.y *= xyz_ref_ref.y / xyz_sample_ref.y;
+        xyz_sample_test.z *= xyz_ref_ref.z / xyz_sample_ref.z;
+    }
+
     /* Step 3: Compute white point of test illuminant */
     /* Create a perfect reflectance SPD (all values = 1.0) */
     alwan_spd_f64 perfect_white;

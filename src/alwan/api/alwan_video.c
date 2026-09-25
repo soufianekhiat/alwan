@@ -232,6 +232,9 @@ alwan_status alwan_video_encode_f64(void *out, alwan_f64 const *rgb_linear, size
     if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
         return ALWAN_E_INVALID;
     }
+    /* A U8 buffer holds 8-bit codes only; a deeper code was cast into a uint8_t and wrapped
+     * (bit_depth 10 put 1023 in as 255 and 512 as 0) while returning ALWAN_OK. */
+    if (out_fmt == ALWAN_PIXEL_U8 && bit_depth != 8) return ALWAN_E_INVALID;
 
     size_t stride = video_pixel_stride(out_fmt);
     if (stride == 0) return ALWAN_E_INVALID;
@@ -273,6 +276,9 @@ alwan_status alwan_video_decode_f64(alwan_f64 *rgb_linear, void const *in, size_
     if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
         return ALWAN_E_INVALID;
     }
+    /* A U8 buffer holds 8-bit codes only; a deeper code was cast into a uint8_t and wrapped
+     * (bit_depth 10 put 1023 in as 255 and 512 as 0) while returning ALWAN_OK. */
+    if (in_fmt == ALWAN_PIXEL_U8 && bit_depth != 8) return ALWAN_E_INVALID;
 
     size_t stride = video_pixel_stride(in_fmt);
     if (stride == 0) return ALWAN_E_INVALID;
@@ -485,6 +491,9 @@ alwan_status alwan_video_encode_f32(void *out, alwan_f32 const *rgb_linear, size
     if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
         return ALWAN_E_INVALID;
     }
+    /* A U8 buffer holds 8-bit codes only; a deeper code was cast into a uint8_t and wrapped
+     * (bit_depth 10 put 1023 in as 255 and 512 as 0) while returning ALWAN_OK. */
+    if (out_fmt == ALWAN_PIXEL_U8 && bit_depth != 8) return ALWAN_E_INVALID;
 
     size_t stride = video_pixel_stride(out_fmt);
     if (stride == 0) return ALWAN_E_INVALID;
@@ -526,6 +535,9 @@ alwan_status alwan_video_decode_f32(alwan_f32 *rgb_linear, void const *in, size_
     if (bit_depth != 8 && bit_depth != 10 && bit_depth != 12 && bit_depth != 16) {
         return ALWAN_E_INVALID;
     }
+    /* A U8 buffer holds 8-bit codes only; a deeper code was cast into a uint8_t and wrapped
+     * (bit_depth 10 put 1023 in as 255 and 512 as 0) while returning ALWAN_OK. */
+    if (in_fmt == ALWAN_PIXEL_U8 && bit_depth != 8) return ALWAN_E_INVALID;
 
     size_t stride = video_pixel_stride(in_fmt);
     if (stride == 0) return ALWAN_E_INVALID;
