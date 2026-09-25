@@ -2,6 +2,79 @@
 
 ### Fixed: output differs
 
+- **`alwan_apca_contrast_{T}` returned NaN or a number where APCA-W3 returns 0.** A
+  negative channel went through `pow` and came out NaN (3011 of 27 000 random pairs), and a
+  luminance above 1.1 was scored (164 pairs); APCA-W3 0.1.9 returns 0 for both. Its input
+  check is now the reference's, and the function equals the apca-w3 package's
+  `APCAcontrast(sRGBtoY(text), sRGBtoY(bg))` to 6.4e-14 Lc on 868 pairs, the eight values of
+  the APCA documentation included (suite 260). In-range pairs did not move.
+
+- **`alwan_mesopic_luminance_{T}` was not CIE 191:2010.** The adaptation coefficient came
+  from an invented `m = cL / (1 + cL)` of the adaptation level, and the result was 7 % to
+  54 % low (Illuminant A at 0.01 cd/m2: 43.58 where CIE 191 gives 95.40). `m` now comes
+  from the standard's iteration (`alwan_mesopic_adaptation_{T}`, below), with the
+  adaptation field's scotopic luminance taken as the photopic level times the SPD's S/P
+  ratio, as CIE TN 007:2017 reads it, and `L_mes = 683 (m P + (1 - m) S) /
+  (m + (1 - m) 683/1699)`. TN 007's two examples come out to their three decimals; the SPD
+  path equals that computation on colour's `luminous_flux` to 4.4e-16.
+
+- **`alwan_photopic_luminance_{T}` and `alwan_scotopic_luminance_{T}` held V and V' at
+  their end values outside the tables.** An SPD reaching below 380 nm or past 780 nm
+  collected the scotopic end value there (D65 from 300 to 830 nm: 1.4e-4 high). Both
+  functions are now 0 outside the data, as colour's `luminous_flux`, which they equal to
+  1.1e-15; SPDs inside 380 to 780 nm did not move.
+
+- **CAM18sl was not the published model.** `alwan_cam18sl_forward_{T}` was up to 479 % off
+  luxpy's `cam18sl` in `Q`, 97 % in `M` and 24 deg in hue, and its own round trip was
+  13.8 % off. It is now Hermans, Smet and Hanselaer (2018) with luxpy's corrections: CIE
+  2006 10 deg XYZ in through the CIE 170-2 cone matrix, the equal-energy background at
+  `Y_b` (von Kries against it), the Naka-Rushton compression with luxpy's constants, and
+  the exact rational inverse of the opponent matrix. It equals luxpy's cam18sl to 1.2e-8
+  in `Q` and 1.3e-7 in `M` over 320 stimuli and four backgrounds, the residual being
+  luxpy's numerically integrated background, and the round trip closes to 1.3e-13. The
+  struct is unchanged; `C` is the saturation `M / Q`, `a` and `b` are `M cos h` and
+  `M sin h`.
+
+- **CAM20u's round trip was 27.5 % off, and its reference did not exist.** The forward
+  dropped the sign of a negative cone signal and floored it at 1e-12, and the inverse used
+  an eight-digit printed matrix inverse. The compression and the brightness now keep their
+  sign, as CAM16's do, and the inverse is the exact inverse of the forward matrix: the
+  round trip closes to 6.3e-15, a negative cone signal included. Stimuli with positive
+  cone signals did not move forward. The header cited "Kim & Park (2020)", which does not
+  exist; the published CAM20u is Gao, Li, Luo, Pointer et al. (2021) and alwan's model is
+  not it, which the header and docs now say.
+
+- **BT.2446 Method A was not the Report's.** `alwan_bt2446a_forward` and
+  `alwan_bt2446a_inverse` ran a three-region curve of their own on one channel at a time.
+  They are now Report ITU-R BT.2446-1 section 4 on RGB: Tables 2 and 3 (to `Y'`, the
+  perceptual tone map with its knee, the colour correction on `Cb` and `Cr`, back to
+  `R'G'B'`) and Table 4 (the `Y''` exponent fit, chroma scaling, clip at 1 000 cd/m2).
+  Equal to a port of the Tables to 1.8e-15. The views `ALWAN_VIEW_BT2446A_HDR_TO_SDR` and
+  `_SDR_TO_HDR` moved by up to 0.78 and 0.75 per channel; the HDR view now takes linear
+  BT.2020 display light over 1 000 cd/m2 and returns SDR `R'G'B'`, the SDR view the
+  reverse.
+
+- **BT.2446 Method C was not the Report's.** `alwan_bt2446c_forward_{T}` compressed a
+  PQ-style signal with a soft shoulder. It is now the Report's section 6.1.4 curve on
+  display luminance, `k1 Y` below the inflection point and `k2 ln(Y / Y_ip - k3) + k4`
+  above, with k1..k4 derived for any peak pair from the conditions the Report states
+  (0.83802, 15.09968, 0.74204, 78.99439 at 1 000 and 100 cd/m2, its printed values to all
+  five decimals). Input is HDR display luminance over `L_hdr`, output SDR display luminance
+  over `L_sdr`, not clipped; outputs moved by up to 0.61. `ALWAN_VIEW_BT2446C_HDR_TO_SDR`
+  is the whole section 6.1 chain on HLG `R'G'B'` with crosstalk 0 (HLG EOTF, BT.2020 XYZ,
+  the curve on Y, the Report's matrices back, BT.1886), and moved by up to 0.28. Equal to a
+  port of the Report to 5.7e-16 (curve) and 1.6e-12 (chain, the crosstalk inverse at alpha
+  0.33 amplifying rounding).
+
+- **`alwan_bt2390_eetf_{T}` left out the black lift and normalised the target wrongly.**
+  It scaled the knee by the target range over the source range and returned
+  `LB_target + E2 (LW - LB)`. It is now Report ITU-R BT.2408-8 Annex 5: `minLum` and
+  `maxLum` normalised to the mastering range, `KS = 1.5 maxLum - 0.5`, the Hermite spline,
+  `E3 = E2 + minLum (1 - E2)^4`, and back to the mastering range; a target at least as
+  bright as the source is the identity. Outputs with a non-zero black moved by up to 0.061
+  PQ; with both blacks at 0 (`alwan_bt2390_eetf_luminance_{T}`,
+  `ALWAN_VIEW_BT2390_HDR_TO_SDR`) by 1.5e-11. Equal to a port of the Annex to 1.1e-16.
+
 - **Munsell both ways was a nearest-neighbour lookup.** `alwan_munsell_to_xyz_{T}` returned
   the renotation sample nearest the specification and `alwan_xyz_to_munsell_{T}` the sample
   nearest the colour, so every output between samples was wrong by up to half a grid step.
@@ -361,6 +434,12 @@
 
 ### Breaking
 
+- **`alwan_bt2446a_forward_{f32,f64}_v` and `alwan_bt2446a_inverse_{f32,f64}_v` take and
+  return RGB.** The Report's Method A works on `Y'` and colour difference, not per
+  channel: the core functions now take an `alwan_vec3` (and the inverse no longer takes
+  peaks, Table 4 being fixed at 1 000 cd/m2). They were never exported; callers of the
+  core header change the call.
+
 - **Normalised signed radian hues are `h / pi` on `[-1, 1]`** (`ALWAN_NORMALIZE_RANGES`
   builds only; the default build is unchanged). OkLCh `h`, JzCzhz `hz`, IPTch `h` and HCL
   `H` have the natural range `[-pi, pi]` and normalised as `(h + pi) / 2pi`, which put
@@ -512,6 +591,11 @@
   along, and compared six of them. Both now compare the seventh.
 
 ### Added
+
+- **`alwan_mesopic_adaptation_{T}`**, the CIE 191:2010 adaptation state from a photopic
+  adaptation luminance and an S/P ratio, by the standard's iteration: returns the mesopic
+  adaptation luminance and `m`. CIE TN 007:2017's examples come out to their three decimals
+  (suite 260).
 
 - **ACES 2.0 inverse output transform over a buffer:
   `alwan_aces2_output_transform_inv_{T}_map_interleave` and `_map_planar`.** The preset's

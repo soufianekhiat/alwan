@@ -3,10 +3,18 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Header-only CAM18sl Color Appearance Model for self-luminous stimuli (parameterized)
+ * Header-only CAM18sl colour appearance model for self-luminous stimuli (parameterized)
  * No include guard - included twice via setup/teardown.
  *
- * Reference: Hermans et al. (2018)
+ * Reference: Hermans, Smet and Hanselaer (2018), "Color appearance model for self-luminous
+ * stimuli", JOSA A 35(12), 2000-2009, with the corrections luxpy (whose co-author wrote the
+ * model) documents: the CIE 2006 10 degree cone fundamentals throughout, cone scaling
+ * k = (676.7, 794.0, 1461.5) against K = 683.144. Input is absolute CIE 2006 10 degree XYZ
+ * (cd/m2); the background is an equal-energy white of luminance Y_b, whose cone signals
+ * equal Y_b, so the von Kries step divides by the equal-energy white's own signals. The
+ * CIE 2006 fundamentals give that white X = Y = Z by construction, which alwan takes
+ * exactly; luxpy sums the tabulated functions and lands 5e-9 away. Field of view 10
+ * degrees (size factor 1). Held to luxpy's cam18sl in suite 260.
  */
 
 /* ================================================================
@@ -15,164 +23,161 @@
 
 typedef struct {
     ALWAN_CORE_T Q;   /* Brightness */
-    ALWAN_CORE_T C;   /* Colorfulness */
+    ALWAN_CORE_T C;   /* Saturation s = M / Q */
     ALWAN_CORE_T h;   /* Hue angle (degrees) */
-    ALWAN_CORE_T M;   /* Colorfulness (same as C for unrelated colors) */
-    ALWAN_CORE_T a;   /* Red-green */
-    ALWAN_CORE_T b;   /* Yellow-blue */
+    ALWAN_CORE_T M;   /* Colourfulness */
+    ALWAN_CORE_T a;   /* M cos h */
+    ALWAN_CORE_T b;   /* M sin h */
 } ALWAN_CORE_FNLIT(alwan_cam18sl_v_correlates);
 
+/* CIE 170-2 10 degree cone fundamentals from XYZ: its published LMS to XYZ matrix,
+ * X = 1.93986443 L - 1.34664359 M + 0.43044935 S, Y = 0.69283932 L + 0.34967567 M,
+ * Z = 2.14687945 S, solved for LMS. */
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_cam18sl_xyz_to_lms)(ALWAN_CORE_XYZ xyz) {
+    ALWAN_CORE_T a11 = ALWAN_CORE_LITERAL(1.93986443);
+    ALWAN_CORE_T a12 = ALWAN_CORE_LITERAL(-1.34664359);
+    ALWAN_CORE_T a13 = ALWAN_CORE_LITERAL(0.43044935);
+    ALWAN_CORE_T a21 = ALWAN_CORE_LITERAL(0.69283932);
+    ALWAN_CORE_T a22 = ALWAN_CORE_LITERAL(0.34967567);
+    ALWAN_CORE_T a33 = ALWAN_CORE_LITERAL(2.14687945);
+    ALWAN_CORE_VEC3 lms;
+    ALWAN_CORE_T s = xyz.z / a33;
+    ALWAN_CORE_T xr = xyz.x - a13 * s;
+    ALWAN_CORE_T det = a11 * a22 - a12 * a21;
+    lms.v[0] = (a22 * xr - a12 * xyz.y) / det;
+    lms.v[1] = (a11 * xyz.y - a21 * xr) / det;
+    lms.v[2] = s;
+    return lms;
+}
+
+ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cam18sl_lms_to_xyz)(ALWAN_CORE_VEC3 lms) {
+    ALWAN_CORE_XYZ xyz;
+    xyz.x = ALWAN_CORE_LITERAL(1.93986443) * lms.v[0] + ALWAN_CORE_LITERAL(-1.34664359) * lms.v[1]
+          + ALWAN_CORE_LITERAL(0.43044935) * lms.v[2];
+    xyz.y = ALWAN_CORE_LITERAL(0.69283932) * lms.v[0] + ALWAN_CORE_LITERAL(0.34967567) * lms.v[1];
+    xyz.z = ALWAN_CORE_LITERAL(2.14687945) * lms.v[2];
+    return xyz;
+}
+
+/* Naka-Rushton, n = 0.58, signed: sign(x) |x|^n / (|x|^n + sig^n). */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cam18sl_nr)(ALWAN_CORE_T x, ALWAN_CORE_T sig_n) {
+    ALWAN_CORE_T ax = ALWAN_CORE_ABS(x);
+    ALWAN_CORE_T p = ALWAN_CORE_POW(ax, ALWAN_CORE_LITERAL(0.58));
+    ALWAN_CORE_T r = p / (p + sig_n);
+    return ALWAN_CORE_SELECT(x < ALWAN_CORE_ZERO, -r, r);
+}
+
+/* Its inverse: sign(z) | |z| sig^n / (sign(z) - z) |^(1 / n), 0 at 0. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cam18sl_nr_inv)(ALWAN_CORE_T z, ALWAN_CORE_T sig_n) {
+    ALWAN_CORE_T sgn = ALWAN_CORE_SELECT(z < ALWAN_CORE_ZERO, -ALWAN_CORE_ONE, ALWAN_CORE_ONE);
+    ALWAN_CORE_T az = ALWAN_CORE_ABS(z);
+    ALWAN_CORE_T q = az * sig_n / (sgn - z);
+    ALWAN_CORE_T aq = ALWAN_CORE_ABS(q);
+    ALWAN_CORE_T r = ALWAN_CORE_POW(aq, ALWAN_CORE_ONE / ALWAN_CORE_LITERAL(0.58));
+    r = ALWAN_CORE_SELECT(z < ALWAN_CORE_ZERO, -r, r);
+    return ALWAN_CORE_SELECT(az > ALWAN_CORE_ZERO, r, ALWAN_CORE_ZERO);
+}
+
+/* The semi-saturation constant raised to n: sig = 291.20 + 71.8 Y_b^0.78. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_cam18sl_sig_n)(ALWAN_CORE_T Y_b) {
+    ALWAN_CORE_T yb = ALWAN_CORE_SELECT(Y_b > ALWAN_CORE_ZERO, Y_b, ALWAN_CORE_ZERO);
+    ALWAN_CORE_T sig = ALWAN_CORE_LITERAL(291.20) + ALWAN_CORE_LITERAL(71.8) * ALWAN_CORE_POW(yb, ALWAN_CORE_LITERAL(0.78));
+    return ALWAN_CORE_POW(sig, ALWAN_CORE_LITERAL(0.58));
+}
+
+/* Cone signals scaled to rho, gamma, beta: lms / K * k. */
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_cam18sl_rgb)(ALWAN_CORE_VEC3 lms) {
+    ALWAN_CORE_VEC3 r;
+    ALWAN_CORE_T K = ALWAN_CORE_LITERAL(683.144);
+    r.v[0] = lms.v[0] / K * ALWAN_CORE_LITERAL(676.7);
+    r.v[1] = lms.v[1] / K * ALWAN_CORE_LITERAL(794.0);
+    r.v[2] = lms.v[2] / K * ALWAN_CORE_LITERAL(1461.5);
+    return r;
+}
+
 /* ================================================================
- * CAM18sl Forward Transform
- *
- * XYZ -> CAM18sl correlates for self-luminous stimuli
- *
- * Parameters:
- *   xyz  - CIE XYZ tristimulus values (absolute, in cd/m2)
- *   Y_b  - background luminance (cd/m2)
+ * CAM18sl Forward Transform: XYZ (cd/m2) -> correlates
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_cam18sl_v_correlates) ALWAN_CORE_FNVLIT(alwan_cam18sl_forward)(
     ALWAN_CORE_XYZ xyz,
     ALWAN_CORE_T Y_b) {
     ALWAN_CORE_FNLIT(alwan_cam18sl_v_correlates) result;
+    ALWAN_CORE_XYZ eew;
+    eew.x = ALWAN_CORE_ONE; eew.y = ALWAN_CORE_ONE; eew.z = ALWAN_CORE_ONE;
+    ALWAN_CORE_VEC3 rgb = ALWAN_CORE_FNVLIT(alwan_cam18sl_rgb)(ALWAN_CORE_FNVLIT(alwan_cam18sl_xyz_to_lms)(xyz));
+    ALWAN_CORE_VEC3 w = ALWAN_CORE_FNVLIT(alwan_cam18sl_rgb)(ALWAN_CORE_FNVLIT(alwan_cam18sl_xyz_to_lms)(eew));
 
-    /* Step 1: XYZ to LMS cone response using Wd matrix
-     * Matrix from Hermans et al. (2018), Table 1 */
-    ALWAN_CORE_T L = ALWAN_CORE_LITERAL( 0.401288) * xyz.x
-                   + ALWAN_CORE_LITERAL( 0.650173) * xyz.y
-                   + ALWAN_CORE_LITERAL(-0.051461) * xyz.z;
-    ALWAN_CORE_T M = ALWAN_CORE_LITERAL(-0.250268) * xyz.x
-                   + ALWAN_CORE_LITERAL( 1.204414) * xyz.y
-                   + ALWAN_CORE_LITERAL( 0.045854) * xyz.z;
-    ALWAN_CORE_T S = ALWAN_CORE_LITERAL(-0.002079) * xyz.x
-                   + ALWAN_CORE_LITERAL( 0.048952) * xyz.y
-                   + ALWAN_CORE_LITERAL( 0.953127) * xyz.z;
+    /* von Kries to the equal-energy white of the background's luminance (D = 1); a zero
+     * background leaves the signals as they are, as luxpy does. */
+    ALWAN_CORE_T ra = ALWAN_CORE_SELECT(Y_b > ALWAN_CORE_ZERO, rgb.v[0] / w.v[0], rgb.v[0]);
+    ALWAN_CORE_T ga = ALWAN_CORE_SELECT(Y_b > ALWAN_CORE_ZERO, rgb.v[1] / w.v[1], rgb.v[1]);
+    ALWAN_CORE_T ba = ALWAN_CORE_SELECT(Y_b > ALWAN_CORE_ZERO, rgb.v[2] / w.v[2], rgb.v[2]);
 
-    /* Step 2: Nonlinear compression (power function)
-     * For self-luminous context: adapted response */
-    ALWAN_CORE_T p = ALWAN_CORE_LITERAL(0.58);
-    ALWAN_CORE_T L_safe = ALWAN_CORE_SELECT(L < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, L);
-    ALWAN_CORE_T M_safe = ALWAN_CORE_SELECT(M < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, M);
-    ALWAN_CORE_T S_safe = ALWAN_CORE_SELECT(S < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, S);
+    ALWAN_CORE_T sig_n = ALWAN_CORE_FNVLIT(alwan_cam18sl_sig_n)(Y_b);
+    ALWAN_CORE_T rc = ALWAN_CORE_FNVLIT(alwan_cam18sl_nr)(ra, sig_n);
+    ALWAN_CORE_T gc = ALWAN_CORE_FNVLIT(alwan_cam18sl_nr)(ga, sig_n);
+    ALWAN_CORE_T bc = ALWAN_CORE_FNVLIT(alwan_cam18sl_nr)(ba, sig_n);
 
-    ALWAN_CORE_T La = ALWAN_CORE_POW(L_safe, p);
-    ALWAN_CORE_T Ma = ALWAN_CORE_POW(M_safe, p);
-    ALWAN_CORE_T Sa = ALWAN_CORE_POW(S_safe, p);
+    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(2.0) * rc + gc + bc / ALWAN_CORE_LITERAL(20.0);
+    ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.63) * (rc - ALWAN_CORE_LITERAL(12.0) / ALWAN_CORE_LITERAL(11.0) * gc
+                                                 + bc / ALWAN_CORE_LITERAL(11.0));
+    ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.12) * (rc + gc - ALWAN_CORE_LITERAL(2.0) * bc);
 
-    /* Step 3: Opponent channels */
-    result.a = La - ALWAN_CORE_LITERAL(12.0) / ALWAN_CORE_LITERAL(11.0) * Ma
-             + Sa / ALWAN_CORE_LITERAL(11.0);
-    result.b = (La + Ma - ALWAN_CORE_LITERAL(2.0) * Sa) / ALWAN_CORE_LITERAL(9.0);
+    ALWAN_CORE_T M = ALWAN_CORE_LITERAL(3260.0) * ALWAN_CORE_SQRT(a * a + b * b);
+    ALWAN_CORE_T Q = ALWAN_CORE_LITERAL(0.937) * (A + ALWAN_CORE_LITERAL(0.0024) * ALWAN_CORE_POW(M, ALWAN_CORE_LITERAL(1.09)));
+    ALWAN_CORE_T h = ALWAN_CORE_ATAN2(b, a) * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
+    h = ALWAN_CORE_SELECT(h < ALWAN_CORE_ZERO, h + ALWAN_CORE_LITERAL(360.0), h);
 
-    /* Step 4: Hue angle */
-    result.h = ALWAN_CORE_ATAN2(result.b, result.a) * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
-    result.h = ALWAN_CORE_SELECT(result.h < ALWAN_CORE_ZERO,
-                            result.h + ALWAN_CORE_LITERAL(360.0), result.h);
-
-    /* Step 5: Brightness
-     * Helmholtz-Kohlrausch brightness adjustment for self-luminous stimuli */
-    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(2.0) * La + Ma
-                   + ALWAN_CORE_LITERAL(0.05) * Sa;
-    ALWAN_CORE_T Y_b_safe = ALWAN_CORE_SELECT(Y_b < ALWAN_CORE_LITERAL(1e-10),
-                                          ALWAN_CORE_LITERAL(1e-10), Y_b);
-    result.Q = ALWAN_CORE_LITERAL(0.937) * ALWAN_CORE_POW(A / ALWAN_CORE_LITERAL(3.05),
-        ALWAN_CORE_LITERAL(0.335) * ALWAN_CORE_POW(Y_b_safe / ALWAN_CORE_LITERAL(100.0),
-        ALWAN_CORE_LITERAL(0.14)));
-
-    /* Step 6: Colorfulness */
-    result.C = ALWAN_CORE_SQRT(result.a * result.a + result.b * result.b);
-    result.M = result.C;  /* For unrelated colors, M == C */
-
+    result.Q = Q;
+    result.M = M;
+    result.C = ALWAN_CORE_SELECT(Q != ALWAN_CORE_ZERO, M / Q, ALWAN_CORE_ZERO);
+    result.h = h;
+    result.a = ALWAN_CORE_LITERAL(3260.0) * a;
+    result.b = ALWAN_CORE_LITERAL(3260.0) * b;
     return result;
 }
 
 /* ================================================================
- * CAM18sl Inverse Transform
- *
- * CAM18sl correlates -> XYZ
- * Uses Q, C, h to reconstruct XYZ.
+ * CAM18sl Inverse Transform: Q, M, h -> XYZ (cd/m2)
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_cam18sl_inverse)(
     ALWAN_CORE_FNLIT(alwan_cam18sl_v_correlates) correlates,
     ALWAN_CORE_T Y_b) {
-    ALWAN_CORE_XYZ result;
+    ALWAN_CORE_T M = correlates.M;
+    ALWAN_CORE_T A = correlates.Q / ALWAN_CORE_LITERAL(0.937) - ALWAN_CORE_LITERAL(0.0024) * ALWAN_CORE_POW(M, ALWAN_CORE_LITERAL(1.09));
+    ALWAN_CORE_T hr = correlates.h * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0);
+    ALWAN_CORE_T a = M / ALWAN_CORE_LITERAL(3260.0) * ALWAN_CORE_COS(hr) / ALWAN_CORE_LITERAL(0.63);
+    ALWAN_CORE_T b = M / ALWAN_CORE_LITERAL(3260.0) * ALWAN_CORE_SIN(hr) / ALWAN_CORE_LITERAL(0.12);
 
-    /* Reconstruct a, b from C and h */
-    ALWAN_CORE_T h_rad = correlates.h * ALWAN_CORE_PI / ALWAN_CORE_LITERAL(180.0);
-    ALWAN_CORE_T a = correlates.C * ALWAN_CORE_COS(h_rad);
-    ALWAN_CORE_T b = correlates.C * ALWAN_CORE_SIN(h_rad);
+    /* The inverse of [2 1 1/20; 1 -12/11 1/11; 1 1 -2], exactly. */
+    ALWAN_CORE_T rc = ALWAN_CORE_LITERAL(20.0) / ALWAN_CORE_LITERAL(61.0) * A
+                    + ALWAN_CORE_LITERAL(451.0) / ALWAN_CORE_LITERAL(1403.0) * a
+                    + ALWAN_CORE_LITERAL(32.0) / ALWAN_CORE_LITERAL(1403.0) * b;
+    ALWAN_CORE_T gc = ALWAN_CORE_LITERAL(20.0) / ALWAN_CORE_LITERAL(61.0) * A
+                    - ALWAN_CORE_LITERAL(891.0) / ALWAN_CORE_LITERAL(1403.0) * a
+                    - ALWAN_CORE_LITERAL(29.0) / ALWAN_CORE_LITERAL(1403.0) * b;
+    ALWAN_CORE_T bc = ALWAN_CORE_LITERAL(20.0) / ALWAN_CORE_LITERAL(61.0) * A
+                    - ALWAN_CORE_LITERAL(220.0) / ALWAN_CORE_LITERAL(1403.0) * a
+                    - ALWAN_CORE_LITERAL(700.0) / ALWAN_CORE_LITERAL(1403.0) * b;
 
-    /* Reconstruct A from Q */
-    ALWAN_CORE_T Y_b_safe = ALWAN_CORE_SELECT(Y_b < ALWAN_CORE_LITERAL(1e-10),
-                                          ALWAN_CORE_LITERAL(1e-10), Y_b);
-    ALWAN_CORE_T exp_val = ALWAN_CORE_LITERAL(0.335) * ALWAN_CORE_POW(Y_b_safe / ALWAN_CORE_LITERAL(100.0),
-        ALWAN_CORE_LITERAL(0.14));
-    ALWAN_CORE_T safe_exp = ALWAN_CORE_SELECT(exp_val < ALWAN_CORE_LITERAL(1e-10),
-                                          ALWAN_CORE_LITERAL(1e-10), exp_val);
-    ALWAN_CORE_T A = ALWAN_CORE_LITERAL(3.05) * ALWAN_CORE_POW(correlates.Q / ALWAN_CORE_LITERAL(0.937),
-        ALWAN_CORE_ONE / safe_exp);
+    ALWAN_CORE_T sig_n = ALWAN_CORE_FNVLIT(alwan_cam18sl_sig_n)(Y_b);
+    ALWAN_CORE_T ra = ALWAN_CORE_FNVLIT(alwan_cam18sl_nr_inv)(rc, sig_n);
+    ALWAN_CORE_T ga = ALWAN_CORE_FNVLIT(alwan_cam18sl_nr_inv)(gc, sig_n);
+    ALWAN_CORE_T ba = ALWAN_CORE_FNVLIT(alwan_cam18sl_nr_inv)(bc, sig_n);
 
-    /* Solve for La, Ma, Sa from opponent channels + achromatic:
-     * a = La - 12/11*Ma + 1/11*Sa
-     * b = (La + Ma - 2*Sa) / 9
-     * A = 2*La + Ma + 0.05*Sa
-     *
-     * Linear system solve: */
-    ALWAN_CORE_T Sa = (A - ALWAN_CORE_LITERAL(11.0) * a - ALWAN_CORE_LITERAL(9.0) * b) /
-                       ALWAN_CORE_LITERAL(2.2538);
-    ALWAN_CORE_T Ma = (A - ALWAN_CORE_LITERAL(2.0) * a - ALWAN_CORE_LITERAL(18.0) * b
-                        - ALWAN_CORE_LITERAL(0.1) * Sa) / ALWAN_CORE_LITERAL(3.181818);
-    ALWAN_CORE_T La = a + ALWAN_CORE_LITERAL(12.0) / ALWAN_CORE_LITERAL(11.0) * Ma
-                    - Sa / ALWAN_CORE_LITERAL(11.0);
+    ALWAN_CORE_XYZ eew;
+    eew.x = ALWAN_CORE_ONE; eew.y = ALWAN_CORE_ONE; eew.z = ALWAN_CORE_ONE;
+    ALWAN_CORE_VEC3 w = ALWAN_CORE_FNVLIT(alwan_cam18sl_rgb)(ALWAN_CORE_FNVLIT(alwan_cam18sl_xyz_to_lms)(eew));
+    ALWAN_CORE_T r = ALWAN_CORE_SELECT(Y_b > ALWAN_CORE_ZERO, ra * w.v[0], ra);
+    ALWAN_CORE_T g = ALWAN_CORE_SELECT(Y_b > ALWAN_CORE_ZERO, ga * w.v[1], ga);
+    ALWAN_CORE_T bb = ALWAN_CORE_SELECT(Y_b > ALWAN_CORE_ZERO, ba * w.v[2], ba);
 
-    /* Need to solve this more carefully. Let me use the proper inverse. */
-    /* From the 3 equations:
-     * a = La - (12/11)*Ma + (1/11)*Sa         ... (1)
-     * b = (1/9)*La + (1/9)*Ma - (2/9)*Sa      ... (2)
-     * A = 2*La + Ma + 0.05*Sa                 ... (3)
-     *
-     * From (2): La = 9*b - Ma + 2*Sa
-     * Sub into (1): 9*b - Ma + 2*Sa - (12/11)*Ma + (1/11)*Sa = a
-     *   9*b - (23/11)*Ma + (23/11)*Sa = a
-     *   Ma = Sa - (11/23)*(a - 9*b)
-     * Sub La, Ma into (3):
-     *   2*(9*b - Ma + 2*Sa) + Ma + 0.05*Sa = A
-     *   18*b - 2*Ma + 4*Sa + Ma + 0.05*Sa = A
-     *   18*b - Ma + 4.05*Sa = A
-     *   18*b - (Sa - (11/23)*(a-9*b)) + 4.05*Sa = A
-     *   18*b - Sa + (11/23)*a - (99/23)*b + 4.05*Sa = A
-     *   (11/23)*a + (414/23 - 99/23)*b + 3.05*Sa = A
-     *   (11/23)*a + (315/23)*b + 3.05*Sa = A
-     */
-    ALWAN_CORE_T coeff_a = ALWAN_CORE_LITERAL(11.0) / ALWAN_CORE_LITERAL(23.0);
-    ALWAN_CORE_T coeff_b = ALWAN_CORE_LITERAL(315.0) / ALWAN_CORE_LITERAL(23.0);
-    Sa = (A - coeff_a * a - coeff_b * b) / ALWAN_CORE_LITERAL(3.05);
-    Ma = Sa - (ALWAN_CORE_LITERAL(11.0) / ALWAN_CORE_LITERAL(23.0)) * (a - ALWAN_CORE_LITERAL(9.0) * b);
-    La = ALWAN_CORE_LITERAL(9.0) * b - Ma + ALWAN_CORE_LITERAL(2.0) * Sa;
-
-    /* Inverse nonlinear compression */
-    ALWAN_CORE_T p = ALWAN_CORE_LITERAL(0.58);
-    ALWAN_CORE_T inv_p = ALWAN_CORE_ONE / p;
-    ALWAN_CORE_T La_safe = ALWAN_CORE_SELECT(La < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, La);
-    ALWAN_CORE_T Ma_safe = ALWAN_CORE_SELECT(Ma < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, Ma);
-    ALWAN_CORE_T Sa_safe = ALWAN_CORE_SELECT(Sa < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO, Sa);
-
-    ALWAN_CORE_T Lc = ALWAN_CORE_POW(La_safe, inv_p);
-    ALWAN_CORE_T Mc = ALWAN_CORE_POW(Ma_safe, inv_p);
-    ALWAN_CORE_T Sc = ALWAN_CORE_POW(Sa_safe, inv_p);
-
-    /* LMS to XYZ (inverse of forward matrix) */
-    result.x = ALWAN_CORE_LITERAL( 1.86206787) * Lc
-             + ALWAN_CORE_LITERAL(-1.01125463) * Mc
-             + ALWAN_CORE_LITERAL( 0.14918677) * Sc;
-    result.y = ALWAN_CORE_LITERAL( 0.38752654) * Lc
-             + ALWAN_CORE_LITERAL( 0.62144744) * Mc
-             + ALWAN_CORE_LITERAL(-0.00897398) * Sc;
-    result.z = ALWAN_CORE_LITERAL(-0.01584150) * Lc
-             + ALWAN_CORE_LITERAL(-0.03412294) * Mc
-             + ALWAN_CORE_LITERAL( 1.04996444) * Sc;
-
-    return result;
+    ALWAN_CORE_T K = ALWAN_CORE_LITERAL(683.144);
+    ALWAN_CORE_VEC3 lms;
+    lms.v[0] = r / ALWAN_CORE_LITERAL(676.7) * K;
+    lms.v[1] = g / ALWAN_CORE_LITERAL(794.0) * K;
+    lms.v[2] = bb / ALWAN_CORE_LITERAL(1461.5) * K;
+    return ALWAN_CORE_FNVLIT(alwan_cam18sl_lms_to_xyz)(lms);
 }

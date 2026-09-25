@@ -540,11 +540,34 @@ alwan's.
 ### alwan_mesopic_luminance
 
 ```c
-alwan_scalar alwan_mesopic_luminance(alwan_ctx *ctx, alwan_spd const *spd,
-                                     alwan_scalar adaptation_level);
+alwan_{T} alwan_mesopic_luminance_{T}(alwan_spd_{T} const *spd, alwan_{T} adaptation_level,
+                                       alwan_ctx *ctx);
 ```
 
-Calculate mesopic luminance using CIE 191:2010 model. `adaptation_level` is the adaptation luminance in cd/m^2 [0.001, 10].
+Mesopic luminance of a stimulus by CIE 191:2010. `adaptation_level` is the photopic
+adaptation luminance in cd/m^2 (> 0). The adaptation field is taken as lit by the same
+source, so its scotopic luminance is `adaptation_level` times the SPD's S/P ratio, the
+reading CIE TN 007:2017 works through. `m` comes from `alwan_mesopic_adaptation_{T}`;
+then, with `P` and `S` the trapezoids of the SPD against V and V' (0 outside their
+data), `L_mes = 683 (m P + (1 - m) S) / (m + (1 - m) 683/1699)`. Negative on error; 0 for
+a black SPD. Equal to that computation on colour's `luminous_flux` to 4e-16 (suite 260).
+
+### alwan_mesopic_adaptation
+
+```c
+alwan_status alwan_mesopic_adaptation_{T}(alwan_{T} *L_mes, alwan_{T} *m,
+                                          alwan_{T} L_p, alwan_{T} S_P);
+```
+
+The CIE 191:2010 adaptation state, by the iteration of its section 5: from `m = 0.5`,
+`L_mes = (m L_p + (1 - m) L_s V'(lambda0)) / (m + (1 - m) V'(lambda0))` with
+`L_s = L_p S_P` and `V'(lambda0) = 683/1699`, then `m = 0.767 + 0.3334 log10(L_mes)`
+clipped to `[0, 1]`, until `m` stops changing. CIE TN 007:2017's examples come out: 0.300
+cd/m^2 at S/P 1.80 gives `m` 0.614 and 0.348 cd/m^2, at 2.50 gives 0.629 and 0.386.
+luxpy's `get_cie_mesopic_adaptation` agrees at `L_p = 1` only: it scales the scotopic
+term by the S/P ratio where the standard has `L_s`.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL output, `L_p <= 0` or `S_P < 0`.
 
 ### alwan_csf (simplified)
 

@@ -238,9 +238,9 @@ typedef enum {
     ALWAN_VIEW_UCHIMURA,            /* Uchimura / Gran Turismo (parametric S-curve) */
     ALWAN_VIEW_LOTTES,              /* Lottes / AMD Cauldron (parametric rational curve) */
     ALWAN_VIEW_TONY_MCMAPFACE,      /* Somewhat Boring Display Transform (Stachowiak 2023) */
-    ALWAN_VIEW_BT2446B_SDR_TO_HDR,  /* BT.2446 Method B: SDR to HDR up-conversion */
-    ALWAN_VIEW_BT2446C_HDR_TO_SDR,  /* BT.2446 Method C: HDR to SDR (quantization-aware) */
-    ALWAN_VIEW_BT2390_HDR_TO_SDR,   /* BT.2390 EETF: HDR to SDR (Hermite spline) */
+    ALWAN_VIEW_BT2446B_SDR_TO_HDR,  /* SDR to HDR in Method B's direction; alwan's own curve */
+    ALWAN_VIEW_BT2446C_HDR_TO_SDR,  /* BT.2446-1 Method C: HLG to SDR */
+    ALWAN_VIEW_BT2390_HDR_TO_SDR,   /* BT.2390 EETF (BT.2408-8 Annex 5): HDR to SDR */
     ALWAN_VIEW_REINHARD_CALIBRATED, /* Reinhard calibrated (key-based, Reinhard 2002) */
     ALWAN_VIEW_EXPOSURE             /* Exposure-based with shoulder compression */
 } alwan_view_transform;

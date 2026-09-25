@@ -757,16 +757,16 @@ typedef enum {
     ALWAN_VIEW_AGX_GOLDEN = 3, /* AgX golden variant (warm highlights, cool shadows) */
     ALWAN_VIEW_AGX_SB2383 = 4, /* AgX SB2383 experiment (Sobotka, rotate/inset + own log2 range) */
     ALWAN_VIEW_AGX_BLENDER = 5, /* AgX Blender (EaryChow) -- baked 57^3 3D LUT with gamut guard rail */
-    ALWAN_VIEW_BT2446A_HDR_TO_SDR = 6, /* BT.2446 Method A: HDR to SDR tone mapping */
-    ALWAN_VIEW_BT2446A_SDR_TO_HDR = 7, /* BT.2446 Method A: SDR to HDR inverse mapping */
+    ALWAN_VIEW_BT2446A_HDR_TO_SDR = 6, /* BT.2446-1 Method A: linear BT.2020 over 1000 cd/m2 to SDR R'G'B' */
+    ALWAN_VIEW_BT2446A_SDR_TO_HDR = 7, /* BT.2446-1 Method A: SDR R'G'B' to linear over 1000 cd/m2 */
     ALWAN_VIEW_KHRONOS_PBR_NEUTRAL = 8, /* Khronos PBR Neutral tone mapping (glTF/WebGL) */
     ALWAN_VIEW_REINHARD_EXT = 9, /* Reinhard Extended (luminance-based, Reinhard 2002) */
     ALWAN_VIEW_UCHIMURA = 10, /* Uchimura / Gran Turismo (parametric S-curve) */
     ALWAN_VIEW_LOTTES = 11, /* Lottes / AMD Cauldron (parametric rational curve) */
     ALWAN_VIEW_TONY_MCMAPFACE = 12, /* Somewhat Boring Display Transform (Stachowiak 2023) */
-    ALWAN_VIEW_BT2446B_SDR_TO_HDR = 13, /* BT.2446 Method B: SDR to HDR up-conversion */
-    ALWAN_VIEW_BT2446C_HDR_TO_SDR = 14, /* BT.2446 Method C: HDR to SDR (quantization-aware) */
-    ALWAN_VIEW_BT2390_HDR_TO_SDR = 15, /* BT.2390 EETF: HDR to SDR (Hermite spline) */
+    ALWAN_VIEW_BT2446B_SDR_TO_HDR = 13, /* SDR to HDR in Method B's direction; alwan's own curve, not the Report's */
+    ALWAN_VIEW_BT2446C_HDR_TO_SDR = 14, /* BT.2446-1 Method C: HLG R'G'B' (1000 cd/m2) to SDR R'G'B', alpha 0 */
+    ALWAN_VIEW_BT2390_HDR_TO_SDR = 15, /* BT.2390 EETF (BT.2408-8 Annex 5) per PQ channel, 10000 to 100 cd/m2 */
     ALWAN_VIEW_REINHARD_CALIBRATED = 16, /* Reinhard calibrated (key-based, Reinhard 2002) */
     ALWAN_VIEW_EXPOSURE = 17 /* Exposure-based with shoulder compression */
 } alwan_view_transform;
@@ -8448,25 +8448,36 @@ alwan_status alwan_spd_luminous_flux_lef_f32(alwan_f32 *flux_out, alwan_spd_f32 
 /* Calculate photopic luminance from SPD
  * spd: spectral power distribution
  * Returns photopic luminance in cd/m^2 (K_m=683.002 lm/W), or negative on error
- * Uses CIE 1924 photopic V(lambda) via trapezoidal integration */
+ * Uses CIE 1924 photopic V(lambda) via trapezoidal integration, 0 outside its data */
 alwan_f64 alwan_photopic_luminance_f64(alwan_spd_f64 const *spd, alwan_ctx *ctx);
 alwan_f32 alwan_photopic_luminance_f32(alwan_spd_f32 const *spd, alwan_ctx *ctx);
 
 /* Calculate scotopic luminance from SPD
  * spd: spectral power distribution
  * Returns scotopic luminance in cd/m^2 (K_m'=1699.998 lm/W), or negative on error
- * Uses CIE 1951 scotopic V'(lambda) via trapezoidal integration */
+ * Uses CIE 1951 scotopic V'(lambda) via trapezoidal integration, 0 outside its data (380-780 nm) */
 alwan_f64 alwan_scotopic_luminance_f64(alwan_spd_f64 const *spd, alwan_ctx *ctx);
 alwan_f32 alwan_scotopic_luminance_f32(alwan_spd_f32 const *spd, alwan_ctx *ctx);
 
 /* Calculate mesopic luminance from SPD (CIE 191:2010)
- * spd: spectral power distribution
- * adaptation_level: photopic adaptation luminance in cd/m^2 [0.001, 10]
+ * spd: spectral power distribution (radiance, W/(sr m^2 nm))
+ * adaptation_level: photopic adaptation luminance in cd/m^2 (> 0)
  * Returns mesopic luminance in cd/m^2, or negative on error
- * Adaptation coefficient m from Goodman et al. (2007);
- * L_mes = m*L_p + (1-m)*(K_m/K_m')*L_s */
+ * The adaptation field is taken as lit by the same source: its scotopic luminance is
+ * adaptation_level times the SPD's S/P ratio, as CIE TN 007:2017 works it. m comes from
+ * alwan_mesopic_adaptation; with P and S the trapezoids of the SPD against V and V'
+ * (0 outside their data), L_mes = 683 (m P + (1 - m) S) / (m + (1 - m) 683/1699). */
 alwan_f64 alwan_mesopic_luminance_f64(alwan_spd_f64 const *spd, alwan_f64 adaptation_level, alwan_ctx *ctx);
 alwan_f32 alwan_mesopic_luminance_f32(alwan_spd_f32 const *spd, alwan_f32 adaptation_level, alwan_ctx *ctx);
+
+/* CIE 191:2010 mesopic adaptation: the iteration of its section 5, from m 0.5,
+ * L_mes = (m L_p + (1 - m) L_s V'(lambda0)) / (m + (1 - m) V'(lambda0)), V'(lambda0) = 683/1699,
+ * m = 0.767 + 0.3334 log10(L_mes) clipped to [0, 1], until m stops changing.
+ * L_mes: mesopic adaptation luminance (cd/m^2); m: adaptation coefficient
+ * L_p: photopic adaptation luminance (cd/m^2, > 0); S_P: its S/P ratio (L_s = L_p S_P)
+ * ALWAN_E_INVALID for a null output, L_p <= 0 or a negative S_P. */
+alwan_status alwan_mesopic_adaptation_f64(alwan_f64 *L_mes, alwan_f64 *m, alwan_f64 L_p, alwan_f64 S_P);
+alwan_status alwan_mesopic_adaptation_f32(alwan_f32 *L_mes, alwan_f32 *m, alwan_f32 L_p, alwan_f32 S_P);
 
 /* Luminous flux of an SPD: K_m times the trapezoid of V(lambda) S(lambda) over the SPD's
  * own samples, V(lambda) 0 outside its data, as colour-science computes it. vision is
@@ -10740,8 +10751,9 @@ alwan_status alwan_wcag_contrast_ratio_f32(alwan_f32 *result, alwan_f32 Y1, alwa
 alwan_status alwan_wcag_contrast_ratio_f64(alwan_f64 *result, alwan_f64 Y1, alwan_f64 Y2);
 
 /* APCA / SAPC (Advanced Perceptual Contrast Algorithm -- WCAG 3.0 draft)
- * Reference: Myndex APCA-W3, https://github.com/Myndex/apca-w3
- * srgb_text, srgb_bg: sRGB-encoded colors (0..1 per channel)
+ * Reference: Myndex APCA-W3 0.1.9, https://github.com/Myndex/apca-w3 (equal to it, suite 260)
+ * srgb_text, srgb_bg: sRGB-encoded colors (0..1 per channel); as APCA-W3, 0 when a channel
+ * is negative or a luminance is above 1.1
  * Lc_out: perceptual contrast value (positive = dark on light,
  *         negative = light on dark; magnitude is contrast level) */
 alwan_status alwan_apca_contrast_f32(alwan_f32 *Lc_out,
@@ -10755,7 +10767,9 @@ alwan_status alwan_apca_contrast_f64(alwan_f64 *Lc_out,
  * HDR Ecosystem: BT.2446 Methods B & C, BT.2390 EETF
  * ---------------------------------------------------------------- */
 
-/* BT.2446 Method B: SDR to HDR up-conversion (parametric)
+/* BT.2446 Method B direction: SDR to HDR up-conversion (parametric)
+ * Report ITU-R BT.2446-1 section 5.1 describes Method B's SDR to HDR mapping by figure and
+ * constraints only, without equations; this curve is alwan's own and is not the Report's.
  * Y_sdr: input SDR luminance [0,1]
  * L_hdr: target HDR peak luminance (cd/m2)
  * L_sdr: source SDR peak luminance (cd/m2) */
@@ -10764,16 +10778,20 @@ alwan_status alwan_bt2446b_forward_f32(alwan_f32 *Y_hdr_out, alwan_f32 Y_sdr,
 alwan_status alwan_bt2446b_forward_f64(alwan_f64 *Y_hdr_out, alwan_f64 Y_sdr,
                             alwan_f64 L_hdr, alwan_f64 L_sdr);
 
-/* BT.2446 Method C: HDR to SDR tone mapping (quantization-aware)
- * Y_hdr: input HDR luminance (PQ-encoded) [0,1]
- * L_hdr: peak HDR luminance (cd/m2)
- * L_sdr: peak SDR luminance (cd/m2) */
+/* BT.2446 Method C: HDR to SDR tone curve, Report ITU-R BT.2446-1 section 6.1.4
+ * Linear below the inflection point, logarithmic above; k1..k4 derived from the Report's
+ * stated conditions for the given peaks (0.83802, 15.09968, 0.74204, 78.99439 at 1000/100).
+ * Y_hdr: HDR display luminance over L_hdr (1 = L_hdr)
+ * L_hdr: peak HDR luminance (cd/m2), HLG system gamma 1.2 + 0.42 log10(L_hdr / 1000)
+ * L_sdr: peak SDR luminance (cd/m2), BT.1886
+ * Y_sdr_out: SDR display luminance over L_sdr, not clipped */
 alwan_status alwan_bt2446c_forward_f32(alwan_f32 *Y_sdr_out, alwan_f32 Y_hdr,
                             alwan_f32 L_hdr, alwan_f32 L_sdr);
 alwan_status alwan_bt2446c_forward_f64(alwan_f64 *Y_sdr_out, alwan_f64 Y_hdr,
                             alwan_f64 L_hdr, alwan_f64 L_sdr);
 
-/* BT.2390 EETF: PQ-domain tone mapping (Hermite spline)
+/* BT.2390 EETF: PQ-domain tone mapping, as Report ITU-R BT.2408-8 Annex 5 gives it
+ * (Hermite spline above KS = 1.5 maxLum - 0.5, then the black lift minLum (1 - E2)^4)
  * E_pq: PQ-encoded input [0,1]
  * LB, LW: source black/white levels (PQ-encoded)
  * LB_target, LW_target: target black/white levels (PQ-encoded) */
@@ -11436,12 +11454,15 @@ alwan_status alwan_hero_wavelength_batch_f32(alwan_f32 *lambda_out,
 
 /* ----------------------------------------------------------------
  * CAM18sl - Color Appearance Model for Self-Luminous Stimuli
- * Reference: Hermans et al. (2018)
+ * Reference: Hermans, Smet and Hanselaer (2018), JOSA A 35(12), with the corrections of
+ * luxpy's cam18sl (equal to it, suite 260). Field of view 10 deg.
  * ---------------------------------------------------------------- */
 
 /* CAM18sl forward: XYZ -> appearance correlates
- * xyz: absolute XYZ tristimulus (cd/m2)
- * Y_b: background luminance (cd/m2) */
+ * xyz: absolute CIE 2006 10 deg XYZ (cd/m2)
+ * Y_b: luminance of the equal-energy background (cd/m2); 0 for no background
+ * out: Q brightness, M colourfulness, h hue (deg), C = M / Q (saturation),
+ *      a = M cos h, b = M sin h */
 alwan_status alwan_cam18sl_forward_f32(alwan_cam18sl_correlates_f32 *out,
                           alwan_xyz_f32 const *xyz,
                           alwan_f32 Y_b);
@@ -11467,7 +11488,9 @@ alwan_status alwan_cam18sl_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t
 
 /* ----------------------------------------------------------------
  * CAM20u - Color Appearance Model for Unrelated Color
- * Reference: Kim & Park (2020)
+ * NOT the published CAM20u (Gao, Li, Luo, Pointer et al. 2021, Color Res. Appl. 46(3)):
+ * alwan's own CAM16-shaped model for unrelated colours, with no published definition or open
+ * implementation to check it against. Forward and inverse are exact inverses (suite 260).
  * ---------------------------------------------------------------- */
 
 /* CAM20u forward: XYZ -> appearance correlates

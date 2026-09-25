@@ -1059,14 +1059,14 @@ The negative-input clip is removed for four of the six. `ALWAN_VIEW_UCHIMURA` ke
 `1` for `L >= 0`, so its unclamped form differs from the clamped one only for negative
 input.
 
-> **Three views apply no clamp in the dispatch wrapper and are bounded anyway.**
-> `ALWAN_VIEW_KHRONOS_PBR_NEUTRAL` and the two BT.2446 Method A views carry neither a
-> `SATURATE` nor a `max(0)` in the wrapper, so the clamped entry point looks unclamped
-> for them. The bound lives in the operators: `alwan_bt2446a_forward` and
-> `alwan_bt2446a_inverse` both end in `SATURATE`, and PBR Neutral is bounded by
-> construction (the offset step floors the minimum channel at `0`, and
-> `new_peak = 1 - d^2 / (peak + d - start) < 1` for every `peak`). In the other
-> direction, `ALWAN_VIEW_BT2446B_SDR_TO_HDR`, `ALWAN_VIEW_BT2446C_HDR_TO_SDR` and
+> **One view applies no clamp in the dispatch wrapper and is bounded anyway.**
+> `ALWAN_VIEW_KHRONOS_PBR_NEUTRAL` carries neither a `SATURATE` nor a `max(0)` in the
+> wrapper; it is bounded by construction (the offset step floors the minimum channel at
+> `0`, and `new_peak = 1 - d^2 / (peak + d - start) < 1` for every `peak`). The BT.2446
+> Method A operators do not clip (the Report's Table 3 output can leave `[0, 1]`), so
+> `ALWAN_VIEW_BT2446A_HDR_TO_SDR` saturates its output in the wrapper, and
+> `ALWAN_VIEW_BT2446A_SDR_TO_HDR` its input (Table 4 clips its own output to 1000 cd/m2).
+> `ALWAN_VIEW_BT2446B_SDR_TO_HDR`, `ALWAN_VIEW_BT2446C_HDR_TO_SDR` and
 > `ALWAN_VIEW_BT2390_HDR_TO_SDR` `SATURATE` their **input** to `[0,1]` before the
 > operator runs, and the unclamped entry point does not lift that input clamp.
 

@@ -353,7 +353,13 @@ alwan_status alwan_cam18sl_inverse_{T}(alwan_xyz_{T} *xyz_out,
                                         alwan_{T} Y_b);
 ```
 
-Color appearance model for self-luminous stimuli (displays, LEDs). Designed for emissive sources.
+Color appearance model for self-luminous stimuli (displays, LEDs): Hermans, Smet and
+Hanselaer (2018), JOSA A 35(12), with the corrections luxpy's `cam18sl` carries, field of
+view 10 deg. Input is **CIE 2006 10 deg** absolute XYZ; the background is equal-energy
+at `Y_b` cd/m2 (0 for none). Correlates: `Q` brightness, `M` colourfulness, `h` hue in
+degrees, `C` saturation `M / Q`, and `a = M cos h`, `b = M sin h`. Equal to luxpy's
+`cam18sl(..., outin='Q,M,h')` to 1e-8 relative; the rest is luxpy integrating its
+equal-energy background over rounded tables where alwan takes X = Y = Z (suite 260).
 
 ---
 
@@ -372,6 +378,13 @@ alwan_status alwan_cam20u_inverse_{T}(alwan_xyz_{T} *xyz_out,
                                        alwan_{T} Y_b,
                                        alwan_{T} L_a);
 ```
+
+**Not the published CAM20u.** The model of that name is Gao, Li, Luo, Pointer et al.
+(2021), Color Res. Appl. 46(3); this is alwan's own CAM16-shaped model for unrelated
+colours, with no published definition or open implementation to check it against. Its
+forward and inverse are exact inverses of each other (round trip 6e-15, suite 260), a
+negative cone signal included: the cone compression and the brightness power keep their
+sign, as CAM16's do.
 
 ---
 

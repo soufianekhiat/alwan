@@ -158,8 +158,11 @@ alwan_status alwan_apca_contrast_{T}(alwan_{T} *Lc_out,
                                       alwan_rgb_{T} const *srgb_bg);
 ```
 
-APCA / SAPC, the algorithm drafted for WCAG 3.0 (Myndex APCA-W3). It takes
-**sRGB-encoded** colours, `[0, 1]` per channel, and does its own decoding.
+APCA / SAPC, the algorithm drafted for WCAG 3.0 (Myndex APCA-W3 0.1.9, constants
+0.0.98G-4g). It takes **sRGB-encoded** colours, `[0, 1]` per channel, and does its own
+decoding. It equals the apca-w3 package's `APCAcontrast(sRGBtoY(text), sRGBtoY(bg))`
+to 1e-13 (suite 260), including its input check: a negative channel or a luminance
+above 1.1 returns `0`, as apca-w3 does.
 
 Three things differ from WCAG and all three bite:
 
@@ -201,9 +204,13 @@ alwan_status alwan_bt2390_eetf_luminance_{T}(alwan_{T} *E_out, alwan_{T} E_pq,
                                               alwan_{T} L_target_peak);
 ```
 
-The BT.2390 electro-electrical transfer function: a Hermite spline roll-off that
-maps a source PQ range onto a display's, leaving everything below the knee alone.
-This is the standard way to show 4000-nit content on a 1000-nit panel.
+The BT.2390 electro-electrical transfer function as Report ITU-R BT.2408-8 Annex 5
+gives it: the signal normalised to the mastering range `[LB, LW]` (and clamped to it),
+1:1 below the knee `KS = 1.5 maxLum - 0.5`, a Hermite spline from the knee to the
+target peak `maxLum`, then the black lift `E2 + minLum (1 - E2)^4` towards the target
+black, and back to the mastering range. This is the standard way to show 4000-nit
+content on a 1000-nit panel. A target at least as bright as the source leaves the
+signal alone. Equal to a port of the Annex's equations to 1e-16 (suite 260).
 
 Everything is in the **PQ domain**, including the levels: `E_pq`, `LB`, `LW`,
 `LB_target` and `LW_target` are all PQ-encoded `[0, 1]`, not cd/m2. The
@@ -223,14 +230,29 @@ alwan_status alwan_bt2446c_forward_{T}(alwan_{T} *Y_sdr_out, alwan_{T} Y_hdr,
 The two BT.2446 methods run in **opposite directions**, which the shared name
 hides:
 
-| | direction | input domain |
-|---|---|---|
-| Method B | SDR to HDR, parametric up-conversion | `Y_sdr` linear `[0, 1]` |
-| Method C | HDR to SDR, quantization-aware tone mapping | `Y_hdr` **PQ-encoded** `[0, 1]` |
+| | direction | input | output |
+|---|---|---|---|
+| Method B | SDR to HDR, parametric up-conversion | `Y_sdr` linear `[0, 1]` | HDR, clipped to `[0, 1]` |
+| Method C | HDR to SDR, Report BT.2446-1 section 6.1.4 | HDR display luminance over `L_hdr` | SDR display luminance over `L_sdr`, **not clipped** |
 
 Both take the same `L_hdr` and `L_sdr` peak luminances in cd/m2, so a call with
-the arguments in the wrong place compiles and returns a plausible number. Method
-C's input being PQ-encoded while Method B's is linear is the second trap.
+the arguments in the wrong place compiles and returns a plausible number.
+
+**Method C** is the Report's curve: `k1 Y` below the inflection point `Y_ip`, and
+`k2 ln(Y / Y_ip - k3) + k4` above it, on display luminance. The Report prints k1..k4
+for 1000 and 100 cd/m2 only (0.83802, 15.09968, 0.74204, 78.99439); alwan derives them
+for any pair from the conditions the Report states (50 % HLG skin to 70 % SDR, the
+inflection at 80 % SDR, 75 % HLG Reference White to 96 % SDR, HLG at `L_hdr` with system
+gamma `1.2 + 0.42 log10(L_hdr / 1000)`, BT.1886 at `L_sdr`), which reproduces the printed
+values to all five decimals. At 1000/100 the brightest HDR level lands at 1.18 of SDR
+peak. The whole section 6.1 chain on HLG `R'G'B'` (crosstalk, XYZ, the curve on Y,
+back to RGB, BT.1886) is `ALWAN_VIEW_BT2446C_HDR_TO_SDR`.
+
+**Method B** is not the Report's curve. Report BT.2446-1 section 5.1 describes Method B's
+SDR to HDR mapping (with section 5.2 its complementary HDR to SDR tone mapping) through a
+figure and constraints only, a knee near 78 % SDR and unity gradient below it, with no
+equations to reproduce. `alwan_bt2446b_forward_{T}` is alwan's own curve in that
+direction, and nothing checks it against the Report.
 
 ### alwan_exposure_tonemap_{T} / alwan_reinhard_calibrated_{T}
 

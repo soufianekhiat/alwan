@@ -1310,6 +1310,8 @@ EXPORTS
     alwan_mean_squared_error_f32
     alwan_mean_squared_error_f64
     alwan_mean_squared_error_u8
+    alwan_mesopic_adaptation_f32
+    alwan_mesopic_adaptation_f64
     alwan_mesopic_luminance_f32
     alwan_mesopic_luminance_f64
     alwan_metamerism_index_f32

@@ -161,86 +161,96 @@ ALWAN_INLINE alwan_scalar alwan_tf_mirror_v(alwan_scalar x,
     return sign_x * tf_abs_x;
 }
 
-ALWAN_INLINE alwan_scalar alwan_bt2446a_forward_v(alwan_scalar Y_hdr,
+/* ================================================================
+ * BT.2446 Method A: HDR to SDR Tone Mapping
+ *
+ * Report ITU-R BT.2446-1 (2021), section 4.1, Tables 2 and 3, on BT.2020 RGB. Input: linear
+ * display-light HDR RGB normalised to the mastering peak L_hdr (1 = L_hdr); output: the SDR
+ * R'G'B' (BT.2020 primaries, gamma-encoded) that the Report's Y'Cb'Cr' converts to through
+ * Recommendation BT.2020's matrix, not clipped. Negative input is taken as 0.
+ * ================================================================ */
+
+ALWAN_INLINE alwan_vec3 alwan_bt2446a_forward_v(alwan_vec3 rgb,
                                                     alwan_scalar L_hdr,
                                                     alwan_scalar L_sdr) {
-    alwan_scalar pHDR = ALWAN_LITERAL(1.0) + ALWAN_LITERAL(32.0) *
-        ALWAN_POW(L_hdr / ALWAN_LITERAL(10000.0),
-                  ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
-    alwan_scalar pSDR = ALWAN_LITERAL(1.0) + ALWAN_LITERAL(32.0) *
-        ALWAN_POW(L_sdr / ALWAN_LITERAL(10000.0),
-                  ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
+    alwan_scalar inv24 = ALWAN_ONE / ALWAN_LITERAL(2.4);
+    alwan_scalar Rp = ALWAN_POW(alwan_max(rgb.v[0], ALWAN_ZERO), inv24);
+    alwan_scalar Gp = ALWAN_POW(alwan_max(rgb.v[1], ALWAN_ZERO), inv24);
+    alwan_scalar Bp = ALWAN_POW(alwan_max(rgb.v[2], ALWAN_ZERO), inv24);
+    alwan_scalar Yp = ALWAN_LITERAL(0.2627) * Rp + ALWAN_LITERAL(0.6780) * Gp + ALWAN_LITERAL(0.0593) * Bp;
 
-    alwan_scalar Y_lin = (ALWAN_POW(pHDR, Y_hdr) - ALWAN_ONE) /
-                          (pHDR - ALWAN_ONE);
+    alwan_scalar rho_hdr = ALWAN_ONE + ALWAN_LITERAL(32.0) *
+        ALWAN_POW(L_hdr / ALWAN_LITERAL(10000.0), inv24);
+    alwan_scalar rho_sdr = ALWAN_ONE + ALWAN_LITERAL(32.0) *
+        ALWAN_POW(L_sdr / ALWAN_LITERAL(10000.0), inv24);
 
-    alwan_scalar k1 = ALWAN_LITERAL(0.5) * pSDR / pHDR;
-    alwan_scalar k3 = ALWAN_ONE;
-    alwan_scalar k2 = k1 + (k3 - k1) * ALWAN_LITERAL(0.75);
+    /* Step 1: to the perceptual domain */
+    alwan_scalar Ypp = ALWAN_LN(ALWAN_ONE + (rho_hdr - ALWAN_ONE) * Yp) / ALWAN_LN(rho_hdr);
+    /* Step 2: the knee */
+    alwan_scalar c1 = ALWAN_LITERAL(1.0770) * Ypp;
+    alwan_scalar c2 = ALWAN_LITERAL(-1.1510) * Ypp * Ypp + ALWAN_LITERAL(2.7811) * Ypp - ALWAN_LITERAL(0.6302);
+    alwan_scalar c3 = ALWAN_LITERAL(0.5000) * Ypp + ALWAN_LITERAL(0.5000);
+    alwan_scalar Yc = ALWAN_SELECT(Ypp <= ALWAN_LITERAL(0.7399), c1,
+                      ALWAN_SELECT(Ypp < ALWAN_LITERAL(0.9909), c2, c3));
+    /* Step 3: back to the gamma domain */
+    alwan_scalar Ysdr = (ALWAN_POW(rho_sdr, Yc) - ALWAN_ONE) / (rho_sdr - ALWAN_ONE);
 
-    alwan_scalar t1 = Y_lin / k1;
-    alwan_scalar region1 = k1 * ALWAN_LITERAL(0.5) * t1;
+    /* Table 3: colour correction */
+    alwan_scalar f = ALWAN_SELECT(Yp > ALWAN_ZERO, Ysdr / (ALWAN_LITERAL(1.1) * Yp), ALWAN_ZERO);
+    alwan_scalar Cb = f * (Bp - Yp) / ALWAN_LITERAL(1.8814);
+    alwan_scalar Cr = f * (Rp - Yp) / ALWAN_LITERAL(1.4746);
+    alwan_scalar Ytmo = Ysdr - alwan_max(ALWAN_LITERAL(0.1) * Cr, ALWAN_ZERO);
 
-    alwan_scalar t2 = (Y_lin - k1) / (k2 - k1);
-    alwan_scalar region2 = k1 * ALWAN_LITERAL(0.5) + (k2 - k1) *
-        (t2 - ALWAN_LITERAL(0.25) * t2 * t2);
-
-    alwan_scalar mapped_mid = k1 * ALWAN_LITERAL(0.5) + (k2 - k1) * ALWAN_LITERAL(0.75);
-    alwan_scalar t3 = (Y_lin - k2) / (k3 - k2);
-    alwan_scalar region3 = mapped_mid + (ALWAN_ONE - mapped_mid) *
-        t3 / (ALWAN_ONE + (ALWAN_ONE - t3) * ALWAN_LITERAL(2.0));
-
-    alwan_scalar Y_mapped = ALWAN_SELECT(Y_lin <= k1, region1,
-                            ALWAN_SELECT(Y_lin <= k2, region2, region3));
-
-    alwan_scalar Y_sdr = ALWAN_LN(ALWAN_ONE + (pSDR - ALWAN_ONE) * Y_mapped) /
-                          ALWAN_LN(pSDR);
-
-    return alwan_saturate(Y_sdr);
+    alwan_vec3 res;
+    res.v[0] = Ytmo + ALWAN_LITERAL(1.4746) * Cr;
+    res.v[1] = Ytmo - ALWAN_LITERAL(0.16455) * Cb - ALWAN_LITERAL(0.57135) * Cr;
+    res.v[2] = Ytmo + ALWAN_LITERAL(1.8814) * Cb;
+    return res;
 }
 
-ALWAN_INLINE alwan_scalar alwan_bt2446a_inverse_v(alwan_scalar Y_sdr,
-                                                    alwan_scalar L_hdr,
-                                                    alwan_scalar L_sdr) {
-    alwan_scalar pHDR = ALWAN_LITERAL(1.0) + ALWAN_LITERAL(32.0) *
-        ALWAN_POW(L_hdr / ALWAN_LITERAL(10000.0),
-                  ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
-    alwan_scalar pSDR = ALWAN_LITERAL(1.0) + ALWAN_LITERAL(32.0) *
-        ALWAN_POW(L_sdr / ALWAN_LITERAL(10000.0),
-                  ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
+/* ================================================================
+ * BT.2446 Method A: SDR to HDR Inverse Mapping
+ *
+ * Report ITU-R BT.2446-1, section 4.2, Table 4: SDR R'G'B' (BT.2020, full range) to linear
+ * display-light HDR RGB normalised to its fixed peak of 1 000 cd/m2 (1 = 1 000 cd/m2).
+ * ================================================================ */
 
-    alwan_scalar Y_mapped = (ALWAN_POW(pSDR, Y_sdr) - ALWAN_ONE) /
-                             (pSDR - ALWAN_ONE);
+ALWAN_INLINE alwan_vec3 alwan_bt2446a_inverse_v(alwan_vec3 rgb) {
+    alwan_scalar Yp = ALWAN_LITERAL(0.2627) * rgb.v[0] + ALWAN_LITERAL(0.6780) * rgb.v[1]
+                    + ALWAN_LITERAL(0.0593) * rgb.v[2];
+    alwan_scalar Cb = (rgb.v[2] - Yp) / ALWAN_LITERAL(1.8814);
+    alwan_scalar Cr = (rgb.v[0] - Yp) / ALWAN_LITERAL(1.4746);
 
-    alwan_scalar k1 = ALWAN_LITERAL(0.5) * pSDR / pHDR;
-    alwan_scalar k2_minus_k1 = (ALWAN_ONE - k1) * ALWAN_LITERAL(0.75);
-    alwan_scalar k2 = k1 + k2_minus_k1;
-    alwan_scalar mapped_k1 = k1 * ALWAN_LITERAL(0.5);
-    alwan_scalar mapped_k2 = mapped_k1 + k2_minus_k1 * ALWAN_LITERAL(0.75);
+    alwan_scalar Ypp = ALWAN_LITERAL(255.0) * Yp;
+    alwan_scalar E1 = ALWAN_LITERAL(1.8712e-5) * Ypp * Ypp + ALWAN_LITERAL(-2.7334e-3) * Ypp + ALWAN_LITERAL(1.3141);
+    alwan_scalar E2 = ALWAN_LITERAL(2.8305e-6) * Ypp * Ypp + ALWAN_LITERAL(-7.4622e-4) * Ypp + ALWAN_LITERAL(1.2528);
+    alwan_scalar E = ALWAN_SELECT(Ypp <= ALWAN_LITERAL(70.0), E1, E2);
+    alwan_scalar Yhdr = ALWAN_POW(alwan_max(Ypp, ALWAN_ZERO), E);
 
-    alwan_scalar inv_region1 = Y_mapped / ALWAN_LITERAL(0.5);
+    alwan_scalar Sc = ALWAN_SELECT(Yp > ALWAN_ZERO, ALWAN_LITERAL(1.075) * Yhdr / Yp, ALWAN_ONE);
+    alwan_scalar Cbh = Cb * Sc;
+    alwan_scalar Crh = Cr * Sc;
 
-    alwan_scalar b_coeff = k2_minus_k1;
-    alwan_scalar c_coeff = -ALWAN_LITERAL(0.25) * k2_minus_k1;
-    alwan_scalar disc = b_coeff * b_coeff + ALWAN_LITERAL(4.0) * c_coeff * (Y_mapped - mapped_k1);
-    alwan_scalar disc_safe = ALWAN_SELECT(disc < ALWAN_ZERO, ALWAN_ZERO, disc);
-    alwan_scalar t2 = (-b_coeff + ALWAN_SQRT(disc_safe)) / (ALWAN_LITERAL(2.0) * c_coeff);
-    alwan_scalar inv_region2 = k1 + t2 * k2_minus_k1;
+    alwan_scalar r = alwan_clamp(Yhdr + ALWAN_LITERAL(1.4746) * Crh, ALWAN_ZERO, ALWAN_LITERAL(1000.0));
+    alwan_scalar g = alwan_clamp(Yhdr - ALWAN_LITERAL(0.16455) * Cbh - ALWAN_LITERAL(0.57135) * Crh,
+                                      ALWAN_ZERO, ALWAN_LITERAL(1000.0));
+    alwan_scalar b = alwan_clamp(Yhdr + ALWAN_LITERAL(1.8814) * Cbh, ALWAN_ZERO, ALWAN_LITERAL(1000.0));
 
-    alwan_scalar rest = ALWAN_ONE - mapped_k2;
-    alwan_scalar y_norm = (Y_mapped - mapped_k2) / ALWAN_SELECT(rest < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), rest);
-    alwan_scalar t3 = y_norm / (ALWAN_ONE + ALWAN_LITERAL(2.0) * (ALWAN_ONE - y_norm));
-    alwan_scalar k3_minus_k2 = ALWAN_ONE - k2;
-    alwan_scalar inv_region3 = k2 + t3 * k3_minus_k2;
-
-    alwan_scalar Y_lin = ALWAN_SELECT(Y_mapped <= mapped_k1, inv_region1,
-                         ALWAN_SELECT(Y_mapped <= mapped_k2, inv_region2, inv_region3));
-
-    alwan_scalar Y_hdr = ALWAN_LN(ALWAN_ONE + (pHDR - ALWAN_ONE) * Y_lin) /
-                          ALWAN_LN(pHDR);
-
-    return alwan_saturate(Y_hdr);
+    alwan_vec3 res;
+    res.v[0] = ALWAN_POW(r / ALWAN_LITERAL(1000.0), ALWAN_LITERAL(2.4));
+    res.v[1] = ALWAN_POW(g / ALWAN_LITERAL(1000.0), ALWAN_LITERAL(2.4));
+    res.v[2] = ALWAN_POW(b / ALWAN_LITERAL(1000.0), ALWAN_LITERAL(2.4));
+    return res;
 }
+
+/* ================================================================
+ * BT.2446 Method B: SDR to HDR Up-Conversion
+ *
+ * alwan's own curve in Method B's direction. Report ITU-R BT.2446-1 section 5.1 gives
+ * Method B's inverse tone mapping (SDR to HDR, with section 5.2 its complementary HDR to
+ * SDR) only as a figure and constraints (a knee near 78 % SDR, unity gradient below it),
+ * no equations, so this is not the Report's curve and nothing here checks it against one.
+ * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_bt2446b_forward_v(alwan_scalar Y_sdr,
                                                     alwan_scalar L_hdr,
@@ -264,34 +274,139 @@ ALWAN_INLINE alwan_scalar alwan_bt2446b_forward_v(alwan_scalar Y_sdr,
     return alwan_saturate(Y_hdr);
 }
 
+/* ================================================================
+ * BT.2446 Method C: HDR to SDR Tone Mapping
+ *
+ * Report ITU-R BT.2446-1, section 6.1.4: linear below an inflection point, logarithmic above,
+ * on display luminance. The Report states the conditions its parameters come from: HDR skin
+ * (50 % HLG) to SDR skin (70 %), the inflection at 80 % SDR, and HDR Reference White (75 %
+ * HLG) to 96 % SDR, with HLG displayed at L_hdr (system gamma 1.2 + 0.42 log10(L_hdr / 1000),
+ * black 0) and SDR by BT.1886 at L_sdr (gamma 2.4, black 0). k1 to k4 follow from those for
+ * any L_hdr and L_sdr; at 1 000 and 100 cd/m2 they are the Report's 0.83802, 15.09968,
+ * 0.74204, 78.99439 to all five published decimals (its "58.5" is 100 x 0.8^2.4 = 58.535
+ * rounded). k3 is the root of the Report's equation (9), found by bisection.
+ * ================================================================ */
+
+ALWAN_INLINE alwan_scalar alwan_bt2446c_hlg_luminance_v(alwan_scalar E, alwan_scalar L_hdr) {
+    alwan_scalar a = ALWAN_LITERAL(0.17883277);
+    alwan_scalar b = ALWAN_ONE - ALWAN_LITERAL(4.0) * a;
+    alwan_scalar c = ALWAN_LITERAL(0.5) - a * ALWAN_LN(ALWAN_LITERAL(4.0) * a);
+    alwan_scalar lo = E * E / ALWAN_LITERAL(3.0);
+    alwan_scalar hi = (ALWAN_EXP((E - c) / a) + b) / ALWAN_LITERAL(12.0);
+    alwan_scalar s = ALWAN_SELECT(E <= ALWAN_LITERAL(0.5), lo, hi);
+    alwan_scalar gamma = ALWAN_LITERAL(1.2) + ALWAN_LITERAL(0.42) * ALWAN_LOG10(L_hdr / ALWAN_LITERAL(1000.0));
+    return L_hdr * ALWAN_POW(s, gamma);
+}
+
+/* k1, k2, k3, k4 and the inflection point Y_ip (cd/m2) in v[0..4]. */
+ALWAN_INLINE alwan_scalar alwan_bt2446c_k3_residual_v(alwan_scalar u, alwan_scalar c, alwan_scalar t) {
+    /* u = 1 - k3: u ln(1 + c / u) - t, increasing in u from -t towards c - t */
+    return u * ALWAN_LN(ALWAN_ONE + c / u) - t;
+}
+
+ALWAN_INLINE alwan_scalar alwan_bt2446c_curve_v(alwan_scalar Y, alwan_scalar L_hdr, alwan_scalar L_sdr) {
+    alwan_scalar k1 = L_sdr * ALWAN_POW(ALWAN_LITERAL(0.7), ALWAN_LITERAL(2.4))
+                    / alwan_bt2446c_hlg_luminance_v(ALWAN_LITERAL(0.5), L_hdr);
+    alwan_scalar Yip = L_sdr * ALWAN_POW(ALWAN_LITERAL(0.8), ALWAN_LITERAL(2.4)) / k1;
+    alwan_scalar Yref = alwan_bt2446c_hlg_luminance_v(ALWAN_LITERAL(0.75), L_hdr);
+    alwan_scalar Ywp = L_sdr * ALWAN_POW(ALWAN_LITERAL(0.96), ALWAN_LITERAL(2.4));
+    /* equation (9) with k2 and k4 from (7) and (8): k1 Y_ip u ln((R - 1 + u) / u) = Ywp - k1 Y_ip */
+    alwan_scalar c = Yref / Yip - ALWAN_ONE;
+    alwan_scalar t = (Ywp - k1 * Yip) / (k1 * Yip);
+    alwan_scalar lo = ALWAN_ZERO;
+    alwan_scalar hi = t * c / (c - t);   /* u ln(1 + c/u) >= c u / (u + c) bounds the root */
+    int i;
+    for (i = 0; i < 80; i++) {
+        alwan_scalar mid = (lo + hi) * ALWAN_LITERAL(0.5);
+        alwan_scalar r = alwan_bt2446c_k3_residual_v(mid, c, t);
+        lo = ALWAN_SELECT(r < ALWAN_ZERO, mid, lo);
+        hi = ALWAN_SELECT(r < ALWAN_ZERO, hi, mid);
+    }
+    alwan_scalar u = (lo + hi) * ALWAN_LITERAL(0.5);
+    alwan_scalar k3 = ALWAN_ONE - u;
+    alwan_scalar k2 = k1 * u * Yip;
+    alwan_scalar k4 = k1 * Yip - k2 * ALWAN_LN(u);
+    alwan_scalar lin = k1 * Y;
+    alwan_scalar arg = alwan_max(Y / Yip - k3, u);   /* equal to Y / Yip - k3 wherever it is used */
+    alwan_scalar lg = k2 * ALWAN_LN(arg) + k4;
+    return ALWAN_SELECT(Y < Yip, lin, lg);
+}
+
+/* The scalar: HDR display luminance over L_hdr in, SDR display luminance over L_sdr out, not
+ * clipped (the brightest HDR input lands at 1.18 for 1 000 and 100 cd/m2). */
 ALWAN_INLINE alwan_scalar alwan_bt2446c_forward_v(alwan_scalar Y_hdr,
                                                     alwan_scalar L_hdr,
                                                     alwan_scalar L_sdr) {
-    alwan_scalar rho = ALWAN_LITERAL(1.0) +
-        ALWAN_LITERAL(32.0) * ALWAN_POW(L_hdr / ALWAN_LITERAL(10000.0),
-                                         ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
-    alwan_scalar rho_sdr = ALWAN_LITERAL(1.0) +
-        ALWAN_LITERAL(32.0) * ALWAN_POW(L_sdr / ALWAN_LITERAL(10000.0),
-                                         ALWAN_LITERAL(1.0) / ALWAN_LITERAL(2.4));
-
-    alwan_scalar Y_lin = (ALWAN_POW(rho, Y_hdr) - ALWAN_ONE) / (rho - ALWAN_ONE);
-
-    alwan_scalar alpha = ALWAN_LN(rho_sdr) / ALWAN_LN(rho);
-
-    alwan_scalar Y_compressed = ALWAN_POW(Y_lin, alpha);
-
-    alwan_scalar shoulder = ALWAN_LITERAL(0.95);
-    alwan_scalar t = (Y_compressed - shoulder) / (ALWAN_ONE - shoulder);
-    t = ALWAN_SELECT(t < ALWAN_ZERO, ALWAN_ZERO, t);
-    alwan_scalar soft = shoulder + (ALWAN_ONE - shoulder) *
-                        t / (ALWAN_ONE + t);
-    Y_compressed = ALWAN_SELECT(Y_compressed > shoulder, soft, Y_compressed);
-
-    alwan_scalar Y_sdr = ALWAN_LN(ALWAN_ONE + (rho_sdr - ALWAN_ONE) * Y_compressed) /
-                          ALWAN_LN(rho_sdr);
-
-    return alwan_saturate(Y_sdr);
+    return alwan_bt2446c_curve_v(Y_hdr * L_hdr, L_hdr, L_sdr) / L_sdr;
 }
+
+/* The whole of section 6.1 for BT.2020 signals: HLG R'G'B' in (displayed at 1 000 cd/m2,
+ * gamma 1.2), crosstalk alpha, BT.2020 XYZ, the curve on Y with x and y kept, the Report's
+ * XYZ to RGB, the inverse crosstalk, and BT.1886 at 100 cd/m2; SDR R'G'B' out, clipped to
+ * [0, 1]. Black gives black. */
+ALWAN_INLINE alwan_vec3 alwan_bt2446c_rgb_v(alwan_vec3 hlg, alwan_scalar alpha) {
+    alwan_scalar a = ALWAN_LITERAL(0.17883277);
+    alwan_scalar bb = ALWAN_ONE - ALWAN_LITERAL(4.0) * a;
+    alwan_scalar cc = ALWAN_LITERAL(0.5) - a * ALWAN_LN(ALWAN_LITERAL(4.0) * a);
+    alwan_scalar e0 = alwan_max(hlg.v[0], ALWAN_ZERO);
+    alwan_scalar e1 = alwan_max(hlg.v[1], ALWAN_ZERO);
+    alwan_scalar e2 = alwan_max(hlg.v[2], ALWAN_ZERO);
+    alwan_scalar s0 = ALWAN_SELECT(e0 <= ALWAN_LITERAL(0.5), e0 * e0 / ALWAN_LITERAL(3.0),
+                                        (ALWAN_EXP((e0 - cc) / a) + bb) / ALWAN_LITERAL(12.0));
+    alwan_scalar s1 = ALWAN_SELECT(e1 <= ALWAN_LITERAL(0.5), e1 * e1 / ALWAN_LITERAL(3.0),
+                                        (ALWAN_EXP((e1 - cc) / a) + bb) / ALWAN_LITERAL(12.0));
+    alwan_scalar s2 = ALWAN_SELECT(e2 <= ALWAN_LITERAL(0.5), e2 * e2 / ALWAN_LITERAL(3.0),
+                                        (ALWAN_EXP((e2 - cc) / a) + bb) / ALWAN_LITERAL(12.0));
+    alwan_scalar Ys = ALWAN_LITERAL(0.2627) * s0 + ALWAN_LITERAL(0.6780) * s1 + ALWAN_LITERAL(0.0593) * s2;
+    alwan_scalar gain = ALWAN_SELECT(Ys > ALWAN_ZERO,
+                                          ALWAN_LITERAL(1000.0) * ALWAN_POW(Ys, ALWAN_LITERAL(0.2)),
+                                          ALWAN_ZERO);
+    alwan_scalar R = gain * s0, G = gain * s1, B = gain * s2;
+
+    alwan_scalar d = ALWAN_ONE - ALWAN_LITERAL(2.0) * alpha;
+    alwan_scalar Rx = d * R + alpha * G + alpha * B;
+    alwan_scalar Gx = alpha * R + d * G + alpha * B;
+    alwan_scalar Bx = alpha * R + alpha * G + d * B;
+
+    alwan_scalar X = ALWAN_LITERAL(0.6370) * Rx + ALWAN_LITERAL(0.1446) * Gx + ALWAN_LITERAL(0.1689) * Bx;
+    alwan_scalar Y = ALWAN_LITERAL(0.2627) * Rx + ALWAN_LITERAL(0.6780) * Gx + ALWAN_LITERAL(0.0593) * Bx;
+    alwan_scalar Z = ALWAN_LITERAL(0.0281) * Gx + ALWAN_LITERAL(1.0610) * Bx;
+    alwan_scalar sum = X + Y + Z;
+    alwan_scalar valid = ALWAN_SELECT(Y > ALWAN_ZERO, ALWAN_ONE, ALWAN_ZERO);
+    alwan_scalar sum_s = ALWAN_SELECT(sum > ALWAN_ZERO, sum, ALWAN_ONE);
+    alwan_scalar x = X / sum_s;
+    alwan_scalar y = ALWAN_SELECT(Y > ALWAN_ZERO, Y / sum_s, ALWAN_ONE);
+
+    alwan_scalar Ysdr = alwan_bt2446c_curve_v(Y, ALWAN_LITERAL(1000.0), ALWAN_LITERAL(100.0)) * valid;
+    alwan_scalar Xs = x / y * Ysdr;
+    alwan_scalar Zs = (ALWAN_ONE - x - y) / y * Ysdr;
+
+    alwan_scalar Rxs = ALWAN_LITERAL(1.7167) * Xs + ALWAN_LITERAL(-0.3557) * Ysdr + ALWAN_LITERAL(-0.2534) * Zs;
+    alwan_scalar Gxs = ALWAN_LITERAL(-0.6667) * Xs + ALWAN_LITERAL(1.6165) * Ysdr + ALWAN_LITERAL(0.0158) * Zs;
+    alwan_scalar Bxs = ALWAN_LITERAL(0.0176) * Xs + ALWAN_LITERAL(-0.0428) * Ysdr + ALWAN_LITERAL(0.9421) * Zs;
+
+    alwan_scalar inv = ALWAN_ONE / (ALWAN_ONE - ALWAN_LITERAL(3.0) * alpha);
+    alwan_scalar Rs = inv * ((ALWAN_ONE - alpha) * Rxs - alpha * Gxs - alpha * Bxs);
+    alwan_scalar Gs = inv * (-alpha * Rxs + (ALWAN_ONE - alpha) * Gxs - alpha * Bxs);
+    alwan_scalar Bs = inv * (-alpha * Rxs - alpha * Gxs + (ALWAN_ONE - alpha) * Bxs);
+
+    alwan_scalar inv24 = ALWAN_ONE / ALWAN_LITERAL(2.4);
+    alwan_vec3 res;
+    res.v[0] = alwan_saturate(ALWAN_POW(alwan_max(Rs / ALWAN_LITERAL(100.0), ALWAN_ZERO), inv24));
+    res.v[1] = alwan_saturate(ALWAN_POW(alwan_max(Gs / ALWAN_LITERAL(100.0), ALWAN_ZERO), inv24));
+    res.v[2] = alwan_saturate(ALWAN_POW(alwan_max(Bs / ALWAN_LITERAL(100.0), ALWAN_ZERO), inv24));
+    return res;
+}
+
+/* ================================================================
+ * BT.2390 EETF, as Report ITU-R BT.2408-8 Annex 5 now gives it
+ *
+ * All levels PQ-encoded: LB and LW the mastering display's black and white, LB_target and
+ * LW_target the target display's (Lmin and Lmax). E1 is normalised to the mastering range
+ * (clamped to [0, 1], where the Annex defines the curve); minLum and maxLum are the target
+ * levels normalised to that range; KS = 1.5 maxLum - 0.5; below KS 1:1, above it the Hermite
+ * spline; then the black lift minLum (1 - E2)^4; then back to the mastering range.
+ * ================================================================ */
 
 ALWAN_INLINE alwan_scalar alwan_bt2390_eetf_v(alwan_scalar E_pq,
                                                 alwan_scalar LB,
@@ -299,32 +414,26 @@ ALWAN_INLINE alwan_scalar alwan_bt2390_eetf_v(alwan_scalar E_pq,
                                                 alwan_scalar LB_target,
                                                 alwan_scalar LW_target) {
     alwan_scalar range = LW - LB;
-    range = ALWAN_SELECT(range < ALWAN_LITERAL(1e-10),
-                         ALWAN_LITERAL(1e-10), range);
-    alwan_scalar E_norm = (E_pq - LB) / range;
-    E_norm = alwan_clamp(E_norm, ALWAN_ZERO, ALWAN_ONE);
+    alwan_scalar E1 = alwan_clamp((E_pq - LB) / range, ALWAN_ZERO, ALWAN_ONE);
+    alwan_scalar minLum = (LB_target - LB) / range;
+    alwan_scalar maxLum = (LW_target - LB) / range;
+    alwan_scalar KS = ALWAN_LITERAL(1.5) * maxLum - ALWAN_LITERAL(0.5);
 
-    alwan_scalar target_range = LW_target - LB_target;
-    alwan_scalar KS = ALWAN_LITERAL(1.5) * target_range / range - ALWAN_LITERAL(0.5);
-    KS = alwan_clamp(KS, ALWAN_ZERO, ALWAN_ONE);
-
-    alwan_scalar t = (E_norm - KS) / (ALWAN_ONE - KS + ALWAN_LITERAL(1e-10));
-    t = alwan_clamp(t, ALWAN_ZERO, ALWAN_ONE);
-
-    alwan_scalar t2 = t * t;
-    alwan_scalar t3 = t2 * t;
-
-    alwan_scalar max_mapped = target_range / range;
-    max_mapped = ALWAN_SELECT(max_mapped > ALWAN_ONE, ALWAN_ONE, max_mapped);
-
-    alwan_scalar P = (ALWAN_LITERAL(2.0) * t3 - ALWAN_LITERAL(3.0) * t2 + ALWAN_ONE) * KS
-                   + (t3 - ALWAN_LITERAL(2.0) * t2 + t) * (ALWAN_ONE - KS)
-                   + (-ALWAN_LITERAL(2.0) * t3 + ALWAN_LITERAL(3.0) * t2) * max_mapped;
-
-    alwan_scalar E_mapped = ALWAN_SELECT(E_norm <= KS, E_norm, P);
-
-    return LB_target + E_mapped * range;
+    /* a target at least as bright as the source leaves the signal alone (KS >= 1) */
+    alwan_scalar den = ALWAN_SELECT(KS < ALWAN_ONE, ALWAN_ONE - KS, ALWAN_ONE);
+    alwan_scalar T = (E1 - KS) / den;
+    alwan_scalar T2 = T * T;
+    alwan_scalar T3 = T2 * T;
+    alwan_scalar P = (ALWAN_LITERAL(2.0) * T3 - ALWAN_LITERAL(3.0) * T2 + ALWAN_ONE) * KS
+                   + (T3 - ALWAN_LITERAL(2.0) * T2 + T) * (ALWAN_ONE - KS)
+                   + (-ALWAN_LITERAL(2.0) * T3 + ALWAN_LITERAL(3.0) * T2) * maxLum;
+    alwan_scalar E2 = ALWAN_SELECT(E1 < KS || KS >= ALWAN_ONE, E1, P);
+    alwan_scalar om = ALWAN_ONE - E2;
+    alwan_scalar om2 = om * om;
+    alwan_scalar E3 = E2 + minLum * om2 * om2;
+    return E3 * range + LB;
 }
+
 
 ALWAN_INLINE alwan_scalar alwan_bt2390_eetf_luminance_v(alwan_scalar E_pq,
                                                           alwan_scalar L_source_peak,

@@ -446,7 +446,8 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_photopic_luminance)(ALWAN_CORE_SPD const *sp
 
     for (size_t i = 0; i < spd->count; i++) {
         ALWAN_CORE_T lambda = (ALWAN_CORE_T)spd->wavelength_min + (ALWAN_CORE_T)i * step;
-        ALWAN_CORE_T v = ALWAN_CORE_FNLIT(alwan_vision_interpolate_photopic_lut)(lambda);
+        ALWAN_CORE_T v = (lambda < ALWAN_CORE_FNLIT(PHOTOPIC_V_DATA)[0] || lambda > ALWAN_CORE_FNLIT(PHOTOPIC_V_DATA)[(PHOTOPIC_V_COUNT - 1) * 2])
+                         ? ALWAN_CORE_LITERAL(0.0) : ALWAN_CORE_FNLIT(alwan_vision_interpolate_photopic_lut)(lambda);
         ALWAN_CORE_T w = (i == 0 || i == spd->count - 1)
                          ? ALWAN_CORE_LITERAL(0.5) : ALWAN_CORE_LITERAL(1.0);
         sum += w * (ALWAN_CORE_T)spd->values[i] * v;
@@ -467,7 +468,8 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_scotopic_luminance)(ALWAN_CORE_SPD const *sp
 
     for (size_t i = 0; i < spd->count; i++) {
         ALWAN_CORE_T lambda = (ALWAN_CORE_T)spd->wavelength_min + (ALWAN_CORE_T)i * step;
-        ALWAN_CORE_T vp = ALWAN_CORE_FNLIT(alwan_vision_interpolate_scotopic_lut)(lambda);
+        ALWAN_CORE_T vp = (lambda < ALWAN_CORE_FNLIT(SCOTOPIC_VP_DATA)[0] || lambda > ALWAN_CORE_FNLIT(SCOTOPIC_VP_DATA)[(SCOTOPIC_VP_COUNT - 1) * 2])
+                         ? ALWAN_CORE_LITERAL(0.0) : ALWAN_CORE_FNLIT(alwan_vision_interpolate_scotopic_lut)(lambda);
         ALWAN_CORE_T w = (i == 0 || i == spd->count - 1)
                          ? ALWAN_CORE_LITERAL(0.5) : ALWAN_CORE_LITERAL(1.0);
         sum += w * (ALWAN_CORE_T)spd->values[i] * vp;
@@ -545,28 +547,54 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_luminous_efficacy)(ALWAN_CORE_T *efficac
     return ALWAN_OK;
 }
 
+/* CIE 191:2010 section 5 (the iteration CIE TN 007:2017 works through): from the photopic
+ * and scotopic adaptation luminances, L_mes,n = (m L_p + (1 - m) L_s V'(lambda0)) /
+ * (m + (1 - m) V'(lambda0)) with V'(lambda0) = 683 / 1699, m_n = 0.767 + 0.3334 log10(L_mes,n)
+ * clipped to [0, 1], starting from m 0.5, until m stops changing. Worked in double. */
+static void ALWAN_CORE_FNLIT(alwan__mesopic_iterate)(double *L_mes, double *m_out, double L_p, double S_P) {
+    double const V0 = 683.0 / 1699.0;
+    double const L_s = L_p * S_P;
+    double m = 0.5;
+    double L = (m * L_p + (1.0 - m) * L_s * V0) / (m + (1.0 - m) * V0);
+    int i;
+    for (i = 0; i < 200; i++) {
+        double mn = L > 0.0 ? 0.767 + 0.3334 * log10(L) : 0.0;
+        mn = mn < 0.0 ? 0.0 : (mn > 1.0 ? 1.0 : mn);
+        L = (mn * L_p + (1.0 - mn) * L_s * V0) / (mn + (1.0 - mn) * V0);
+        if (fabs(mn - m) <= 1e-15) { m = mn; break; }
+        m = mn;
+    }
+    *L_mes = L;
+    *m_out = m;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_mesopic_adaptation)(ALWAN_CORE_T *L_mes, ALWAN_CORE_T *m,
+                                                        ALWAN_CORE_T L_p, ALWAN_CORE_T S_P) {
+    double l, mm;
+    if (!L_mes || !m) return ALWAN_E_INVALID;
+    if (!(L_p > ALWAN_CORE_LITERAL(0.0)) || !(S_P >= ALWAN_CORE_LITERAL(0.0))) return ALWAN_E_INVALID;
+    ALWAN_CORE_FNLIT(alwan__mesopic_iterate)(&l, &mm, (double)L_p, (double)S_P);
+    *L_mes = (ALWAN_CORE_T)l;
+    *m = (ALWAN_CORE_T)mm;
+    return ALWAN_OK;
+}
+
+/* CIE 191:2010 mesopic luminance of a stimulus. The adaptation field is taken as lit by the
+ * same source: photopic adaptation luminance adaptation_level, scotopic that times the SPD's
+ * S/P ratio (CIE TN 007:2017's reading). With P and S the trapezoids of the SPD against V and
+ * V' (0 outside their data), L_mes = 683 (m P + (1 - m) S) / (m + (1 - m) V'(lambda0)). */
 ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_mesopic_luminance)(ALWAN_CORE_SPD const *spd, ALWAN_CORE_T adaptation_level,
                                                        alwan_ctx *ctx) {
-    if (!spd || !spd->values || spd->count < 2) return ALWAN_CORE_LITERAL(-1.0);
-    if (adaptation_level <= ALWAN_CORE_LITERAL(0.0)) return ALWAN_CORE_LITERAL(-1.0);
-
-    /* CIE 191:2010 mesopic adaptation coefficient m */
-    ALWAN_CORE_T m;
-    if (adaptation_level >= ALWAN_CORE_LITERAL(5.0)) {
-        m = ALWAN_CORE_LITERAL(1.0);
-    } else {
-        ALWAN_CORE_T const c = ALWAN_CORE_LITERAL(5.84738229067);
-        m = c * adaptation_level / (ALWAN_CORE_LITERAL(1.0) + c * adaptation_level);
-    }
-
-    ALWAN_CORE_T L_p = ALWAN_CORE_FNLIT(alwan_photopic_luminance)(spd, ctx);
-    if (L_p < ALWAN_CORE_LITERAL(0.0)) return ALWAN_CORE_LITERAL(-1.0);
-
-    ALWAN_CORE_T L_s = ALWAN_CORE_FNLIT(alwan_scotopic_luminance)(spd, ctx);
-    if (L_s < ALWAN_CORE_LITERAL(0.0)) return ALWAN_CORE_LITERAL(-1.0);
-
-    ALWAN_CORE_T const Km_ratio = ALWAN_CORE_LITERAL(683.002) / ALWAN_CORE_LITERAL(1699.998);
-    return m * L_p + (ALWAN_CORE_LITERAL(1.0) - m) * Km_ratio * L_s;
+    double P, S, total, L_a, m;
+    double const V0 = 683.0 / 1699.0;
+    (void)ctx;
+    if (!(adaptation_level > ALWAN_CORE_LITERAL(0.0))) return ALWAN_CORE_LITERAL(-1.0);
+    if (ALWAN_CORE_FNLIT(alwan__luminous_integrals)(&P, &total, spd, ALWAN_VISION_PHOTOPIC) != ALWAN_OK) return ALWAN_CORE_LITERAL(-1.0);
+    if (ALWAN_CORE_FNLIT(alwan__luminous_integrals)(&S, &total, spd, ALWAN_VISION_SCOTOPIC) != ALWAN_OK) return ALWAN_CORE_LITERAL(-1.0);
+    if (P == 0.0 && S == 0.0) return ALWAN_CORE_LITERAL(0.0);
+    if (!(P > 0.0) || S < 0.0) return ALWAN_CORE_LITERAL(-1.0);
+    ALWAN_CORE_FNLIT(alwan__mesopic_iterate)(&L_a, &m, (double)adaptation_level, 1699.0 * S / (683.0 * P));
+    return (ALWAN_CORE_T)(683.0 * (m * P + (1.0 - m) * S) / (m + (1.0 - m) * V0));
 }
 
 /* ================================================================

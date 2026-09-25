@@ -566,11 +566,11 @@ typedef struct {
 /* CAM18sl appearance correlates */
 typedef struct {
     ALWAN_T Q;   /* Brightness */
-    ALWAN_T C;   /* Colorfulness */
+    ALWAN_T C;   /* Saturation, M / Q */
     ALWAN_T h;   /* Hue angle (degrees) */
     ALWAN_T M;   /* Colorfulness */
-    ALWAN_T a;   /* Red-green */
-    ALWAN_T b;   /* Yellow-blue */
+    ALWAN_T a;   /* Red-green, M cos h */
+    ALWAN_T b;   /* Yellow-blue, M sin h */
 } ALWAN_TN(alwan_cam18sl_correlates);
 
 /* CAM20u appearance correlates */

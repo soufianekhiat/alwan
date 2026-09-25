@@ -170,22 +170,26 @@ static void ALWAN_CORE_FN(agx_golden_transform)(ALWAN_CORE_T const *rgb_in, ALWA
 #endif
 
 /* ----------------------------------------------------------------
- * BT.2446 Method A HDR<->SDR
+ * BT.2446 Method A HDR<->SDR (Report BT.2446-1 section 4, on RGB)
+ * HDR to SDR: linear BT.2020 display light over 1 000 cd/m2 in, SDR R'G'B' out, clipped.
+ * SDR to HDR: SDR R'G'B' in, linear display light over 1 000 cd/m2 out.
  * ---------------------------------------------------------------- */
 static void ALWAN_CORE_FN(bt2446a_hdr_to_sdr_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
-    ALWAN_CORE_T L_hdr = ALWAN_CORE_LITERAL(1000.0);
-    ALWAN_CORE_T L_sdr = ALWAN_CORE_LITERAL(100.0);
-    for (int i = 0; i < 3; i++) {
-        rgb_out[i] = ALWAN_CORE_FNVLIT(alwan_bt2446a_forward)(rgb_in[i], L_hdr, L_sdr);
-    }
+    ALWAN_CORE_VEC3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_bt2446a_forward)(in_v, ALWAN_CORE_LITERAL(1000.0),
+                                                                     ALWAN_CORE_LITERAL(100.0));
+    rgb_out[0] = ALWAN_CORE_SATURATE(out_v.v[0]);
+    rgb_out[1] = ALWAN_CORE_SATURATE(out_v.v[1]);
+    rgb_out[2] = ALWAN_CORE_SATURATE(out_v.v[2]);
 }
 
 static void ALWAN_CORE_FN(bt2446a_sdr_to_hdr_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
-    ALWAN_CORE_T L_hdr = ALWAN_CORE_LITERAL(1000.0);
-    ALWAN_CORE_T L_sdr = ALWAN_CORE_LITERAL(100.0);
-    for (int i = 0; i < 3; i++) {
-        rgb_out[i] = ALWAN_CORE_FNVLIT(alwan_bt2446a_inverse)(rgb_in[i], L_hdr, L_sdr);
-    }
+    ALWAN_CORE_VEC3 in_v = {{ALWAN_CORE_SATURATE(rgb_in[0]), ALWAN_CORE_SATURATE(rgb_in[1]),
+                             ALWAN_CORE_SATURATE(rgb_in[2])}};
+    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_bt2446a_inverse)(in_v);
+    rgb_out[0] = out_v.v[0];
+    rgb_out[1] = out_v.v[1];
+    rgb_out[2] = out_v.v[2];
 }
 
 /* ----------------------------------------------------------------
@@ -260,13 +264,16 @@ static void ALWAN_CORE_FN(bt2446b_sdr_to_hdr_transform)(ALWAN_CORE_T const *rgb_
 }
 
 /* ----------------------------------------------------------------
- * BT.2446 Method C: HDR to SDR (1000 nits HDR, 100 nits SDR)
+ * BT.2446 Method C: HDR to SDR (Report BT.2446-1 section 6.1, crosstalk alpha 0)
+ * HLG R'G'B' (BT.2020, 1 000 cd/m2) in, SDR R'G'B' (BT.2020, BT.1886 at 100 cd/m2) out.
  * ---------------------------------------------------------------- */
 static void ALWAN_CORE_FN(bt2446c_hdr_to_sdr_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
-    for (int i = 0; i < 3; i++) {
-        rgb_out[i] = ALWAN_CORE_FNVLIT(alwan_bt2446c_forward)(ALWAN_CORE_SATURATE(rgb_in[i]),
-                        ALWAN_CORE_LITERAL(1000.0), ALWAN_CORE_LITERAL(100.0));
-    }
+    ALWAN_CORE_VEC3 in_v = {{ALWAN_CORE_SATURATE(rgb_in[0]), ALWAN_CORE_SATURATE(rgb_in[1]),
+                             ALWAN_CORE_SATURATE(rgb_in[2])}};
+    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_bt2446c_rgb)(in_v, ALWAN_CORE_ZERO);
+    rgb_out[0] = out_v.v[0];
+    rgb_out[1] = out_v.v[1];
+    rgb_out[2] = out_v.v[2];
 }
 
 /* ----------------------------------------------------------------

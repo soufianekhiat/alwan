@@ -104,13 +104,14 @@ those clip the input to `[0, 1]` before doing anything.
 | 0 `ACES_REC709` | linear AP1 | AP1 -> AP0 matrix, ACES RRT + ODT sRGB 100 nit, sRGB EOTF back to linear |
 | 1-4 AgX `ORIGINAL`/`PUNCHY`/`GOLDEN`/`SB2383` | linear Rec.709 | negatives clamped to 0 before the inset; log2 rail `[-12.47393, 4.026069]` = `log2(0.18)` -10/+6.5 stops |
 | 5 `AGX_BLENDER` | linear Rec.709 | no negative clip; Rec.709 -> E-gamut matrix first, then a `1e-10` floor inside the log encode; rail `[-12.47393, 12.5260688]` = -10/+15 stops; cube output decoded with `POW(x, 2.4)` |
-| 6, 7 `BT2446A_*` | BT.2446 rho-log-encoded normalised signal | no input clip; `POW(rho, Y)` decode with `rho = 1 + 32*(L/10000)^(1/2.4)`, `L_hdr = 1000`, `L_sdr = 100`; output saturated |
+| 6 `BT2446A_HDR_TO_SDR` | linear BT.2020 display light, 1 = 1000 cd/m2 | Report BT.2446-1 section 4.1 (Tables 2 and 3) on RGB: `R' = R^(1/2.4)`, tone map on `Y'`, colour correction; negatives read as 0; output SDR `R'G'B'` (BT.2020), saturated |
+| 7 `BT2446A_SDR_TO_HDR` | SDR `R'G'B'` (BT.2020) | input saturated to `[0, 1]`; Report section 4.2 (Table 4); output linear display light, 1 = 1000 cd/m2 |
 | 8 `KHRONOS_PBR_NEUTRAL` | scene-linear | no input clip and no output clamp; raw in, raw out |
 | 9 `REINHARD_EXT` | scene-linear | no input clip; BT.709-luma based, `L_white = 4.0`; output saturated |
 | 10-12, 16, 17 | scene-linear | `MAX(0)`, then the operator, output saturated |
 | 13 `BT2446B_SDR_TO_HDR` | gamma-2.4-encoded SDR | input saturated to `[0, 1]`, then `POW(x, 2.4)`; 100 -> 1000 nits |
-| 14 `BT2446C_HDR_TO_SDR` | BT.2446 rho-log-encoded | input saturated to `[0, 1]`; 1000 -> 100 nits |
-| 15 `BT2390_HDR_TO_SDR` | PQ-encoded | input saturated to `[0, 1]`; 10000 -> 100 nits |
+| 14 `BT2446C_HDR_TO_SDR` | HLG `R'G'B'` (BT.2020, 1000 cd/m2) | input saturated to `[0, 1]`; Report section 6.1 with crosstalk `alpha = 0`: HLG EOTF, BT.2020 XYZ, the Method C curve on Y, back through the Report's matrices, BT.1886 at 100 cd/m2; output saturated |
+| 15 `BT2390_HDR_TO_SDR` | PQ-encoded | input saturated to `[0, 1]`; the BT.2408-8 Annex 5 EETF per channel, 10000 -> 100 nits |
 
 > **vt 13, 14 and 15 clip the input to `[0, 1]` before the operator.** Handing them
 > scene-linear data above 1.0 discards it with no diagnostic.
