@@ -2497,8 +2497,8 @@ alwan_status alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32
  * linear sRGB (Ottosson's fit); candidates are converted linear-sRGB <->
  * linear-target with matrices composed from the space descriptors, and the
  * in-gamut test / clip run in the TARGET cube. Input and output are LINEAR
- * target-space RGB. Assumes a D65-white target (P3, Rec.2020, ...); no
- * chromatic adaptation is applied between sRGB and the target.
+ * target-space RGB. A target whose white is not D65 is Bradford-adapted from
+ * D65, as ColorAide does.
  * ---------------------------------------------------------------- */
 
 /* Compiled in every build: an f64-internal facade calls this from its f32 entry
@@ -2508,85 +2508,12 @@ alwan_status alwan_hdr_gamut_map_ictcp_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32
 alwan_status alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out,
                               alwan_rgb_space_desc_f64 const *target_space,
                               alwan_rgb_f64 const *rgb_in) {
+    /* The CSS Color 4 search of ALWAN_GAMUT_MAP_CSS4 (suite 243 holds it to
+     * ColorAide). Until 2026-09-25 this ran its own loop, which lowered the
+     * upper bound where the spec raises the lower one, so chroma collapsed
+     * toward grey: up to 0.51 from the spec's result. */
     if (!rgb_out || !target_space || !rgb_in) return ALWAN_E_INVALID;
-
-    alwan_f64 const JND = ALWAN_LITERAL(0.02);
-    int const MAX_ITER = 30;
-
-    /* Compose linear target <-> linear sRGB matrices via XYZ. */
-    alwan_mat3x3_f64 t_to_xyz, xyz_to_t, s_to_xyz, xyz_to_s, t2s, s2t;
-    alwan_rgb_space_desc_f64 srgb;
-    int st = alwan_rgb_get_space_descriptor_f64(&srgb, ALWAN_RGB_SPACE_SRGB, NULL);
-    if (st != ALWAN_OK) return st;
-    st = alwan_rgb_derive_matrices_f64(&t_to_xyz, &xyz_to_t, target_space);
-    if (st != ALWAN_OK) return st;
-    st = alwan_rgb_derive_matrices_f64(&s_to_xyz, &xyz_to_s, &srgb);
-    if (st != ALWAN_OK) return st;
-    alwan_mat3_mul_f64(&t2s, &xyz_to_s, &t_to_xyz);
-    alwan_mat3_mul_f64(&s2t, &xyz_to_t, &s_to_xyz);
-
-    alwan_vec3_f64 t_in = {{rgb_in->r, rgb_in->g, rgb_in->b}};
-
-    /* Already inside the target cube -> passthrough. */
-    if (t_in.v[0] >= ALWAN_LITERAL(0.0) && t_in.v[0] <= ALWAN_LITERAL(1.0) &&
-        t_in.v[1] >= ALWAN_LITERAL(0.0) && t_in.v[1] <= ALWAN_LITERAL(1.0) &&
-        t_in.v[2] >= ALWAN_LITERAL(0.0) && t_in.v[2] <= ALWAN_LITERAL(1.0)) {
-        *rgb_out = *rgb_in;
-        return ALWAN_OK;
-    }
-
-    /* Work in Oklab via the linear-sRGB expression of the colour. */
-    alwan_vec3_f64 s_in;
-    alwan_mat3_mulv_f64(&s_in, &t2s, &t_in);
-    alwan_vec3_f64 oklab_v = gamut_linear_srgb_to_oklab_f64_v(s_in);
-    alwan_oklab_f64 ok; ok.L = oklab_v.v[0]; ok.a = oklab_v.v[1]; ok.b = oklab_v.v[2];
-    alwan_oklch_f64 lch = alwan_oklab_to_oklch_f64_v(ok);
-
-    if (lch.L >= ALWAN_LITERAL(1.0)) { rgb_out->r = rgb_out->g = rgb_out->b = ALWAN_LITERAL(1.0); return ALWAN_OK; }
-    if (lch.L <= ALWAN_LITERAL(0.0)) { rgb_out->r = rgb_out->g = rgb_out->b = ALWAN_LITERAL(0.0); return ALWAN_OK; }
-
-    {
-        alwan_f64 lo = ALWAN_LITERAL(0.0), hi = lch.C;
-        alwan_oklch_f64 trial = lch;
-        alwan_vec3_f64 trial_t = t_in;
-        int i;
-        for (i = 0; i < MAX_ITER; i++) {
-            trial.C = (lo + hi) * ALWAN_LITERAL(0.5);
-            alwan_oklab_f64 trial_ok = alwan_oklch_to_oklab_f64_v(trial);
-            alwan_vec3_f64 trial_okv = {{trial_ok.L, trial_ok.a, trial_ok.b}};
-            alwan_vec3_f64 trial_s = gamut_oklab_to_linear_srgb_f64_v(trial_okv);
-            alwan_mat3_mulv_f64(&trial_t, &s2t, &trial_s);
-
-            /* Clip in the TARGET cube, express the clipped colour in Oklab. */
-            alwan_vec3_f64 clip_t = trial_t;
-            int in_cube = 1;
-            for (int c = 0; c < 3; c++) {
-                if (clip_t.v[c] < ALWAN_LITERAL(0.0)) { clip_t.v[c] = ALWAN_LITERAL(0.0); in_cube = 0; }
-                else if (clip_t.v[c] > ALWAN_LITERAL(1.0)) { clip_t.v[c] = ALWAN_LITERAL(1.0); in_cube = 0; }
-            }
-            alwan_vec3_f64 clip_s;
-            alwan_mat3_mulv_f64(&clip_s, &t2s, &clip_t);
-            alwan_vec3_f64 clip_okv = gamut_linear_srgb_to_oklab_f64_v(clip_s);
-            alwan_oklab_f64 clip_ok; clip_ok.L = clip_okv.v[0]; clip_ok.a = clip_okv.v[1]; clip_ok.b = clip_okv.v[2];
-
-            alwan_f64 de = alwan_delta_e_ok_f64_v(trial_ok, clip_ok);
-            if (de < JND) {
-                if (in_cube) break;
-                hi = trial.C;
-            } else {
-                hi = trial.C;
-            }
-            if (hi - lo < ALWAN_LITERAL(1e-12)) break;
-        }
-
-        /* Final clip in the target cube (guarantee, mirrors gamut_css_map). */
-        for (int c = 0; c < 3; c++) {
-            if (trial_t.v[c] < ALWAN_LITERAL(0.0)) trial_t.v[c] = ALWAN_LITERAL(0.0);
-            else if (trial_t.v[c] > ALWAN_LITERAL(1.0)) trial_t.v[c] = ALWAN_LITERAL(1.0);
-        }
-        rgb_out->r = trial_t.v[0]; rgb_out->g = trial_t.v[1]; rgb_out->b = trial_t.v[2];
-    }
-    return ALWAN_OK;
+    return gamut_map_oklch_f64(rgb_out, ALWAN_GAMUT_MAP_CSS4, target_space, rgb_in);
 }
 #endif /* ALWAN_WITH_F64_FACADE */
 

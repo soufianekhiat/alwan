@@ -635,19 +635,17 @@ referenced below.
 > `ALWAN_OK`. The shipped tests call the `_gamut_safe` entries only with
 > `ALWAN_GAMUT_MAP_CLIP`, which is why this survived.
 
-> **`ALWAN_GAMUT_MAP_HUE_PRESERVING` (value 1) cannot be used with any `_gamut_safe`
-> function.** `alwan_gamut_map_advanced_{T}` implements CLIP, ADAPTIVE_L0, ADAPTIVE_CUSP,
-> CHROMA_COMPRESS, SGCK, HPMINDE and LIGHTNESS_PRESERVE, and returns `ALWAN_E_INVALID`
-> for HUE_PRESERVING. The batch mappers at the top of this page
-> (`alwan_gamut_{T}_map_interleave` / `_map_planar`) have the complementary restriction:
-> they accept CLIP and HUE_PRESERVING only, and return `ALWAN_E_INVALID` for the six
-> Oklab methods. The two families cover disjoint halves of one enum, and the enum
-> comment describes all eight as if they worked everywhere.
+> **The two families do not accept the same methods.** `alwan_gamut_map_advanced_{T}`,
+> and so every `_gamut_safe` function, takes all ten. It returned `ALWAN_E_INVALID` for
+> HUE_PRESERVING until 2026-09-22. The batch mappers at the top of this page
+> (`alwan_gamut_{T}_map_interleave` / `_map_planar`) take no space descriptor and accept
+> CLIP and HUE_PRESERVING only; they return `ALWAN_E_INVALID` for the Oklab methods,
+> RAYTRACE and CSS4.
 
 | Method | value | `alwan_gamut_map_advanced_{T}` and every `_gamut_safe` | `alwan_gamut_{T}_map_interleave` / `_map_planar` |
 |--------|-------|------------------------------------------------------|---------------------------------------------------|
 | `ALWAN_GAMUT_MAP_CLIP` | 0 | supported | supported |
-| `ALWAN_GAMUT_MAP_HUE_PRESERVING` | 1 | `ALWAN_E_INVALID` | supported |
+| `ALWAN_GAMUT_MAP_HUE_PRESERVING` | 1 | supported | supported |
 | `ALWAN_GAMUT_MAP_ADAPTIVE_L0` | 2 | supported | `ALWAN_E_INVALID` |
 | `ALWAN_GAMUT_MAP_ADAPTIVE_CUSP` | 3 | supported | `ALWAN_E_INVALID` |
 | `ALWAN_GAMUT_MAP_CHROMA_COMPRESS` | 4 | supported | `ALWAN_E_INVALID` |
@@ -671,7 +669,7 @@ that mapper and therefore applies to all of them.
 - **Near-achromatic bypass.** Oklab `C < 0.0001` returns the input unmodified with
   `ALWAN_OK`. So does any input already inside `[0,1]^3`. Only the six Oklab methods
   reach this test: CLIP short-circuits into the per-channel clamp before it, and
-  HUE_PRESERVING is rejected after it.
+  HUE_PRESERVING, RAYTRACE and CSS4 take their own paths.
 - **The boundary model is sRGB, always.** The mapper converts the color to linear sRGB,
   projects against the hard-coded sRGB cusp/intersection fit, converts back, and only
   then clamps into the caller's cube. Feeding it a BT.2020 descriptor does not give a
@@ -722,8 +720,7 @@ Raw `alwan_ycbcr_to_rgb_{T}` decode, then `alwan_gamut_map_advanced_{T}` in plac
   `ALWAN_DENORM_YCBCR` has been a no-op since 2026-08-27, so scalar and bulk agree on
   this convention.
 - `standard` -- selects the decode matrix, and (indirectly) the mapping primaries.
-- `method` -- see the support table above; `ALWAN_GAMUT_MAP_HUE_PRESERVING` returns
-  `ALWAN_E_INVALID`.
+- `method` -- any of the ten; see the support table above.
 - `out_stride` / `in_stride` -- **bytes**. `out_stride` must address contiguous
   `alwan_rgb_{T}` triplets; the mapping pass re-reads `rgb_out` as
   `(char*)rgb_out + i * out_stride` cast to `alwan_rgb_{T}*`.
@@ -890,48 +887,35 @@ alwan_status alwan_css_gamut_space_{T}(
 ```
 
 CSS Color 4 section 13.2 chroma reduction with the destination gamut taken from
-`target_space` instead of hard-wired sRGB. There is no `_map_interleave` twin.
+`target_space` instead of hard-wired sRGB. There is no `_map_interleave` twin. It runs
+the same search as `ALWAN_GAMUT_MAP_CSS4` in `alwan_gamut_map_advanced_{T}` and returns
+the same bits (suite 243).
 
 **Parameters:**
 - `rgb_out`, `rgb_in` -- linear target-space RGB. A NULL argument returns
-  `ALWAN_E_INVALID`, the only error this function reports.
-- `target_space` -- destination gamut. `has_matrices` is ignored, and both the target and
-  sRGB matrices are re-derived on every call (two derivations plus an sRGB descriptor
-  lookup). Degenerate primaries behave as in the engine notes above: identity
-  substitution, no diagnostic.
+  `ALWAN_E_INVALID`.
+- `target_space` -- destination gamut. A white other than D65 is Bradford-adapted from
+  D65, as ColorAide does.
 
-Order of operations: exact `[0,1]` passthrough test in the target cube, then Oklch via
-the linear-sRGB pivot, then the two lightness shortcuts, then at most `MAX_ITER = 30`
-chroma halvings, then an unconditional per-channel clip into the target cube. A halving
-stops early only when the trial is within a `deltaEOK` JND of `0.02` of its own clipped
-version **and** inside the target cube.
+Order of operations: exact `[0,1]` passthrough in the target cube; Oklch; white when the
+lightness reaches D65's, black at `L <= 0`; if the clipped colour is within a
+`deltaEOK` JND of `0.02` of the colour, the clip; otherwise the spec's binary search on
+chroma. While every candidate so far has been inside the cube, a candidate inside raises
+the lower bound. A candidate whose clip is within the JND raises it too, and ends the
+search when within `1e-4` of the JND. Any other candidate lowers the upper bound. The
+result is the last clipped candidate.
 
-> **Two lightness shortcuts run before any search, and the header mentions neither.**
-> Oklab `L >= 1.0` returns pure white `(1,1,1)`; `L <= 0.0` returns pure black `(0,0,0)`.
-> Hue, chroma and how far outside the cube the input was are all discarded. In a wide
-> target space such as Rec.2020, any color whose Oklab lightness reaches `1.0` collapses
-> to the target's white point.
+> **Fixed 2026-09-25: the search used to collapse chroma toward grey.** Both arms of the
+> JND test lowered the upper bound, and the lower bound never moved, so the result was
+> the first of `C/2, C/4, C/8, ...` to land in the cube. On suite 243's inputs that put
+> it up to 0.51 from the spec's result, 785 of 1371 colours by more than `1e-3`. The
+> sRGB core mapper behind `alwan_css_gamut_{T}_map_*` had the same loop and has the same
+> fix; it now sits within 2.1e-7 of ColorAide as shipped (its Oklab tables are the CSS
+> ones, 5.4e-8 from ColorAide's pair).
 
-> **The search is a halving, not a bisection.** Both arms of the JND test assign
-> `hi = trial.C`; `lo` is set to `0` before the loop and never advanced. The result is
-> the first chroma in the sequence `C/2, C/4, C/8, ...` that passes both break
-> conditions, which is systematically under-saturated relative to the true boundary
-> chroma. The `hi - lo < 1e-12` guard therefore reduces to `C/2^k < 1e-12`, out of reach
-> within 30 iterations for any `C` above about `1.1e-3`, so the loop runs all 30
-> iterations unless the in-cube test breaks it. The sRGB-hardwired core mapper has the
-> same shape, so the two agree with each other; the description of this algorithm as a
-> binary search earlier on this page matches neither.
-
-The header claims that "with the sRGB descriptor this matches `alwan_css_gamut_*` on
-linear values". Three mechanical differences prevent bit-exact agreement:
-
-1. In-gamut test: `alwan_css_gamut_space_{T}` compares against exact `0.0` / `1.0`, while
-   the core `gamut_css_map_v` uses `+/- ALWAN_CORE_EPSILON` (`1e-12` in f64, `1e-6` in
-   f32).
-2. JND test: `de < JND` here against `de - JND < EPSILON` in the core.
-3. `alwan_css_gamut_space_f32` is a widening facade over the f64 worker (and zeroes
-   `has_matrices` while widening), whereas `alwan_css_gamut_f32_map_interleave` runs a
-   native f32 SIMD kernel.
+`alwan_css_gamut_{T}_map_*` runs the core's copy of the search, whose in-gamut test
+allows `+/- ALWAN_CORE_EPSILON` and whose white shortcut is `L >= 1`, so on sRGB the two
+agree to about `1e-7` rather than bit for bit.
 
 ---
 

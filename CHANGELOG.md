@@ -2,6 +2,14 @@
 
 ### Fixed: output differs
 
+- **CSS Color 4 gamut mapping collapsed chroma toward grey.** `alwan_css_gamut_space_{T}`
+  and the core search behind `alwan_css_gamut_{T}_map_*` lowered the upper bound in both
+  arms of the JND test and never raised the lower one, so the result was the first of
+  `C/2, C/4, ...` inside the cube: up to 0.51 from the spec's result, 785 of 1371 colours
+  off by more than 1e-3. Both now run the spec's search. `alwan_css_gamut_space_{T}` is
+  `ALWAN_GAMUT_MAP_CSS4`, bit for bit, and Bradford-adapts a target white other than D65;
+  the sRGB maps sit within 2.1e-7 of ColorAide as shipped (suite 243).
+
 - **The HCL inverse map returned the wrong red channel for pixels with R == G.** Its
   vector kernel (every non-det build with a SIMD width above 1) formed `tan = sin / cos`
   and replaced a cosine below epsilon by 1. At the sector edges H = pi/3 and -2pi/3,

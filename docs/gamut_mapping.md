@@ -60,9 +60,9 @@ Honesty notes:
 | API | space / domain | algorithm |
 |---|---|---|
 | `alwan_gamut_map_advanced_{f32,f64}` | any RGB space desc, SDR | 10 methods above (Oklab model; RAYTRACE and CSS4 in the target's cube) |
-| `alwan_gamut_{f32,f64}_map_interleave/_planar/_ex` | sRGB, SDR, bulk | same 8 methods |
+| `alwan_gamut_{f32,f64}_map_interleave/_planar/_ex` | sRGB, SDR, bulk | CLIP and HUE_PRESERVING |
 | `alwan_css_gamut_*` (bulk) | sRGB target | CSS Color 4: Oklch chroma reduction, deltaEOK JND |
-| `alwan_css_gamut_space_{f32,f64}` | **any D65 RGB target** (P3, Rec.2020...) | CSS Color 4 algorithm against the target cube |
+| `alwan_css_gamut_space_{f32,f64}` | any RGB target (P3, Rec.2020...), Bradford from D65 | CSS Color 4 algorithm against the target cube, = `ALWAN_GAMUT_MAP_CSS4` |
 | `alwan_hdr_gamut_map_ictcp_{f32,f64}` | linear BT.2020, **absolute nits**, peak 1-10000 | chroma reduction in ICtCp (PQ): I clamped to display range, hue angle preserved, binary search to the boundary, DeltaE-ITP JND early-out |
 | `alwan_aces_gamut_comp13` (+inv) | ACES AP1 | ACES 1.3 Reference Gamut Compression (per-CMY distances) |
 | `alwan_aces_gamut_compress20` (+inv) | JMh, per-hue cusp table | ACES 2.0 output-transform compression |

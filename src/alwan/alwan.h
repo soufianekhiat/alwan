@@ -5067,9 +5067,11 @@ alwan_status alwan_hdr_gamut_map_ictcp_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64
  * chroma-reduction + deltaEOK-JND algorithm as alwan_css_gamut_*, but the
  * destination gamut is target_space's unit cube (e.g. Display-P3, Rec.2020)
  * instead of hard-wired sRGB. Input/output are LINEAR target-space RGB.
- * Assumes a D65-white target (no chromatic adaptation vs the sRGB-anchored
- * Oklab pivot). With the sRGB descriptor this matches alwan_css_gamut_* on
- * linear values. */
+ * The same search as ALWAN_GAMUT_MAP_CSS4 in alwan_gamut_map_advanced_{T}; a
+ * target whose white is not D65 is Bradford-adapted from D65. With the sRGB
+ * descriptor it agrees with alwan_css_gamut_* on linear values to about 1e-7
+ * (the core's fixed Oklab tables). Until 2026-09-25 the search collapsed chroma
+ * toward grey (suite 243). */
 alwan_status alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *target_space, alwan_rgb_f32 const *rgb_in);
 alwan_status alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *target_space, alwan_rgb_f64 const *rgb_in);
 

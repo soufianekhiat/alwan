@@ -241,8 +241,13 @@ ALWAN_INLINE int ALWAN_CORE_FNVLIT(gamut_css_in_gamut)(ALWAN_CORE_VEC3 rgb) {
 }
 
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(gamut_css_map)(ALWAN_CORE_VEC3 origin) {
+    /* CSS Color 4, section 13.2: binary search on Oklch chroma at constant lightness
+     * and hue. A candidate inside the cube raises the lower bound while no clipped
+     * candidate has been accepted yet; a candidate whose clip is within the JND
+     * raises it too, and ends the search once it is within epsilon of the JND. */
     const ALWAN_CORE_T JND = ALWAN_CORE_LITERAL(0.02);
-    const int MAX_ITER = 30;
+    const ALWAN_CORE_T EPS = ALWAN_CORE_LITERAL(0.0001);
+    const int MAX_ITER = 64;
 
     if (ALWAN_CORE_FNVLIT(gamut_css_in_gamut)(origin)) {
         return origin;
@@ -263,12 +268,21 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(gamut_css_map)(ALWAN_CORE_VEC3 or
     }
 
     {
+        ALWAN_CORE_VEC3 clipped = ALWAN_CORE_FNVLIT(gamut_clip)(origin);
+        ALWAN_CORE_VEC3 clipped_oklab = ALWAN_CORE_FNVLIT(gamut_linear_srgb_to_oklab)(clipped);
+        ALWAN_CORE_OKLAB clipped_ok;
+        clipped_ok.L = clipped_oklab.v[0];
+        clipped_ok.a = clipped_oklab.v[1];
+        clipped_ok.b = clipped_oklab.v[2];
+        ALWAN_CORE_T de = ALWAN_CORE_FNVLIT(alwan_delta_e_ok)(ok, clipped_ok);
         ALWAN_CORE_T lo = ALWAN_CORE_LITERAL(0.0);
         ALWAN_CORE_T hi = lch.C;
         ALWAN_CORE_OKLCH trial = lch;
+        int lo_in_gamut = 1;
+        int done = de < JND;
         int i;
 
-        for (i = 0; i < MAX_ITER; i++) {
+        for (i = 0; i < MAX_ITER && !done && hi - lo > EPS; i++) {
             trial.C = (lo + hi) * ALWAN_CORE_LITERAL(0.5);
 
             ALWAN_CORE_OKLAB trial_oklab = ALWAN_CORE_FNVLIT(alwan_oklch_to_oklab)(trial);
@@ -278,38 +292,24 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(gamut_css_map)(ALWAN_CORE_VEC3 or
             trial_oklab_v.v[2] = trial_oklab.b;
             ALWAN_CORE_VEC3 trial_rgb = ALWAN_CORE_FNVLIT(gamut_oklab_to_linear_srgb)(trial_oklab_v);
 
-            ALWAN_CORE_VEC3 clipped = ALWAN_CORE_FNVLIT(gamut_clip)(trial_rgb);
-
-            ALWAN_CORE_VEC3 clipped_oklab = ALWAN_CORE_FNVLIT(gamut_linear_srgb_to_oklab)(clipped);
-            ALWAN_CORE_OKLAB clipped_ok;
-            clipped_ok.L = clipped_oklab.v[0];
-            clipped_ok.a = clipped_oklab.v[1];
-            clipped_ok.b = clipped_oklab.v[2];
-
-            ALWAN_CORE_T de = ALWAN_CORE_FNVLIT(alwan_delta_e_ok)(trial_oklab, clipped_ok);
-
-            if (de - JND < ALWAN_CORE_EPSILON) {
-                if (ALWAN_CORE_FNVLIT(gamut_css_in_gamut)(trial_rgb)) {
-                    break;
-                }
-                hi = trial.C;
+            if (lo_in_gamut && ALWAN_CORE_FNVLIT(gamut_css_in_gamut)(trial_rgb)) {
+                lo = trial.C;
             } else {
-                hi = trial.C;
-            }
-
-            if (hi - lo < ALWAN_CORE_LITERAL(1e-12)) {
-                break;
+                clipped = ALWAN_CORE_FNVLIT(gamut_clip)(trial_rgb);
+                clipped_oklab = ALWAN_CORE_FNVLIT(gamut_linear_srgb_to_oklab)(clipped);
+                clipped_ok.L = clipped_oklab.v[0];
+                clipped_ok.a = clipped_oklab.v[1];
+                clipped_ok.b = clipped_oklab.v[2];
+                de = ALWAN_CORE_FNVLIT(alwan_delta_e_ok)(trial_oklab, clipped_ok);
+                if (de < JND) {
+                    done = JND - de < EPS;
+                    lo_in_gamut = 0;
+                    lo = trial.C;
+                } else {
+                    hi = trial.C;
+                }
             }
         }
-
-        {
-            ALWAN_CORE_OKLAB final_oklab = ALWAN_CORE_FNVLIT(alwan_oklch_to_oklab)(trial);
-            ALWAN_CORE_VEC3 final_oklab_v;
-            final_oklab_v.v[0] = final_oklab.L;
-            final_oklab_v.v[1] = final_oklab.a;
-            final_oklab_v.v[2] = final_oklab.b;
-            ALWAN_CORE_VEC3 final_rgb = ALWAN_CORE_FNVLIT(gamut_oklab_to_linear_srgb)(final_oklab_v);
-            return ALWAN_CORE_FNVLIT(gamut_clip)(final_rgb);
-        }
+        return clipped;
     }
 }
