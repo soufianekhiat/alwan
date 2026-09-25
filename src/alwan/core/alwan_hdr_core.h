@@ -59,8 +59,9 @@ ALWAN_INLINE alwan_rgb alwan_hlg_ootf_v(alwan_rgb E,
                     + ALWAN_LUMA_KG_BT2020 * E.g
                     + ALWAN_LUMA_KB_BT2020 * E.b;
 
-    alwan_scalar Ys_safe = ALWAN_SELECT(Ys < ALWAN_LITERAL(1e-12),
-                                         ALWAN_LITERAL(1e-12), Ys);
+    alwan_scalar Ys_abs = ALWAN_ABS(Ys);
+    alwan_scalar Ys_safe = ALWAN_SELECT(Ys_abs < ALWAN_LITERAL(1e-12),
+                                         ALWAN_LITERAL(1e-12), Ys_abs);
     alwan_scalar factor = alpha * ALWAN_POW(Ys_safe, gamma_sys - ALWAN_ONE);
 
     result.r = factor * E.r;
@@ -79,8 +80,9 @@ ALWAN_INLINE alwan_rgb alwan_hlg_ootf_inv_v(alwan_rgb Fd,
                     + ALWAN_LUMA_KG_BT2020 * Fd.g
                     + ALWAN_LUMA_KB_BT2020 * Fd.b;
 
-    alwan_scalar Yd_safe = ALWAN_SELECT(Yd < ALWAN_LITERAL(1e-12),
-                                         ALWAN_LITERAL(1e-12), Yd);
+    alwan_scalar Yd_abs = ALWAN_ABS(Yd);
+    alwan_scalar Yd_safe = ALWAN_SELECT(Yd_abs < ALWAN_LITERAL(1e-12),
+                                         ALWAN_LITERAL(1e-12), Yd_abs);
 
     alwan_scalar inv_gamma = ALWAN_ONE / gamma_sys;
     alwan_scalar factor = ALWAN_POW(alpha, -inv_gamma)

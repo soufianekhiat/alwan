@@ -1,0 +1,6 @@
+renotation_xy.csv, max_chroma.csv, illuminant_c.csv: the 1943 Munsell Renotation data
+under illuminant C as colour-science carries it (colour.notation.datasets.munsell
+MUNSELL_COLOURS_ALL, and colour.notation.munsell's CCS_ILLUMINANT_MUNSELL and
+_munsell_maximum_chromas_from_renotation; BSD-3-Clause, Colour Developers and Paul
+Centore), laid out as dense lookups for alwan_munsell.c. Written by
+alwan_dev/gendata/data/munsell_tables.py.

@@ -22,8 +22,11 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hlg_ootf)(ALWAN_CORE_RGB E,
                     + ALWAN_CORE_LITERAL(0.6780) * E.g
                     + ALWAN_CORE_LITERAL(0.0593) * E.b;
 
-    ALWAN_CORE_T Ys_safe = ALWAN_CORE_SELECT(Ys < ALWAN_CORE_LITERAL(1e-12),
-                                         ALWAN_CORE_LITERAL(1e-12), Ys);
+    /* |Y_S|, as BT.2100 via colour-science's ootf_BT2100_HLG: a negative luminance (out of
+     * gamut) scales by its magnitude. Until 2026-09-25 it was clamped to 1e-12. */
+    ALWAN_CORE_T Ys_abs = ALWAN_CORE_ABS(Ys);
+    ALWAN_CORE_T Ys_safe = ALWAN_CORE_SELECT(Ys_abs < ALWAN_CORE_LITERAL(1e-12),
+                                         ALWAN_CORE_LITERAL(1e-12), Ys_abs);
     ALWAN_CORE_T factor = alpha * ALWAN_CORE_POW(Ys_safe, gamma_sys - ALWAN_CORE_ONE);
 
     result.r = factor * E.r;
@@ -47,8 +50,9 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_hlg_ootf_inv)(ALWAN_CORE_RGB
                     + ALWAN_CORE_LITERAL(0.6780) * Fd.g
                     + ALWAN_CORE_LITERAL(0.0593) * Fd.b;
 
-    ALWAN_CORE_T Yd_safe = ALWAN_CORE_SELECT(Yd < ALWAN_CORE_LITERAL(1e-12),
-                                         ALWAN_CORE_LITERAL(1e-12), Yd);
+    ALWAN_CORE_T Yd_abs = ALWAN_CORE_ABS(Yd);
+    ALWAN_CORE_T Yd_safe = ALWAN_CORE_SELECT(Yd_abs < ALWAN_CORE_LITERAL(1e-12),
+                                         ALWAN_CORE_LITERAL(1e-12), Yd_abs);
 
     ALWAN_CORE_T inv_gamma = ALWAN_CORE_ONE / gamma_sys;
     ALWAN_CORE_T factor = ALWAN_CORE_POW(alpha, -inv_gamma)

@@ -392,9 +392,15 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd,
                                   alwan_ctx *ctx);
 ```
 
-Academy / SMPTE ST 2122 Spectral Similarity Index. Measures spectral similarity
+Academy Spectral Similarity Index (Holm and Maier 2016). Measures spectral similarity
 between two light sources. Returns [0, 100] where 100 = perfect match, or negative on
 error.
+
+Both SPDs are resampled to 1 nm over 375-675 nm, integrated into thirty 10 nm bins
+centred on 380 to 670 nm (half weight at each bin's edges) and normalised; the weighted
+relative difference is smoothed with [0.22, 0.56, 0.22], zero beyond the ends. This is
+colour-science's `spectral_similarity_index`, which alwan matches unrounded (colour rounds
+to an integer by default).
 
 ---
 

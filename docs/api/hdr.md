@@ -33,7 +33,11 @@ void alwan_hlg_ootf_inv_{T}(alwan_rgb_{T} *out, alwan_rgb_{T} const *in,
 ```
 
 Apply (or invert) the HLG Opto-Optical Transfer Function (scene-to-display).
-Converts scene-linear light to display-linear light per BT.2100-2.
+Converts scene-linear light to display-linear light per BT.2100-2,
+F_D = Lw Y_S^(gamma - 1) E with a black level of 0. Matches colour-science's
+`ootf_BT2100_HLG` and `ootf_inverse_BT2100_HLG`. All three channels scale by one factor,
+so the inverse is exact for any colour. A negative luminance (an out-of-gamut colour)
+scales by |Y_S| as colour does.
 
 **Parameters:**
 - `in` -- Scene-referred linear RGB

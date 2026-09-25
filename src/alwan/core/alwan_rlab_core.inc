@@ -132,15 +132,16 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_rlab_v_correlates) ALWAN_CORE_FNVLIT(alwan_r
     ALWAN_CORE_VEC3 xyz_ref_v = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(RLAB_M_RLAB), lms_a_v);
     ALWAN_CORE_T xyz_ref_0 = xyz_ref_v.v[0]; ALWAN_CORE_T xyz_ref_1 = xyz_ref_v.v[1]; ALWAN_CORE_T xyz_ref_2 = xyz_ref_v.v[2];
 
-    /* Clamp negatives */
-    xyz_ref_0 = ALWAN_CORE_SELECT(xyz_ref_0 < ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), xyz_ref_0);
-    xyz_ref_1 = ALWAN_CORE_SELECT(xyz_ref_1 < ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), xyz_ref_1);
-    xyz_ref_2 = ALWAN_CORE_SELECT(xyz_ref_2 < ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(0.0), xyz_ref_2);
-
-    /* Step 4: Apply power nonlinearity */
-    ALWAN_CORE_T xyz_ref_sigma_0 = ALWAN_CORE_POW(xyz_ref_0, sigma);
-    ALWAN_CORE_T xyz_ref_sigma_1 = ALWAN_CORE_POW(xyz_ref_1, sigma);
-    ALWAN_CORE_T xyz_ref_sigma_2 = ALWAN_CORE_POW(xyz_ref_2, sigma);
+    /* Step 4: the power nonlinearity, signed as colour-science's spow: a negative
+     * reference-space value (a colour outside the reference gamut) keeps its sign. Until
+     * 2026-09-25 negatives were clamped to 0 here and the inverse took their absolute
+     * value, so such colours neither matched colour nor survived a round trip. */
+    ALWAN_CORE_T xyz_ref_sigma_0 = ALWAN_CORE_POW(ALWAN_CORE_ABS(xyz_ref_0), sigma);
+    ALWAN_CORE_T xyz_ref_sigma_1 = ALWAN_CORE_POW(ALWAN_CORE_ABS(xyz_ref_1), sigma);
+    ALWAN_CORE_T xyz_ref_sigma_2 = ALWAN_CORE_POW(ALWAN_CORE_ABS(xyz_ref_2), sigma);
+    xyz_ref_sigma_0 = ALWAN_CORE_SELECT(xyz_ref_0 < ALWAN_CORE_LITERAL(0.0), -xyz_ref_sigma_0, xyz_ref_sigma_0);
+    xyz_ref_sigma_1 = ALWAN_CORE_SELECT(xyz_ref_1 < ALWAN_CORE_LITERAL(0.0), -xyz_ref_sigma_1, xyz_ref_sigma_1);
+    xyz_ref_sigma_2 = ALWAN_CORE_SELECT(xyz_ref_2 < ALWAN_CORE_LITERAL(0.0), -xyz_ref_sigma_2, xyz_ref_sigma_2);
 
     /* Step 5: Compute L */
     result.L = ALWAN_CORE_LITERAL(100.0) * xyz_ref_sigma_1;
@@ -157,7 +158,11 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_rlab_v_correlates) ALWAN_CORE_FNVLIT(alwan_r
     result.C = ALWAN_CORE_SQRT(result.a * result.a + result.b * result.b);
 
     /* Step 9: Saturation s */
-    result.s = ALWAN_CORE_SELECT(result.L > ALWAN_CORE_LITERAL(1e-10), result.C / result.L, ALWAN_CORE_LITERAL(0.0));
+    /* s = C / L with colour's sdiv: 0 only where L is 0, so a negative lightness (out of
+     * gamut, now that the power is signed) gives a negative saturation, as colour's does. */
+    result.s = ALWAN_CORE_SELECT(result.L != ALWAN_CORE_LITERAL(0.0),
+                                 result.C / ALWAN_CORE_SELECT(result.L != ALWAN_CORE_LITERAL(0.0), result.L, ALWAN_CORE_ONE),
+                                 ALWAN_CORE_LITERAL(0.0));
 
     return result;
 }
@@ -186,6 +191,9 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_rlab_inverse)(
     ALWAN_CORE_T xyz_ref_0 = ALWAN_CORE_POW(ALWAN_CORE_ABS(xyz_ref_sigma_0), inv_sigma);
     ALWAN_CORE_T xyz_ref_1 = ALWAN_CORE_POW(ALWAN_CORE_ABS(xyz_ref_sigma_1), inv_sigma);
     ALWAN_CORE_T xyz_ref_2 = ALWAN_CORE_POW(ALWAN_CORE_ABS(xyz_ref_sigma_2), inv_sigma);
+    xyz_ref_0 = ALWAN_CORE_SELECT(xyz_ref_sigma_0 < ALWAN_CORE_LITERAL(0.0), -xyz_ref_0, xyz_ref_0);
+    xyz_ref_1 = ALWAN_CORE_SELECT(xyz_ref_sigma_1 < ALWAN_CORE_LITERAL(0.0), -xyz_ref_1, xyz_ref_1);
+    xyz_ref_2 = ALWAN_CORE_SELECT(xyz_ref_sigma_2 < ALWAN_CORE_LITERAL(0.0), -xyz_ref_2, xyz_ref_2);
 
     /* Step 3: RLAB_INV matrix * xyz_ref -> lms_adapted */
     ALWAN_CORE_VEC3 xyz_ref_v = {{xyz_ref_0, xyz_ref_1, xyz_ref_2}};

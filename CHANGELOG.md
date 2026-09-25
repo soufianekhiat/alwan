@@ -2,6 +2,51 @@
 
 ### Fixed: output differs
 
+- **Munsell both ways was a nearest-neighbour lookup.** `alwan_munsell_to_xyz_{T}` returned
+  the renotation sample nearest the specification and `alwan_xyz_to_munsell_{T}` the sample
+  nearest the colour, so every output between samples was wrong by up to half a grid step.
+  Both are now colour-science's algorithm ported (`src/alwan/api/alwan_munsell.c`, tables
+  from colour's "all" renotation data in `src/alwan/data/munsell/`): the forward matches
+  colour's `munsell_specification_to_xyY` to 7.8e-16, the inverse its
+  `xyY_to_munsell_specification` to 1.2e-13 in hue, 1.8e-15 in value and 1.4e-14 in chroma
+  once colour's tabulated value is replaced by the exact quintic inverse alwan uses (the two
+  differ by up to 2.1e-7). Specifications colour refuses now return `ALWAN_E_RANGE`, and the
+  inverse's hue is the number in (0, 100], R = 0 to RP = 90, as the forward takes it.
+  `munsell_renotation.csv` and `munsell_renotation_count.csv` are gone.
+
+- **`ALWAN_INTERP_SPRAGUE` and `ALWAN_INTERP_AKIMA` were not those interpolators.** Sprague
+  was a local quintic of its own, up to 0.24 away from colour-science's
+  `SpragueInterpolator`; it now pads two points at each end with Sprague's coefficients and
+  evaluates colour's polynomial, matching to 2e-15. Akima had the wrong end secants and no
+  rule for vanishing weights, up to 0.064 away from scipy's `Akima1DInterpolator` on a
+  uniform grid and 0.17 on a non-uniform one; it now matches to 2.2e-16. Linear, Catmull-Rom,
+  Lagrange, PCHIP and the 1D table's cubic already matched their references (4e-16 to 9e-15)
+  and are now pinned to them (suite 259).
+
+- **`alwan_ssi_calculate_{T}` was up to 1.5 SSI off colour-science.** Its 10 nm bins started
+  5 nm late and the [0.22, 0.56, 0.22] smoothing treated the ends as mirrored rather than
+  zero-padded. Both now follow colour's `spectral_similarity_index`, which it matches
+  unrounded on all 40 illuminant pairs of suite 259.
+
+- **RLAB clamped colours outside its reference gamut.** A negative X, Y or Z in RLAB's
+  reference space was clamped to 0 before the power, so L, a and b were off colour-science's
+  `XYZ_to_RLAB` (relative error up to 1 in L) and the inverse, which restored no sign, missed
+  the input by up to 3.2e-2. The power is now colour's signed `spow` both ways and s is
+  `C / L` with 0 at L = 0; every correlate matches colour to 1e-11 relative and the round
+  trip closes to 1e-12. Colours inside the reference gamut do not move.
+
+- **`alwan_ncs_to_xyz_{T}` refused every standard NCS notation.** Its parser wanted the
+  hue percentage before the first elementary hue, so `"S 1050-Y90R"` (the example in its own
+  comment) and `"S 2070-R"` returned `ALWAN_E_INVALID`, while the non-standard
+  `"S 1050-90YR"` parsed. It now reads `X` and `XnnZ` as NCS writes them and refuses the old
+  form. Suite 43 had passed on a `[SKIP]`; the approximation is now pinned (there is no
+  external reference for NCS, whose atlas is proprietary).
+
+- **The HLG OOTF clamped a negative luminance.** `alwan_hlg_ootf_{T}` and its inverse
+  raised max(Y, 1e-12) to gamma - 1, so an out-of-gamut colour with Y < 0 was scaled by
+  (1e-12)^0.2 instead of |Y|^0.2 and came out orders of magnitude off. They now use |Y| as
+  BT.2100 via colour-science does; non-negative inputs do not move (both matched to 1.4e-16).
+
 - **`alwan_aces2_output_transform_inv_{T}` did not invert the ACES 2.0 output transform.** It
   skipped the inverse tonescale and chroma compression, converted to JMh through a D65 to D60
   matrix instead of the limiting primaries' JMh parameters, and its cinema presets used a

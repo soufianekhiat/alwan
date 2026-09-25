@@ -962,8 +962,10 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
         test_binned[i] = ALWAN_LITERAL(0.0);
         ref_binned[i] = ALWAN_LITERAL(0.0);
 
-        /* Each bin covers 10nm, starting at 380nm (index 5 in resampled data) */
-        size_t start_idx = 5 + i * 10;  /* 380nm = 375nm + 5nm */
+        /* Bin i is centred on 380 + 10 i nm and spans 375 + 10 i to 385 + 10 i: samples
+         * 10 i to 10 i + 10 of the 375 nm grid, the ends at half weight, as colour's
+         * _MATRIX_INTEGRATION. Until 2026-09-25 it started at 5 + 10 i, 5 nm late. */
+        size_t start_idx = i * 10;
 
         for (size_t j = 0; j < ALWAN_TABLE_SSI_BIN_TAPS; j++) {
             if (start_idx + j < SSI_WAVELENGTH_COUNT) {
@@ -1010,10 +1012,11 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
     /* Step 5: Smooth with 1D convolution [0.22, 0.56, 0.22] */
     alwan_f64 c_wdr[SSI_BIN_COUNT];
 
-    /* Handle edges */
-    c_wdr[0] = wdr[0] * (ssi_smooth_kernel[1] + ssi_smooth_kernel[0]) + wdr[1] * ssi_smooth_kernel[2];
+    /* The edges see zero beyond the array, as colour's convolve1d (mode constant, cval 0).
+     * Until 2026-09-25 the missing tap was folded back onto the edge bin. */
+    c_wdr[0] = wdr[0] * ssi_smooth_kernel[1] + wdr[1] * ssi_smooth_kernel[2];
     c_wdr[SSI_BIN_COUNT - 1] = wdr[SSI_BIN_COUNT - 2] * ssi_smooth_kernel[0] +
-                                wdr[SSI_BIN_COUNT - 1] * (ssi_smooth_kernel[1] + ssi_smooth_kernel[2]);
+                                wdr[SSI_BIN_COUNT - 1] * ssi_smooth_kernel[1];
 
     /* Interior points */
     for (size_t i = 1; i < SSI_BIN_COUNT - 1; i++) {

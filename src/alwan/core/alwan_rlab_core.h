@@ -105,19 +105,21 @@ ALWAN_INLINE alwan_rlab_v_correlates alwan_rlab_forward_v(
     alwan_vec3 lms_a_v = {{lms_a0, lms_a1, lms_a2}};
     alwan_vec3 xyz_ref_v = alwan_mat3_mulv_v(RLAB_M_RLAB, lms_a_v);
     alwan_scalar xyz_ref_0 = xyz_ref_v.v[0]; alwan_scalar xyz_ref_1 = xyz_ref_v.v[1]; alwan_scalar xyz_ref_2 = xyz_ref_v.v[2];
-    xyz_ref_0 = ALWAN_SELECT(xyz_ref_0 < ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), xyz_ref_0);
-    xyz_ref_1 = ALWAN_SELECT(xyz_ref_1 < ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), xyz_ref_1);
-    xyz_ref_2 = ALWAN_SELECT(xyz_ref_2 < ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), xyz_ref_2);
-    alwan_scalar xyz_ref_sigma_0 = ALWAN_POW(xyz_ref_0, sigma);
-    alwan_scalar xyz_ref_sigma_1 = ALWAN_POW(xyz_ref_1, sigma);
-    alwan_scalar xyz_ref_sigma_2 = ALWAN_POW(xyz_ref_2, sigma);
+    alwan_scalar xyz_ref_sigma_0 = ALWAN_POW(ALWAN_ABS(xyz_ref_0), sigma);
+    alwan_scalar xyz_ref_sigma_1 = ALWAN_POW(ALWAN_ABS(xyz_ref_1), sigma);
+    alwan_scalar xyz_ref_sigma_2 = ALWAN_POW(ALWAN_ABS(xyz_ref_2), sigma);
+    xyz_ref_sigma_0 = ALWAN_SELECT(xyz_ref_0 < ALWAN_LITERAL(0.0), -xyz_ref_sigma_0, xyz_ref_sigma_0);
+    xyz_ref_sigma_1 = ALWAN_SELECT(xyz_ref_1 < ALWAN_LITERAL(0.0), -xyz_ref_sigma_1, xyz_ref_sigma_1);
+    xyz_ref_sigma_2 = ALWAN_SELECT(xyz_ref_2 < ALWAN_LITERAL(0.0), -xyz_ref_sigma_2, xyz_ref_sigma_2);
     result.L = ALWAN_LITERAL(100.0) * xyz_ref_sigma_1;
     result.a = ALWAN_LITERAL(430.0) * (xyz_ref_sigma_0 - xyz_ref_sigma_1);
     result.b = ALWAN_LITERAL(170.0) * (xyz_ref_sigma_1 - xyz_ref_sigma_2);
     alwan_scalar h_deg = ALWAN_ATAN2(result.b, result.a) * ALWAN_LITERAL(180.0) / ALWAN_PI;
     result.h = ALWAN_SELECT(h_deg < ALWAN_LITERAL(0.0), h_deg + ALWAN_LITERAL(360.0), h_deg);
     result.C = ALWAN_SQRT(result.a * result.a + result.b * result.b);
-    result.s = ALWAN_SELECT(result.L > ALWAN_LITERAL(1e-10), result.C / result.L, ALWAN_LITERAL(0.0));
+    result.s = ALWAN_SELECT(result.L != ALWAN_LITERAL(0.0),
+                            result.C / ALWAN_SELECT(result.L != ALWAN_LITERAL(0.0), result.L, ALWAN_ONE),
+                            ALWAN_LITERAL(0.0));
     return result;
 }
 
@@ -133,6 +135,9 @@ ALWAN_INLINE alwan_xyz alwan_rlab_inverse_v(
     alwan_scalar xyz_ref_0 = ALWAN_POW(ALWAN_ABS(xyz_ref_sigma_0), inv_sigma);
     alwan_scalar xyz_ref_1 = ALWAN_POW(ALWAN_ABS(xyz_ref_sigma_1), inv_sigma);
     alwan_scalar xyz_ref_2 = ALWAN_POW(ALWAN_ABS(xyz_ref_sigma_2), inv_sigma);
+    xyz_ref_0 = ALWAN_SELECT(xyz_ref_sigma_0 < ALWAN_LITERAL(0.0), -xyz_ref_0, xyz_ref_0);
+    xyz_ref_1 = ALWAN_SELECT(xyz_ref_sigma_1 < ALWAN_LITERAL(0.0), -xyz_ref_1, xyz_ref_1);
+    xyz_ref_2 = ALWAN_SELECT(xyz_ref_sigma_2 < ALWAN_LITERAL(0.0), -xyz_ref_2, xyz_ref_2);
     alwan_vec3 xyz_ref_v = {{xyz_ref_0, xyz_ref_1, xyz_ref_2}};
     alwan_vec3 lms_a_v = alwan_mat3_mulv_v(RLAB_M_RLAB_INV, xyz_ref_v);
     alwan_scalar lms_a0 = lms_a_v.v[0]; alwan_scalar lms_a1 = lms_a_v.v[1]; alwan_scalar lms_a2 = lms_a_v.v[2];

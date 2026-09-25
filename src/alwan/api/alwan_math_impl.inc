@@ -106,11 +106,115 @@ static ALWAN_CORE_T ALWAN_CORE_FN(pchip_deriv)(ALWAN_CORE_T const *x, ALWAN_CORE
  * Advanced Interpolation Methods
  * ---------------------------------------------------------------- */
 
+/* ----------------------------------------------------------------
+ * Sprague (1880), as colour-science's SpragueInterpolator
+ *
+ * The data are padded with two points beyond each end, extrapolated by Sprague's own
+ * coefficients over the six nearest samples (divided by 209), and every interval is the
+ * quintic through the six samples around it. The padding sits one smallest-interval step
+ * apart, as colour's interval(x)[0] takes it. Until 2026-09-25 alwan evaluated a Taylor
+ * form in finite differences instead, 0.24 from colour on a smooth spectrum.
+ * ---------------------------------------------------------------- */
+
+static ALWAN_CORE_T ALWAN_CORE_FN(sprague_padded)(ALWAN_CORE_T const *y, size_t n, long k) {
+    static int const c[4][6] = { { 884, -1960, 3033, -2648, 1080, -180 },
+                                 { 508, -540, 488, -367, 144, -24 },
+                                 { -24, 144, -367, 488, -540, 508 },
+                                 { -180, 1080, -2648, 3033, -1960, 884 } };
+    int row, j;
+    ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
+    ALWAN_CORE_T const *src;
+    if (k >= 0 && k < (long)n) return y[k];
+    if (k == -2) row = 0;
+    else if (k == -1) row = 1;
+    else if (k == (long)n) row = 2;
+    else row = 3;
+    src = row < 2 ? y : y + (n - 6);
+    for (j = 0; j < 6; j++) sum += (ALWAN_CORE_T)c[row][j] * src[j];
+    return sum / ALWAN_CORE_LITERAL(209.0);
+}
+
+static ALWAN_CORE_T ALWAN_CORE_FN(sprague_eval)(ALWAN_CORE_T const *x, ALWAN_CORE_T const *y, size_t n,
+                                                size_t idx, ALWAN_CORE_T xv) {
+    static int const w[5][6] = { { 2, -16, 0, 16, -2, 0 },
+                                 { -1, 16, -30, 16, -1, 0 },
+                                 { -9, 39, -70, 66, -33, 7 },
+                                 { 13, -64, 126, -124, 61, -12 },
+                                 { -5, 25, -50, 50, -25, 5 } };
+    ALWAN_CORE_T r[6], a[5], X, Xk, out;
+    int k, j;
+    for (j = 0; j < 6; j++) r[j] = ALWAN_CORE_FN(sprague_padded)(y, n, (long)idx - 2 + j);
+    X = (xv - x[idx]) / (x[idx + 1] - x[idx]);
+    for (k = 0; k < 5; k++) {
+        ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
+        for (j = 0; j < 6; j++) sum += (ALWAN_CORE_T)w[k][j] * r[j];
+        a[k] = sum / ALWAN_CORE_LITERAL(24.0);
+    }
+    out = ALWAN_CORE_LITERAL(0.0);
+    Xk = X;
+    for (k = 0; k < 5; k++) {
+        out += a[k] * Xk;
+        Xk *= X;
+    }
+    return r[2] + out;
+}
+
+/* ----------------------------------------------------------------
+ * Akima (1970), as scipy's Akima1DInterpolator (method "akima")
+ *
+ * Secant slopes extended by two linear extrapolations at each end; the slope at a node
+ * is Akima's weighted mean of the secants beside it, or their plain mean where the
+ * weights vanish, the vanishing judged against the largest weight over the whole data
+ * (scipy's f12 > 1e-9 max(f12)). Evaluated as scipy's PPoly evaluates a Hermite cubic.
+ * Until 2026-09-25 alwan used one slope for both ends of an interval, 0.17 from scipy.
+ * ---------------------------------------------------------------- */
+
+/* scipy's m[j], j = 0 .. n + 2; m[2 .. n] are the n - 1 secants. */
+static ALWAN_CORE_T ALWAN_CORE_FN(akima_m)(ALWAN_CORE_T const *x, ALWAN_CORE_T const *y, size_t n, long j) {
+    long const last = (long)n;   /* m[n] is the last secant */
+    if (j >= 2 && j <= last) return (y[j - 1] - y[j - 2]) / (x[j - 1] - x[j - 2]);
+    if (j == 1) return ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_FN(akima_m)(x, y, n, 2) - ALWAN_CORE_FN(akima_m)(x, y, n, 3);
+    if (j == 0) return ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_FN(akima_m)(x, y, n, 1) - ALWAN_CORE_FN(akima_m)(x, y, n, 2);
+    if (j == last + 1) return ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_FN(akima_m)(x, y, n, last) - ALWAN_CORE_FN(akima_m)(x, y, n, last - 1);
+    return ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_FN(akima_m)(x, y, n, last + 1) - ALWAN_CORE_FN(akima_m)(x, y, n, last);
+}
+
+static ALWAN_CORE_T ALWAN_CORE_FN(akima_f12)(ALWAN_CORE_T const *x, ALWAN_CORE_T const *y, size_t n, size_t i,
+                                             ALWAN_CORE_T *f1, ALWAN_CORE_T *f2) {
+    long const k = (long)i;
+    *f1 = ALWAN_CORE_ABS(ALWAN_CORE_FN(akima_m)(x, y, n, k + 3) - ALWAN_CORE_FN(akima_m)(x, y, n, k + 2));
+    *f2 = ALWAN_CORE_ABS(ALWAN_CORE_FN(akima_m)(x, y, n, k + 1) - ALWAN_CORE_FN(akima_m)(x, y, n, k));
+    return *f1 + *f2;
+}
+
+static ALWAN_CORE_T ALWAN_CORE_FN(akima_t)(ALWAN_CORE_T const *x, ALWAN_CORE_T const *y, size_t n, size_t i,
+                                           ALWAN_CORE_T f12_max) {
+    long const k = (long)i;
+    ALWAN_CORE_T f1, f2;
+    ALWAN_CORE_T const f12 = ALWAN_CORE_FN(akima_f12)(x, y, n, i, &f1, &f2);
+    if (f12 > ALWAN_CORE_LITERAL(1e-9) * f12_max) {
+        return (f1 * ALWAN_CORE_FN(akima_m)(x, y, n, k + 1) + f2 * ALWAN_CORE_FN(akima_m)(x, y, n, k + 2)) / f12;
+    }
+    return ALWAN_CORE_LITERAL(0.5) * (ALWAN_CORE_FN(akima_m)(x, y, n, k + 3) + ALWAN_CORE_FN(akima_m)(x, y, n, k));
+}
+
 alwan_status ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN_CORE_T const *y_in, size_t count_in,
                        ALWAN_CORE_T const *x_out, ALWAN_CORE_T *y_out, size_t count_out,
                        alwan_interp_method method) {
     if (!x_in || !y_in || !x_out || !y_out || count_in < 2 || count_out == 0) {
         return ALWAN_E_RANGE;
+    }
+
+    ALWAN_CORE_T akima_f12_max = ALWAN_CORE_LITERAL(0.0);
+    if (method == ALWAN_INTERP_AKIMA && count_in >= 3) {
+        /* scipy judges a vanishing Akima weight against the largest one in the data */
+        size_t k;
+        ALWAN_CORE_T f1, f2;
+        akima_f12_max = ALWAN_CORE_FN(akima_f12)(x_in, y_in, count_in, 0, &f1, &f2);
+        for (k = 1; k < count_in; k++) {
+            ALWAN_CORE_T const f = ALWAN_CORE_FN(akima_f12)(x_in, y_in, count_in, k, &f1, &f2);
+            if (f > akima_f12_max) akima_f12_max = f;
+        }
     }
 
     for (size_t i = 0; i < count_out; i++) {
@@ -185,6 +289,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN
 
             case ALWAN_INTERP_SPRAGUE: {
                 if (count_in < 6) {
+                    /* Sprague needs six samples; colour refuses fewer, alwan falls back to
+                     * Catmull-Rom as it always has. */
                     ALWAN_CORE_T y0 = (idx > 0) ? y_in[idx - 1] : y_in[idx];
                     ALWAN_CORE_T y1 = y_in[idx];
                     ALWAN_CORE_T y2 = y_in[idx + 1];
@@ -192,26 +298,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN
 
                     y_out[i] = ALWAN_CORE_FNVLIT(alwan_catmull_rom)(y0, y1, y2, y3, t);
                 } else {
-                    ALWAN_CORE_T y[6];
-                    for (int j = 0; j < 6; j++) {
-                        int k = (int)idx + j - 2;
-                        if (k < 0) k = 0;
-                        if (k >= (int)count_in) k = (int)count_in - 1;
-                        y[j] = y_in[k];
-                    }
-
-                    ALWAN_CORE_T t2 = t * t;
-                    ALWAN_CORE_T t3 = t2 * t;
-                    ALWAN_CORE_T t4 = t3 * t;
-                    ALWAN_CORE_T t5 = t4 * t;
-
-                    y_out[i] =
-                        y[2] +
-                        ALWAN_CORE_LITERAL(0.5) * t * (y[3] - y[1]) +
-                        ALWAN_CORE_LITERAL(0.5) * t2 * (y[3] - ALWAN_CORE_LITERAL(2.0) * y[2] + y[1]) +
-                        (ALWAN_CORE_LITERAL(1.0)/ALWAN_CORE_LITERAL(6.0)) * t3 * (y[4] - ALWAN_CORE_LITERAL(3.0) * y[3] + ALWAN_CORE_LITERAL(3.0) * y[1] - y[0]) +
-                        (ALWAN_CORE_LITERAL(1.0)/ALWAN_CORE_LITERAL(24.0)) * t4 * (y[4] - ALWAN_CORE_LITERAL(4.0) * y[3] + ALWAN_CORE_LITERAL(6.0) * y[2] - ALWAN_CORE_LITERAL(4.0) * y[1] + y[0]) +
-                        (ALWAN_CORE_LITERAL(1.0)/ALWAN_CORE_LITERAL(120.0)) * t5 * (y[5] - ALWAN_CORE_LITERAL(5.0) * y[4] + ALWAN_CORE_LITERAL(10.0) * y[3] - ALWAN_CORE_LITERAL(10.0) * y[2] + ALWAN_CORE_LITERAL(5.0) * y[1] - y[0]);
+                    y_out[i] = ALWAN_CORE_FN(sprague_eval)(x_in, y_in, count_in, idx, x);
                 }
                 break;
             }
@@ -245,33 +332,18 @@ alwan_status ALWAN_CORE_FNLIT(alwan_interpolate)(ALWAN_CORE_T const *x_in, ALWAN
             }
 
             case ALWAN_INTERP_AKIMA: {
-                if (count_in < 4) {
+                if (count_in < 3) {
                     y_out[i] = y_in[idx] * (ALWAN_CORE_LITERAL(1.0) - t) + y_in[idx + 1] * t;
                 } else {
-                    ALWAN_CORE_T m[5];
-                    for (int j = -2; j <= 2; j++) {
-                        int k = (int)idx + j;
-                        if (k < 0) k = 0;
-                        if (k >= (int)count_in - 1) k = (int)count_in - 2;
-                        m[j + 2] = (y_in[k + 1] - y_in[k]) / (x_in[k + 1] - x_in[k]);
-                    }
-
-                    ALWAN_CORE_T w1 = ALWAN_CORE_ABS(m[3] - m[2]);
-                    ALWAN_CORE_T w2 = ALWAN_CORE_ABS(m[1] - m[0]);
-                    ALWAN_CORE_T slope = (w1 + w2 > ALWAN_CORE_LITERAL(0.0)) ?
-                        ((w1 * m[1] + w2 * m[3]) / (w1 + w2)) :
-                        (ALWAN_CORE_LITERAL(0.5) * (m[1] + m[3]));
-
-                    ALWAN_CORE_T y1 = y_in[idx];
-                    ALWAN_CORE_T y2 = y_in[idx + 1];
-                    ALWAN_CORE_T dx = x1 - x0;
-
-                    ALWAN_CORE_T h00 = (ALWAN_CORE_LITERAL(1.0) + ALWAN_CORE_LITERAL(2.0) * t) * (ALWAN_CORE_LITERAL(1.0) - t) * (ALWAN_CORE_LITERAL(1.0) - t);
-                    ALWAN_CORE_T h10 = t * (ALWAN_CORE_LITERAL(1.0) - t) * (ALWAN_CORE_LITERAL(1.0) - t);
-                    ALWAN_CORE_T h01 = t * t * (ALWAN_CORE_LITERAL(3.0) - ALWAN_CORE_LITERAL(2.0) * t);
-                    ALWAN_CORE_T h11 = t * t * (t - ALWAN_CORE_LITERAL(1.0));
-
-                    y_out[i] = h00 * y1 + h10 * dx * slope + h01 * y2 + h11 * dx * slope;
+                    ALWAN_CORE_T const h = x1 - x0;
+                    ALWAN_CORE_T const d0 = ALWAN_CORE_FN(akima_t)(x_in, y_in, count_in, idx, akima_f12_max);
+                    ALWAN_CORE_T const d1 = ALWAN_CORE_FN(akima_t)(x_in, y_in, count_in, idx + 1, akima_f12_max);
+                    ALWAN_CORE_T const slope = (y_in[idx + 1] - y_in[idx]) / h;
+                    ALWAN_CORE_T const tt = (d0 + d1 - ALWAN_CORE_LITERAL(2.0) * slope) / h;
+                    ALWAN_CORE_T const c0 = tt / h;
+                    ALWAN_CORE_T const c1 = (slope - d0) / h - tt;
+                    ALWAN_CORE_T const sx = x - x0;
+                    y_out[i] = ((c0 * sx + c1) * sx + d0) * sx + y_in[idx];
                 }
                 break;
             }

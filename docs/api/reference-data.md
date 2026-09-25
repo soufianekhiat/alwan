@@ -19,7 +19,8 @@ Reference data functions provide access to:
 All numeric reference data is **CSV-embedded** at compile time (`ALWAN_EMBED_DATA=1`,
 the only supported mode). The datasets live under `src/alwan/data/**` and are baked
 into static C arrays by `src/alwan/api/alwan_data.c` (illuminants, primaries, matrices)
-and `src/alwan/api/alwan_reference_data.c` (Munsell, NCS, ColorChecker). There is no
+`src/alwan/api/alwan_munsell.c` (Munsell) and `src/alwan/api/alwan_reference_data.c`
+(NCS, ColorChecker). There is no
 runtime/`/data/` loader.
 
 ---
@@ -75,13 +76,27 @@ alwan_status alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz,
                                       alwan_illuminant illuminant);
 ```
 
-Convert Munsell notation (Hue, Value, Chroma) to XYZ using the Munsell Renotation Data (1943).
+Convert a Munsell specification to XYZ from the Munsell Renotation Data (Newhall,
+Nickerson and Judd 1943, the "all" data). This is colour-science's
+`munsell_specification_to_xyY` ported: the value by the ASTM D1535 quintic, the
+chromaticity interpolated between the bounding renotation hues and chromas, linearly or
+radially as colour's decision table says. It matches colour to 7.8e-16 (suite 259).
 
 **Parameters:**
-- `hue`: Munsell hue [0, 100] (continuous: 0=R, 10=YR, 20=Y, ..., 90=RP)
-- `value`: Munsell value [0, 10] (lightness)
-- `chroma`: Munsell chroma [0, 20+] (saturation)
-- `illuminant`: Illuminant for XYZ calculation
+- `hue`: the hue number [0, 100) around the circle: R = 0, YR = 10, Y = 20, GY = 30,
+  G = 40, BG = 50, B = 60, PB = 70, P = 80, RP = 90. 5R is 5, 2.5PB is 72.5, and 10R is
+  the same hue as 0YR, 10. Ignored when `chroma` is 0.
+- `value`: Munsell value [0, 10]. A chromatic colour needs a value of at least 1, where the
+  renotation data stops.
+- `chroma`: Munsell chroma, 0 or more, within the renotation data for that hue and value
+- `illuminant`: the renotation is under illuminant C; any other illuminant adapts the
+  result to it by Bradford
+
+The result has Y on a 0..1 scale: N5 gives Y = 0.1927, N10 gives 1.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` on a null pointer; `ALWAN_E_RANGE` where colour
+refuses: a specification outside the renotation data (5R 5/40, say), a value outside
+[0, 10], a negative chroma or a NaN.
 
 ### alwan_xyz_to_munsell_{T}
 
@@ -92,7 +107,17 @@ alwan_status alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f3
                                       alwan_xyz_f32 const *xyz, alwan_illuminant illuminant);
 ```
 
-Convert XYZ to Munsell notation (inverse lookup).
+Convert XYZ (Y on 0..1, under `illuminant`) to a Munsell specification, colour-science's
+`xyY_to_munsell_specification` ported, with its iteration on hue and chroma converging to
+1e-7 in xy. One step differs: alwan's value is the exact inverse of the ASTM D1535
+quintic, where colour interpolates a 0.001 table of it, and the two differ by up to 2.1e-7.
+With that step replaced in colour, the two agree to 1.2e-13 in hue, 1.8e-15 in value and
+1.4e-14 in chroma (suite 259).
+
+`hue` comes back as the hue number in (0, 100], the forward's convention with 10RP
+written as 100. A colour within 1e-3 of illuminant C in xy is neutral: hue 0, chroma 0.
+Returns `ALWAN_E_RANGE` where colour refuses (a colour outside the renotation data, a
+value below 1 off the neutral axis, or no convergence).
 
 ---
 
@@ -161,6 +186,9 @@ Output XYZ is on the Y = 0-100 scale, D65.
 
 > **Approximate.** Uses published elementary-hue chromaticities (Hard & Sivik 1981)
 > with linear hue interpolation; it does **not** reproduce the proprietary NCS atlas.
+> There is no external reference to test it against: its tests pin the approximation
+> as documented (Y = (1 - s)^2 x 100, the elementary hues at full chromaticness mixed
+> toward D65) and the rejection of malformed notations.
 
 ### alwan_xyz_to_ncs_{T}
 
@@ -723,9 +751,9 @@ typedef enum {
     ALWAN_INTERP_LINEAR = 0,     /* Linear */
     ALWAN_INTERP_CUBIC,           /* Catmull-Rom, four points, smooth but overshoots */
     ALWAN_INTERP_LANCZOS,         /* Lanczos windowed sinc */
-    ALWAN_INTERP_SPRAGUE,         /* Sprague 5th order */
-    ALWAN_INTERP_LAGRANGE,        /* Lagrange polynomial */
-    ALWAN_INTERP_AKIMA,           /* Akima spline (non-overshooting) */
+    ALWAN_INTERP_SPRAGUE,         /* Sprague 5th order, colour-science's */
+    ALWAN_INTERP_LAGRANGE,        /* Four-point Lagrange */
+    ALWAN_INTERP_AKIMA,           /* Akima, scipy's Akima1DInterpolator */
     ALWAN_INTERP_PCHIP            /* Fritsch-Carlson monotone cubic */
 } alwan_interp_method;
 ```
@@ -738,6 +766,17 @@ cannot overshoot, flattening where the data turns instead. On a reflectance, a d
 curve or a transfer function that difference matters, because an overshoot puts values
 outside a range the data never left. It matches scipy's `PchipInterpolator`, which is what
 colour-science wraps, to 8.9e-16 including the endpoints.
+
+`ALWAN_INTERP_SPRAGUE` is Sprague (1880), CIE 167's method for uniformly spaced spectra,
+as colour-science's `SpragueInterpolator`: two points extrapolated at each end with
+Sprague's coefficients, then the fifth-order polynomial on each interval. It assumes a
+uniform grid, and below six samples falls back to Catmull-Rom. `ALWAN_INTERP_AKIMA`
+matches scipy's `Akima1DInterpolator` (method "akima"), two secants extrapolated at each
+end and the mean of the neighbouring secants where both of Akima's weights vanish.
+`ALWAN_INTERP_LAGRANGE` is the cubic through the two samples on each side, shifted inward
+at the ends. Suite 259 holds Sprague to colour and the rest to scipy (Catmull-Rom as a
+`CubicHermiteSpline` with its tangents, Lagrange as a `BarycentricInterpolator` on the same
+four points), all within 1e-13.
 
 For a cubic spline, use `alwan_interpolate_cubic_spline_{T}` below. It is not an
 `alwan_interp_method` because it is a different kind of method: every node slope depends

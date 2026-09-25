@@ -1,4 +1,4 @@
-The 35 CSV files beside this one, which are not in a subdirectory because they
+The 34 CSV files beside this one, which are not in a subdirectory because they
 are single tables rather than datasets.
 
 Almost all of them are PUBLISHED FORMULA CONSTANTS, matrices and exponents read
@@ -13,7 +13,6 @@ script names the source it took the numbers from:
   prolab_*       Konovalenko et al. (2021) ProLab projective matrices
   xyb_*          XYB (JPEG XL): the opsin matrix and bias as ColorAide (MIT)
                  carries them; the inverse and the XYZ matrices computed from it
-  munsell_*      the Munsell renotation, via colour-science
   planckian_*    Krystek (1985) Planckian locus rational polynomial, via
                  colour.temperature.CCT_to_uv_Krystek1985
   ssi_*          Spectral Similarity Index weights, via

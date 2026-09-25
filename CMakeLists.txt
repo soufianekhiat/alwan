@@ -224,6 +224,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_quality_colour.c
   src/alwan/api/alwan_rayleigh.c
   src/alwan/api/alwan_reference_data.c
+  src/alwan/api/alwan_munsell.c
   src/alwan/api/alwan_normalize.c
   src/alwan/api/alwan_rgb.c
   src/alwan/api/alwan_tf_resolve.c

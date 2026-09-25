@@ -7153,8 +7153,8 @@ alwan_status alwan_zcam_from_ucs_f64(alwan_zcam_correlates_f64 *correlates_out,
 
 /* RLAB forward transform: XYZ -> appearance correlates
  *
- * Matches colour.appearance.XYZ_to_RLAB to 2.8e-08 for every D_factor at the
- * RLAB reference adapting luminance of 318.31 cd/m^2.
+ * Matches colour.appearance.XYZ_to_RLAB to 4e-14 relative for every D_factor,
+ * surround and adapting luminance from 31.83 to 1000 cd/m^2 (suite 259).
  *
  * The absolute adapting luminance is vc->Y_n, in cd/m^2. RLAB's
  * incomplete-adaptation term depends on it whenever D < 1. A zero Y_n is
@@ -7167,6 +7167,11 @@ alwan_status alwan_zcam_from_ucs_f64(alwan_zcam_correlates_f64 *correlates_out,
  * incomplete-adaptation term was absent, adaptation being blended linearly
  * toward none with (1 - D), which overpredicted the white's chroma by 4.4x at
  * D = 0.
+ *
+ * A colour outside the reference gamut (a negative X, Y or Z in RLAB's reference space)
+ * takes the power as colour's spow, a signed power, so L can be negative. The saturation is
+ * s = C / L, 0 where L = 0. Until 2026-09-25 such components were clamped to 0, which put L,
+ * a and b off colour's (relative error up to 1) and broke the round trip.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on null arguments */
 alwan_status alwan_rlab_forward_f32(alwan_rlab_correlates_f32 *out,
                             alwan_xyz_f32 const *xyz,
@@ -7175,7 +7180,8 @@ alwan_status alwan_rlab_forward_f64(alwan_rlab_correlates_f64 *out,
                             alwan_xyz_f64 const *xyz,
                             alwan_rlab_viewing_conditions_f64 const *vc);
 
-/* RLAB inverse transform: appearance correlates -> XYZ
+/* RLAB inverse transform: appearance correlates -> XYZ, the exact inverse of the
+ * forward, colours outside the reference gamut included.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on null arguments */
 alwan_status alwan_rlab_inverse_f32(alwan_xyz_f32 *xyz,
                             alwan_rlab_correlates_f32 const *correlates,
@@ -8042,9 +8048,13 @@ typedef struct {
 alwan_status alwan_tm30_specification_f64(alwan_tm30_f64 *spec_out, alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_status alwan_tm30_specification_f32(alwan_tm30_f32 *spec_out, alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 
-/* SSI (Spectral Similarity Index) - Academy/SMPTE ST 2122 */
-/* Measures spectral similarity between test and reference light sources */
-/* test_spd: test illuminant SPD
+/* SSI (Spectral Similarity Index), Academy (Holm and Maier 2016).
+ * Both SPDs are resampled to 1 nm over 375-675 nm, integrated into 10 nm bins centred on
+ * 380..670 (half weight at the bin edges), normalised, and the weighted relative difference
+ * smoothed with [0.22, 0.56, 0.22], zero beyond the ends. Matches colour-science's
+ * spectral_similarity_index unrounded. Until 2026-09-25 the bins were offset by 5 nm and the
+ * smoothing edges wrong, up to 1.5 SSI away from colour.
+ * test_spd: test illuminant SPD
  * reference_spd: reference illuminant SPD
  * Returns SSI value [0, 100], where 100 = perfect match, or negative on error */
 alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 const *reference_spd, alwan_ctx *ctx);
@@ -8729,9 +8739,17 @@ typedef enum {
                              * scipy and colour-science mean by that name, see
                              * alwan_interpolate_cubic_spline */
     ALWAN_INTERP_LANCZOS = 2, /* Lanczos windowed sinc */
-    ALWAN_INTERP_SPRAGUE = 3, /* Sprague 5th order (for smooth spectra) */
-    ALWAN_INTERP_LAGRANGE = 4, /* Lagrange polynomial */
-    ALWAN_INTERP_AKIMA = 5, /* Akima spline (non-overshooting) */
+    /* Sprague (1880) fifth-order, CIE 167's method for uniformly spaced spectra. Matches
+     * colour-science's SpragueInterpolator, two extra points extrapolated at each end with
+     * its coefficients. Assumes a uniform grid; below 6 samples it falls back to CUBIC.
+     * Until 2026-09-25 it was a different local quintic, up to 0.24 away from colour. */
+    ALWAN_INTERP_SPRAGUE = 3,
+    ALWAN_INTERP_LAGRANGE = 4, /* Four-point Lagrange, the cubic through the two samples on
+                                * each side (shifted inward at the ends) */
+    /* Akima (1970). Matches scipy's Akima1DInterpolator (method "akima"): two secants
+     * extrapolated at each end, and the mean of the neighbouring secants where both weights
+     * vanish. Until 2026-09-25 it was up to 0.17 away from scipy on a non-uniform grid. */
+    ALWAN_INTERP_AKIMA = 5,
     /* PCHIP, Fritsch and Carlson's monotone cubic. It reads the same four points
      * ALWAN_INTERP_CUBIC does, and differs in what it does with them: the node
      * derivatives are chosen so the curve never overshoots between samples. Where the
@@ -8967,15 +8985,24 @@ alwan_status alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
  * Data & Reference Sets
  * ---------------------------------------------------------------- */
 
-/* Munsell Renotation Data
- * Convert Munsell notation (Hue, Value, Chroma) to XYZ tristimulus values
- * Uses the Munsell Renotation Data (1943)
- * xyz: receives XYZ tristimulus values
- * hue: Munsell hue [0, 100] (continuous)
- * value: Munsell value [0, 10]
- * chroma: Munsell chroma [0, 20+]
+/* Munsell Renotation (Newhall, Nickerson and Judd 1943, the "all" data), colour-science's
+ * algorithm ported: the value by the ASTM D1535 quintic, the chromaticity interpolated
+ * between the bounding renotation hues and chromas (linearly or radially as colour's
+ * decision table says), under illuminant C. Matches colour's
+ * munsell_specification_to_xyY to 1e-15. Until 2026-09-25 both directions returned the
+ * nearest renotation sample.
+ * xyz: receives XYZ, Y on a 0..1 scale (N5 gives Y = 0.1927), under `illuminant`: C returns
+ *      the renotation's own values, any other illuminant adapts C to it by Bradford.
+ * hue: the hue number [0, 100) around the circle, R = 0, YR = 10, Y = 20, GY = 30, G = 40,
+ *      BG = 50, B = 60, PB = 70, P = 80, RP = 90; 5R is 5, 2.5PB is 72.5, 10R = 0YR = 10.
+ *      Ignored when chroma is 0.
+ * value: Munsell value [0, 10]; a chromatic colour needs value >= 1 (the renotation data
+ *      stops there)
+ * chroma: Munsell chroma >= 0, within the renotation data for that hue and value
  * illuminant: illuminant for XYZ calculation
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+ * Returns ALWAN_OK, ALWAN_E_INVALID on a null pointer, or ALWAN_E_RANGE where colour
+ * refuses: a specification outside the renotation data, a value outside [0, 10], a
+ * negative chroma or a NaN */
 alwan_status alwan_munsell_to_xyz_f64(alwan_xyz_f64 *xyz,
                          alwan_f64 hue, alwan_f64 value, alwan_f64 chroma,
                          alwan_illuminant illuminant);
@@ -8983,13 +9010,20 @@ alwan_status alwan_munsell_to_xyz_f32(alwan_xyz_f32 *xyz,
                          alwan_f32 hue, alwan_f32 value, alwan_f32 chroma,
                          alwan_illuminant illuminant);
 
-/* Convert XYZ tristimulus values to Munsell notation (Hue, Value, Chroma)
- * hue: receives Munsell hue [0, 100]
+/* XYZ to a Munsell specification, colour-science's xyY_to_munsell_specification ported
+ * (its iteration on hue and chroma, converging to 1e-7 in xy). The value is the exact
+ * inverse of the ASTM D1535 quintic, where colour interpolates a 0.001 table of it; the two
+ * differ by up to 2.1e-7 in value. With that one step replaced, alwan matches colour to
+ * 1.2e-13 in hue and 1.4e-14 in chroma.
+ * hue: receives the hue number in (0, 100], the convention of alwan_munsell_to_xyz_f64 with
+ *      10RP written as 100 rather than 0; 0 for a neutral
  * value: receives Munsell value [0, 10]
- * chroma: receives Munsell chroma [0, 20+]
- * xyz: XYZ tristimulus values
+ * chroma: receives Munsell chroma, 0 for a neutral (within 1e-3 of illuminant C)
+ * xyz: XYZ, Y on a 0..1 scale, under `illuminant` (adapted to C by Bradford)
  * illuminant: illuminant for XYZ calculation
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+ * Returns ALWAN_OK, ALWAN_E_INVALID on a null pointer, or ALWAN_E_RANGE where colour
+ * refuses: a colour outside the renotation data, a value below 1 off the neutral axis, or
+ * no convergence */
 alwan_status alwan_xyz_to_munsell_f64(alwan_f64 *hue, alwan_f64 *value, alwan_f64 *chroma,
                          alwan_xyz_f64 const *xyz, alwan_illuminant illuminant);
 alwan_status alwan_xyz_to_munsell_f32(alwan_f32 *hue, alwan_f32 *value, alwan_f32 *chroma,
@@ -10635,7 +10669,9 @@ alwan_status alwan_aces2_output_transform_inv_f64_map_planar(alwan_f64 *out_ch0,
  * HDR Pipeline Utilities
  * ---------------------------------------------------------------- */
 
-/* HLG OOTF: scene-to-display transform per BT.2100-2
+/* HLG OOTF: scene-to-display transform per BT.2100-2, F_D = Lw Y_S^(gamma - 1) E with a
+ * black level of 0. Matches colour-science's ootf_BT2100_HLG. A negative luminance (out of
+ * gamut) scales by |Y_S|, as colour does; until 2026-09-25 it was clamped to 1e-12.
  * Lw: nominal peak luminance (cd/m2), default 1000
  * gamma_sys: system gamma, default 1.2 */
 void alwan_hlg_ootf_f32(alwan_rgb_f32 *out, alwan_rgb_f32 const *in,
@@ -10643,7 +10679,9 @@ void alwan_hlg_ootf_f32(alwan_rgb_f32 *out, alwan_rgb_f32 const *in,
 void alwan_hlg_ootf_f64(alwan_rgb_f64 *out, alwan_rgb_f64 const *in,
                     alwan_f64 Lw, alwan_f64 gamma_sys);
 
-/* HLG inverse OOTF: display-to-scene */
+/* HLG inverse OOTF: display-to-scene, exact for any colour (the OOTF scales all three
+ * channels by one factor), |Y_D| for a negative luminance as colour's
+ * ootf_inverse_BT2100_HLG */
 void alwan_hlg_ootf_inv_f32(alwan_rgb_f32 *out, alwan_rgb_f32 const *in,
                         alwan_f32 Lw, alwan_f32 gamma_sys);
 void alwan_hlg_ootf_inv_f64(alwan_rgb_f64 *out, alwan_rgb_f64 const *in,
