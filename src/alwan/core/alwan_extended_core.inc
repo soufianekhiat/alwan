@@ -159,7 +159,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_eotf_st2084)(ALWAN_CORE_T N) {
 }
 
 /* ================================================================
- * Prismatic (Pridmore 2021)
+ * Prismatic (Shirley and Hart 2015)
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_PRISMATIC ALWAN_CORE_FNVLIT(alwan_rgb_to_prismatic)(ALWAN_CORE_RGB rgb) {

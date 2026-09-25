@@ -1778,7 +1778,7 @@ void alwan_hdr_cielab_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_lab_f32 const *hdr_la
 void alwan_hdr_cielab_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_lab_f64 const *hdr_lab);
 
 /* hdr-IPT <-> XYZ conversions (HDR extension of IPT)
- * - Fairchild (2010) HDR-IPT model
+ * - Fairchild and Wyble (2010) HDR-IPT model
  * - Extends IPT to high dynamic range
  * - Better hue preservation than hdr-CIELAB for HDR content
  * - XYZ input/output is D65 adapted, supports extended luminance
@@ -3980,9 +3980,11 @@ void alwan_xyz_to_icacb_f64(alwan_icacb_f64 *icacb, alwan_xyz_f64 const *xyz);
 void alwan_icacb_to_xyz_f32(alwan_xyz_f32 *xyz, alwan_icacb_f32 const *icacb);
 void alwan_icacb_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_icacb_f64 const *icacb);
 
-/* Prismatic <-> RGB conversions (Pridmore 2021)
- * - Perceptually uniform cylindrical color space
- * - P (purity), r (red-green), i (intensity)
+/* Prismatic <-> RGB conversions (Shirley and Hart 2015, "The Prismatic Color Space for RGB
+ * Computations"; colour-science's RGB_to_Prismatic)
+ * - L = max(R, G, B), then the barycentric chromaticity of RGB over R + G + B
+ * - the struct holds L, r / (R + G + B) in s and g / (R + G + B) in h (b follows as
+ *   1 - r - g); not a perceptually uniform space
  * - RGB input/output in [0, 1] range
  */
 void alwan_rgb_to_prismatic_f32(alwan_prismatic_f32 *prismatic, alwan_rgb_f32 const *rgb);
@@ -4224,7 +4226,7 @@ alwan_f64 alwan_delta_e_itp_f64(alwan_ictcp_f64 const *ictcp1, alwan_ictcp_f64 c
 alwan_f32  alwan_delta_e_hyab_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2);
 alwan_f64 alwan_delta_e_hyab_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2);
 
-/* dE HyCH - Huang et al. 2015: the CIEDE2000 terms, city block in lightness and
+/* dE HyCH - Abasi, Amani Tehran and Fairchild 2020 (the paper that also defines HyAB): the CIEDE2000 terms, city block in lightness and
  * Euclidean across chroma and hue. textiles sets k_L to 2, as CIEDE2000 does for
  * textile work; anything else leaves it at 1. CIEDE2000's R_T has no part in it. */
 alwan_f32  alwan_delta_e_hych_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2, int textiles);
@@ -11529,7 +11531,7 @@ alwan_status alwan_cam18sl_inverse_f64_map_interleave(alwan_f64 *xyz_out, size_t
 
 /* ----------------------------------------------------------------
  * CAM20u - Color Appearance Model for Unrelated Color
- * NOT the published CAM20u (Gao, Li, Luo, Pointer et al. 2021, Color Res. Appl. 46(3)):
+ * NOT the published CAM20u (Gao, Li, Shi, Luo and Pointer 2021, Color Res. Appl. 46(4), 749-758):
  * alwan's own CAM16-shaped model for unrelated colours, with no published definition or open
  * implementation to check it against. Forward and inverse are exact inverses (suite 260).
  * ---------------------------------------------------------------- */

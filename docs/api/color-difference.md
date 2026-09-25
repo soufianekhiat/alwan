@@ -136,7 +136,7 @@ Euclidean sum over L, C' and H', which is not HyAB: up to 67 units off on random
 alwan_{T} alwan_delta_e_hych_{T}(alwan_lab_{T} const *lab1, alwan_lab_{T} const *lab2, int textiles);
 ```
 
-HyCH (Huang et al. 2015) takes the same hybrid shape as HyAB, absolute in lightness and
+HyCH (Abasi, Amani Tehran and Fairchild 2020, the paper that also defines HyAB) takes the same hybrid shape as HyAB, absolute in lightness and
 Euclidean across chroma and hue, but over CIEDE2000's terms rather than plain Lab: the
 weighting functions S_L, S_C and S_H apply, while CIEDE2000's rotation term R_T does not.
 `textiles` sets k_L to 2, as CIEDE2000 does for textile work; anything else leaves it at 1.

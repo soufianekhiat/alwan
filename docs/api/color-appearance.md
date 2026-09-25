@@ -379,8 +379,8 @@ alwan_status alwan_cam20u_inverse_{T}(alwan_xyz_{T} *xyz_out,
                                        alwan_{T} L_a);
 ```
 
-**Not the published CAM20u.** The model of that name is Gao, Li, Luo, Pointer et al.
-(2021), Color Res. Appl. 46(3); this is alwan's own CAM16-shaped model for unrelated
+**Not the published CAM20u.** The model of that name is Gao, Li, Shi, Luo and Pointer
+(2021), Color Res. Appl. 46(4), 749-758; this is alwan's own CAM16-shaped model for unrelated
 colours, with no published definition or open implementation to check it against. Its
 forward and inverse are exact inverses of each other (round trip 6e-15, suite 260), a
 negative cone signal included: the cone compression and the brightness power keep their
