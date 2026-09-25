@@ -136,6 +136,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_fft.c
   src/alwan/api/alwan_filter.c
   src/alwan/api/alwan_register.c
+  src/alwan/api/alwan_contour.c
   src/alwan/api/alwan_l0_smooth.c
   src/alwan/api/alwan_deconvolve.c
   src/alwan/api/alwan_inpaint.c

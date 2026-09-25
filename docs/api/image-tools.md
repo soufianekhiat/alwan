@@ -1617,6 +1617,67 @@ the central moments with the inertia tensor's eigenvalues in closed form, where
 scikit-image uses einsum and LAPACK, and agree to 6e-15; the perimeter, a weighted
 histogram scikit-image sums by BLAS, to the same.
 
+## Contours
+
+```c
+typedef struct {
+    int level_given;                  /* 0: the midpoint of the smallest and largest value */
+    double level;
+    int fully_connected_high;         /* the saddles: 0 joins the low corners, else the high */
+    int positive_orientation_high;    /* non-zero reverses every contour */
+    unsigned char const *mask;        /* NULL, or 0 where there is no data */
+    size_t mask_row_stride;
+} alwan_contour_params;
+
+alwan_status alwan_find_contours_{T}(alwan_contours **out, alwan_{T} const *src, size_t row_stride,
+                                     size_t width, size_t height,
+                                     alwan_contour_params const *params, alwan_ctx *ctx);
+alwan_status alwan_find_contours_u8(...);   /* same, unsigned char */
+size_t alwan_contours_count(alwan_contours const *contours);
+alwan_status alwan_contours_get(double const **points, size_t *count,
+                                alwan_contours const *contours, size_t index);
+void alwan_contours_destroy(alwan_contours *contours, alwan_ctx *ctx);
+alwan_status alwan_approximate_polygon(double *out, size_t *out_count, double const *points,
+                                       size_t count, double tolerance);
+```
+
+The lines along which a one-channel image crosses a level, by marching squares, as
+scikit-image's `measure.find_contours`. A 2 x 2 square walks the image row by row. Each
+corner above the level sets a bit; a corner equal to the level counts as below. The
+square's case gives the segment or segments that cross it, their ends interpolated
+linearly along the edges and directed so the lower values lie on the left. The two saddle
+cases, where diagonal corners are above, join the high corners when `fully_connected_high`
+is set and the low ones otherwise. A square with a NaN corner, or a corner where `mask` is
+0, is skipped, so contours stop at missing data.
+
+Segments are joined into contours in the order they are made, and when two contours meet,
+the one begun first keeps its place: contours come out ordered by where they begin, left
+to right and top to bottom. A closed contour repeats its first point at the end; an open
+one ends at the image border, the mask or a NaN. `positive_orientation_high` reverses every
+contour. Points are (row, column), 0 at the first pixel's centre.
+
+`level_given` 0 takes the midpoint of the smallest and largest value that is not NaN.
+8-bit data are read as they are, 0 to 255, with the level in the same units, as
+scikit-image reads a uint8 image; scikit-image forms that midpoint's sum in uint8, which
+wraps past 255, and alwan takes the true midpoint. For a colour image, pass one channel or
+a luminance plane. The result belongs to the caller: `alwan_contours_get` points into it,
+and `alwan_contours_destroy` frees it.
+
+`alwan_approximate_polygon` simplifies a polyline by Douglas-Peucker, as scikit-image's
+`approximate_polygon`. It keeps the first and last points, then splits each span at its
+farthest point while that point lies more than `tolerance` from the span: the
+perpendicular distance where the point projects inside the span, else the distance to the
+nearer end. The kept points stay in their original order. `out` needs room for `count`
+pairs and may be `points` itself; a tolerance of 0 or below copies the polyline unchanged.
+
+Suite 249 holds both to scikit-image 0.26: 29 images (smooth fields, binary shapes with a
+hole and diagonal contacts under both saddle rules and both orientations, a checkerboard of
+saddles, levels exactly at pixel values, a mask, NaN holes, float32 and 8-bit input, 2 x N
+and N x 2, a flat image, a rendered 4 x 6 chart), 226 contours and 4,516 points, every
+coordinate equal; and 65 simplifications of those contours at five tolerances, in place
+and not, every kept point equal. An image under 2 x 2 returns `ALWAN_E_INVALID`, as
+scikit-image refuses it.
+
 ## Background estimation
 
 ```c

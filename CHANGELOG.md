@@ -435,6 +435,13 @@
 
 ### Added
 
+- **Iso-contours and polygon simplification: `alwan_find_contours_{T}`,
+  `alwan_approximate_polygon`.** The lines along which an image crosses a level, by
+  marching squares with either saddle rule, a mask and NaN holes, joined into open and
+  closed contours in scikit-image's order; and Douglas-Peucker simplification. Every
+  contour, point and kept vertex equal to scikit-image's `find_contours` and
+  `approximate_polygon` (suite 249).
+
 - **Registration by phase cross-correlation: `alwan_register_{T}`.** The translation that
   lines one image up with another, to 1/u of a pixel, as scikit-image's
   `phase_cross_correlation` computes it: the cross-power spectrum's peak, then a

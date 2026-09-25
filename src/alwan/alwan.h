@@ -2632,6 +2632,54 @@ alwan_status alwan_register_f32(alwan_register_result *out, alwan_f32 const *ref
 alwan_status alwan_register_f64(alwan_register_result *out, alwan_f64 const *reference, size_t reference_row_stride, alwan_f64 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
 alwan_status alwan_register_u8(alwan_register_result *out, unsigned char const *reference, size_t reference_row_stride, unsigned char const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
 
+/* Iso-contours by marching squares, as scikit-image's find_contours (suite 249). A 2 x 2
+ * square walks the image; each corner above the level sets a bit (a corner equal to the
+ * level counts as below), the square's case gives the segment or segments crossing it, the
+ * ends interpolated linearly along the edges and directed with the lower values on the left.
+ * The saddles (cases 6 and 9) join the high corners when fully_connected_high is set, the
+ * low ones otherwise. A square with a NaN corner, or a corner where mask is 0, is skipped.
+ * Segments join into contours in the order they are made, the contour begun first keeping
+ * its place, so contours come out ordered by where they begin; a closed contour repeats its
+ * first point at the end. positive_orientation_high reverses every contour.
+ *
+ * Points are (row, column), 0 at the first pixel's centre. One channel; for colour, pass a
+ * channel or a luminance plane. u8 values are read as they are (0 to 255, the level in the
+ * same units), as scikit-image reads a uint8 image. level_given 0 takes the midpoint of the
+ * smallest and largest value that is not NaN; scikit-image forms that sum in the image's
+ * own type, which wraps on uint8, and alwan does not.
+ *
+ * The result is owned by the caller: read it with alwan_contours_count and
+ * alwan_contours_get, free it with alwan_contours_destroy. ALWAN_E_INVALID for a NULL
+ * pointer, an image under 2 x 2 (scikit-image refuses those too) or a stride shorter than a
+ * row; ALWAN_E_NOMEM when an allocation fails. */
+typedef struct {
+    int level_given;                  /* non-zero: use level; 0: the midpoint, as level=None */
+    double level;
+    int fully_connected_high;         /* the saddles: 0 joins the low corners ('low'), else the high */
+    int positive_orientation_high;    /* 0 as scikit-image's 'low', non-zero reverses each contour */
+    unsigned char const *mask;        /* NULL for none; else width x height, 0 where there is no data */
+    size_t mask_row_stride;           /* bytes */
+} alwan_contour_params;
+
+typedef struct alwan_contours alwan_contours;
+
+alwan_status alwan_find_contours_f32(alwan_contours **out, alwan_f32 const *src, size_t row_stride, size_t width, size_t height, alwan_contour_params const *params, alwan_ctx *ctx);
+alwan_status alwan_find_contours_f64(alwan_contours **out, alwan_f64 const *src, size_t row_stride, size_t width, size_t height, alwan_contour_params const *params, alwan_ctx *ctx);
+alwan_status alwan_find_contours_u8(alwan_contours **out, unsigned char const *src, size_t row_stride, size_t width, size_t height, alwan_contour_params const *params, alwan_ctx *ctx);
+/* The number of contours; 0 for NULL. */
+size_t alwan_contours_count(alwan_contours const *contours);
+/* Contour index's points, count (row, column) pairs, owned by contours. ALWAN_E_RANGE past the last. */
+alwan_status alwan_contours_get(double const **points, size_t *count, alwan_contours const *contours, size_t index);
+void alwan_contours_destroy(alwan_contours *contours, alwan_ctx *ctx);
+
+/* Douglas-Peucker simplification of a polyline, as scikit-image's approximate_polygon: the
+ * first and last points kept, then each span split at its farthest point while that point is
+ * more than tolerance from the span (perpendicular distance where it projects inside the
+ * span, else the distance to the nearer end). points and out are count (row, column) pairs;
+ * out needs room for count and may be points itself; out_count receives how many are kept,
+ * in their original order. tolerance 0 or below copies the polyline unchanged. */
+alwan_status alwan_approximate_polygon(double *out, size_t *out_count, double const *points, size_t count, double tolerance);
+
 /* Deconvolution: an image blurred by a known point-spread function, sharpened back. Each
  * of src's 1 to 4 channels is deconvolved on its own with the same psf, psf_width x
  * psf_height values row by row, at most the image's size.

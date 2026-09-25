@@ -92,6 +92,7 @@ EXPORTS
     alwan_agx_map_interleave_ex
     alwan_apca_contrast_f32
     alwan_apca_contrast_f64
+    alwan_approximate_polygon
     alwan_astm_e2022_weights_f32
     alwan_astm_e2022_weights_f64
     alwan_atd95_forward_f32
@@ -410,6 +411,9 @@ EXPORTS
     alwan_constancy_params_init
     alwan_content_light_level_compute_f32
     alwan_content_light_level_compute_f64
+    alwan_contours_count
+    alwan_contours_destroy
+    alwan_contours_get
     alwan_corner_response_f32
     alwan_corner_response_f64
     alwan_corresponding_chromaticities_breneman1987
@@ -720,6 +724,9 @@ EXPORTS
     alwan_filter_f32
     alwan_filter_f64
     alwan_filter_u8
+    alwan_find_contours_f32
+    alwan_find_contours_f64
+    alwan_find_contours_u8
     alwan_float_to_half
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64
