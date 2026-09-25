@@ -224,7 +224,7 @@ static void ALWAN_CORE_FN(uchimura_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_
 }
 
 /* ----------------------------------------------------------------
- * Lottes / AMD Cauldron
+ * Lottes (GDC 2016), per channel
  * ---------------------------------------------------------------- */
 static void ALWAN_CORE_FN(lottes_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
     ALWAN_CORE_VEC3 in_v = {{
@@ -239,19 +239,28 @@ static void ALWAN_CORE_FN(lottes_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CO
 }
 
 /* ----------------------------------------------------------------
- * Tony McMapface (Somewhat Boring Display Transform)
+ * Tony McMapface (Stachowiak 2023): the author's 48^3 cube, sampled as his
+ * shader samples it. The shader encodes x / (x + 1) and reads the texture at
+ * texel centres with a trilinear, clamped sampler, which is the knot-centred
+ * addressing of alwan_table3d_sample_trilinear. The cube's values are
+ * display-linear Rec.709 in [0, 1], so both entry points return the same.
  * ---------------------------------------------------------------- */
+#if ALWAN_TABLE_TONY_MCMAPFACE_CUBE
 static void ALWAN_CORE_FN(tony_mcmapface_transform)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
-    ALWAN_CORE_VEC3 in_v = {{
-        ALWAN_CORE_MAX(rgb_in[0], ALWAN_CORE_ZERO),
-        ALWAN_CORE_MAX(rgb_in[1], ALWAN_CORE_ZERO),
-        ALWAN_CORE_MAX(rgb_in[2], ALWAN_CORE_ZERO)
-    }};
-    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(in_v);
-    rgb_out[0] = ALWAN_CORE_SATURATE(out_v.v[0]);
-    rgb_out[1] = ALWAN_CORE_SATURATE(out_v.v[1]);
-    rgb_out[2] = ALWAN_CORE_SATURATE(out_v.v[2]);
+    ALWAN_CORE_VEC3 coord;
+    int ch;
+    for (ch = 0; ch < 3; ch++) {
+        /* Negatives sit below the cube, where the sampler clamps; the MIN keeps
+         * an infinite input at 1 rather than inf / inf. */
+        ALWAN_CORE_T const x = ALWAN_CORE_MIN(ALWAN_CORE_MAX(rgb_in[ch], ALWAN_CORE_ZERO), ALWAN_CORE_LITERAL(1e30));
+        coord.v[ch] = x / (x + ALWAN_CORE_LITERAL(1.0));
+    }
+    ALWAN_CORE_VEC3 const s = ALWAN_CORE_FNVLIT(alwan_table3d_sample_trilinear)(
+        ALWAN_CORE_FNLIT(alwan_table_tony_mcmapface_cube),
+        ALWAN_TABLE_TONY_MCMAPFACE_CUBE_RES, coord);
+    rgb_out[0] = s.v[0]; rgb_out[1] = s.v[1]; rgb_out[2] = s.v[2];
 }
+#endif
 
 /* ----------------------------------------------------------------
  * BT.2446 Method B: SDR to HDR (1000 nits HDR, 100 nits SDR)
@@ -336,16 +345,13 @@ static void ALWAN_CORE_FN(uchimura_transform_unclamped)(ALWAN_CORE_T const *rgb_
 }
 
 static void ALWAN_CORE_FN(lottes_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
-    ALWAN_CORE_VEC3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
+    /* MAX(0) retained: the curve is a power of each channel and NaNs on negatives. */
+    ALWAN_CORE_VEC3 in_v = {{
+        ALWAN_CORE_MAX(rgb_in[0], ALWAN_CORE_ZERO),
+        ALWAN_CORE_MAX(rgb_in[1], ALWAN_CORE_ZERO),
+        ALWAN_CORE_MAX(rgb_in[2], ALWAN_CORE_ZERO)
+    }};
     ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_lottes_default)(in_v);
-    rgb_out[0] = out_v.v[0];
-    rgb_out[1] = out_v.v[1];
-    rgb_out[2] = out_v.v[2];
-}
-
-static void ALWAN_CORE_FN(tony_mcmapface_transform_unclamped)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out) {
-    ALWAN_CORE_VEC3 in_v = {{rgb_in[0], rgb_in[1], rgb_in[2]}};
-    ALWAN_CORE_VEC3 out_v = ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(in_v);
     rgb_out[0] = out_v.v[0];
     rgb_out[1] = out_v.v[1];
     rgb_out[2] = out_v.v[2];
@@ -417,7 +423,11 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
         case ALWAN_VIEW_REINHARD_EXT:       transform_fn = ALWAN_CORE_FN(reinhard_ext_transform); break;
         case ALWAN_VIEW_UCHIMURA:           transform_fn = ALWAN_CORE_FN(uchimura_transform); break;
         case ALWAN_VIEW_LOTTES:             transform_fn = ALWAN_CORE_FN(lottes_transform); break;
+#if ALWAN_TABLE_TONY_MCMAPFACE_CUBE
         case ALWAN_VIEW_TONY_MCMAPFACE:     transform_fn = ALWAN_CORE_FN(tony_mcmapface_transform); break;
+#else
+        case ALWAN_VIEW_TONY_MCMAPFACE:     break;
+#endif
         case ALWAN_VIEW_BT2446B_SDR_TO_HDR: transform_fn = ALWAN_CORE_FN(bt2446b_sdr_to_hdr_transform); break;
         case ALWAN_VIEW_BT2446C_HDR_TO_SDR: transform_fn = ALWAN_CORE_FN(bt2446c_hdr_to_sdr_transform); break;
         case ALWAN_VIEW_BT2390_HDR_TO_SDR:  transform_fn = ALWAN_CORE_FN(bt2390_hdr_to_sdr_transform); break;
@@ -433,14 +443,13 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
     /* Unclamped entry: swap in the raw twins for the per-channel tone mappers.
      * Transforms whose [0,1] output is definitional (AgX picture formation,
      * ACES display encode, the BT.2446/2390 normalized-signal EETFs, PBR
-     * Neutral) keep their standard implementation -- for those the two entry
+     * Neutral, the Tony McMapface cube) keep their standard implementation -- for those the two entry
      * points return identical results by design. */
     if (unclamped) {
         switch (vt) {
             case ALWAN_VIEW_REINHARD_EXT:        transform_fn = ALWAN_CORE_FN(reinhard_ext_transform_unclamped); break;
             case ALWAN_VIEW_UCHIMURA:            transform_fn = ALWAN_CORE_FN(uchimura_transform_unclamped); break;
             case ALWAN_VIEW_LOTTES:              transform_fn = ALWAN_CORE_FN(lottes_transform_unclamped); break;
-            case ALWAN_VIEW_TONY_MCMAPFACE:      transform_fn = ALWAN_CORE_FN(tony_mcmapface_transform_unclamped); break;
             case ALWAN_VIEW_REINHARD_CALIBRATED: transform_fn = ALWAN_CORE_FN(reinhard_calibrated_transform_unclamped); break;
             case ALWAN_VIEW_EXPOSURE:            transform_fn = ALWAN_CORE_FN(exposure_transform_unclamped); break;
             default: break;

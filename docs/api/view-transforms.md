@@ -82,8 +82,8 @@ typedef enum {
     ALWAN_VIEW_KHRONOS_PBR_NEUTRAL = 8,
     ALWAN_VIEW_REINHARD_EXT = 9,         /* Reinhard Extended, luminance-based */
     ALWAN_VIEW_UCHIMURA = 10,            /* Uchimura / Gran Turismo */
-    ALWAN_VIEW_LOTTES = 11,              /* Lottes / AMD Cauldron */
-    ALWAN_VIEW_TONY_MCMAPFACE = 12,      /* Somewhat Boring Display Transform */
+    ALWAN_VIEW_LOTTES = 11,              /* Lottes, GDC 2016, per channel */
+    ALWAN_VIEW_TONY_MCMAPFACE = 12,      /* Tony McMapface: the author's 48^3 cube at x/(x+1) */
     ALWAN_VIEW_BT2446B_SDR_TO_HDR = 13,
     ALWAN_VIEW_BT2446C_HDR_TO_SDR = 14,
     ALWAN_VIEW_BT2390_HDR_TO_SDR = 15,   /* BT.2390 EETF, Hermite spline */
@@ -175,23 +175,24 @@ alwan_status alwan_view_transform_apply_unclamped_{T}(alwan_{T} *rgb_out, size_t
                                                       alwan_ctx *ctx);
 ```
 
-Same dispatch, then a second switch swaps in the six unclamped twins for
-`REINHARD_EXT` (9), `UCHIMURA` (10), `LOTTES` (11), `TONY_MCMAPFACE` (12),
-`REINHARD_CALIBRATED` (16) and `EXPOSURE` (17). Parameters and return codes match
+Same dispatch, then a second switch swaps in the five unclamped twins for
+`REINHARD_EXT` (9), `UCHIMURA` (10), `LOTTES` (11), `REINHARD_CALIBRATED` (16) and
+`EXPOSURE` (17). `TONY_MCMAPFACE` (12) is a cube whose values are in `[0, 1]`, so it has
+no twin and both entry points return the same bytes. Parameters and return codes match
 `alwan_view_transform_apply_{T}`.
 
 The twins differ in three ways:
 
 | Twin | Output `[0, 1]` saturate | Input `MAX(0)` clip |
 |---|---|---|
-| `LOTTES`, `TONY_MCMAPFACE`, `REINHARD_CALIBRATED`, `EXPOSURE` | dropped | dropped |
+| `REINHARD_CALIBRATED`, `EXPOSURE` | dropped | dropped |
 | `REINHARD_EXT` | dropped | the clamped form never had one |
-| `UCHIMURA` | dropped | kept, as a pow-domain guard for the toe |
+| `UCHIMURA`, `LOTTES` | dropped | kept, as a pow-domain guard (Lottes is a power of each channel) |
 
 So negative input reaches the operator through both entry points for `REINHARD_EXT`, and
-through the unclamped entry point only for the four in the first row.
+through the unclamped entry point only for the two in the first row.
 
-The other twelve `vt` values resolve to the identical function pointer, so both entry
+The other thirteen `vt` values resolve to the identical function pointer, so both entry
 points return bit-identical bytes for them.
 
 There is no unclamped bulk or typed entry point. `alwan_view_transform_{T}_map_interleave`

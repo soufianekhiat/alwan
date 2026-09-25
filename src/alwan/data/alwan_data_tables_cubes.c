@@ -3,10 +3,11 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Embedded table definitions: the AgX Blender 57^3 cube.
+ * Embedded table definitions: the AgX Blender 57^3 cube and the Tony McMapface
+ * 48^3 cube.
  *
- * Alone in its own translation unit because its CSV is 15 MB on one line
- * and is preprocessed twice, once per precision. See alwan_data_tables.c
+ * Alone in their own translation unit because their CSVs, 15 MB and 6 MB, are each one line
+ * and are preprocessed twice, once per precision. See alwan_data_tables.c
  * for the split rationale.
  *
  * This directory holds every array reached through a FLOAT coordinate. Arrays
@@ -45,6 +46,24 @@ alwan_f32 const alwan_table_agx_blender_cube_f32[ALWAN_TABLE_AGX_BLENDER_CUBE_SI
 #if ALWAN_WITH_F64_FACADE
 alwan_f64 const alwan_table_agx_blender_cube_f64[ALWAN_TABLE_AGX_BLENDER_CUBE_SIZE] = {
 #include "agx_blender_lut3d.csv"
+};
+#endif
+#endif
+
+/* ---- alwan_table_tony_mcmapface_cube ----
+ * rank 3, 48^3 x 3, TRILINEAR. Layout r-fastest,
+ * index = ((b*RES + g)*RES + r)*3 + ch. Values are display-linear Rec.709,
+ * addressed at x / (x + 1). Reader: alwan_table3d_sample_trilinear via
+ * tony_mcmapface_transform. */
+#if ALWAN_TABLE_TONY_MCMAPFACE_CUBE
+#if ALWAN_WITH_F32
+alwan_f32 const alwan_table_tony_mcmapface_cube_f32[ALWAN_TABLE_TONY_MCMAPFACE_CUBE_SIZE] = {
+#include "tony_mcmapface_lut3d.csv"
+};
+#endif
+#if ALWAN_WITH_F64_FACADE
+alwan_f64 const alwan_table_tony_mcmapface_cube_f64[ALWAN_TABLE_TONY_MCMAPFACE_CUBE_SIZE] = {
+#include "tony_mcmapface_lut3d.csv"
 };
 #endif
 #endif

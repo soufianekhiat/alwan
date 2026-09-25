@@ -23,8 +23,8 @@ Alwan provides a complete ACES implementation covering:
 - **AP1 (ACEScg)** -- Working space for VFX compositing
 - **JMh** -- ACES 2.0 perceptual color coordinates
 
-> **f64-internal facades.** The **ACES 1.x inverse** output transform is an
-> iterative inverse whose convergence threshold sits below `float` epsilon. Its
+> **f64-internal facades.** The **ACES 1.x inverse** output transform runs in `double`
+> (its RedMod10 inverse is an iteration whose threshold sits below `float` epsilon). Its
 > `_f32` entry points, like ZCAM's ([color-appearance](color-appearance.md)),
 > run the algorithm in `double` internally and narrow the result,
 > so they stay available and numerically stable even in an `f32`-only build
@@ -90,8 +90,13 @@ Complete ACES 1.3 rendering pipeline (RRT + ODT). Input: ACES2065-1 (AP0 linear)
 `ALWAN_ACES_INTERP_HERMITE` is the legacy fit. It is validated like the preset, `ALWAN_E_INVALID`
 outside the enum. Until 3.0.0 it was a process-wide global set through
 `alwan_set_aces_interp`. The inverse takes no method: it inverts the B-spline (and SSTS) chain,
-so a forward run under HERMITE or OCIO does not round-trip through it. Which curve chain each
-method runs on each preset is tabulated in [Context](context.md).
+so a forward run under HERMITE or OCIO does not round-trip through it. Its C9 and C5 inverses
+are the CTL's closed forms (`segmented_spline_c9_rev`, `_c5_rev`); every SDR preset takes a
+code from the forward back to that code within 1e-14, near black included, and greys match
+OCIO's inverse to 3e-4, the gap between OCIO's fitted curves and the CTL splines (suite 262).
+A code the forward cannot produce, such as a colour whose RRT clamp removed a negative AP1
+channel, has no exact preimage: DCDM shows 2.6e-5 on a few saturated blues. Which curve
+chain each method runs on each preset is tabulated in [Context](context.md).
 
 ```c
 alwan_status alwan_aces1_output_transform_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
@@ -322,6 +327,14 @@ normalization arrays is tracked as an open documentation item in
 
 ## ACES Fixed Functions (RRT Components)
 
+All of these work in ACES2065-1 (AP0) linear and are held to OCIO's
+`FixedFunctionTransform` of the same name in both directions (suite 262): 1e-7 forward,
+OCIO's float32. The glow uses the CTL's `sigmoid_shaper` (`ACESlib.RRT_Common.ctl`).
+RedMod03's inverse is OCIO's closed form, exact where every channel is non-negative and red
+is at least 0.01. RedMod10's inverse is exact everywhere; OCIO's evaluates its hue weight on
+the output and does not undo its own forward on about a quarter of red inputs, so it is not
+the reference there.
+
 ### RedMod -- Red channel desaturation
 
 ```c
@@ -379,12 +392,18 @@ void alwan_aces_blue_light_fix_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *
 void alwan_aces_blue_light_fix_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 ```
 
-### ACES 1.0 Look
+### ACES 0.x sweeteners under a 1.x RRT (`look_1_0`)
 
 ```c
 void alwan_aces_look_1_0_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 void alwan_aces_look_1_0_inv_{T}(alwan_rgb_{T} *rgb_out, alwan_rgb_{T} const *rgb_in);
 ```
+
+Glow10 inverse, Glow03, RedMod10 inverse, RedMod03, in ACES2065-1. Placed before an ACES
+1.x RRT, the RRT's own Glow10 and RedMod10 cancel and the 0.x glow and red modifier remain.
+Each step is held to OCIO; the composition is alwan's and is not an aces-dev transform. The
+Academy's own emulation of the earlier look, `LMT.Academy.ACES_0_1_1.ctl` ("ACES 1.0 to 0.1
+emulation"), is a 65^3 LUT that also moves the tone scale, and this does not reproduce it.
 
 ### Parametric LMT (CDL-style)
 

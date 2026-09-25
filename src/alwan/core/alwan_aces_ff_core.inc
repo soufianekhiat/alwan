@@ -214,13 +214,17 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_rgb_to_yc)(ALWAN_CORE_T red, AL
     return YC;
 }
 
-/* ACES sigmoid_shaper: smooth step function mapping [0,1] -> [0,1].
- * Input is pre-scaled: x = (sat - 0.4) / 0.2.
- * Source: aces-dev/lib/ACESlib.Utilities.ctl sigmoid_shaper */
+/* ACES sigmoid_shaper: a smooth step from 0 at x = -2 through 0.5 at x = 0 to 1 at x = 2.
+ * Input is pre-scaled: x = (sat - 0.4) / 0.2, so the step runs over sat 0 to 0.8.
+ * Source: aces-dev lib/ACESlib.RRT_Common.ctl sigmoid_shaper,
+ *   t = max(1 - |x / 2|, 0), y = (1 + sign(x) * (1 - t^2)) / 2.
+ * This read |2x - 1| and stepped at x = 0.5, over sat 0.4 to 0.6, which put Glow03 and
+ * Glow10 up to 2.5% off OCIO and the ACES 1.x RRT up to 0.0036 of code off on dark,
+ * saturated colours. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces_sigmoid_shaper)(ALWAN_CORE_T x) {
-    ALWAN_CORE_T t = ALWAN_CORE_MAX(ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_ABS(x * ALWAN_CORE_LITERAL(2.0) - ALWAN_CORE_LITERAL(1.0)), ALWAN_CORE_LITERAL(0.0));
-    ALWAN_CORE_T sign = (x > ALWAN_CORE_LITERAL(0.5)) ? ALWAN_CORE_LITERAL(1.0) : ALWAN_CORE_LITERAL(-1.0);
-    return ALWAN_CORE_LITERAL(0.5) + sign * (ALWAN_CORE_LITERAL(1.0) - t * t) * ALWAN_CORE_LITERAL(0.5);
+    ALWAN_CORE_T t = ALWAN_CORE_MAX(ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_ABS(x * ALWAN_CORE_LITERAL(0.5)), ALWAN_CORE_LITERAL(0.0));
+    ALWAN_CORE_T sign = (x < ALWAN_CORE_LITERAL(0.0)) ? ALWAN_CORE_LITERAL(-1.0) : ALWAN_CORE_LITERAL(1.0);
+    return (ALWAN_CORE_LITERAL(1.0) + sign * (ALWAN_CORE_LITERAL(1.0) - t * t)) * ALWAN_CORE_LITERAL(0.5);
 }
 
 /* ================================================================
@@ -338,10 +342,10 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_cubic_basis_shaper)(ALWAN_CORE
     return ALWAN_CORE_SELECT(t < ALWAN_CORE_LITERAL(-1.0) || t > ALWAN_CORE_LITERAL(1.0), ALWAN_CORE_LITERAL(0.0), inside);
 }
 
-/* ACES Reference Segmented Spline C5 -- full 10-coefficient B-spline evaluation.
- * Source: Academy S-2014-003 / aces-dev lib/ACESlib.Tonescales.ctl
- * coefsLow / coefsHigh are the cubic B-spline control values.
- * N = 5 segments per half; knots are uniformly spaced in log10 domain. */
+/* ACES Reference Segmented Spline C5, the RRT tone scale.
+ * Source: aces-dev transforms/ctl/lib/ACESlib.Tonescales.ctl segmented_spline_c5_fwd
+ * coefsLow / coefsHigh are six quadratic B-spline control values per half, three
+ * segments each, uniformly spaced in log10. */
 /* The C5 spline's breakpoints in log10, which depend on nothing but constants.
  * Computed by the same expressions the spline used to evaluate per channel, so a
  * caller that makes them once and passes them to _c5_k gets the same bits; the
@@ -429,55 +433,55 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(ALWAN_COR
 }
 
 /* Inverse of the segmented spline C5: given OCES nits, return scene-referred linear.
- * Uses Newton-Raphson iteration on the forward C5. */
+ * Closed form, as aces-dev lib/ACESlib.Tonescales.ctl segmented_spline_c5_rev: find the
+ * segment whose knot values bracket log10(y), then solve its quadratic for t. The flat
+ * extensions below and above the spline have no inverse and return the end points.
+ * This replaced a Newton iteration, which was never tested against the CTL. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5_inv)(ALWAN_CORE_T y) {
-    ALWAN_CORE_T min_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(-15.0));
-    ALWAN_CORE_T min_pt_y = ALWAN_CORE_LITERAL(0.0001);
-    ALWAN_CORE_T mid_pt_x = ALWAN_CORE_LITERAL(0.18);
-    ALWAN_CORE_T mid_pt_y = ALWAN_CORE_LITERAL(4.8);
-    ALWAN_CORE_T max_pt_x = ALWAN_CORE_LITERAL(0.18) * ALWAN_CORE_POW(ALWAN_CORE_LITERAL(2.0), ALWAN_CORE_LITERAL(18.0));
-    ALWAN_CORE_T max_pt_y = ALWAN_CORE_LITERAL(10000.0);
-
-    /* Input y is in OCES nits (output of C5 forward) */
-    ALWAN_CORE_T target_nits = y;
-
-    if (target_nits <= min_pt_y) return min_pt_x;
-    if (target_nits >= max_pt_y) return max_pt_x;
-
-    ALWAN_CORE_T x;
-    if (target_nits <= mid_pt_y) {
-        ALWAN_CORE_T t = (target_nits - min_pt_y) / (mid_pt_y - min_pt_y);
-        ALWAN_CORE_T log_min = ALWAN_CORE_LOG10(min_pt_x);
-        ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(mid_pt_x);
-        x = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), log_min + t * (log_mid - log_min));
+    const ALWAN_CORE_T coefsLow[6] = {
+        ALWAN_CORE_LITERAL(-4.0000000000), ALWAN_CORE_LITERAL(-4.0000000000),
+        ALWAN_CORE_LITERAL(-3.1573765773), ALWAN_CORE_LITERAL(-0.4852499958),
+        ALWAN_CORE_LITERAL( 1.8477324706), ALWAN_CORE_LITERAL( 1.8477324706)
+    };
+    const ALWAN_CORE_T coefsHigh[6] = {
+        ALWAN_CORE_LITERAL(-0.7185482425), ALWAN_CORE_LITERAL( 2.0810307172),
+        ALWAN_CORE_LITERAL( 3.6681241237), ALWAN_CORE_LITERAL( 4.0000000000),
+        ALWAN_CORE_LITERAL( 4.0000000000), ALWAN_CORE_LITERAL( 4.0000000000)
+    };
+    ALWAN_CORE_FNLIT(aces1_c5_consts) k = ALWAN_CORE_FNVLIT(aces1_c5_consts)();
+    ALWAN_CORE_T log_y = ALWAN_CORE_LOG10(ALWAN_CORE_MAX(y, ALWAN_CORE_LITERAL(1e-10)));
+    /* The low half ends where the spline reaches the mid point, (coefsLow[3] + coefsLow[4]) / 2 */
+    ALWAN_CORE_T log_mid_y = ALWAN_CORE_LITERAL(0.5) * (coefsLow[3] + coefsLow[4]);
+    ALWAN_CORE_T log_x;
+    if (log_y <= k.log_min_y) {
+        log_x = k.log_min;
+    } else if (log_y >= k.log_max_y) {
+        log_x = k.log_max;
     } else {
-        ALWAN_CORE_T t = (target_nits - mid_pt_y) / (max_pt_y - mid_pt_y);
-        ALWAN_CORE_T log_mid = ALWAN_CORE_LOG10(mid_pt_x);
-        ALWAN_CORE_T log_max = ALWAN_CORE_LOG10(max_pt_x);
-        x = ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), log_mid + t * (log_max - log_mid));
-    }
-
-    for (int i = 0; i < 30; i++) {
-        ALWAN_CORE_T fx = ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(x) - target_nits;
-        if (ALWAN_CORE_ABS(fx) < ALWAN_CORE_LITERAL(1e-10)) break;
-
-        ALWAN_CORE_T h = ALWAN_CORE_MAX(ALWAN_CORE_ABS(x) * ALWAN_CORE_LITERAL(1e-6), ALWAN_CORE_LITERAL(1e-12));
-        ALWAN_CORE_T dfx = (ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(x + h) - ALWAN_CORE_FNVLIT(aces1_segmented_spline_c5)(x - h)) / (ALWAN_CORE_LITERAL(2.0) * h);
-        if (ALWAN_CORE_ABS(dfx) < ALWAN_CORE_LITERAL(1e-12)) break;
-
-        ALWAN_CORE_T dx = fx / dfx;
-
-        if (ALWAN_CORE_ABS(dx) > x * ALWAN_CORE_LITERAL(0.5)) {
-            dx = (dx > ALWAN_CORE_LITERAL(0.0)) ? x * ALWAN_CORE_LITERAL(0.5) : -x * ALWAN_CORE_LITERAL(0.5);
+        ALWAN_CORE_T const *coefs;
+        ALWAN_CORE_T knot_start, knot_end;
+        if (log_y <= log_mid_y) {
+            coefs = coefsLow;
+            knot_start = k.log_min;
+            knot_end = k.log_mid;
+        } else {
+            coefs = coefsHigh;
+            knot_start = k.log_mid;
+            knot_end = k.log_max;
         }
-
-        x = x - dx;
-
-        if (x < min_pt_x) x = min_pt_x;
-        if (x > max_pt_x) x = max_pt_x;
+        /* Segment j spans knot values (coefs[j] + coefs[j+1]) / 2 to (coefs[j+1] + coefs[j+2]) / 2 */
+        int j = 0;
+        if (log_y > ALWAN_CORE_LITERAL(0.5) * (coefs[1] + coefs[2])) j = 1;
+        if (log_y > ALWAN_CORE_LITERAL(0.5) * (coefs[2] + coefs[3])) j = 2;
+        ALWAN_CORE_T cf0 = coefs[j], cf1 = coefs[j+1], cf2 = coefs[j+2];
+        ALWAN_CORE_T qa = ALWAN_CORE_LITERAL(0.5) * (cf0 - ALWAN_CORE_LITERAL(2.0)*cf1 + cf2);
+        ALWAN_CORE_T qb = cf1 - cf0;
+        ALWAN_CORE_T qc = ALWAN_CORE_LITERAL(0.5) * (cf0 + cf1) - log_y;
+        ALWAN_CORE_T disc = ALWAN_CORE_SQRT(ALWAN_CORE_MAX(qb*qb - ALWAN_CORE_LITERAL(4.0)*qa*qc, ALWAN_CORE_LITERAL(0.0)));
+        ALWAN_CORE_T t = (ALWAN_CORE_LITERAL(2.0) * qc) / (-disc - qb);
+        log_x = knot_start + ((ALWAN_CORE_T)j + t) * (knot_end - knot_start) / ALWAN_CORE_LITERAL(3.0);
     }
-
-    return x;
+    return ALWAN_CORE_POW(ALWAN_CORE_LITERAL(10.0), log_x);
 }
 
 /* ================================================================

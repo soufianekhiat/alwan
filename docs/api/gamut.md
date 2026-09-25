@@ -1037,9 +1037,9 @@ alwan_status alwan_view_transform_apply_unclamped_{T}(
 ```
 
 Same dispatch table as `alwan_view_transform_apply_{T}`, with unclamped workers swapped in
-for exactly six views: `ALWAN_VIEW_REINHARD_EXT`, `ALWAN_VIEW_UCHIMURA`,
-`ALWAN_VIEW_LOTTES`, `ALWAN_VIEW_TONY_MCMAPFACE`, `ALWAN_VIEW_REINHARD_CALIBRATED` and
-`ALWAN_VIEW_EXPOSURE`. Every other `vt` falls through to its standard worker and is
+for exactly five views: `ALWAN_VIEW_REINHARD_EXT`, `ALWAN_VIEW_UCHIMURA`,
+`ALWAN_VIEW_LOTTES`, `ALWAN_VIEW_REINHARD_CALIBRATED` and `ALWAN_VIEW_EXPOSURE`.
+`ALWAN_VIEW_TONY_MCMAPFACE` is a cube with values in `[0, 1]` and has no twin. Every other `vt` falls through to its standard worker and is
 byte-identical between the two entry points.
 
 **Parameters:**
@@ -1051,8 +1051,8 @@ byte-identical between the two entry points.
   view. No view transform in the table is stateful, so "optional context" understates it:
   it is unused.
 
-The negative-input clip is removed for four of the six. `ALWAN_VIEW_UCHIMURA` keeps its
-`max(0)` as a pow-domain guard. `ALWAN_VIEW_LOTTES`, `ALWAN_VIEW_TONY_MCMAPFACE`,
+The negative-input clip is removed for two of the five. `ALWAN_VIEW_UCHIMURA` and
+`ALWAN_VIEW_LOTTES` keep their `max(0)` as a pow-domain guard.
 `ALWAN_VIEW_REINHARD_CALIBRATED` and `ALWAN_VIEW_EXPOSURE` lose theirs.
 `ALWAN_VIEW_REINHARD_EXT` never had one, so it loses only its output `SATURATE`.
 `ALWAN_VIEW_EXPOSURE` is `1 - exp(-gain * L)` with `gain = 2^0 = 1`, which never exceeds

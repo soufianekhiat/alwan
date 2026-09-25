@@ -275,15 +275,13 @@ ALWAN_INLINE alwan_vec3 alwan_lottes_v(alwan_vec3 rgb,
     alwan_scalar c = (pow_hdr_ad * pow_mid_a - pow_hdr_a * pow_mid_ad * mid_out)
                    / ((pow_hdr_ad - pow_mid_ad) * mid_out);
 
-    alwan_scalar peak = alwan_max3(rgb.v[0], rgb.v[1], rgb.v[2]);
-
-    alwan_scalar safe_peak = ALWAN_SELECT(peak < ALWAN_LITERAL(1e-10), ALWAN_LITERAL(1e-10), peak);
-    alwan_scalar new_peak = alwan_lottes_curve_v(safe_peak, contrast, shoulder, b, c);
-    alwan_scalar scale = ALWAN_SELECT(peak < ALWAN_LITERAL(1e-10), ALWAN_ZERO, new_peak / safe_peak);
-
-    result.v[0] = rgb.v[0] * scale;
-    result.v[1] = rgb.v[1] * scale;
-    result.v[2] = rgb.v[2] * scale;
+    /* Per channel, as Lottes's curve and the GLSL it is known by (dmnsgn glsl-tone-map
+     * lottes.glsl): these constants are that shader's, and they put 0.18 at 0.267 exactly.
+     * This once applied the curve to the largest channel and scaled the others by its ratio,
+     * which kept greys and moved colours by up to 0.78. */
+    result.v[0] = alwan_lottes_curve_v(rgb.v[0], contrast, shoulder, b, c);
+    result.v[1] = alwan_lottes_curve_v(rgb.v[1], contrast, shoulder, b, c);
+    result.v[2] = alwan_lottes_curve_v(rgb.v[2], contrast, shoulder, b, c);
     return result;
 }
 
@@ -291,53 +289,6 @@ ALWAN_INLINE alwan_vec3 alwan_lottes_default_v(alwan_vec3 rgb) {
     return alwan_lottes_v(rgb,
         ALWAN_LITERAL(1.6), ALWAN_LITERAL(0.977),
         ALWAN_LITERAL(8.0), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.267));
-}
-
-ALWAN_INLINE alwan_scalar alwan_tony_curve_v(alwan_scalar v) {
-    return ALWAN_ONE - ALWAN_EXP(-v);
-}
-
-ALWAN_INLINE alwan_vec3 alwan_tony_mcmapface_v(alwan_vec3 col) {
-    alwan_vec3 result;
-
-    alwan_scalar luma = ALWAN_LUMA_KR_BT709 * col.v[0]
-                      + ALWAN_LUMA_KG_BT709 * col.v[1]
-                      + ALWAN_LUMA_KB_BT709 * col.v[2];
-
-    alwan_scalar cb = col.v[2] - luma;
-    alwan_scalar cr = col.v[0] - luma;
-
-    alwan_scalar chroma_len = ALWAN_SQRT(cb * cb + cr * cr);
-    alwan_scalar bt = alwan_tony_curve_v(chroma_len * ALWAN_LITERAL(2.4));
-    alwan_scalar desat = alwan_max(
-        (bt - ALWAN_LITERAL(0.7)) * ALWAN_LITERAL(0.8), ALWAN_ZERO);
-    desat = desat * desat;
-
-    alwan_scalar desat_r = col.v[0] + (luma - col.v[0]) * desat;
-    alwan_scalar desat_g = col.v[1] + (luma - col.v[1]) * desat;
-    alwan_scalar desat_b = col.v[2] + (luma - col.v[2]) * desat;
-
-    alwan_scalar tm_luma = alwan_tony_curve_v(luma);
-
-    alwan_scalar luma_scale = ALWAN_SELECT(luma > ALWAN_LITERAL(1e-5),
-                                           tm_luma / luma, ALWAN_ZERO);
-
-    alwan_scalar tm0_r = col.v[0] * luma_scale;
-    alwan_scalar tm0_g = col.v[1] * luma_scale;
-    alwan_scalar tm0_b = col.v[2] * luma_scale;
-
-    alwan_scalar tm1_r = alwan_tony_curve_v(desat_r);
-    alwan_scalar tm1_g = alwan_tony_curve_v(desat_g);
-    alwan_scalar tm1_b = alwan_tony_curve_v(desat_b);
-
-    alwan_scalar bt2 = bt * bt;
-    alwan_scalar final_mult = ALWAN_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" -- empirical rolloff */
-
-    result.v[0] = (tm0_r + (tm1_r - tm0_r) * bt2) * final_mult;
-    result.v[1] = (tm0_g + (tm1_g - tm0_g) * bt2) * final_mult;
-    result.v[2] = (tm0_b + (tm1_b - tm0_b) * bt2) * final_mult;
-
-    return result;
 }
 
 #endif

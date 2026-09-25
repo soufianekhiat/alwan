@@ -213,7 +213,9 @@ application that uses the NORM/DENORM helpers itself can compare it with its own
 
 Define `ALWAN_DATA_TABLES_MINIMAL=1` when compiling the library to leave out every
 table that can be left out: the spectral upsampling LUTs, the AgX cubes and
-curves, the quality-metric sample sets, the illuminant, observer and camera SPDs,
+curves, the Tony McMapface cube (`ALWAN_TABLE_TONY_MCMAPFACE_CUBE`, which
+`ALWAN_VIEW_TONY_MCMAPFACE` needs; without it that view returns `ALWAN_E_NODATA`), the
+quality-metric sample sets, the illuminant, observer and camera SPDs,
 the ACES RICD and the rawtoaces-data camera pack. Groups (`ALWAN_TABLES_AGX`,
 `ALWAN_TABLES_SPECTRAL`, `ALWAN_TABLES_SPD`, `ALWAN_TABLES_QUALITY`,
 `ALWAN_TABLES_CAMERAS`, `ALWAN_TABLES_LIGHT_SOURCES`, `ALWAN_TABLES_FILM`) and single

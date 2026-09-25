@@ -50,8 +50,9 @@ ALWAN_DIAG_POP
 alwan_status alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
                                      alwan_f64 const *table, size_t const sizes[3],
                                      alwan_rgb_f64 const *rgb_in) {
-    if (!table || !sizes || !rgb_in || !rgb_out) {
-        return ALWAN_E_RANGE;
+    /* A side below 2 has no cell to blend across; the index clamp below would wrap. */
+    if (!table || !sizes || !rgb_in || !rgb_out || sizes[0] < 2 || sizes[1] < 2 || sizes[2] < 2) {
+        return ALWAN_E_INVALID;
     }
 
     /* Clamp input to [0, 1] */
@@ -128,8 +129,9 @@ alwan_status alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
 alwan_status alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
                                        alwan_f64 const *table, size_t const sizes[3],
                                        alwan_rgb_f64 const *rgb_in) {
-    if (!table || !sizes || !rgb_in || !rgb_out) {
-        return ALWAN_E_RANGE;
+    /* A side below 2 has no cell to blend across; the index clamp below would wrap. */
+    if (!table || !sizes || !rgb_in || !rgb_out || sizes[0] < 2 || sizes[1] < 2 || sizes[2] < 2) {
+        return ALWAN_E_INVALID;
     }
 
     /* Clamp input to [0, 1] */
@@ -231,8 +233,9 @@ alwan_status alwan_table_interp_3d_tetrahedral_f64(alwan_rgb_f64 *rgb_out,
 alwan_status alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
                                      alwan_f32 const *table, size_t const sizes[3],
                                      alwan_rgb_f32 const *rgb_in) {
-    if (!table || !sizes || !rgb_in || !rgb_out) {
-        return ALWAN_E_RANGE;
+    /* A side below 2 has no cell to blend across; the index clamp below would wrap. */
+    if (!table || !sizes || !rgb_in || !rgb_out || sizes[0] < 2 || sizes[1] < 2 || sizes[2] < 2) {
+        return ALWAN_E_INVALID;
     }
 
     alwan_f32 r = rgb_in->r;
@@ -304,8 +307,9 @@ alwan_status alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
 alwan_status alwan_table_interp_3d_tetrahedral_f32(alwan_rgb_f32 *rgb_out,
                                        alwan_f32 const *table, size_t const sizes[3],
                                        alwan_rgb_f32 const *rgb_in) {
-    if (!table || !sizes || !rgb_in || !rgb_out) {
-        return ALWAN_E_RANGE;
+    /* A side below 2 has no cell to blend across; the index clamp below would wrap. */
+    if (!table || !sizes || !rgb_in || !rgb_out || sizes[0] < 2 || sizes[1] < 2 || sizes[2] < 2) {
+        return ALWAN_E_INVALID;
     }
 
     alwan_f32 r = rgb_in->r;

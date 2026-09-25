@@ -149,23 +149,14 @@ void alwan_aces_redmod03_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in
         alwan_f64 one_minus_scale = ALWAN_LITERAL(1.0) - REDMOD03_SCALE;
         alwan_f64 new_red = red + f_H * f_S * (REDMOD03_PIVOT - red) * one_minus_scale;
 
-        /* Preserve hue by adjusting green or blue.
-         * Only adjust if the change to red is significant (> 1e-5) */
-        alwan_f64 delta_red = new_red - red;
-        if (ALWAN_ABS(delta_red) > ALWAN_LITERAL(1e-5)) {
-            if (grn >= blu) {
-                alwan_f64 denom = red - blu;
-                if (denom > ALWAN_LITERAL(1e-10)) {
-                    alwan_f64 hue_fac = (grn - blu) / denom;
-                    grn = hue_fac * (new_red - blu) + blu;
-                }
-            } else {
-                alwan_f64 denom = red - grn;
-                if (denom > ALWAN_LITERAL(1e-10)) {
-                    alwan_f64 hue_fac = (blu - grn) / denom;
-                    blu = hue_fac * (new_red - grn) + grn;
-                }
-            }
+        /* Restore hue by moving green or blue with red, as OCIO does. This once skipped
+         * the step when red moved by less than 1e-5, which left hue 3e-5 off OCIO. */
+        if (grn >= blu) {
+            alwan_f64 hue_fac = (grn - blu) / fmax(ALWAN_LITERAL(1e-10), red - blu);
+            grn = hue_fac * (new_red - blu) + blu;
+        } else {
+            alwan_f64 hue_fac = (blu - grn) / fmax(ALWAN_LITERAL(1e-10), red - grn);
+            blu = hue_fac * (new_red - grn) + grn;
         }
 
         red = new_red;
@@ -190,23 +181,14 @@ void alwan_aces_redmod03_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in
         float one_minus_scale = 1.0f - (float)REDMOD03_SCALE;
         float new_red = red + f_H * f_S * ((float)REDMOD03_PIVOT - red) * one_minus_scale;
 
-        /* Preserve hue by adjusting green or blue.
-         * Only adjust if the change to red is significant (> 1e-5) */
-        float delta_red = new_red - red;
-        if (ALWAN_ABS_F32(delta_red) > 1e-5f) {
-            if (grn >= blu) {
-                float denom = red - blu;
-                if (denom > 1e-10f) {
-                    float hue_fac = (grn - blu) / denom;
-                    grn = hue_fac * (new_red - blu) + blu;
-                }
-            } else {
-                float denom = red - grn;
-                if (denom > 1e-10f) {
-                    float hue_fac = (blu - grn) / denom;
-                    blu = hue_fac * (new_red - grn) + grn;
-                }
-            }
+        /* Restore hue by moving green or blue with red, as OCIO does. This once skipped
+         * the step when red moved by less than 1e-5, which left hue 3e-5 off OCIO. */
+        if (grn >= blu) {
+            float hue_fac = (grn - blu) / ((red - blu > 1e-10f) ? red - blu : 1e-10f);
+            grn = hue_fac * (new_red - blu) + blu;
+        } else {
+            float hue_fac = (blu - grn) / ((red - grn > 1e-10f) ? red - grn : 1e-10f);
+            blu = hue_fac * (new_red - grn) + grn;
         }
 
         red = new_red;
@@ -921,54 +903,48 @@ static aces1_c9_params_f32 const c9_4000nit_f32 = {
 
 ALWAN_DIAG_POP
 
-/* Evaluate C9 spline raw: OCES nits -> display nits (no Y_to_linCV) */
 /* f64-internal facade: compiled in all builds, see ALWAN_WITH_F64_FACADE */
 #if ALWAN_WITH_F64_FACADE
-static alwan_f64 aces1_c9_raw(alwan_f64 oces, aces1_c9_params_f64 const *p) {
-    alwan_f64 lx = ALWAN_LOG10_F64(fmax(oces, ALWAN_LITERAL(1e-10)));
+/* Inverse C9 spline: display nits -> OCES nits. Closed form, as aces-dev
+ * lib/ACESlib.Tonescales.ctl segmented_spline_c9_rev: find the segment whose knot values
+ * bracket log10(y) and solve its quadratic. The linear extensions invert where they have a
+ * slope; a flat one (every SDR slope_low) returns its end point, as the CTL does.
+ * A Newton iteration stood here before. From a start above the spline it stepped into the
+ * flat extension below min_x, met a zero derivative and stopped there, so SDR codes near
+ * black (about 0.0004 to 0.019 on Rec.709) came back as much as half their scene value. */
+static alwan_f64 aces1_c9_inv(alwan_f64 display_nits, aces1_c9_params_f64 const *p) {
+    alwan_f64 ly = ALWAN_LOG10_F64(fmax(display_nits, ALWAN_LITERAL(1e-10)));
     alwan_f64 log_min = ALWAN_LOG10_F64(p->min_x);
     alwan_f64 log_mid = ALWAN_LOG10_F64(p->mid_x);
     alwan_f64 log_max = ALWAN_LOG10_F64(p->max_x);
-    alwan_f64 ly;
-
-    if (lx <= log_min) {
-        ly = ALWAN_LOG10_F64(p->min_y) + p->slope_low * (lx - log_min);
-    } else if (lx >= log_max) {
-        ly = ALWAN_LOG10_F64(p->max_y) + p->slope_high * (lx - log_max);
+    alwan_f64 log_min_y = ALWAN_LOG10_F64(p->min_y);
+    alwan_f64 log_max_y = ALWAN_LOG10_F64(p->max_y);
+    alwan_f64 lx;
+    if (ly <= log_min_y) {
+        lx = (p->slope_low > 0) ? log_min + (ly - log_min_y) / p->slope_low : log_min;
+    } else if (ly >= log_max_y) {
+        lx = (p->slope_high > 0) ? log_max + (ly - log_max_y) / p->slope_high : log_max;
     } else {
         alwan_f64 const *co;
         alwan_f64 ks, ke;
         int nk = 8;
-        if (lx < log_mid) { co = p->coefsLow; ks = log_min; ke = log_mid; }
-        else               { co = p->coefsHigh; ks = log_mid; ke = log_max; }
-        alwan_f64 kc = (alwan_f64)(nk - 1) * (lx - ks) / (ke - ks);
-        int jj = (int)kc;
-        if (jj < 0) jj = 0;
-        if (jj > nk - 2) jj = nk - 2;
-        alwan_f64 tt = kc - (alwan_f64)jj;
+        /* The low half ends at its last knot value, (coefsLow[7] + coefsLow[8]) / 2 */
+        if (ly <= ALWAN_LITERAL(0.5) * (p->coefsLow[nk - 1] + p->coefsLow[nk])) {
+            co = p->coefsLow; ks = log_min; ke = log_mid;
+        } else {
+            co = p->coefsHigh; ks = log_mid; ke = log_max;
+        }
+        int jj = 0;
+        while (jj < nk - 2 && ly > ALWAN_LITERAL(0.5) * (co[jj + 1] + co[jj + 2])) jj++;
         alwan_f64 f0 = co[jj], f1 = co[jj + 1], f2 = co[jj + 2];
-        ly = ALWAN_LITERAL(0.5) * tt * tt * (f0 - ALWAN_LITERAL(2.0) * f1 + f2)
-           + tt * (-f0 + f1)
-           + ALWAN_LITERAL(0.5) * (f0 + f1);
+        alwan_f64 qa = ALWAN_LITERAL(0.5) * (f0 - ALWAN_LITERAL(2.0) * f1 + f2);
+        alwan_f64 qb = f1 - f0;
+        alwan_f64 qc = ALWAN_LITERAL(0.5) * (f0 + f1) - ly;
+        alwan_f64 d = ALWAN_SQRT_F64(fmax(qb * qb - ALWAN_LITERAL(4.0) * qa * qc, ALWAN_LITERAL(0.0)));
+        alwan_f64 t = (ALWAN_LITERAL(2.0) * qc) / (-d - qb);
+        lx = ks + ((alwan_f64)jj + t) * (ke - ks) / (alwan_f64)(nk - 1);
     }
-
-    return ALWAN_POW_F64(ALWAN_LITERAL(10.0), ly);
-}
-
-/* Inverse C9 spline: display nits -> OCES nits (Newton-Raphson) */
-static alwan_f64 aces1_c9_inv(alwan_f64 display_nits, aces1_c9_params_f64 const *p) {
-    alwan_f64 x = fmax(display_nits, ALWAN_LITERAL(1e-10));
-    for (int i = 0; i < 40; i++) {
-        alwan_f64 fx = aces1_c9_raw(x, p) - display_nits;
-        if (ALWAN_ABS_F64(fx) < ALWAN_LITERAL(1e-10)) break;
-        alwan_f64 h = fmax(ALWAN_ABS_F64(x) * ALWAN_LITERAL(1e-6), ALWAN_LITERAL(1e-12));
-        alwan_f64 dfx = (aces1_c9_raw(x + h, p) - aces1_c9_raw(x - h, p))
-                       / (ALWAN_LITERAL(2.0) * h);
-        if (ALWAN_ABS_F64(dfx) < ALWAN_LITERAL(1e-12)) break;
-        x -= fx / dfx;
-        if (x < ALWAN_LITERAL(1e-10)) x = ALWAN_LITERAL(1e-10);
-    }
-    return x;
+    return ALWAN_POW_F64(ALWAN_LITERAL(10.0), lx);
 }
 #endif /* ALWAN_WITH_F64_FACADE */
 
@@ -1958,10 +1934,9 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
 
 #if ALWAN_WITH_F32
 /* alwan_aces1_output_transform_inv_f32 stays f64-internal (widen -> f64 ->
- * narrow): the ACES 1.x inverse uses iterative solvers (C9 Newton-Raphson,
- * 5-iteration RRT inverse) whose f64-scale convergence thresholds (1e-10/
- * 1e-12) are below f32 epsilon, so a native-f32 inverse fails to converge.
- * The forward is native f32 (alwan_aces1_impl.inc); see test 90. */
+ * narrow): the RedMod10 inverse inside it is a bracketed iteration whose
+ * stopping width (1e-16 relative) is below f32 epsilon. The C9 and C5 inverses
+ * are closed forms. The forward is native f32 (alwan_aces1_impl.inc); see test 90. */
 alwan_status alwan_aces1_output_transform_inv_f32(alwan_rgb_f32 *rgb_out,
                                           alwan_rgb_f32 const *rgb_in,
                                           alwan_aces1_output output) {
@@ -4861,85 +4836,45 @@ void alwan_aces_redmod10_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rg
     rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
 }
 
-/* RedMod03 inverse - analytical solution with iterative refinement.
+/* RedMod03 inverse, closed form as OCIO's Renderer_ACES_RedMod03_Inv.
  *
- * Like RedMod10, the quadratic formula provides an initial estimate but
- * f_H depends on the modified color. Additionally, RedMod03 preserves hue
- * by modifying green or blue, so we need to track both channels.
- *
- * Forward: r_out = r + f_H(r,g,b) * f_S(r,g,b) * (P - r) * k
- *          grn_out = hue_fac * (r_out - blu) + blu  (if grn >= blu)
- *          blu_out = hue_fac * (r_out - grn) + grn  (if blu > grn)
- */
+ * Forward: r' = r + f_H * f_S * (P - r) * (1 - scale), with f_S = (r - min) / r while red
+ * is the largest channel. Multiplying through by r gives a quadratic in r. RedMod03 then
+ * restores hue, so f_H read from the output is the f_H the forward used and the quadratic
+ * is exact wherever f_S = (r - min) / r, that is every channel non-negative and red at least
+ * 0.01. Elsewhere f_S's floors break the quadratic, and this gives OCIO's answer. A Newton iteration with an approximate derivative stood here before and left up to
+ * 9.5e-6 of round-trip error. */
 void alwan_aces_redmod03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in) {
     if (!rgb_out || !rgb_in) return;
 
-    alwan_f64 red_target = rgb_in->r;
-    alwan_f64 grn_target = rgb_in->g;
-    alwan_f64 blu_target = rgb_in->b;
+    alwan_f64 red = rgb_in->r;
+    alwan_f64 grn = rgb_in->g;
+    alwan_f64 blu = rgb_in->b;
 
-    alwan_f64 f_H = calc_hue_weight(red_target, grn_target, blu_target, REDMOD03_INV_WIDTH);
+    alwan_f64 f_H = calc_hue_weight(red, grn, blu, REDMOD03_INV_WIDTH);
 
     if (f_H > ALWAN_LITERAL(0.0)) {
         alwan_f64 one_minus_scale = ALWAN_LITERAL(1.0) - REDMOD03_SCALE;
-
-        /* Determine which channel was modified (grn or blu) and compute hue factor */
-        int grn_modified = (grn_target >= blu_target);
-        alwan_f64 hue_fac;
-        if (grn_modified) {
-            hue_fac = (grn_target - blu_target) / fmax(ALWAN_LITERAL(1e-10), red_target - blu_target);
-        } else {
-            hue_fac = (blu_target - grn_target) / fmax(ALWAN_LITERAL(1e-10), red_target - grn_target);
-        }
-
-        /* Initial estimate using quadratic formula */
-        alwan_f64 minChan = grn_modified ? blu_target : grn_target;
+        alwan_f64 minChan = (grn < blu) ? grn : blu;
         alwan_f64 a = f_H * one_minus_scale - ALWAN_LITERAL(1.0);
-        alwan_f64 b = red_target - f_H * (REDMOD03_PIVOT + minChan) * one_minus_scale;
+        alwan_f64 b = red - f_H * (REDMOD03_PIVOT + minChan) * one_minus_scale;
         alwan_f64 c = f_H * REDMOD03_PIVOT * minChan * one_minus_scale;
-        alwan_f64 red = (-b - ALWAN_SQRT(b * b - ALWAN_LITERAL(4.0) * a * c)) / (ALWAN_LITERAL(2.0) * a);
+        alwan_f64 new_red = (-b - ALWAN_SQRT(b * b - ALWAN_LITERAL(4.0) * a * c)) / (ALWAN_LITERAL(2.0) * a);
 
-        /* Compute initial grn/blu from hue restoration */
-        alwan_f64 grn, blu;
-        if (grn_modified) {
-            blu = blu_target;
-            grn = hue_fac * (red - blu) + blu;
+        /* Restore hue */
+        if (grn >= blu) {
+            alwan_f64 hue_fac = (grn - blu) / fmax(ALWAN_LITERAL(1e-10), red - blu);
+            grn = hue_fac * (new_red - blu) + blu;
         } else {
-            grn = grn_target;
-            blu = hue_fac * (red - grn) + grn;
+            alwan_f64 hue_fac = (blu - grn) / fmax(ALWAN_LITERAL(1e-10), red - grn);
+            blu = hue_fac * (new_red - grn) + grn;
         }
-
-        /* Iterative refinement using Newton's method */
-        for (int iter = 0; iter < 16; ++iter) {
-            alwan_f64 f_H_iter = calc_hue_weight(red, grn, blu, REDMOD03_INV_WIDTH);
-            alwan_f64 f_S_iter = calc_sat_weight(red, grn, blu, REDMOD_NOISE_LIMIT);
-            alwan_f64 mod = f_H_iter * f_S_iter * one_minus_scale;
-            alwan_f64 red_fwd = red + mod * (REDMOD03_PIVOT - red);
-            alwan_f64 error = red_fwd - red_target;
-            if (ALWAN_ABS(error) < ALWAN_LITERAL(1e-15)) break;
-            /* Approximate derivative: 1 - f_H * f_S * k */
-            alwan_f64 deriv = ALWAN_LITERAL(1.0) - mod;
-            if (ALWAN_ABS(deriv) > ALWAN_LITERAL(1e-10)) {
-                red -= error / deriv;
-            } else {
-                red -= error;
-            }
-            /* Update grn or blu based on new red estimate */
-            if (grn_modified) {
-                grn = hue_fac * (red - blu) + blu;
-            } else {
-                blu = hue_fac * (red - grn) + grn;
-            }
-        }
-
-        rgb_out->r = red;
-        rgb_out->g = grn;
-        rgb_out->b = blu;
-    } else {
-        rgb_out->r = red_target;
-        rgb_out->g = grn_target;
-        rgb_out->b = blu_target;
+        red = new_red;
     }
+
+    rgb_out->r = red;
+    rgb_out->g = grn;
+    rgb_out->b = blu;
 }
 
 void alwan_aces_redmod03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in) {
@@ -4951,9 +4886,9 @@ void alwan_aces_redmod03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rg
 }
 
 /* ----------------------------------------------------------------
- * ACES 1.0 Look LMT
- * Emulates ACES 1.0 look when used with ACES 1.0.3+ RRT
- * Applies: Glow10_inv -> Glow03 -> RedMod10_inv -> RedMod03
+ * ACES 0.x sweeteners under an ACES 1.x RRT (alwan's composition, not an
+ * aces-dev transform; see alwan.h)
+ * Applies: Glow10_inv -> Glow03 -> RedMod10_inv -> RedMod03, in ACES2065-1
  * ---------------------------------------------------------------- */
 
 void alwan_aces_look_1_0_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in) {

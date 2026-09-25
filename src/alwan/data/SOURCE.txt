@@ -1,4 +1,4 @@
-The 34 CSV files beside this one, which are not in a subdirectory because they
+The 35 CSV files beside this one, which are not in a subdirectory because they
 are single tables rather than datasets.
 
 Almost all of them are PUBLISHED FORMULA CONSTANTS, matrices and exponents read
@@ -58,3 +58,14 @@ from a 14 MB CSV with no provenance.
   https://github.com/EaryChow/AgX
   https://github.com/sobotka/AgX
   https://github.com/sobotka/SB2383-Configuration-Generation
+
+tony_mcmapface_lut3d.csv is a vendored table with a recorded licence:
+
+  tony_mcmapface_lut3d.csv       Tony McMapface, Tomasz Stachowiak (2023), the 48^3
+                                 display transform cube, from the author's float32 file
+                                 OCIO/lut-converter/tony_mc_mapface_f32.dds at commit
+                                 0f249d366c9e960aa9828818786a6d5900fd85d9 of
+                                 https://github.com/h3r2tic/tony-mc-mapface. Dual licensed
+                                 MIT OR Apache-2.0; alwan takes it under MIT. Written by
+                                 gendata/data/tony_mcmapface.py through gendata/datasets.py,
+                                 which pins the commit and the file's git blob hash.

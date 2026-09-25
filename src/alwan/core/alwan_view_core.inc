@@ -283,7 +283,8 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_uchimura_default)(ALWAN_CORE_T
 }
 
 /* ================================================================
- * Lottes / AMD Cauldron Tone Mapping
+ * Lottes tone mapping: T. Lottes, "Advanced Techniques and Optimization of
+ * HDR Color Pipelines", GDC 2016
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_lottes_curve)(ALWAN_CORE_T x,
@@ -314,17 +315,13 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lottes)(ALWAN_CORE_VEC3 rgb
     ALWAN_CORE_T c = (pow_hdr_ad * pow_mid_a - pow_hdr_a * pow_mid_ad * mid_out)
                    / ((pow_hdr_ad - pow_mid_ad) * mid_out);
 
-    /* Apply curve to peak channel, scale others proportionally */
-    ALWAN_CORE_T peak = ALWAN_CORE_MAX3(rgb.v[0], rgb.v[1], rgb.v[2]);
-
-    /* Branchless: clamp safe_peak, zero scale for black input */
-    ALWAN_CORE_T safe_peak = ALWAN_CORE_SELECT(peak < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_LITERAL(1e-10), peak);
-    ALWAN_CORE_T new_peak = ALWAN_CORE_FNVLIT(alwan_lottes_curve)(safe_peak, contrast, shoulder, b, c);
-    ALWAN_CORE_T scale = ALWAN_CORE_SELECT(peak < ALWAN_CORE_LITERAL(1e-10), ALWAN_CORE_ZERO, new_peak / safe_peak);
-
-    result.v[0] = rgb.v[0] * scale;
-    result.v[1] = rgb.v[1] * scale;
-    result.v[2] = rgb.v[2] * scale;
+    /* Per channel, as Lottes's curve and the GLSL it is known by (dmnsgn glsl-tone-map
+     * lottes.glsl): these constants are that shader's, and they put 0.18 at 0.267 exactly.
+     * This once applied the curve to the largest channel and scaled the others by its ratio,
+     * which kept greys and moved colours by up to 0.78. */
+    result.v[0] = ALWAN_CORE_FNVLIT(alwan_lottes_curve)(rgb.v[0], contrast, shoulder, b, c);
+    result.v[1] = ALWAN_CORE_FNVLIT(alwan_lottes_curve)(rgb.v[1], contrast, shoulder, b, c);
+    result.v[2] = ALWAN_CORE_FNVLIT(alwan_lottes_curve)(rgb.v[2], contrast, shoulder, b, c);
     return result;
 }
 
@@ -337,61 +334,3 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lottes_default)(ALWAN_CORE_
         ALWAN_CORE_LITERAL(0.267));      /* mid_out   */
 }
 
-/* ================================================================
- * "Somewhat Boring Display Transform" (Stachowiak, 2023)
- * ================================================================ */
-
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_tony_curve)(ALWAN_CORE_T v) {
-    return ALWAN_CORE_ONE - ALWAN_CORE_EXP(-v);
-}
-
-ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_tony_mcmapface)(ALWAN_CORE_VEC3 col) {
-    ALWAN_CORE_VEC3 result;
-
-    /* BT.709 luma */
-    ALWAN_CORE_T luma = ALWAN_CORE_LUMA_KR_BT709 * col.v[0]
-                      + ALWAN_CORE_LUMA_KG_BT709 * col.v[1]
-                      + ALWAN_CORE_LUMA_KB_BT709 * col.v[2];
-
-    /* BT.709 Cb, Cr (simplified, not full-range) */
-    ALWAN_CORE_T cb = col.v[2] - luma;
-    ALWAN_CORE_T cr = col.v[0] - luma;
-
-    /* Chroma magnitude drives desaturation */
-    ALWAN_CORE_T chroma_len = ALWAN_CORE_SQRT(cb * cb + cr * cr);
-    ALWAN_CORE_T bt = ALWAN_CORE_FNVLIT(alwan_tony_curve)(chroma_len * ALWAN_CORE_LITERAL(2.4));
-    ALWAN_CORE_T desat = ALWAN_CORE_MAX(
-        (bt - ALWAN_CORE_LITERAL(0.7)) * ALWAN_CORE_LITERAL(0.8), ALWAN_CORE_ZERO);
-    desat = desat * desat;
-
-    /* Desaturate toward luma */
-    ALWAN_CORE_T desat_r = col.v[0] + (luma - col.v[0]) * desat;
-    ALWAN_CORE_T desat_g = col.v[1] + (luma - col.v[1]) * desat;
-    ALWAN_CORE_T desat_b = col.v[2] + (luma - col.v[2]) * desat;
-
-    /* Tone-map luminance */
-    ALWAN_CORE_T tm_luma = ALWAN_CORE_FNVLIT(alwan_tony_curve)(luma);
-
-    /* Luminance-preserving scale of original color (luma already computed above) */
-    ALWAN_CORE_T luma_scale = ALWAN_CORE_SELECT(luma > ALWAN_CORE_LITERAL(1e-5),
-                                                tm_luma / luma, ALWAN_CORE_ZERO);
-
-    ALWAN_CORE_T tm0_r = col.v[0] * luma_scale;
-    ALWAN_CORE_T tm0_g = col.v[1] * luma_scale;
-    ALWAN_CORE_T tm0_b = col.v[2] * luma_scale;
-
-    /* Per-channel tone map of desaturated color */
-    ALWAN_CORE_T tm1_r = ALWAN_CORE_FNVLIT(alwan_tony_curve)(desat_r);
-    ALWAN_CORE_T tm1_g = ALWAN_CORE_FNVLIT(alwan_tony_curve)(desat_g);
-    ALWAN_CORE_T tm1_b = ALWAN_CORE_FNVLIT(alwan_tony_curve)(desat_b);
-
-    /* Blend between luminance-preserving and per-channel based on bt */
-    ALWAN_CORE_T bt2 = bt * bt;
-    ALWAN_CORE_T final_mult = ALWAN_CORE_LITERAL(0.97); /* Stachowiak 2023 "Somewhat Boring Display Transform" -- empirical rolloff */
-
-    result.v[0] = (tm0_r + (tm1_r - tm0_r) * bt2) * final_mult;
-    result.v[1] = (tm0_g + (tm1_g - tm0_g) * bt2) * final_mult;
-    result.v[2] = (tm0_b + (tm1_b - tm0_b) * bt2) * final_mult;
-
-    return result;
-}

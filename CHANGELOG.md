@@ -2,6 +2,58 @@
 
 ### Fixed: output differs
 
+- **`ALWAN_VIEW_TONY_MCMAPFACE` was not Tony McMapface.** It was an analytic curve with no
+  source, 0.52 off at worst and 0.026 at the median against the transform it was named
+  after. Tony McMapface (Tomasz Stachowiak, 2023) is a 48^3 cube read at `x / (x + 1)` with
+  a texel-centred trilinear sampler. The cube is now vendored from the author's float32
+  file (MIT OR Apache-2.0, taken under MIT; gendata/data/tony_mcmapface.py, switch
+  `ALWAN_TABLE_TONY_MCMAPFACE_CUBE`) and sampled as the shader samples it, equal to it to
+  the bit (suite 262). The cube's values are in [0, 1], so the clamped and unclamped entry
+  points agree. `alwan_tony_curve_v` and `alwan_tony_mcmapface_v` are gone from the view
+  core headers.
+
+- **`ALWAN_VIEW_LOTTES` applied Lottes's curve to the largest channel** and scaled the other
+  two by its ratio, while its constants are those of the per-channel shader it is known by
+  (dmnsgn glsl-tone-map). Greys did not move; colours moved by up to 0.78. It is now per
+  channel, equal to that shader to 9e-16, and 0.18 maps to 0.267 exactly (suites 10 and
+  262). The "AMD Cauldron" attribution was wrong (Cauldron's curve has other constants and
+  crosstalk) and is now Lottes, GDC 2016. The unclamped entry point keeps a floor at 0,
+  since the curve is a power of each channel.
+
+- **The ACES `sigmoid_shaper` stepped in the wrong place.** It read `|2x - 1|` and stepped
+  at `x = 0.5`, over saturation 0.4 to 0.6; the CTL (`ACESlib.RRT_Common.ctl`) steps from
+  -2 to 2, over saturation 0 to 0.8. `alwan_aces_glow03_{T}` and `_glow10_{T}` moved by up
+  to 2.5 % and 1.2 % and now equal OCIO's `ACES_GLOW_03` and `_10` to 1.1e-7, its float32
+  (suites 52 and 262). The ACES 1.x RRT uses the same glow: `alwan_aces1_output_transform`
+  moved by up to 0.0036 of code on dark, saturated colours, which suite 56 did not look at
+  below 0.05; it now compares down to 0.005.
+
+- **`alwan_aces_redmod03_{T}` skipped its hue restoration** when red moved by less than
+  1e-5, 3e-5 off OCIO. It now always restores hue, as OCIO does, and equals
+  `ACES_RED_MOD_03` to 1.5e-7. `alwan_aces_redmod03_inv_{T}` was a Newton iteration on an
+  approximate derivative that left 9.5e-6 of round trip; it is OCIO's closed-form quadratic,
+  equal to OCIO's inverse to 1.8e-7 and exact (3e-16) wherever every channel is
+  non-negative and red is at least 0.01. Below that the saturation weight's floors break the
+  quadratic in OCIO too, and alwan gives OCIO's answer.
+
+- **The ACES 1.x SDR inverse output transform failed near black.** The C9 inverse was a
+  Newton iteration that stepped into the flat extension below the spline's first knot, met
+  a zero derivative and stopped: Rec.709 codes of about 0.0004 to 0.019 came back as up to
+  half their scene value (code 0.015363 gave 1.6e-3, where OCIO and the CTL give 3.0e-3).
+  The C9 and C5 inverses are now the CTL's closed forms (`segmented_spline_c9_rev`,
+  `_c5_rev`). Every SDR preset round-trips code to scene to code within 1e-14 (3e-10 in the
+  deterministic build), and greys equal OCIO's inverse to 3.2e-4, the distance between
+  OCIO's fitted curves and the CTL splines (suites 56 and 262). DCDM keeps a residual of up
+  to 2.6e-5 on five of 2045 saturated blues whose AP1 goes negative. Where the inverse
+  already worked, results did not move beyond 1e-12.
+
+- **`alwan_table_interp_3d_trilinear_{T}` and `_tetrahedral_{T}` returned `ALWAN_E_RANGE`
+  for a NULL pointer** and wrapped their index clamp on a side of 1. Both are now
+  `ALWAN_E_INVALID`. The interpolation itself did not move: it equals OCIO's `Lut3DTransform`
+  to its float32 coordinate (1.3e-6 on a 17^3 cube, 2.4e-7 in f32; suite 262). The header
+  said the table was `table[r][g][b]`; it is R fastest, `table[b][g][r]`, the order of a
+  .cube file, and says so.
+
 - **`alwan_simulate_cvd_{T}` was not Brettel 1997.** It applied one projection per
   deficiency, the widely copied "daltonize" coefficients on a Hunt-Pointer-Estevez matrix,
   which is Vienot 1999's single-plane shortcut and wrong for tritanopia; on 8-bit sRGB it sat

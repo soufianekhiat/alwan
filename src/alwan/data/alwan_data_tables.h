@@ -124,6 +124,20 @@ enum {
 ALWAN_TABLE_EXTERN(alwan_table_agx_blender_cube, ALWAN_TABLE_AGX_BLENDER_CUBE_SIZE)
 #endif
 
+/* ---- tony_mcmapface_cube -- rank 3, 48^3 x 3, TRILINEAR --------------------
+ * Reader: tony_mcmapface_transform -> alwan_table3d_sample_trilinear
+ * Source: h3r2tic/tony-mc-mapface (MIT OR Apache-2.0, taken under MIT),
+ *         OCIO/lut-converter/tony_mc_mapface_f32.dds
+ *         via alwan_dev/gendata/data/tony_mcmapface.py
+ * Sampled at x / (x + 1); values are display-linear Rec.709. */
+enum {
+    ALWAN_TABLE_TONY_MCMAPFACE_CUBE_RES  = 48,
+    ALWAN_TABLE_TONY_MCMAPFACE_CUBE_SIZE = 48 * 48 * 48 * 3
+};
+#if ALWAN_TABLE_TONY_MCMAPFACE_CUBE
+ALWAN_TABLE_EXTERN(alwan_table_tony_mcmapface_cube, ALWAN_TABLE_TONY_MCMAPFACE_CUBE_SIZE)
+#endif
+
 /* ================================================================
  * HOMED HERE -- rank 3, PLANAR scalar cubes, B-fastest
  *

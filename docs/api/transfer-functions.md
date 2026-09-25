@@ -236,8 +236,8 @@ typedef enum {
     ALWAN_VIEW_KHRONOS_PBR_NEUTRAL, /* Khronos PBR Neutral (glTF/WebGL) */
     ALWAN_VIEW_REINHARD_EXT,        /* Reinhard Extended (luminance-based, Reinhard 2002) */
     ALWAN_VIEW_UCHIMURA,            /* Uchimura / Gran Turismo (parametric S-curve) */
-    ALWAN_VIEW_LOTTES,              /* Lottes / AMD Cauldron (parametric rational curve) */
-    ALWAN_VIEW_TONY_MCMAPFACE,      /* Somewhat Boring Display Transform (Stachowiak 2023) */
+    ALWAN_VIEW_LOTTES,              /* Lottes GDC 2016 rational curve, per channel */
+    ALWAN_VIEW_TONY_MCMAPFACE,      /* Tony McMapface (Stachowiak 2023): the author's 48^3 cube */
     ALWAN_VIEW_BT2446B_SDR_TO_HDR,  /* SDR to HDR in Method B's direction; alwan's own curve */
     ALWAN_VIEW_BT2446C_HDR_TO_SDR,  /* BT.2446-1 Method C: HLG to SDR */
     ALWAN_VIEW_BT2390_HDR_TO_SDR,   /* BT.2390 EETF (BT.2408-8 Annex 5): HDR to SDR */

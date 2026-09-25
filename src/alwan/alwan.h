@@ -762,8 +762,8 @@ typedef enum {
     ALWAN_VIEW_KHRONOS_PBR_NEUTRAL = 8, /* Khronos PBR Neutral tone mapping (glTF/WebGL) */
     ALWAN_VIEW_REINHARD_EXT = 9, /* Reinhard Extended (luminance-based, Reinhard 2002) */
     ALWAN_VIEW_UCHIMURA = 10, /* Uchimura / Gran Turismo (parametric S-curve) */
-    ALWAN_VIEW_LOTTES = 11, /* Lottes / AMD Cauldron (parametric rational curve) */
-    ALWAN_VIEW_TONY_MCMAPFACE = 12, /* Somewhat Boring Display Transform (Stachowiak 2023) */
+    ALWAN_VIEW_LOTTES = 11, /* Lottes GDC 2016 rational curve, per channel */
+    ALWAN_VIEW_TONY_MCMAPFACE = 12, /* Tony McMapface (Stachowiak 2023): the author's 48^3 LUT at x/(x+1) */
     ALWAN_VIEW_BT2446B_SDR_TO_HDR = 13, /* SDR to HDR in Method B's direction; alwan's own curve, not the Report's */
     ALWAN_VIEW_BT2446C_HDR_TO_SDR = 14, /* BT.2446-1 Method C: HLG R'G'B' (1000 cd/m2) to SDR R'G'B', alpha 0 */
     ALWAN_VIEW_BT2390_HDR_TO_SDR = 15, /* BT.2390 EETF (BT.2408-8 Annex 5) per PQ channel, 10000 to 100 cd/m2 */
@@ -1231,11 +1231,11 @@ alwan_status alwan_float_to_uint_f32(alwan_uint16 *out, alwan_f32 const *in, int
 alwan_status alwan_view_transform_apply_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 alwan_status alwan_view_transform_apply_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 /* Unclamped variant: the per-channel tone mappers (REINHARD_EXT, UCHIMURA,
- * LOTTES, TONY_MCMAPFACE, REINHARD_CALIBRATED, EXPOSURE) return the raw
+ * LOTTES, REINHARD_CALIBRATED, EXPOSURE) return the raw
  * operator output -- no display [0,1] clamp, out-of-gamut chroma preserved
  * (numerical pow-domain guards are retained where the math requires).
  * Transforms whose [0,1] output is definitional (AgX, ACES, BT.2446/2390,
- * PBR Neutral) return identical results through both entry points. */
+ * PBR Neutral, TONY_MCMAPFACE) return identical results through both entry points. */
 alwan_status alwan_view_transform_apply_unclamped_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 alwan_status alwan_view_transform_apply_unclamped_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 /* Bulk (map) variants of the view transform. The view workers are scalar, so
@@ -4758,7 +4758,8 @@ alwan_status alwan_illuminant_white_point_f32(alwan_xyz_f32 *out_xyz,
 /* SPD resampling method */
 typedef enum {
     ALWAN_RESAMPLE_LINEAR = 0,      /* Linear interpolation */
-    ALWAN_RESAMPLE_CATMULL_ROM = 1  /* Catmull-Rom spline (smoother) */
+    ALWAN_RESAMPLE_CATMULL_ROM = 1  /* uniform Catmull-Rom: cubic Hermite with central-difference
+                                       tangents, the outer taps repeated at the ends */
 } alwan_resample_method;
 
 /* SPD extrapolation mode (for values outside measured range) */
@@ -8966,11 +8967,13 @@ alwan_f32 alwan_table_interp_1d_f32(alwan_f32 const *table, size_t size,
 
 /* 3D Table Interpolation (Trilinear)
  * Interpolates RGB values from a 3D lookup table using trilinear method
- * table: 3D LUT array (R-major: table[r][g][b])
- * sizes: dimensions [size_r, size_g, size_b]
- * rgb_in: input RGB coordinates [0, 1] (normalized)
+ * table: 3D LUT of RGB triplets, R fastest: table[b][g][r][channel], index
+ *        ((b*size_g + g)*size_r + r)*3 + channel, the order of a .cube file
+ * sizes: dimensions [size_r, size_g, size_b], each at least 2
+ * rgb_in: input RGB coordinates [0, 1] (normalized, clamped; NaN reads as 0)
  * rgb_out: receives interpolated RGB values
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+ * Matches OCIO's Lut3DTransform to its float32 rounding (suite 262).
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on a NULL pointer or a side below 2 */
 alwan_status alwan_table_interp_3d_trilinear_f32(alwan_rgb_f32 *rgb_out,
                                      alwan_f32 const *table, size_t const sizes[3],
                                      alwan_rgb_f32 const *rgb_in);
@@ -8981,11 +8984,13 @@ alwan_status alwan_table_interp_3d_trilinear_f64(alwan_rgb_f64 *rgb_out,
 /* 3D Table Interpolation (Tetrahedral)
  * Interpolates RGB values from a 3D lookup table using tetrahedral method
  * Tetrahedral is more accurate than trilinear for color transforms
- * table: 3D LUT array (R-major: table[r][g][b])
- * sizes: dimensions [size_r, size_g, size_b]
- * rgb_in: input RGB coordinates [0, 1] (normalized)
+ * table: 3D LUT of RGB triplets, R fastest: table[b][g][r][channel], index
+ *        ((b*size_g + g)*size_r + r)*3 + channel, the order of a .cube file
+ * sizes: dimensions [size_r, size_g, size_b], each at least 2
+ * rgb_in: input RGB coordinates [0, 1] (normalized, clamped; NaN reads as 0)
  * rgb_out: receives interpolated RGB values
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+ * Matches OCIO's Lut3DTransform to its float32 rounding (suite 262).
+ * Returns ALWAN_OK on success, ALWAN_E_INVALID on a NULL pointer or a side below 2 */
 alwan_status alwan_table_interp_3d_tetrahedral_f32(alwan_rgb_f32 *rgb_out,
                                        alwan_f32 const *table, size_t const sizes[3],
                                        alwan_rgb_f32 const *rgb_in);
@@ -10195,7 +10200,9 @@ alwan_status alwan_water_refractive_index_f32(float *n_out, float wavelength_nm,
  * Reference: OpenColorIO, Academy Color Encoding System
  * ---------------------------------------------------------------- */
 
-/* ACES RedMod03 - Red channel modification (RRT v0.3) */
+/* ACES RedMod03 - Red channel modification (RRT v0.3). The fixed functions below
+ * work in ACES2065-1 (AP0) linear and are held to OCIO's FixedFunctionTransform
+ * of the same name (suites 52 and 262). */
 void alwan_aces_redmod03_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_redmod03_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
 
@@ -10271,59 +10278,63 @@ void alwan_aces_blue_light_fix_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 con
 
 /**
  * @brief Inverse of Glow03 fixed function
- * @param rgb_out Output AP1 linear color
- * @param rgb_in Input AP1 linear color
- * @return ALWAN_OK on success
+ * @param rgb_out Output ACES2065-1 (AP0) linear, where the RRT applies it
+ * @param rgb_in Input ACES2065-1 (AP0) linear
  */
 void alwan_aces_glow03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_glow03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
 
 /**
  * @brief Inverse of Glow10 fixed function
- * @param rgb_out Output AP1 linear color
- * @param rgb_in Input AP1 linear color
- * @return ALWAN_OK on success
+ * @param rgb_out Output ACES2065-1 (AP0) linear, where the RRT applies it
+ * @param rgb_in Input ACES2065-1 (AP0) linear
  */
 void alwan_aces_glow10_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_glow10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
 
 /**
- * @brief Inverse of RedMod03 fixed function
- * @param rgb_out Output AP1 linear color
- * @param rgb_in Input AP1 linear color
- * @return ALWAN_OK on success
+ * @brief Inverse of RedMod03 fixed function: OCIO's closed form. Exact where every
+ * channel is non-negative and red is at least 0.01; elsewhere the saturation
+ * weight's floors break its quadratic, and it gives OCIO's answer.
+ * @param rgb_out Output ACES2065-1 (AP0) linear, where the RRT applies it
+ * @param rgb_in Input ACES2065-1 (AP0) linear
  */
 void alwan_aces_redmod03_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_redmod03_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
 
 /**
  * @brief Inverse of RedMod10 fixed function
- * @param rgb_out Output AP1 linear color
- * @param rgb_in Input AP1 linear color
- * @return ALWAN_OK on success
+ * @param rgb_out Output ACES2065-1 (AP0) linear, where the RRT applies it
+ * @param rgb_in Input ACES2065-1 (AP0) linear
  */
 void alwan_aces_redmod10_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_redmod10_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
 
 /**
- * @brief ACES 1.0 Look LMT - emulates ACES 1.0 look with ACES 1.0.3+ RRT
+ * @brief Swaps the ACES 1.x RRT's sweeteners for the ACES 0.x ones, in ACES2065-1
  *
- * This LMT applies the difference between ACES 1.0 and ACES 1.0.3+ rendering.
- * Use this when you want images processed with ACES 1.0.3+ (or later) RRT
- * to have the look of ACES 1.0.
+ * Undoes Glow10 and RedMod10 and applies Glow03 and RedMod03, in that order
+ * (Glow10 inverse, Glow03, RedMod10 inverse, RedMod03). Placed before an ACES 1.x
+ * RRT, the RRT's own Glow10 and RedMod10 then cancel and the glow and red
+ * modifier of ACES 0.x are what remain. Each step is held to OCIO's
+ * FixedFunction of the same name; the composition is alwan's.
  *
- * @param rgb_out Output AP1 linear color with ACES 1.0 look applied
- * @param rgb_in Input AP1 linear color
- * @return ALWAN_OK on success
+ * It is not an aces-dev transform. The Academy's own emulation of the earlier
+ * look, LMT.Academy.ACES_0_1_1.ctl ("ACES 1.0 to 0.1 emulation"), is a 65^3
+ * LUT that also moves the tone scale, and this does not reproduce it.
+ *
+ * @param rgb_out Output ACES2065-1 (AP0) linear
+ * @param rgb_in Input ACES2065-1 (AP0) linear
  */
 void alwan_aces_look_1_0_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_look_1_0_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
 
 /**
- * @brief Inverse of ACES 1.0 Look LMT
- * @param rgb_out Output AP1 linear color
- * @param rgb_in Input AP1 linear color (with ACES 1.0 look)
- * @return ALWAN_OK on success
+ * @brief Inverse of alwan_aces_look_1_0: RedMod03 inverse, RedMod10, Glow03
+ * inverse, Glow10. Exact to the inverses it is built from; RedMod03's is
+ * OCIO's closed form, which assumes red is at least 0.01.
+ * @param rgb_out Output ACES2065-1 (AP0) linear
+ * @param rgb_in Input ACES2065-1 (AP0) linear
  */
 void alwan_aces_look_1_0_inv_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in);
 void alwan_aces_look_1_0_inv_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in);
