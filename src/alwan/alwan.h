@@ -2775,6 +2775,15 @@ alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
  *                               Suen 1984, as scikit-image's skeletonize
  *   ALWAN_MORPHOLOGY_THIN       the same by Guo and Hall 1989, as scikit-image's thin, which
  *                               can stop after iterations passes (0: until nothing changes)
+ *   ALWAN_MORPHOLOGY_H_MAXIMA   1 on every maximum that stands h or more above the lowest
+ *                               level at which it joins a higher one, else 0: the image less
+ *                               its reconstruction by dilation from image - h, compared with
+ *                               h, as scikit-image's h_maxima
+ *   ALWAN_MORPHOLOGY_H_MINIMA   the same for minima (reconstruction by erosion from image + h)
+ *   ALWAN_MORPHOLOGY_LOCAL_MAXIMA 1 on every plateau (equal pixels joined through the
+ *                               element) whose neighbours outside it are all lower, else 0,
+ *                               as scikit-image's local_maxima
+ *   ALWAN_MORPHOLOGY_LOCAL_MINIMA the same for minima
  *
  * The element sits with its anchor, (kernel_width / 2, kernel_height / 2), on the pixel and
  * is used as given (not reflected); pixels outside the image take no part; iterations
@@ -2788,11 +2797,20 @@ alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 
  * where scikit-image returns 0. FILL_HOLES is scikit-image's reconstruction by erosion from
  * the border (suite 220); its connectivity is that of the paths. SKELETONIZE and THIN
  * treat each channel as a mask, non-zero the shape; a removed pixel becomes 0 and a kept one
- * keeps its value; pixel for pixel with scikit-image (suite 237). The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
+ * keeps its value; pixel for pixel with scikit-image (suite 237). H_MAXIMA and H_MINIMA take
+ * the element as scikit-image's footprint (values flow from p to p + d for its offsets d),
+ * build the shifted seed in the data's own arithmetic (float32 for float32, h rounded to
+ * float32; the resolution term 2 finfo.resolution |x| for floats; a saturating shift for 8-bit
+ * data and a whole h, a fractional h taking 8-bit data to float64), and mark nothing when h
+ * exceeds the channel's range; LOCAL_MAXIMA and LOCAL_MINIMA need a 3 x 3 element (the default
+ * 3 x 3 RECT is scikit-image's full connectivity, CROSS its 4-connectivity) and let a plateau
+ * touch the edge unless exclude_borders is set or it lies at the channel's lowest (highest)
+ * value; all four are pixel for pixel with scikit-image (suite 250). The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
  * rectangle once, an area of 64 or a diameter of 8, 4-connected. ALWAN_E_INVALID for a NULL, a zero size, a
  * channel count out of range, a stride too small, a NaN, a connectivity other than 4 or 8,
- * or an unknown method or shape; ALWAN_E_RANGE for an element over 255 a side or more than
- * 1000 iterations. */
+ * or an unknown method or shape, h 0 for H_MAXIMA and H_MINIMA, or an element other than 3 x 3
+ * for LOCAL_MAXIMA and LOCAL_MINIMA; ALWAN_E_RANGE for an element over 255 a side, more than
+ * 1000 iterations or a negative h. */
 typedef enum {
     ALWAN_MORPHOLOGY_ERODE = 0,
     ALWAN_MORPHOLOGY_DILATE = 1,
@@ -2807,7 +2825,11 @@ typedef enum {
     ALWAN_MORPHOLOGY_DIAMETER_CLOSE = 10,
     ALWAN_MORPHOLOGY_FILL_HOLES = 11,
     ALWAN_MORPHOLOGY_SKELETONIZE = 12,
-    ALWAN_MORPHOLOGY_THIN = 13
+    ALWAN_MORPHOLOGY_THIN = 13,
+    ALWAN_MORPHOLOGY_H_MAXIMA = 14,
+    ALWAN_MORPHOLOGY_H_MINIMA = 15,
+    ALWAN_MORPHOLOGY_LOCAL_MAXIMA = 16,
+    ALWAN_MORPHOLOGY_LOCAL_MINIMA = 17
 } alwan_morphology_method;
 
 /* The structuring elements, OpenCV's getStructuringElement and its numbering. */
@@ -2831,11 +2853,76 @@ typedef struct {
     unsigned connectivity;         /* AREA_*, DIAMETER_*, FILL_HOLES: 4 or 8 neighbours; 0 reads as 4 */
     size_t diameter_threshold;     /* DIAMETER_OPEN, DIAMETER_CLOSE: the shortest bounding-box side kept, in
                                     * pixels, as the longer of width and height; 0 reads as 8 */
+    double h;                      /* H_MAXIMA, H_MINIMA: the least dynamic marked, in the data's units;
+                                    * required, 0 is refused as scikit-image refuses it */
+    int exclude_borders;           /* LOCAL_MAXIMA, LOCAL_MINIMA: non-zero never marks a plateau touching
+                                    * the edge (scikit-image's allow_borders=False); 0 allows it */
 } alwan_morphology_params;
 
 alwan_status alwan_morphology_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
 alwan_status alwan_morphology_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
 alwan_status alwan_morphology_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
+
+/* Grey-level reconstruction: the seed dilated (eroded) through the structuring element over
+ * and over, never above (below) the mask, until nothing changes, as scikit-image's
+ * morphology.reconstruction computes it (suite 250). Each of 1 to 4 channels on its own;
+ * out may be seed. The element comes from params as alwan_morphology's (kernel, or shape
+ * with kernel_width x kernel_height, 3 x 3 RECT by default, scikit-image's default); its
+ * anchor (kernel_width / 2, kernel_height / 2) is scikit-image's offset, values flow from p
+ * to p + d for every other cell d of it, and pixels outside the image take no part. The
+ * result is made of the seed's and the mask's values, so it is exact in any type.
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
+ * small, a NaN or an unknown method or shape; ALWAN_E_RANGE for a seed above the mask
+ * (DILATION) or below it (EROSION), or an element over 255 a side. */
+typedef enum {
+    ALWAN_RECONSTRUCT_DILATION = 0,   /* bright regions of the seed spread under the mask */
+    ALWAN_RECONSTRUCT_EROSION = 1     /* dark regions of the seed spread over the mask */
+} alwan_reconstruct_method;
+
+alwan_status alwan_reconstruct_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *seed, size_t seed_row_stride, alwan_f32 const *mask, size_t mask_row_stride, size_t channels, size_t width, size_t height, alwan_reconstruct_method method, alwan_morphology_params const *params);
+alwan_status alwan_reconstruct_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *seed, size_t seed_row_stride, alwan_f64 const *mask, size_t mask_row_stride, size_t channels, size_t width, size_t height, alwan_reconstruct_method method, alwan_morphology_params const *params);
+alwan_status alwan_reconstruct_u8(unsigned char *out, size_t out_row_stride, unsigned char const *seed, size_t seed_row_stride, unsigned char const *mask, size_t mask_row_stride, size_t channels, size_t width, size_t height, alwan_reconstruct_method method, alwan_morphology_params const *params);
+
+/* Peaks: the local maxima of a single-channel image as (row, column) pairs, highest first,
+ * as scikit-image's feature.peak_local_max finds them (suite 250). A candidate equals the
+ * maximum of the footprint around it (scipy's maximum_filter, mode 'nearest': the footprint
+ * as given, centred at (height / 2, width / 2)) and lies above the threshold; an image where
+ * every pixel is a candidate has none. The border strip is dropped, the candidates are sorted
+ * by value (ties in raster order) and, when min_distance is above 1, kept greedily in that
+ * order, each dropping every later one closer than min_distance in the p-norm. With labels,
+ * each region (label > 0) is searched on its own within its bounding box, the rest of the
+ * box set to the type's lowest value, and the regions' lists are joined in label order; when
+ * num_peaks cuts that list it is sorted again by the image's values. On float32 the threshold
+ * is compared rounded to float32; on 8-bit data the sort follows scikit-image's negated
+ * uint8, in which a 0 wraps to the top (it matters only below a threshold under 1).
+ *
+ * peaks receives up to capacity pairs and count how many there are; ALWAN_E_RANGE, with count
+ * set, when they do not fit. ALWAN_E_INVALID for a NULL count, a NULL peaks with a capacity,
+ * a zero size, a stride too small, a NaN, a negative label, a p_norm under 1 or an empty
+ * footprint; ALWAN_E_RANGE for a footprint over 4096 a side. */
+typedef struct {
+    size_t min_distance;           /* peaks closer than this are thinned, and the default footprint is
+                                    * 2 min_distance + 1 square; 0 reads as 1 */
+    int threshold_abs_given;       /* non-zero: threshold_abs is the least value of a peak; 0: the image's minimum */
+    double threshold_abs;
+    int threshold_rel_given;       /* non-zero: the threshold is at least threshold_rel times the image's maximum */
+    double threshold_rel;
+    int exclude_border_given;      /* 0: a border of min_distance on both axes (scikit-image's True);
+                                    * non-zero: exclude_border_rows and _cols, 0 for none */
+    size_t exclude_border_rows, exclude_border_cols;
+    size_t num_peaks;              /* the most peaks returned, highest first; 0: all */
+    unsigned char const *footprint; /* footprint_width x footprint_height bytes, non-zero where it takes part;
+                                    * NULL: the square above */
+    size_t footprint_width, footprint_height;
+    int const *labels;             /* NULL, or width x height region numbers, 0 the background */
+    size_t labels_row_stride;      /* bytes */
+    size_t num_peaks_per_label;    /* with labels: the most peaks per region; 0: all */
+    double p_norm;                 /* the spacing's Minkowski norm, 1 or more; 0 reads as infinity (Chebyshev) */
+} alwan_peak_params;
+
+alwan_status alwan_peak_local_max_f32(size_t *peaks, size_t capacity, size_t *count, alwan_f32 const *src, size_t row_stride, size_t width, size_t height, alwan_peak_params const *params);
+alwan_status alwan_peak_local_max_f64(size_t *peaks, size_t capacity, size_t *count, alwan_f64 const *src, size_t row_stride, size_t width, size_t height, alwan_peak_params const *params);
+alwan_status alwan_peak_local_max_u8(size_t *peaks, size_t capacity, size_t *count, unsigned char const *src, size_t row_stride, size_t width, size_t height, alwan_peak_params const *params);
 
 /* Background estimation: the slowly varying background of an image, to subtract (or divide)
  * out uneven illumination: a scanned print or film frame lit unevenly, a copy stand's

@@ -1396,6 +1396,9 @@ EXPORTS
     alwan_pattern_render_f64
     alwan_pattern_render_planar_f32
     alwan_pattern_render_planar_f64
+    alwan_peak_local_max_f32
+    alwan_peak_local_max_f64
+    alwan_peak_local_max_u8
     alwan_photometer_f1_prime_f32
     alwan_photometer_f1_prime_f64
     alwan_photometer_mismatch_correction_f32
@@ -1510,6 +1513,9 @@ EXPORTS
     alwan_rayleigh_spd_f64
     alwan_rec2100_surround_f32
     alwan_rec2100_surround_f64
+    alwan_reconstruct_f32
+    alwan_reconstruct_f64
+    alwan_reconstruct_u8
     alwan_region_props_f32
     alwan_region_props_f64
     alwan_region_props_u8

@@ -2,6 +2,12 @@
 
 ### Fixed: output differs
 
+- **`ALWAN_MORPHOLOGY_AREA_OPEN`, `AREA_CLOSE`, `DIAMETER_OPEN` and `DIAMETER_CLOSE` ran
+  the skeleton.** Adding `SKELETONIZE` and `THIN` put their cases between the four
+  connected operators and the block that runs them, so from that commit the four fell
+  through to the skeleton: a grey image came back as a thinned mask of its non-zero
+  pixels. Their cases are back with their own block (suites 219 and 220).
+
 - **CSS Color 4 gamut mapping collapsed chroma toward grey.** `alwan_css_gamut_space_{T}`
   and the core search behind `alwan_css_gamut_{T}_map_*` lowered the upper bound in both
   arms of the JND test and never raised the lower one, so the result was the first of
@@ -434,6 +440,16 @@
   along, and compared six of them. Both now compare the seventh.
 
 ### Added
+
+- **Peaks, reconstruction, h- and local extrema: `alwan_peak_local_max_{T}`,
+  `alwan_reconstruct_{T}`, `ALWAN_MORPHOLOGY_H_MAXIMA`, `H_MINIMA`, `LOCAL_MAXIMA`,
+  `LOCAL_MINIMA`.** The local maxima of an image as coordinates, highest first, with
+  scikit-image's thresholds, border strip, greedy spacing in any p-norm, footprints, labels
+  and peak counts; grey reconstruction by dilation or erosion through any element (Vincent's
+  hybrid); maxima and minima of a least dynamic; plateau maxima and minima. Every peak list,
+  reconstruction and map identical to scikit-image's `peak_local_max`, `reconstruction`,
+  `h_maxima`, `h_minima`, `local_maxima` and `local_minima` on 478 cases in f64, f32 and 8
+  bits (suite 250).
 
 - **Iso-contours and polygon simplification: `alwan_find_contours_{T}`,
   `alwan_approximate_polygon`.** The lines along which an image crosses a level, by

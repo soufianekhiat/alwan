@@ -701,7 +701,9 @@ typedef enum {
     ALWAN_MORPHOLOGY_AREA_OPEN = 7, ALWAN_MORPHOLOGY_AREA_CLOSE = 8,
     ALWAN_MORPHOLOGY_DIAMETER_OPEN = 9, ALWAN_MORPHOLOGY_DIAMETER_CLOSE = 10,
     ALWAN_MORPHOLOGY_FILL_HOLES = 11,
-    ALWAN_MORPHOLOGY_SKELETONIZE = 12, ALWAN_MORPHOLOGY_THIN = 13
+    ALWAN_MORPHOLOGY_SKELETONIZE = 12, ALWAN_MORPHOLOGY_THIN = 13,
+    ALWAN_MORPHOLOGY_H_MAXIMA = 14, ALWAN_MORPHOLOGY_H_MINIMA = 15,
+    ALWAN_MORPHOLOGY_LOCAL_MAXIMA = 16, ALWAN_MORPHOLOGY_LOCAL_MINIMA = 17
 } alwan_morphology_method;
 
 typedef enum {
@@ -736,6 +738,8 @@ speckle off a hard key and closes its pinholes. Each channel on its own; `out` m
 | `area_threshold` | 64: `AREA_OPEN` and `AREA_CLOSE`, the smallest region kept, in pixels |
 | `connectivity` | 4: `AREA_*`, `DIAMETER_*` and `FILL_HOLES`, 4 or 8 neighbours |
 | `diameter_threshold` | 8: `DIAMETER_OPEN` and `DIAMETER_CLOSE`, the shortest region kept, as the longer side of its bounding box |
+| `h` | required for `H_MAXIMA` and `H_MINIMA`: 0 is refused, as scikit-image refuses it |
+| `exclude_borders` | 0: `LOCAL_MAXIMA` and `LOCAL_MINIMA` may mark a plateau touching the edge |
 
 The element's anchor is `(kernel_width / 2, kernel_height / 2)`, off centre for an even
 size, and the element is used as given, not reflected, for dilation as for erosion. Pixels
@@ -812,6 +816,146 @@ v0.26.0 (BSD); Guo and Hall's two tables are built from the conditions as scikit
 generator builds them. Suite 237 holds both pixel for pixel on five masks (blobs with holes,
 block letters, a disc and a ring, a diagonal band, shapes on the image's border) and `THIN`
 stopped after one and three passes, in f64, f32, 8 bits and as one channel of three.
+
+### `H_MAXIMA`, `H_MINIMA`
+
+A maximum's dynamic is how far one has to go down from it before reaching somewhere higher.
+`H_MAXIMA` marks with 1 every pixel of a maximum whose dynamic is `h` or more, and 0
+elsewhere: the peaks that stand out by at least `h`, however wide, with noise ripples below
+`h` ignored. It is the image less its reconstruction by dilation from the image lowered by
+`h`, compared with `h` (Soille 2003), which is how scikit-image's `h_maxima` computes it;
+`H_MINIMA` is the same for minima, by erosion from the image raised by `h`. The element is the
+reconstruction's footprint (below), 3 x 3 `RECT` by default.
+
+The shifted image is built in the data's own arithmetic, as scikit-image builds it: in float32
+for float32, with `h` rounded to float32 as NumPy rounds a Python float against a float32
+array; minus (plus) scikit-image's allowance `2 * finfo.resolution * |x|` for floats, so a
+maximum of dynamic exactly `h` is not lost to rounding; by a saturating subtraction (addition)
+for 8-bit data with a whole `h`. A fractional `h` takes 8-bit data to float64, as scikit-image
+does. An `h` greater than a channel's range marks nothing in it. Suite 250 holds both to
+scikit-image pixel for pixel: smooth fields, integer terrain, plateaus and isolated peaks, at
+three dynamics each, with the square and the cross, in f64, f32 and 8 bits.
+
+### `LOCAL_MAXIMA`, `LOCAL_MINIMA`
+
+Every plateau (a set of equal pixels joined through the element) whose neighbours outside it
+are all lower (higher), marked 1; everything else 0. A single pixel is a plateau of one, and a
+flat top of any size and shape is found whole. The element must be 3 x 3: the default `RECT`
+is scikit-image's full connectivity, `CROSS` its 4-connectivity. With `exclude_borders` 0 a
+plateau may touch the edge, except one at the channel's lowest (highest) value, which
+scikit-image's padding with the minimum makes equal to the outside; with `exclude_borders` set
+a plateau touching the edge is never marked, and an image under 3 pixels a side has none.
+This is scikit-image's `local_maxima` and `local_minima` (on 8-bit data `local_minima` inverts
+as `255 - x`, which orders pixels as negation does), pixel for pixel in suite 250, including
+a constant image (nothing) and a two-row one.
+
+### Reconstruction: `alwan_reconstruct_{T}`
+
+```c
+typedef enum {
+    ALWAN_RECONSTRUCT_DILATION = 0,
+    ALWAN_RECONSTRUCT_EROSION = 1
+} alwan_reconstruct_method;
+
+alwan_status alwan_reconstruct_{T}(alwan_{T} *out, size_t out_row_stride,
+                                   alwan_{T} const *seed, size_t seed_row_stride,
+                                   alwan_{T} const *mask, size_t mask_row_stride,
+                                   size_t channels, size_t width, size_t height,
+                                   alwan_reconstruct_method method,
+                                   alwan_morphology_params const *params);
+alwan_status alwan_reconstruct_u8(...);   /* same, unsigned char pixels */
+```
+
+Grey-level reconstruction: the seed dilated through the element over and over, never above
+the mask, until nothing changes (`DILATION`), or eroded and never below it (`EROSION`). Every
+bright region of the seed floods the part of the mask it is connected to, up to the mask's own
+level; a mask region the seed does not touch sinks to the seed. With the image as the mask
+and a lowered copy as the seed it removes peaks lower than the lowering (the h-dome); with a
+seed that is the image on the border and its maximum inside, by erosion, it fills holes
+(`FILL_HOLES` computes that case by a priority flood). Each channel on its own; `out` may be
+`seed`.
+
+The element comes from `params` as the morphology family's (`kernel`, or `shape` with its
+size, 3 x 3 `RECT` by default, which is scikit-image's default footprint). Its anchor
+`(kernel_width / 2, kernel_height / 2)` is scikit-image's offset; values flow from `p` to
+`p + d` for each other cell `d`, as scikit-image moves them, so an asymmetric element is taken
+the same way; pixels outside the image take no part. The result is made of the seed's and
+the mask's own values, so it is exact in every type. It is computed by Vincent's hybrid
+algorithm (1993): one raster pass, one anti-raster pass, then a queue from every pixel that
+can still raise a neighbour. scikit-image sorts all pixels and walks a linked list; the fixed
+point is unique, and suite 250 finds the two identical on every case: dilation and erosion,
+the square, the cross, a 5 x 5 block and an asymmetric 3 x 3 element, in f64, f32 and 8 bits.
+An even-sized element takes its anchor as above; scikit-image cannot be given one (its
+`offset` check compares the offset's dimensions with the footprint's and always refuses), so
+that case has no oracle.
+
+`ALWAN_E_RANGE` for a seed above the mask when dilating or below it when eroding, as
+scikit-image raises; `ALWAN_E_INVALID` for a NaN, a NULL, a zero size or an unknown method.
+
+## Peaks
+
+```c
+typedef struct {
+    size_t min_distance;                     /* 0 reads as 1 */
+    int threshold_abs_given; double threshold_abs;
+    int threshold_rel_given; double threshold_rel;
+    int exclude_border_given;
+    size_t exclude_border_rows, exclude_border_cols;
+    size_t num_peaks;                        /* 0: all */
+    unsigned char const *footprint;          /* NULL: (2 min_distance + 1) square */
+    size_t footprint_width, footprint_height;
+    int const *labels; size_t labels_row_stride;
+    size_t num_peaks_per_label;              /* 0: all */
+    double p_norm;                           /* 0 reads as infinity */
+} alwan_peak_params;
+
+alwan_status alwan_peak_local_max_{T}(size_t *peaks, size_t capacity, size_t *count,
+                                      alwan_{T} const *src, size_t row_stride,
+                                      size_t width, size_t height,
+                                      alwan_peak_params const *params);
+alwan_status alwan_peak_local_max_u8(...);   /* same, unsigned char pixels */
+```
+
+The local maxima of a single-channel image as `(row, column)` pairs, highest first:
+scikit-image's `feature.peak_local_max`, peak for peak. The corner and ridge maps, a
+distance transform or a blurred blob response become points this way. A pixel is a
+candidate when it equals the maximum of the footprint around it (scipy's `maximum_filter`
+with mode `nearest`: the footprint as given, centred at `(height / 2, width / 2)`, the edge
+repeated) and lies above the threshold: `threshold_abs`, or the image's minimum, raised to
+`threshold_rel` times its maximum when that is given. An image in which every pixel is a
+candidate, a flat one, has no peaks. A strip `min_distance` wide along the border is dropped
+unless `exclude_border_given` sets the rows and columns to drop (0 for none).
+
+The candidates are sorted by value, ties in raster order, and when `min_distance` is above 1
+they are kept greedily in that order: each keeps its place unless it lies closer than
+`min_distance`, in the `p_norm`, to a peak already kept. That is scikit-image's
+`ensure_spacing`, whose batches of 50 and more reduce to the same greedy pass. On a plateau
+this keeps one pixel per `min_distance`, not the plateau's centre. `num_peaks` then cuts the
+list.
+
+With `labels`, each region (a label above 0) is searched on its own inside its bounding box,
+with the rest of the box set to the type's lowest value: a region's peak is its own maximum
+even where a neighbouring region is higher. A region whose every pixel is a candidate keeps
+its isolated pixels (those its opening by the 3 x 3 cross removes), as scikit-image keeps
+them. The regions' lists are joined in label order, `num_peaks_per_label` each; when
+`num_peaks` cuts the joined list it is sorted again by the image's values. As in
+scikit-image, the border strip clears the labels only for finding each region's box, so a
+box that reaches into the strip can still hold a peak there.
+
+Three details keep the lists identical to scikit-image's. On float32 the threshold is
+compared rounded to float32, which is what NumPy does with a Python float against a float32
+array, and `threshold_rel` times the maximum is a float32 product. On 8-bit data the sort
+follows scikit-image's `argsort(-image)`, in which a negated 0 wraps to the top: it matters
+only with a threshold under 1. And the spacing takes a point on an axis at exactly its
+offset in any p-norm: for p = 3, `pow(pow(4, 3), 1 / 3)` falls one unit in the last place
+short of 4 and would thin a peak that scipy's `cdist` keeps.
+
+`peaks` receives up to `capacity` pairs and `count` how many there are; `ALWAN_E_RANGE`, with
+`count` set, when they do not fit, so a first call with no room sizes the buffer. Suite 250
+holds 185 cases to scikit-image, every coordinate equal: smooth fields, isolated and paired
+blobs, plateaus and integer terrain full of ties, every parameter, three p-norms, an
+asymmetric and an even footprint, labels with all their options, 8-bit data with the wrap,
+and a flat image with and without labels.
 
 ## Thresholds
 

@@ -39,6 +39,12 @@
  * ends at the least, over paths to the border, of the highest value along the path, which
  * is the reconstruction by erosion of the image from a seed that is the image on the border
  * and its maximum inside, as scikit-image's morphology.reconstruction computes it.
+ *
+ * alwan_reconstruct_{T} is that reconstruction in general, by dilation or erosion from a
+ * caller's seed under a caller's mask through the element, as scikit-image's
+ * reconstruction (suite 250). H_MAXIMA and H_MINIMA build on it as scikit-image's h_maxima
+ * and h_minima; LOCAL_MAXIMA and LOCAL_MINIMA are its plateau test, local_maxima and
+ * local_minima.
  */
 
 #include "../alwan.h"
@@ -401,6 +407,263 @@ static alwan_status alwan_mo_skeleton(double *a, size_t w, size_t h, size_t ch, 
     return ALWAN_OK;
 }
 
+/* The element's offsets for reconstruction and the extrema: (row, column) of every non-zero
+ * cell less the anchor, the anchor itself left out. Returns their count. */
+static size_t alwan_mo_offsets(long *off, unsigned char const *el, size_t kw, size_t kh) {
+    long const ax = (long)(kw / 2), ay = (long)(kh / 2);
+    size_t i, j, k = 0;
+    for (i = 0; i < kh; i++)
+        for (j = 0; j < kw; j++) {
+            if (!el[i * kw + j] || ((long)i == ay && (long)j == ax)) continue;
+            off[2 * k] = (long)i - ay;
+            off[2 * k + 1] = (long)j - ax;
+            k++;
+        }
+    return k;
+}
+
+/* Grey reconstruction by dilation of one w x h plane: rec (the seed on entry, at or below
+ * mask everywhere) grows to the least fixed point of rec = min(mask, max(rec, max over the
+ * offsets d of rec(q - d))), values flowing from p to p + d as scikit-image's
+ * reconstruction moves them. Vincent's hybrid (1993): a raster pass taking the offsets that
+ * point forward, an anti-raster pass the ones that point back, then a FIFO from every pixel
+ * that can still raise a neighbour. The fixed point is unique, whatever the order;
+ * scikit-image reaches it through a sorted linked list. q (w h entries) and inq (w h bytes)
+ * are workspace. */
+static void alwan_mo_reconstruct_plane(double *rec, double const *mask, size_t w, size_t h, long const *off, size_t no,
+                                       size_t *q, unsigned char *inq) {
+    size_t const n = w * h;
+    size_t head = 0, tail = 0, used = 0, k, x, y;
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+            size_t const p = y * w + x;
+            double v = rec[p];
+            for (k = 0; k < no; k++) {
+                long const dr = off[2 * k], dc = off[2 * k + 1];
+                long sy, sx;
+                if (!(dr > 0 || (dr == 0 && dc > 0))) continue;   /* the source q - d comes earlier */
+                sy = (long)y - dr;
+                sx = (long)x - dc;
+                if (sy < 0 || sx < 0 || sy >= (long)h || sx >= (long)w) continue;
+                if (rec[(size_t)sy * w + (size_t)sx] > v) v = rec[(size_t)sy * w + (size_t)sx];
+            }
+            rec[p] = v < mask[p] ? v : mask[p];
+        }
+    for (y = h; y-- > 0;)
+        for (x = w; x-- > 0;) {
+            size_t const p = y * w + x;
+            double v = rec[p];
+            for (k = 0; k < no; k++) {
+                long const dr = off[2 * k], dc = off[2 * k + 1];
+                long sy, sx;
+                if (!(dr < 0 || (dr == 0 && dc < 0))) continue;   /* the source comes later */
+                sy = (long)y - dr;
+                sx = (long)x - dc;
+                if (sy < 0 || sx < 0 || sy >= (long)h || sx >= (long)w) continue;
+                if (rec[(size_t)sy * w + (size_t)sx] > v) v = rec[(size_t)sy * w + (size_t)sx];
+            }
+            rec[p] = v < mask[p] ? v : mask[p];
+        }
+    memset(inq, 0, n);
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) {
+            size_t const p = y * w + x;
+            for (k = 0; k < no; k++) {
+                long const sy = (long)y + off[2 * k], sx = (long)x + off[2 * k + 1];
+                size_t r;
+                if (sy < 0 || sx < 0 || sy >= (long)h || sx >= (long)w) continue;
+                r = (size_t)sy * w + (size_t)sx;
+                if (rec[r] < rec[p] && rec[r] < mask[r]) {
+                    q[tail] = p;
+                    tail = (tail + 1) % n;
+                    used++;
+                    inq[p] = 1;
+                    break;
+                }
+            }
+        }
+    while (used) {
+        size_t const p = q[head], py = p / w, px = p % w;
+        head = (head + 1) % n;
+        used--;
+        inq[p] = 0;
+        for (k = 0; k < no; k++) {
+            long const sy = (long)py + off[2 * k], sx = (long)px + off[2 * k + 1];
+            size_t r;
+            if (sy < 0 || sx < 0 || sy >= (long)h || sx >= (long)w) continue;
+            r = (size_t)sy * w + (size_t)sx;
+            if (rec[r] < rec[p] && rec[r] < mask[r]) {
+                rec[r] = rec[p] < mask[r] ? rec[p] : mask[r];
+                if (!inq[r]) {
+                    q[tail] = r;
+                    tail = (tail + 1) % n;
+                    used++;
+                    inq[r] = 1;
+                }
+            }
+        }
+    }
+}
+
+/* Reconstruction of every channel: rec holds the seed, mk the mask, both w x h x ch
+ * interleaved; by erosion when erode is set (negated, reconstructed by dilation and negated
+ * back, which is exact). */
+static alwan_status alwan_mo_reconstruct(double *rec, double const *mk, size_t w, size_t h, size_t ch, long const *off,
+                                         size_t no, int erode) {
+    size_t const n = w * h;
+    double *r = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * sizeof(double)), sizeof(double));
+    size_t *q = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(size_t)), sizeof(size_t));
+    unsigned char *inq = (unsigned char *)ALWAN_ALLOC(n, 1);
+    size_t c, i;
+    if (!r || !q || !inq) {
+        ALWAN_FREE(r);
+        ALWAN_FREE(q);
+        ALWAN_FREE(inq);
+        return ALWAN_E_NOMEM;
+    }
+    for (c = 0; c < ch; c++) {
+        double *m = r + n;
+        for (i = 0; i < n; i++) {
+            r[i] = erode ? -rec[i * ch + c] : rec[i * ch + c];
+            m[i] = erode ? -mk[i * ch + c] : mk[i * ch + c];
+        }
+        alwan_mo_reconstruct_plane(r, m, w, h, off, no, q, inq);
+        for (i = 0; i < n; i++) rec[i * ch + c] = erode ? -r[i] : r[i];
+    }
+    ALWAN_FREE(r);
+    ALWAN_FREE(q);
+    ALWAN_FREE(inq);
+    return ALWAN_OK;
+}
+
+/* H_MAXIMA (minima 0) or H_MINIMA of every channel, in place: 1 where a maximum (minimum)
+ * of dynamic h or more, else 0, as scikit-image's h_maxima and h_minima. The shifted seed
+ * is built in the image's own arithmetic: float32 for float32 (h rounded to float32, as NumPy
+ * does with a Python float), less (plus) the resolution term 2 * finfo.resolution * |x| for
+ * floats, a saturating shift for 8-bit data and an integral h; a fractional h takes 8-bit
+ * data to float64. An h above the channel's range marks nothing. */
+static alwan_status alwan_mo_hextrema(double *a, size_t w, size_t h, size_t ch, long const *off, size_t no, double hv,
+                                      int minima, int kind) {
+    size_t const n = w * h;
+    double *s = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * ch * sizeof(double)), sizeof(double));
+    unsigned char none[4];
+    int const integral = kind == 2 && hv == floor(hv);
+    float const hf = (float)hv;
+    size_t c, i;
+    alwan_status st;
+    if (!s) return ALWAN_E_NOMEM;
+    for (c = 0; c < ch; c++) {
+        double lo = DBL_MAX, hi = -DBL_MAX;
+        for (i = 0; i < n; i++) {
+            double const x = a[i * ch + c];
+            if (x < lo) lo = x;
+            if (x > hi) hi = x;
+        }
+        none[c] = (unsigned char)(kind == 1 ? hf > (float)hi - (float)lo : hv > hi - lo);
+        for (i = 0; i < n; i++) {
+            double const x = a[i * ch + c];
+            double sh;
+            if (none[c]) {
+                sh = x;   /* seed equal to the mask: nothing to reconstruct */
+            } else if (integral) {
+                sh = minima ? (x > 255.0 - hv ? 255.0 : x + hv) : (x < hv ? 0.0 : x - hv);
+            } else if (kind == 1) {
+                float const xf = (float)x, res = (2.0f * 1e-6f) * (xf < 0.0f ? -xf : xf);
+                sh = minima ? (double)((float)(xf + hf) + res) : (double)((float)(xf - hf) - res);
+            } else {
+                double const res = 2e-15 * fabs(x);
+                sh = minima ? (x + hv) + res : (x - hv) - res;
+            }
+            s[i * ch + c] = sh;
+            s[n * ch + i * ch + c] = x;
+        }
+    }
+    st = alwan_mo_reconstruct(s, s + n * ch, w, h, ch, off, no, minima);
+    if (st != ALWAN_OK) {
+        ALWAN_FREE(s);
+        return st;
+    }
+    for (c = 0; c < ch; c++) {
+        for (i = 0; i < n; i++) {
+            double const x = a[i * ch + c], r = s[i * ch + c];
+            int on;
+            if (none[c]) {
+                on = 0;
+            } else if (kind == 1) {
+                float const res = minima ? (float)r - (float)x : (float)x - (float)r;
+                on = res >= hf;
+            } else {
+                on = (minima ? r - x : x - r) >= hv;
+            }
+            a[i * ch + c] = on ? 1.0 : 0.0;
+        }
+    }
+    ALWAN_FREE(s);
+    return ALWAN_OK;
+}
+
+/* LOCAL_MAXIMA (minima 0) or LOCAL_MINIMA of every channel, in place: 1 on every plateau,
+ * a set of equal pixels joined through the element, whose neighbours outside it are all
+ * lower (higher), else 0, as scikit-image's local_maxima and local_minima. With borders
+ * allowed a plateau may touch the edge unless it is at the channel's lowest (highest)
+ * value, which scikit-image's padding equals; with exclude_borders a plateau touching the
+ * edge is never one, and a channel under 3 pixels a side has none. */
+static alwan_status alwan_mo_local_extrema(double *a, size_t w, size_t h, size_t ch, long const *off, size_t no, int minima,
+                                           int exclude) {
+    size_t const n = w * h;
+    size_t *q = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(size_t)), sizeof(size_t));
+    unsigned char *seen = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size(n, 2), 1);
+    double *f = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
+    size_t c, i, k;
+    if (!q || !seen || !f) {
+        ALWAN_FREE(q);
+        ALWAN_FREE(seen);
+        ALWAN_FREE(f);
+        return ALWAN_E_NOMEM;
+    }
+    for (c = 0; c < ch; c++) {
+        unsigned char *res = seen + n;
+        double lo = DBL_MAX;
+        for (i = 0; i < n; i++) {
+            f[i] = minima ? -a[i * ch + c] : a[i * ch + c];
+            if (f[i] < lo) lo = f[i];
+        }
+        memset(seen, 0, 2 * n);
+        if (!(exclude && (w < 3 || h < 3))) {
+            for (i = 0; i < n; i++) {
+                size_t len = 0, at = 0;
+                int higher = 0, border = 0;
+                double const v = f[i];
+                if (seen[i]) continue;
+                seen[i] = 1;
+                q[len++] = i;
+                while (at < len) {
+                    size_t const p = q[at++], py = p / w, px = p % w;
+                    if (py == 0 || px == 0 || py + 1 == h || px + 1 == w) border = 1;
+                    for (k = 0; k < no; k++) {
+                        long const sy = (long)py + off[2 * k], sx = (long)px + off[2 * k + 1];
+                        size_t r;
+                        if (sy < 0 || sx < 0 || sy >= (long)h || sx >= (long)w) continue;
+                        r = (size_t)sy * w + (size_t)sx;
+                        if (f[r] > v) higher = 1;
+                        else if (f[r] == v && !seen[r]) {
+                            seen[r] = 1;
+                            q[len++] = r;
+                        }
+                    }
+                }
+                if (!higher && !(border && (exclude || v <= lo)))
+                    for (k = 0; k < len; k++) res[q[k]] = 1;
+            }
+        }
+        for (i = 0; i < n; i++) a[i * ch + c] = res[i] ? 1.0 : 0.0;
+    }
+    ALWAN_FREE(q);
+    ALWAN_FREE(seen);
+    ALWAN_FREE(f);
+    return ALWAN_OK;
+}
+
 static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_morphology_method method, alwan_morphology_params const *params,
                                  int kind /* 0 f64, 1 f32, 2 u8 */) {
@@ -415,7 +678,12 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
     size_t x, y, i;
     if (!out || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / ch / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_THIN) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_LOCAL_MINIMA) return ALWAN_E_INVALID;
+    if ((method == ALWAN_MORPHOLOGY_H_MAXIMA || method == ALWAN_MORPHOLOGY_H_MINIMA) &&
+        (p->h == 0.0 || !(p->h == p->h))) return ALWAN_E_INVALID;   /* h = 0 is ambiguous, as scikit-image says */
+    if ((method == ALWAN_MORPHOLOGY_H_MAXIMA || method == ALWAN_MORPHOLOGY_H_MINIMA) && p->h < 0.0) return ALWAN_E_RANGE;
+    if ((method == ALWAN_MORPHOLOGY_LOCAL_MAXIMA || method == ALWAN_MORPHOLOGY_LOCAL_MINIMA) && (kw != 3 || kh != 3))
+        return ALWAN_E_INVALID;   /* scikit-image centres the footprint at (1, 1) */
     if (p->connectivity != 0 && p->connectivity != 4 && p->connectivity != 8) return ALWAN_E_INVALID;
     if (!p->kernel && (unsigned)p->shape > (unsigned)ALWAN_MORPHOLOGY_DIAMOND) return ALWAN_E_INVALID;
     if (kw > 255 || kh > 255 || iterations > 1000) return ALWAN_E_RANGE;
@@ -466,10 +734,6 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
         alwan_mo_repeat(b, t, w, h, ch, el, kw, kh, 0, iterations);   /* b: eroded */
         for (i = 0; i < n; i++) a[i] = a[i] - b[i];
         break;
-    case ALWAN_MORPHOLOGY_AREA_OPEN:
-    case ALWAN_MORPHOLOGY_AREA_CLOSE:
-    case ALWAN_MORPHOLOGY_DIAMETER_OPEN:
-    case ALWAN_MORPHOLOGY_DIAMETER_CLOSE:
     case ALWAN_MORPHOLOGY_SKELETONIZE:
     case ALWAN_MORPHOLOGY_THIN: {
         alwan_status const st = alwan_mo_skeleton(a, w, h, ch, method == ALWAN_MORPHOLOGY_THIN, p->iterations);
@@ -479,6 +743,32 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
         }
         break;
     }
+    case ALWAN_MORPHOLOGY_H_MAXIMA:
+    case ALWAN_MORPHOLOGY_H_MINIMA:
+    case ALWAN_MORPHOLOGY_LOCAL_MAXIMA:
+    case ALWAN_MORPHOLOGY_LOCAL_MINIMA: {
+        long *off = (long *)ALWAN_ALLOC(alwan_safe_array_size(kw * kh, 2 * sizeof(long)), sizeof(long));
+        size_t no;
+        alwan_status st;
+        if (!off) {
+            ALWAN_FREE(a);
+            return ALWAN_E_NOMEM;
+        }
+        no = alwan_mo_offsets(off, el, kw, kh);
+        st = method == ALWAN_MORPHOLOGY_H_MAXIMA || method == ALWAN_MORPHOLOGY_H_MINIMA
+                 ? alwan_mo_hextrema(a, w, h, ch, off, no, p->h, method == ALWAN_MORPHOLOGY_H_MINIMA, kind)
+                 : alwan_mo_local_extrema(a, w, h, ch, off, no, method == ALWAN_MORPHOLOGY_LOCAL_MINIMA, p->exclude_borders);
+        ALWAN_FREE(off);
+        if (st != ALWAN_OK) {
+            ALWAN_FREE(a);
+            return st;
+        }
+        break;
+    }
+    case ALWAN_MORPHOLOGY_AREA_OPEN:
+    case ALWAN_MORPHOLOGY_AREA_CLOSE:
+    case ALWAN_MORPHOLOGY_DIAMETER_OPEN:
+    case ALWAN_MORPHOLOGY_DIAMETER_CLOSE:
     case ALWAN_MORPHOLOGY_FILL_HOLES: {
         int const diameter = method == ALWAN_MORPHOLOGY_DIAMETER_OPEN || method == ALWAN_MORPHOLOGY_DIAMETER_CLOSE;
         alwan_status const st =
@@ -528,5 +818,95 @@ alwan_status alwan_morphology_f32(alwan_f32 *out, size_t out_row_stride, alwan_f
                                   size_t channels, size_t width, size_t height, alwan_morphology_method method,
                                   alwan_morphology_params const *params) {
     return alwan_mo_run(out, out_row_stride, src, src_row_stride, channels, width, height, method, params, 1);
+}
+#endif
+
+static alwan_status alwan_rc_run(void *out, size_t out_rs, void const *seed, size_t seed_rs, void const *mask, size_t mask_rs,
+                                 size_t ch, size_t w, size_t h, alwan_reconstruct_method method,
+                                 alwan_morphology_params const *params, int kind /* 0 f64, 1 f32, 2 u8 */) {
+    alwan_morphology_params const zero = { 0 };
+    alwan_morphology_params const *p = params ? params : &zero;
+    size_t const elem = kind == 0 ? sizeof(alwan_f64) : kind == 1 ? sizeof(alwan_f32) : 1u;
+    size_t const kw = p->kernel_width ? p->kernel_width : 3, kh = p->kernel_height ? p->kernel_height : 3;
+    size_t const n = w * h * ch;
+    double *a, *b;
+    unsigned char *el;
+    long *off;
+    size_t x, y, i, no;
+    alwan_status st;
+    if (!out || !seed || !mask || w == 0 || h == 0 || ch == 0 || ch > 4 || n / ch / w != h) return ALWAN_E_INVALID;
+    if (seed_rs / elem / ch < w || mask_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_RECONSTRUCT_EROSION) return ALWAN_E_INVALID;
+    if (!p->kernel && (unsigned)p->shape > (unsigned)ALWAN_MORPHOLOGY_DIAMOND) return ALWAN_E_INVALID;
+    if (kw > 255 || kh > 255) return ALWAN_E_RANGE;
+    a = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * sizeof(double)) + kw * kh * (1 + 2 * sizeof(long)), sizeof(double));
+    if (!a) return ALWAN_E_NOMEM;
+    b = a + n;
+    off = (long *)(b + n);
+    el = (unsigned char *)(off + 2 * kw * kh);
+    if (p->kernel) {
+        for (i = 0; i < kw * kh; i++) el[i] = (unsigned char)(p->kernel[i] != 0);
+    } else {
+        alwan_mo_element(el, kw, kh, p->shape);
+    }
+    for (y = 0; y < h; y++) {
+        char const *rs = (char const *)seed + y * seed_rs, *rm = (char const *)mask + y * mask_rs;
+        for (x = 0; x < w * ch; x++) {
+            double const s = kind == 0 ? ((alwan_f64 const *)rs)[x] : kind == 1 ? (double)((alwan_f32 const *)rs)[x]
+                                                                                : (double)((unsigned char const *)rs)[x];
+            double const m = kind == 0 ? ((alwan_f64 const *)rm)[x] : kind == 1 ? (double)((alwan_f32 const *)rm)[x]
+                                                                                : (double)((unsigned char const *)rm)[x];
+            if (!(s == s) || !(m == m)) {
+                ALWAN_FREE(a);
+                return ALWAN_E_INVALID;
+            }
+            /* by dilation the seed may not rise above the mask, by erosion not fall below it */
+            if (method == ALWAN_RECONSTRUCT_DILATION ? s > m : s < m) {
+                ALWAN_FREE(a);
+                return ALWAN_E_RANGE;
+            }
+            a[y * w * ch + x] = s;
+            b[y * w * ch + x] = m;
+        }
+    }
+    no = alwan_mo_offsets(off, el, kw, kh);
+    st = alwan_mo_reconstruct(a, b, w, h, ch, off, no, method == ALWAN_RECONSTRUCT_EROSION);
+    if (st == ALWAN_OK) {
+        for (y = 0; y < h; y++) {
+            char *row = (char *)out + y * out_rs;
+            for (x = 0; x < w * ch; x++) {
+                double const v = a[y * w * ch + x];   /* a value of the seed or the mask: exact in their type */
+                if (kind == 0) ((alwan_f64 *)row)[x] = v;
+                else if (kind == 1) ((alwan_f32 *)row)[x] = (alwan_f32)v;
+                else ((unsigned char *)row)[x] = (unsigned char)v;
+            }
+        }
+    }
+    ALWAN_FREE(a);
+    return st;
+}
+
+alwan_status alwan_reconstruct_u8(unsigned char *out, size_t out_row_stride, unsigned char const *seed, size_t seed_row_stride,
+                                  unsigned char const *mask, size_t mask_row_stride, size_t channels, size_t width, size_t height,
+                                  alwan_reconstruct_method method, alwan_morphology_params const *params) {
+    return alwan_rc_run(out, out_row_stride, seed, seed_row_stride, mask, mask_row_stride, channels, width, height, method,
+                        params, 2);
+}
+
+#if ALWAN_WITH_F64_FACADE
+alwan_status alwan_reconstruct_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *seed, size_t seed_row_stride,
+                                   alwan_f64 const *mask, size_t mask_row_stride, size_t channels, size_t width, size_t height,
+                                   alwan_reconstruct_method method, alwan_morphology_params const *params) {
+    return alwan_rc_run(out, out_row_stride, seed, seed_row_stride, mask, mask_row_stride, channels, width, height, method,
+                        params, 0);
+}
+#endif
+
+#if ALWAN_WITH_F32
+alwan_status alwan_reconstruct_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *seed, size_t seed_row_stride,
+                                   alwan_f32 const *mask, size_t mask_row_stride, size_t channels, size_t width, size_t height,
+                                   alwan_reconstruct_method method, alwan_morphology_params const *params) {
+    return alwan_rc_run(out, out_row_stride, seed, seed_row_stride, mask, mask_row_stride, channels, width, height, method,
+                        params, 1);
 }
 #endif
