@@ -715,6 +715,17 @@
 #define ALWAN_ROUND_F64(x)     round(x)
 #define ALWAN_TRUNC_F64(x)     trunc(x)
 #define ALWAN_FMOD_F64(x, y)   fmod(x, y)
+#define ALWAN_HYPOT_F64(x, y)  hypot(x, y)
+#define ALWAN_COSH_F64(x)      cosh(x)
+#define ALWAN_SINH_F64(x)      sinh(x)
+/* x to an integer power n. libm's pow in ordinary builds, so the bits do not move; the
+ * deterministic build multiplies (alwan_det_powi_f64), which is exact where
+ * alwan_det_pow_pos is not: a negative or zero base, and x^0 = 1 for x = 0. */
+#define ALWAN_POWI_F64(x, n)   pow((x), (double)(n))
+/* fma is correctly rounded by C99 and IEEE 754, so it is the same on every platform and
+ * the deterministic build keeps it; ALWAN_FMA, by contrast, becomes a*b + c there. Use this
+ * where a result must match a fused reference (numpy's BLAS, for one). */
+#define ALWAN_FMA_CR_F64(a, b, c) fma((a), (b), (c))
 
 /* Precision-specific literals */
 #define ALWAN_LITERAL_F32(x) x##f

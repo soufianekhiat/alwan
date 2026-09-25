@@ -147,7 +147,7 @@ static alwan_status alwan_dm_fit_core(double *tone /* 12 */, double *matrix /* 9
         alwan_display_gog_eval_f64(&f1, &fit, 1.0);
         if (!((double)f1 > (double)f0)) { st = ALWAN_E_RANGE; break; }
         s = 1.0 / ((double)f1 - (double)f0);
-        k = pow(s, 1.0 / (double)fit.gamma);
+        k = ALWAN_POW_F64(s, 1.0 / (double)fit.gamma);
         tone[c * 4 + 0] = (double)fit.gain * k;
         tone[c * 4 + 1] = (double)fit.offset * k;
         tone[c * 4 + 2] = (double)fit.gamma;

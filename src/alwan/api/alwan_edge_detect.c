@@ -111,7 +111,7 @@ static alwan_status alwan_ed_canny(unsigned char *edges, size_t edges_rs, double
         double s;
         for (i = 0; i <= 2 * lw; i++) {
             long const xi = (long)i - (long)lw;
-            wts[i] = exp(a * (double)(xi * xi));
+            wts[i] = ALWAN_EXP_F64(a * (double)(xi * xi));
         }
         s = alwan_ed_sum(wts, 2 * lw + 1);
         for (i = 0; i <= 2 * lw; i++) wts[i] = wts[i] / s;
@@ -135,7 +135,7 @@ static alwan_status alwan_ed_canny(unsigned char *edges, size_t edges_rs, double
     alwan_ed_corr(is, tmp, h, w, w, 1, s3, 1, 1, 1, f32, ext);
     for (i = 0; i < n; i++) {
         double const m = alwan_ed_r(alwan_ed_r(is[i] * is[i], f32) + alwan_ed_r(js[i] * js[i], f32), f32);
-        mag[i] = alwan_ed_r(sqrt(m), f32);
+        mag[i] = alwan_ed_r(ALWAN_SQRT_F64(m), f32);
     }
     /* non-maximum suppression, scikit-image's Cython */
     for (y = 0; y < h; y++) {
@@ -148,8 +148,8 @@ static alwan_status alwan_ed_canny(unsigned char *edges, size_t edges_rs, double
             lm[o] = 0.0;
             if (y == 0 || x == 0 || y + 1 == h || x + 1 == w || !(m >= (double)low_f)) continue;
             if (!c1 && !c2) continue;
-            ai = fabs(gi);
-            aj = fabs(gj);
+            ai = ALWAN_ABS_F64(gi);
+            aj = ALWAN_ABS_F64(gj);
             if (c1) {
                 if (ai > aj) {
                     wt = alwan_ed_r(aj / ai, f32);

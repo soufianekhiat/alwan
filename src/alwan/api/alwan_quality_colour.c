@@ -429,7 +429,7 @@ alwan_status alwan__cie2017_compute(alwan_tm30_f64 *spec, alwan_spd_f64 const *t
         /* The grid is the test's own interval when that is 1 or 5 nm, as colour works; any
          * other spacing is read at 1 nm, where colour refuses it. */
         double const ds = ((double)test_spd->wavelength_max - (double)test_spd->wavelength_min) / (double)(test_spd->count - 1);
-        int const step = fabs(ds - 5.0) < 1e-9 ? 5 : 1;
+        int const step = ALWAN_ABS_F64(ds - 5.0) < 1e-9 ? 5 : 1;
         int const n = step == 5 ? Q_CFI_N5 : Q_CFI_N1;
         double const *tcs = step == 5 ? q_tcs_5nm : q_tcs_1nm;
         double S[Q_CFI_N1], Sr[Q_CFI_N1], X[3], cct = 0.0, duv = 0.0;

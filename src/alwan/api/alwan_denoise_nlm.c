@@ -43,7 +43,7 @@ static double alwan_nlm_fast_exp(double y) {
 }
 
 static double alwan_nlm_exp(double y, int fast) {
-    return fast ? alwan_nlm_fast_exp(y) : exp(y);
+    return fast ? alwan_nlm_fast_exp(y) : ALWAN_EXP_F64(y);
 }
 
 static double alwan_nlm_r(double x, int f32) {
@@ -183,7 +183,7 @@ static alwan_status alwan_nlm_buades(double *res, double const *img, size_t w, s
         for (j = 0; j < s; j++) {
             double const r = (double)((long)i - (long)offset), q = (double)((long)j - (long)offset);
             double const e = alwan_nlm_r(-alwan_nlm_r(alwan_nlm_r(r * r, f32) + alwan_nlm_r(q * q, f32), f32) / two_a2, f32);
-            wk[i * s + j] = f32 ? (double)expf((float)e) : exp(e);
+            wk[i * s + j] = f32 ? (double)ALWAN_EXP_F32((float)e) : ALWAN_EXP_F64(e);
         }
     sum = alwan_nlm_r(0.0 + alwan_nlm_pairwise(wk, s * s, f32), f32);
     scale = alwan_nlm_r(1.0 / alwan_nlm_r(alwan_nlm_r(alwan_nlm_r((double)ch * sum, f32) * alwan_nlm_r(hh, f32), f32) * alwan_nlm_r(hh, f32), f32), f32);

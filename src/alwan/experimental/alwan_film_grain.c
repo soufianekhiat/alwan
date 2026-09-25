@@ -69,14 +69,14 @@ static double alwan__grain_uniform(alwan__grain_rng *g) {
 
 static double alwan__grain_normal(alwan__grain_rng *g) {
     double const u1 = alwan__grain_uniform(g), u2 = alwan__grain_uniform(g);
-    return sqrt(-2.0 * log(u1)) * cos(6.283185307179586 * u2);
+    return ALWAN_SQRT_F64(-2.0 * ALWAN_LN_F64(u1)) * ALWAN_COS_F64(6.283185307179586 * u2);
 }
 
 /* Poisson by Knuth's product for small means, a rounded normal past 40. */
 static unsigned alwan__grain_poisson(alwan__grain_rng *g, double lambda) {
     if (lambda <= 0.0) return 0;
     if (lambda < 40.0) {
-        double const L = exp(-lambda);
+        double const L = ALWAN_EXP_F64(-lambda);
         double p = alwan__grain_uniform(g);
         unsigned k = 0;
         while (p > L) {
@@ -85,7 +85,7 @@ static unsigned alwan__grain_poisson(alwan__grain_rng *g, double lambda) {
         }
         return k;
     } else {
-        double const v = lambda + sqrt(lambda) * alwan__grain_normal(g);
+        double const v = lambda + ALWAN_SQRT_F64(lambda) * alwan__grain_normal(g);
         return v < 0.0 ? 0u : (unsigned)(v + 0.5);
     }
 }

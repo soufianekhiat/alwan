@@ -558,10 +558,10 @@ static void ALWAN_CORE_FNLIT(alwan__mesopic_iterate)(double *L_mes, double *m_ou
     double L = (m * L_p + (1.0 - m) * L_s * V0) / (m + (1.0 - m) * V0);
     int i;
     for (i = 0; i < 200; i++) {
-        double mn = L > 0.0 ? 0.767 + 0.3334 * log10(L) : 0.0;
+        double mn = L > 0.0 ? 0.767 + 0.3334 * ALWAN_LOG10_F64(L) : 0.0;
         mn = mn < 0.0 ? 0.0 : (mn > 1.0 ? 1.0 : mn);
         L = (mn * L_p + (1.0 - mn) * L_s * V0) / (mn + (1.0 - mn) * V0);
-        if (fabs(mn - m) <= 1e-15) { m = mn; break; }
+        if (ALWAN_ABS_F64(mn - m) <= 1e-15) { m = mn; break; }
         m = mn;
     }
     *L_mes = L;
@@ -658,7 +658,7 @@ static double ALWAN_CORE_FNLIT(alwan__spd_at)(ALWAN_CORE_SPD const *s, double wl
 /* CIE illuminant A, CIE 15:2018 equation 3.1, 100 at 560 nm, c2 = 1.435e7 nm K. */
 static double ALWAN_CORE_FNLIT(alwan__illuminant_a_formula)(double wl) {
     double const c2 = 1.435e7;
-    return 100.0 * pow(560.0 / wl, 5.0) * (exp(c2 / (2848.0 * 560.0)) - 1.0) / (exp(c2 / (2848.0 * wl)) - 1.0);
+    return 100.0 * ALWAN_POW_F64(560.0 / wl, 5.0) * (ALWAN_EXP_F64(c2 / (2848.0 * 560.0)) - 1.0) / (ALWAN_EXP_F64(c2 / (2848.0 * wl)) - 1.0);
 }
 
 static int ALWAN_CORE_FNLIT(alwan__spd_usable)(ALWAN_CORE_SPD const *s) {
@@ -689,7 +689,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_photometer_f1_prime)(ALWAN_CORE_T *f1_prime,
     for (i = 0; i < detector->count; i++) {
         double const wl = (double)detector->wavelength_min + (double)i * step;
         double const v = ALWAN_CORE_FNLIT(alwan__lef_or_zero)(wl, ALWAN_VISION_PHOTOPIC);
-        dev += fabs(k * (double)detector->values[i] - v);
+        dev += ALWAN_ABS_F64(k * (double)detector->values[i] - v);
     }
     *f1_prime = (ALWAN_CORE_T)(dev / v_sum);
     return ALWAN_OK;

@@ -52,8 +52,8 @@ static alwan_status alwan_tx_run(double *out, size_t out_rs, void const *src, si
     if (p->points > 31 || !(p->radius >= 0.0) || p->radius > 1e6) return ALWAN_E_RANGE;
     for (i = 0; i < P; i++) {
         double const a = 2.0 * pi * (double)i / (double)P;
-        rp[i] = alwan_tx_round5(-R * sin(a));
-        cp[i] = alwan_tx_round5(R * cos(a));
+        rp[i] = alwan_tx_round5(-R * ALWAN_SIN_F64(a));
+        cp[i] = alwan_tx_round5(R * ALWAN_COS_F64(a));
     }
     img = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
     if (!img) return ALWAN_E_NOMEM;
@@ -77,7 +77,7 @@ static alwan_status alwan_tx_run(double *out, size_t out_rs, void const *src, si
             for (i = 0; i < P; i++) {
                 /* scikit-image's bilinear_interpolation, mode 'C', cval 0 */
                 double const rr = (double)y + rp[i], cc = (double)x + cp[i];
-                long const minr = (long)floor(rr), minc = (long)floor(cc), maxr = (long)ceil(rr), maxc = (long)ceil(cc);
+                long const minr = (long)ALWAN_FLOOR_F64(rr), minc = (long)ALWAN_FLOOR_F64(cc), maxr = (long)ALWAN_CEIL_F64(rr), maxc = (long)ALWAN_CEIL_F64(cc);
                 double const dr = rr - (double)minr, dc = cc - (double)minc;
                 double const tl = alwan_tx_pix(img, h, w, minr, minc), tr = alwan_tx_pix(img, h, w, minr, maxc);
                 double const bl = alwan_tx_pix(img, h, w, maxr, minc), br = alwan_tx_pix(img, h, w, maxr, maxc);

@@ -145,7 +145,7 @@ static alwan_status alwan_cn_run(void *out, size_t out_rs, void const *src, size
             double s;
             for (i = 0; i <= 2 * lw; i++) {
                 long const xi = (long)i - (long)lw;
-                wts[i] = exp(g * (double)(xi * xi));
+                wts[i] = ALWAN_EXP_F64(g * (double)(xi * xi));
             }
             s = alwan_cn_sum(wts, 2 * lw + 1);
             for (i = 0; i <= 2 * lw; i++) wts[i] = wts[i] / s;
@@ -170,7 +170,7 @@ static alwan_status alwan_cn_run(void *out, size_t out_rs, void const *src, size
             case ALWAN_CORNER_SHI_TOMASI: {
                 double const d = alwan_cn_r(arr - acc, f32);
                 double const q = alwan_cn_r(alwan_cn_r(d * d, f32) + alwan_cn_r(4.0 * alwan_cn_r(arc * arc, f32), f32), f32);
-                res[i] = alwan_cn_r(alwan_cn_r(tr - alwan_cn_r(sqrt(q), f32), f32) / 2.0, f32);
+                res[i] = alwan_cn_r(alwan_cn_r(tr - alwan_cn_r(ALWAN_SQRT_F64(q), f32), f32) / 2.0, f32);
                 break;
             }
             default:   /* FOERSTNER */

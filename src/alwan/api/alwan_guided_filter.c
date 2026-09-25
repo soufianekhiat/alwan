@@ -141,7 +141,7 @@ alwan_status alwan__gf_run(void *out, size_t out_row_stride, void const *src, si
                 }
             }
             for (k = 0; k < 3; k++) det += cv[k][0] * adj[alwan_gf_sym(k, 0)];
-            if (eps < 1e-2 && fabs(det) < 1e-6) det = 1.0;
+            if (eps < 1e-2 && ALWAN_ABS_F64(det) < 1e-6) det = 1.0;
             for (k = 0; k < 6; k++) inv[(size_t)k * n + i] = adj[k] / det;
         }
     }

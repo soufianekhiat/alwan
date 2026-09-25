@@ -59,20 +59,20 @@ static void alwan_ct_to_lab(double lab[3], double const rgb[3]) {
     for (i = 0; i < 3; i++) {
         double lms = k_ct_m[3 * i] * rgb[0] + k_ct_m[3 * i + 1] * rgb[1] + k_ct_m[3 * i + 2] * rgb[2];
         if (!(lms > 1e-6)) lms = 1e-6;
-        lg[i] = log10(lms);
+        lg[i] = ALWAN_LOG10_F64(lms);
     }
-    lab[0] = (lg[0] + lg[1] + lg[2]) / sqrt(3.0);
-    lab[1] = (lg[0] + lg[1] - 2.0 * lg[2]) / sqrt(6.0);
-    lab[2] = (lg[0] - lg[1]) / sqrt(2.0);
+    lab[0] = (lg[0] + lg[1] + lg[2]) / ALWAN_SQRT_F64(3.0);
+    lab[1] = (lg[0] + lg[1] - 2.0 * lg[2]) / ALWAN_SQRT_F64(6.0);
+    lab[2] = (lg[0] - lg[1]) / ALWAN_SQRT_F64(2.0);
 }
 
 static void alwan_ct_from_lab(double rgb[3], double const lab[3], double const minv[9]) {
-    double const a = lab[0] * sqrt(3.0) / 3.0, b = lab[1] * sqrt(6.0) / 6.0, c = lab[2] * sqrt(2.0) / 2.0;
+    double const a = lab[0] * ALWAN_SQRT_F64(3.0) / 3.0, b = lab[1] * ALWAN_SQRT_F64(6.0) / 6.0, c = lab[2] * ALWAN_SQRT_F64(2.0) / 2.0;
     double lms[3];
     int i;
-    lms[0] = pow(10.0, a + b + c);
-    lms[1] = pow(10.0, a + b - c);
-    lms[2] = pow(10.0, a - 2.0 * b);
+    lms[0] = ALWAN_POW_F64(10.0, a + b + c);
+    lms[1] = ALWAN_POW_F64(10.0, a + b - c);
+    lms[2] = ALWAN_POW_F64(10.0, a - 2.0 * b);
     for (i = 0; i < 3; i++) rgb[i] = minv[3 * i] * lms[0] + minv[3 * i + 1] * lms[1] + minv[3 * i + 2] * lms[2];
 }
 
@@ -108,7 +108,7 @@ static int alwan_ct_stats(double mean[3], double sd[3], void const *rgb, size_t 
         alwan_ct_to_lab(lab, px);
         for (c = 0; c < 3; c++) q[c] += (lab[c] - mean[c]) * (lab[c] - mean[c]);
     }
-    for (c = 0; c < 3; c++) sd[c] = sqrt(q[c] / (double)count);
+    for (c = 0; c < 3; c++) sd[c] = ALWAN_SQRT_F64(q[c] / (double)count);
     return 1;
 }
 
@@ -162,8 +162,8 @@ static void alwan_mkl_jacobi(double a[16], double v[16], size_t n) {
                 double theta, t, c, s;
                 if (apq == 0.0) continue;
                 theta = (a[j * n + j] - a[i * n + i]) / (2.0 * apq);
-                t = (theta >= 0.0 ? 1.0 : -1.0) / (fabs(theta) + sqrt(theta * theta + 1.0));
-                c = 1.0 / sqrt(t * t + 1.0);
+                t = (theta >= 0.0 ? 1.0 : -1.0) / (ALWAN_ABS_F64(theta) + ALWAN_SQRT_F64(theta * theta + 1.0));
+                c = 1.0 / ALWAN_SQRT_F64(t * t + 1.0);
                 s = t * c;
                 for (k = 0; k < n; k++) { /* columns i and j */
                     double const aki = a[k * n + i], akj = a[k * n + j];
@@ -234,7 +234,7 @@ static alwan_status alwan_mkl_run(void *out, size_t out_stride, void const *src,
     }
     for (a = 0; a < n; a++) {
         double const l = sr[a * n + a] > 0.0 ? sr[a * n + a] : 0.0;
-        val_r[a] = sqrt(l);
+        val_r[a] = ALWAN_SQRT_F64(l);
         inv_r[a] = l > 1e-12 * big ? 1.0 / (val_r[a] + DBL_EPSILON) : 0.0;
     }
     /* C = D Vr' Sz Vr D, D = diag(sqrt l) */
@@ -259,7 +259,7 @@ static alwan_status alwan_mkl_run(void *out, size_t out_stride, void const *src,
             double s = 0.0;
             for (k = 0; k < n; k++) {
                 double const l = c[k * n + k] > 0.0 ? c[k * n + k] : 0.0;
-                s += vc[a * n + k] * sqrt(l) * vc[b * n + k];
+                s += vc[a * n + k] * ALWAN_SQRT_F64(l) * vc[b * n + k];
             }
             tmp[a * n + b] = inv_r[a] * s * inv_r[b];
         }

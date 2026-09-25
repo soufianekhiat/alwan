@@ -111,7 +111,7 @@ static alwan_status alwan_dt_edt(double *out, size_t out_rs, unsigned char const
     for (y = 0; y < h; y++) {
         double *orow = (double *)((char *)out + y * out_rs);
         alwan_dt_line(d, g + y * w, w, sx, v, z);
-        for (x = 0; x < w; x++) orow[x] = d[x] == HUGE_VAL ? HUGE_VAL : sqrt(d[x]);
+        for (x = 0; x < w; x++) orow[x] = d[x] == HUGE_VAL ? HUGE_VAL : ALWAN_SQRT_F64(d[x]);
     }
     ALWAN_FREE(g);
     ALWAN_FREE(v);

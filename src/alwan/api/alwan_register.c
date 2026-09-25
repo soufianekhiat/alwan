@@ -29,7 +29,7 @@
 #include <math.h>
 #include <string.h>
 
-static const double ALWAN_RG_PI = 3.14159265358979323846;
+static double const ALWAN_RG_PI = 3.14159265358979323846;
 
 /* fftfreq(n, d)[j]: j / (n d) for j < ceil(n / 2), (j - n) / (n d) after, as numpy. */
 static double alwan_rg_fftfreq(size_t j, size_t n, double d) {
@@ -112,7 +112,7 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
         double pr = sr[x] * tr[x] + si[x] * ti[x];
         double pi = si[x] * tr[x] - sr[x] * ti[x];
         if (phase) {
-            double m = sqrt(pr * pr + pi * pi);
+            double m = ALWAN_SQRT_F64(pr * pr + pi * pi);
             if (m < 100.0 * DBL_EPSILON) m = 100.0 * DBL_EPSILON;
             pr /= m;
             pi /= m;
@@ -127,7 +127,7 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
     {
         double bm = -1.0;
         for (x = 0; x < N; x++) {
-            double const m = hypot(tr[x], ti[x]);
+            double const m = ALWAN_HYPOT_F64(tr[x], ti[x]);
             if (m > bm) bm = m, best = x;
         }
     }
@@ -135,17 +135,17 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
     cc_im = ti[best] / (double)N;
     shift[0] = (double)(best / W);
     shift[1] = (double)(best % W);
-    if (shift[0] > trunc((double)H / 2.0)) shift[0] -= (double)H;
-    if (shift[1] > trunc((double)W / 2.0)) shift[1] -= (double)W;
+    if (shift[0] > ALWAN_TRUNC_F64((double)H / 2.0)) shift[0] -= (double)H;
+    if (shift[1] > ALWAN_TRUNC_F64((double)W / 2.0)) shift[1] -= (double)W;
 
     if (u == 1) {
         src_amp /= (double)N;
         tgt_amp /= (double)N;
     } else {
         double const uf = (double)u;
-        double const region_d = ceil(uf * 1.5);
+        double const region_d = ALWAN_CEIL_F64(uf * 1.5);
         size_t const R = (size_t)region_d;
-        double const dftshift = trunc(region_d / 2.0);
+        double const dftshift = ALWAN_TRUNC_F64(region_d / 2.0);
         double off[2];
         double *kr = NULL, *ki = NULL, *mr = NULL, *mi = NULL;
         size_t k, m, r, j;
@@ -167,8 +167,8 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
         for (k = 0; k < R; k++) {
             for (j = 0; j < W; j++) {
                 double const a = -2.0 * ALWAN_RG_PI * ((double)k - off[1]) * alwan_rg_fftfreq(j, W, uf);
-                kr[k * W + j] = cos(a);
-                ki[k * W + j] = sin(a);
+                kr[k * W + j] = ALWAN_COS_F64(a);
+                ki[k * W + j] = ALWAN_SIN_F64(a);
             }
         }
         for (k = 0; k < R; k++) {
@@ -188,8 +188,8 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
         for (m = 0; m < R; m++) {
             for (r = 0; r < H; r++) {
                 double const a = -2.0 * ALWAN_RG_PI * ((double)m - off[0]) * alwan_rg_fftfreq(r, H, uf);
-                kr[m * H + r] = cos(a);
-                ki[m * H + r] = sin(a);
+                kr[m * H + r] = ALWAN_COS_F64(a);
+                ki[m * H + r] = ALWAN_SIN_F64(a);
             }
         }
         for (m = 0; m < R; m++) {
@@ -202,7 +202,7 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
                     ai += qr * di + qi * dr;
                 }
                 ai = -ai;
-                mag = hypot(ar, ai);
+                mag = ALWAN_HYPOT_F64(ar, ai);
                 if (mag > bm) bm = mag, bk = k, bmm = m, cc_re = ar, cc_im = ai;
             }
         }
@@ -218,8 +218,8 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
     }
     out->shift[0] = shift[0];
     out->shift[1] = shift[1];
-    out->error = sqrt(fabs(1.0 - (cc_re * cc_re + cc_im * cc_im) / (src_amp * tgt_amp)));
-    out->phasediff = atan2(cc_im, cc_re);
+    out->error = ALWAN_SQRT_F64(ALWAN_ABS_F64(1.0 - (cc_re * cc_re + cc_im * cc_im) / (src_amp * tgt_amp)));
+    out->phasediff = ALWAN_ATAN2_F64(cc_im, cc_re);
 done:
     if (fw) alwan__fft_destroy(fw);
     if (fh) alwan__fft_destroy(fh);

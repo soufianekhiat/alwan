@@ -176,7 +176,7 @@ static alwan_status alwan__im_nrmse(double *out, void const *a, size_t ars, void
                 }
             if (norm == ALWAN_NRMSE_EUCLIDEAN) {
                 double const s = t == ALWAN__IM_F32 ? alwan__im_sum_chunked(d, n) : 0.0 + alwan__im_pairwise(d, n);
-                denom = sqrt(s / (double)n);
+                denom = ALWAN_SQRT_F64(s / (double)n);
             } else {
                 denom = (0.0 + alwan__im_pairwise(d, n)) / (double)n;
             }
@@ -184,7 +184,7 @@ static alwan_status alwan__im_nrmse(double *out, void const *a, size_t ars, void
         ALWAN_FREE(d);
     }
     if (!(denom != 0.0)) return ALWAN_E_RANGE;
-    *out = sqrt(mse) / denom;
+    *out = ALWAN_SQRT_F64(mse) / denom;
     return ALWAN_OK;
 }
 
@@ -262,7 +262,7 @@ static double alwan__im_entropy(double const *pk, size_t n, double *tmp) {
     size_t i;
     for (i = 0; i < n; i++) {
         double const p = 1.0 * pk[i] / s;
-        tmp[i] = p > 0.0 ? -p * log(p) : 0.0;
+        tmp[i] = p > 0.0 ? -p * ALWAN_LN_F64(p) : 0.0;
     }
     return 0.0 + alwan__im_pairwise(tmp, n);
 }

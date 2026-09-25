@@ -45,9 +45,9 @@ static size_t alwan_clahe_reflect101(size_t i, size_t n) {
 
 /* cvRound: nearest, ties to even. */
 static long alwan_clahe_round(float v) {
-    float f = floorf(v);
+    float f = ALWAN_FLOOR_F32(v);
     float const d = v - f;
-    if (d > 0.5f || (d == 0.5f && fmodf(f, 2.0f) != 0.0f)) f += 1.0f;
+    if (d > 0.5f || (d == 0.5f && ALWAN_FMOD_F32(f, 2.0f) != 0.0f)) f += 1.0f;
     return (long)f;
 }
 
@@ -139,7 +139,7 @@ alwan_status alwan__clahe_run(void *out, size_t out_row_stride, void const *src,
         float const inv_th = 1.0f / (float)(int)th;
         for (x = 0; x < w; x++) {
             float const txf = (float)(int)x * inv_tw - 0.5f;
-            long tx1 = (long)floorf(txf), tx2 = tx1 + 1;
+            long tx1 = (long)ALWAN_FLOOR_F32(txf), tx2 = tx1 + 1;
             xa[x] = txf - (float)tx1;
             xa[w + x] = 1.0f - xa[x];
             if (tx1 < 0) tx1 = 0;
@@ -151,7 +151,7 @@ alwan_status alwan__clahe_run(void *out, size_t out_row_stride, void const *src,
             char const *srow = (char const *)src + y * src_row_stride;
             char *orow = (char *)out + y * out_row_stride;
             float const tyf = (float)(int)y * inv_th - 0.5f;
-            long ty1 = (long)floorf(tyf), ty2 = ty1 + 1;
+            long ty1 = (long)ALWAN_FLOOR_F32(tyf), ty2 = ty1 + 1;
             float const ya = tyf - (float)ty1, ya1 = 1.0f - ya;
             unsigned short const *p1, *p2;
             if (ty1 < 0) ty1 = 0;

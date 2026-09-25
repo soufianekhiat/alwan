@@ -32,8 +32,8 @@
 #define TG_REGIONS 4
 
 void alwan_tonescale_grade_params_init(alwan_tonescale_grade_params *params) {
-    static const alwan_f64 pivot[TG_REGIONS] = { 0.1, 0.4, 0.5, 0.9 };
-    static const alwan_f64 slope[TG_REGIONS] = { -10.0, -5.0, 5.0, 10.0 };
+    static alwan_f64 const pivot[TG_REGIONS] = { 0.1, 0.4, 0.5, 0.9 };
+    static alwan_f64 const slope[TG_REGIONS] = { -10.0, -5.0, 5.0, 10.0 };
     int r;
     if (!params) return;
     for (r = 0; r < TG_REGIONS; r++) {

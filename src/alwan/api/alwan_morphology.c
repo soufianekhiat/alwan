@@ -76,9 +76,9 @@ static void alwan_mo_element(unsigned char *el, size_t kw, size_t kh, alwan_morp
         } else {   /* ELLIPSE */
             long const dy = (long)i - r;
             if (labs(dy) <= r) {
-                double const v = (double)c * sqrt((double)(r * r - dy * dy) * inv_r2);
-                double const fl = floor(v), d = v - fl;   /* saturate_cast<int> is cvRound: half to even */
-                long const dx = (long)((d > 0.5 || (d == 0.5 && fmod(fl, 2.0) != 0.0)) ? fl + 1.0 : fl);
+                double const v = (double)c * ALWAN_SQRT_F64((double)(r * r - dy * dy) * inv_r2);
+                double const fl = ALWAN_FLOOR_F64(v), d = v - fl;   /* saturate_cast<int> is cvRound: half to even */
+                long const dx = (long)((d > 0.5 || (d == 0.5 && ALWAN_FMOD_F64(fl, 2.0) != 0.0)) ? fl + 1.0 : fl);
                 j1 = c - dx > 0 ? c - dx : 0;
                 j2 = c + dx + 1 < (long)kw ? c + dx + 1 : (long)kw;
             }
@@ -547,7 +547,7 @@ static alwan_status alwan_mo_hextrema(double *a, size_t w, size_t h, size_t ch, 
     size_t const n = w * h;
     double *s = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * ch * sizeof(double)), sizeof(double));
     unsigned char none[4];
-    int const integral = kind == 2 && hv == floor(hv);
+    int const integral = kind == 2 && hv == ALWAN_FLOOR_F64(hv);
     float const hf = (float)hv;
     size_t c, i;
     alwan_status st;
@@ -571,7 +571,7 @@ static alwan_status alwan_mo_hextrema(double *a, size_t w, size_t h, size_t ch, 
                 float const xf = (float)x, res = (2.0f * 1e-6f) * (xf < 0.0f ? -xf : xf);
                 sh = minima ? (double)((float)(xf + hf) + res) : (double)((float)(xf - hf) - res);
             } else {
-                double const res = 2e-15 * fabs(x);
+                double const res = 2e-15 * ALWAN_ABS_F64(x);
                 sh = minima ? (x + hv) + res : (x - hv) - res;
             }
             s[i * ch + c] = sh;

@@ -122,8 +122,8 @@ static double alwan_lp_row_weight(size_t i, size_t h, alwan_hemisphere_illuminan
         /* np.linspace(0, 1, h) * np.pi, the last sample set to 1 exactly */
         double const t = h == 1 ? 0.0 : (i == h - 1 ? 1.0 : (double)i * (1.0 / (double)(h - 1)));
         double const theta = t * ALWAN_LP_PI;
-        double const c = cos(theta);
-        return c > 0.0 ? c * sin(theta) * 2.0 * (ALWAN_LP_PI * ALWAN_LP_PI) : 0.0;
+        double const c = ALWAN_COS_F64(theta);
+        return c > 0.0 ? c * ALWAN_SIN_F64(theta) * 2.0 * (ALWAN_LP_PI * ALWAN_LP_PI) : 0.0;
     } else {
         /* H pi (sin^2 th1 - sin^2 th0) over the band, clipped at the horizon, written as
          * sin(th1 + th0) sin(th1 - th0) to keep the difference accurate */
@@ -132,7 +132,7 @@ static double alwan_lp_row_weight(size_t i, size_t h, alwan_hemisphere_illuminan
         double t1 = (double)(i + 1) * ALWAN_LP_PI / (double)h;
         if (t0 >= half) return 0.0;
         if (t1 > half) t1 = half;
-        return (double)h * ALWAN_LP_PI * sin(t1 + t0) * sin(t1 - t0);
+        return (double)h * ALWAN_LP_PI * ALWAN_SIN_F64(t1 + t0) * ALWAN_SIN_F64(t1 - t0);
     }
 }
 
@@ -146,7 +146,7 @@ static alwan_status alwan_lp_illuminance(double *E, void const *src, size_t rs, 
         for (y = 0; y < h; y++) {
             double const t = h == 1 ? 0.0 : (y == h - 1 ? 1.0 : (double)y * (1.0 / (double)(h - 1)));
             double const theta = t * ALWAN_LP_PI;
-            double const c = cos(theta), s = sin(theta);
+            double const c = ALWAN_COS_F64(theta), s = ALWAN_SIN_F64(theta);
             if (!(c > 0.0)) continue;
             for (x = 0; x < w; x++) {
                 double const r = alwan_lp_read(src, rs, x * ch, y, kind);
@@ -220,13 +220,13 @@ static alwan_status alwan_lp_calibrate(void *out, size_t out_rs, void const *src
 static double alwan_lp_floordiv(double a, double b) {
     double mod, div, fl;
     if (b == 0.0) return a / b;
-    mod = fmod(a, b);
+    mod = ALWAN_FMOD_F64(a, b);
     div = (a - mod) / b;
     if (mod != 0.0) {
         if ((b < 0.0) != (mod < 0.0)) div -= 1.0;
     }
     if (div != 0.0) {
-        fl = floor(div);
+        fl = ALWAN_FLOOR_F64(div);
         if (div - fl > 0.5) fl += 1.0;
     } else {
         fl = copysign(0.0, a / b);
@@ -265,7 +265,7 @@ static double alwan_lp_q_direct(double const *Y, size_t W, size_t ya, size_t yb,
 /* Whether a centroid quotient lies so near a whole pixel that its floor depends on rounding. */
 static int alwan_lp_near_int(double num, double den) {
     double const t = num / den;
-    return fabs(t - floor(t + 0.5)) <= 1e-9 * (1.0 + fabs(t));
+    return ALWAN_ABS_F64(t - ALWAN_FLOOR_F64(t + 0.5)) <= 1e-9 * (1.0 + ALWAN_ABS_F64(t));
 }
 
 /* The same from moment sums: s0 = sum a, sr = sum a r, sc = sum a c, qq = sum a (r^2 + c^2).
@@ -283,7 +283,7 @@ static double alwan_lp_q_fast(double s0, double sr, double sc, double qq, int no
 
 /* Python's max(a, b) and the square root, both NaN-preserving as colour-hdri's are. */
 static double alwan_lp_pymax(double a, double b) { return b > a ? b : a; }
-static double alwan_lp_var(double q) { return q < 0.0 ? NAN : sqrt(q); }
+static double alwan_lp_var(double q) { return q < 0.0 ? NAN : ALWAN_SQRT_F64(q); }
 
 typedef struct {
     size_t y0, y1, x0, x1;
@@ -348,7 +348,7 @@ static alwan_status alwan_lp_split(alwan_lp_region *out, double const *Y, size_t
     AT = PA[w]; RT = PR[w]; C1T = PC1[w]; QT = PQ[w];
     BT = QB[h]; CT = QC[h]; R1T = QR1[h]; QQT = QQ[h];
     (void)BT;
-    scale = fabs(QT) + ((double)w * (double)w + (double)h * (double)h) * fabs(AT);
+    scale = ALWAN_ABS_F64(QT) + ((double)w * (double)w + (double)h * (double)h) * ALWAN_ABS_F64(AT);
     for (k = 0; k < w; k++) {
         double const mm = (double)k;
         double const s0l = PA[k], srl = PR[k], scl = PC1[k], ql = PQ[k];
@@ -377,7 +377,7 @@ static alwan_status alwan_lp_split(alwan_lp_region *out, double const *Y, size_t
     best = INFINITY;
     for (k = 0; k < n; k++)
         if (f[k] < best && !amb[k]) best = f[k];
-    tol = best < INFINITY ? sqrt(best * best + 2e-12 * scale) : INFINITY;
+    tol = best < INFINITY ? ALWAN_SQRT_F64(best * best + 2e-12 * scale) : INFINITY;
     for (k = 0; k < n; k++)
         if (amb[k] || f[k] <= tol) idx[nt++] = k;
     if (nt == 0) return ALWAN_E_RANGE;   /* every candidate NaN: colour-hdri finds no cut */

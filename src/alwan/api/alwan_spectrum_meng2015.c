@@ -29,9 +29,9 @@ static int alwan_mg_solve(double *A, double *b, size_t n) {
     size_t i, j, k;
     for (k = 0; k < n; k++) {
         size_t p = k;
-        double best = fabs(A[k * n + k]);
+        double best = ALWAN_ABS_F64(A[k * n + k]);
         for (i = k + 1; i < n; i++)
-            if (fabs(A[i * n + k]) > best) best = fabs(A[i * n + k]), p = i;
+            if (ALWAN_ABS_F64(A[i * n + k]) > best) best = ALWAN_ABS_F64(A[i * n + k]), p = i;
         if (!(best > 1e-300)) return 0;
         if (p != k) {
             for (j = 0; j < n; j++) {
@@ -166,7 +166,7 @@ static alwan_status alwan_mg_solve_qp(double *R, double const *A, double const *
     p = K + (n + 3) * (n + 3) + (n + 3);
     g = p + n;
     z = g + n;
-    for (i = 0; i < 3; i++) scale += fabs(xyz[i]);
+    for (i = 0; i < 3; i++) scale += ALWAN_ABS_F64(xyz[i]);
     /* the equality-constrained minimum: from R = 0 with nothing fixed, one step lands on it */
     memset(fixed, 0, n);
     memset(R, 0, n * sizeof(double));
@@ -200,7 +200,7 @@ static alwan_status alwan_mg_solve_qp(double *R, double const *A, double const *
             for (k = 0; k < 3; k++) {
                 double s = xyz[k];
                 for (i = 0; i < n; i++) s -= A[k * n + i] * R[i];
-                res += fabs(s);
+                res += ALWAN_ABS_F64(s);
             }
             if (!(res <= 1e-9 * (scale > 0.0 ? scale : 1.0))) st = ALWAN_E_RANGE;
             for (i = 0; i < n; i++) fixed[i] = (unsigned char)(R[i] <= 0.0);
@@ -213,8 +213,8 @@ static alwan_status alwan_mg_solve_qp(double *R, double const *A, double const *
                     break;
                 }
                 for (i = 0; i < n; i++) {
-                    if (fabs(p[i]) > pmax) pmax = fabs(p[i]);
-                    if (fabs(R[i]) > rmax) rmax = fabs(R[i]);
+                    if (ALWAN_ABS_F64(p[i]) > pmax) pmax = ALWAN_ABS_F64(p[i]);
+                    if (ALWAN_ABS_F64(R[i]) > rmax) rmax = ALWAN_ABS_F64(R[i]);
                 }
                 if (pmax <= 1e-13 * (rmax > 1e-300 ? rmax : 1.0)) {
                     /* stationary on the working set: the multipliers of the fixed samples */
@@ -270,8 +270,8 @@ static alwan_status alwan_mg_run(double *R, size_t *n_out, double *wl0, double *
     alwan_status st;
     memset(&xb, 0, sizeof(xb)), memset(&yb, 0, sizeof(yb)), memset(&zb, 0, sizeof(zb)), memset(&d65, 0, sizeof(d65));
     if (!(w0 >= 360.0) || !(w1 <= 830.0) || !(dw > 0.0) || !(w1 > w0)) return ALWAN_E_RANGE;
-    n = (size_t)floor((w1 - w0) / dw + 0.5) + 1;
-    if (n < 4 || n > 4096 || fabs(w0 + (double)(n - 1) * dw - w1) > 1e-9) return ALWAN_E_RANGE;
+    n = (size_t)ALWAN_FLOOR_F64((w1 - w0) / dw + 0.5) + 1;
+    if (n < 4 || n > 4096 || ALWAN_ABS_F64(w0 + (double)(n - 1) * dw - w1) > 1e-9) return ALWAN_E_RANGE;
     for (k = 0; k < 3; k++)
         if (!(xyz[k] - xyz[k] == 0.0)) return ALWAN_E_INVALID;
     st = alwan_spd_observer_f64(&xb, &yb, &zb, p->observer, ctx);
@@ -303,7 +303,7 @@ static alwan_status alwan_mg_run(double *R, size_t *n_out, double *wl0, double *
                 double const u = (w - f[k]->wavelength_min) / ((f[k]->wavelength_max - f[k]->wavelength_min) / (double)(f[k]->count - 1));
                 size_t q = 0;
                 if (!alwan_mg_cell(u + 1e-9, f[k]->count, &q)) fv[k] = 0.0;
-                else if (q + 1 >= f[k]->count || fabs(u - (double)q) < 1e-9) fv[k] = f[k]->values[q];
+                else if (q + 1 >= f[k]->count || ALWAN_ABS_F64(u - (double)q) < 1e-9) fv[k] = f[k]->values[q];
                 else fv[k] = f[k]->values[q] + (u - (double)q) * (f[k]->values[q + 1] - f[k]->values[q]);
                 A[k * n + i] = s * fv[k];
             }

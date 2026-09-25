@@ -373,7 +373,7 @@ static alwan_status alwan__label2rgb(double *out, size_t ors, uint32_t const *la
                         v = (double)(sumf[3 * k + cc] / (float)cnt[k]);
                     } else {
                         v = sum[3 * k + cc] / (double)cnt[k];
-                        if (t == ALWAN__LAB_U8) v = floor(v);
+                        if (t == ALWAN__LAB_U8) v = ALWAN_FLOOR_F64(v);
                     }
                     orow[3 * x + c] = v;
                 }

@@ -103,8 +103,8 @@ alwan_status alwan__fgs_run(void *out, size_t out_row_stride, void const *src, s
                 dh += (a - r) * (a - r);
                 dv += (a - b) * (a - b);
             }
-            wh[y * w + x] = x + 1 < w ? exp(-sqrt(dh) / sigma_color) : 0.0;
-            wv[y * w + x] = y + 1 < h ? exp(-sqrt(dv) / sigma_color) : 0.0;
+            wh[y * w + x] = x + 1 < w ? ALWAN_EXP_F64(-ALWAN_SQRT_F64(dh) / sigma_color) : 0.0;
+            wv[y * w + x] = y + 1 < h ? ALWAN_EXP_F64(-ALWAN_SQRT_F64(dv) / sigma_color) : 0.0;
         }
     }
 

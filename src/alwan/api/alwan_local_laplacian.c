@@ -116,10 +116,10 @@ static void alwan_llf_up(double *dst, long dw, long dh, double const *src, long 
 }
 
 static double alwan_llf_remap(double i, double g0, double sigma, double alpha, double beta) {
-    double const d = i - g0, ad = fabs(d), s = d < 0.0 ? -1.0 : 1.0;
+    double const d = i - g0, ad = ALWAN_ABS_F64(d), s = d < 0.0 ? -1.0 : 1.0;
     if (ad == 0.0) return g0;
     if (ad <= sigma) {
-        double v = sigma * pow(ad / sigma, alpha);
+        double v = sigma * ALWAN_POW_F64(ad / sigma, alpha);
         if (alpha < 1.0) { /* leave differences at the noise level alone */
             double t = (ad - ALWAN_LLF_NOISE) / ALWAN_LLF_NOISE;
             t = t < 0.0 ? 0.0 : t > 1.0 ? 1.0 : t;
@@ -176,7 +176,7 @@ static void alwan_llf_plane(double *plane, alwan_llf_pyr const *py, double *ing,
             double *o = outl + py->off[i];
             alwan_llf_up(up, py->w[i], py->h[i], rg + py->off[i + 1], py->w[i + 1], py->h[i + 1], tmp);
             for (p = 0; p < ni; p++) {
-                double const wgt = 1.0 - fabs(g[p] - ref) / delta;
+                double const wgt = 1.0 - ALWAN_ABS_F64(g[p] - ref) / delta;
                 if (wgt > 0.0) o[p] += wgt * (r[p] - up[p]);
             }
         }
@@ -212,7 +212,7 @@ alwan_status alwan__llf_run(void *out, size_t out_row_stride, void const *src, s
     if (levels_in == 0) {
         float const a = (float)alpha;
         if (a < 0.1f) levels = 50;
-        else if (a < 0.9f) levels = (int)floorf(((float)43.4 - 34.0f * a) / (float)0.8 + 0.5f);
+        else if (a < 0.9f) levels = (int)ALWAN_FLOOR_F32(((float)43.4 - 34.0f * a) / (float)0.8 + 0.5f);
         else levels = 16;
     } else {
         levels = (int)levels_in;

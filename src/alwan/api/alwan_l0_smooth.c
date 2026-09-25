@@ -97,8 +97,8 @@ alwan_status alwan__l0_run(void *out, size_t out_rs, void const *src, size_t src
         }
     }
     for (y = 0; y < h; y++) {
-        double const dy = 2.0 - 2.0 * cos(2.0 * pi * (double)y / (double)h);
-        for (x = 0; x < w; x++) den2[y * w + x] = dy + 2.0 - 2.0 * cos(2.0 * pi * (double)x / (double)w);
+        double const dy = 2.0 - 2.0 * ALWAN_COS_F64(2.0 * pi * (double)y / (double)h);
+        for (x = 0; x < w; x++) den2[y * w + x] = dy + 2.0 - 2.0 * ALWAN_COS_F64(2.0 * pi * (double)x / (double)w);
     }
     for (c = 0; c < ch; c++) {
         for (i = 0; i < n; i++) {

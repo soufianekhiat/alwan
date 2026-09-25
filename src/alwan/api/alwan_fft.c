@@ -96,8 +96,8 @@ alwan__fft *alwan__fft_create(size_t n) {
     f->tw_im = f->tw_re + m / 2;
     for (k = 0; k < m / 2; k++) {
         double const a = -2.0 * pi * (double)k / (double)m;
-        f->tw_re[k] = cos(a);
-        f->tw_im[k] = sin(a);
+        f->tw_re[k] = ALWAN_COS_F64(a);
+        f->tw_im[k] = ALWAN_SIN_F64(a);
     }
     if (m != n) {
         f->ch_re = f->tw_re + m;
@@ -109,8 +109,8 @@ alwan__fft *alwan__fft_create(size_t n) {
         for (k = 0; k < n; k++) {
             unsigned long long const k2 = ((unsigned long long)k * (unsigned long long)k) % (2ull * n);
             double const a = -pi * (double)k2 / (double)n;
-            f->ch_re[k] = cos(a);
-            f->ch_im[k] = sin(a);
+            f->ch_re[k] = ALWAN_COS_F64(a);
+            f->ch_im[k] = ALWAN_SIN_F64(a);
         }
         for (k = 0; k < m; k++) f->b_re[k] = f->b_im[k] = 0.0;
         for (k = 0; k < n; k++) {  /* conj(c_k) at k and at m - k */

@@ -55,7 +55,7 @@
  * defined (long is 32 bits on Windows) and the result is still outside any image. */
 #define ALWAN_WP_BIG 1073741824.0
 #define ALWAN_WP_COORD(v) (!((v) >= 0.0) ? -1L : (v) < ALWAN_WP_BIG ? (long)(v) : (long)ALWAN_WP_BIG)
-#define ALWAN_WP_FLOOR(v) (!((v) > -ALWAN_WP_BIG) ? -(long)ALWAN_WP_BIG : (v) < ALWAN_WP_BIG ? (long)floor(v) : (long)ALWAN_WP_BIG)
+#define ALWAN_WP_FLOOR(v) (!((v) > -ALWAN_WP_BIG) ? -(long)ALWAN_WP_BIG : (v) < ALWAN_WP_BIG ? (long)ALWAN_FLOOR_F64(v) : (long)ALWAN_WP_BIG)
 
 typedef struct {
     void const *src;
@@ -165,7 +165,7 @@ static void alwan_wp_copy_px(void *orow, size_t ox, alwan_wp_img const *im, long
 }
 
 static int alwan_wp_check_fixed(double const a[6], long x, long y) {
-    return fabs((double)x * a[0] + (double)y * a[1] + a[2]) < 32768.0 && fabs((double)x * a[3] + (double)y * a[4] + a[5]) < 32768.0;
+    return ALWAN_ABS_F64((double)x * a[0] + (double)y * a[1] + a[2]) < 32768.0 && ALWAN_ABS_F64((double)x * a[3] + (double)y * a[4] + a[5]) < 32768.0;
 }
 
 static long alwan_wp_fix(double v) {
@@ -221,7 +221,7 @@ static long alwan_wp_basis(double t, long n, long d, double *N) {
     double left[8], right[8];
     long idx, span, j, r;
     t = t < 0.0 ? 0.0 : t > 1.0 ? 1.0 : t;
-    idx = (long)floor(t * (double)(n - d));
+    idx = (long)ALWAN_FLOOR_F64(t * (double)(n - d));
     if (idx > n - d - 1) idx = n - d - 1;
     span = d + idx;
     N[0] = 1.0;
@@ -263,7 +263,7 @@ static int alwan_wp_field(alwan_wp_map const *m, double x, double y, double *sx,
         /* the lattice coordinate: texel centres; exact when the lattice is the output's size */
         double const fx = m->gw == m->ow ? x - 0.5 : x * (double)m->gw / (double)m->ow - 0.5;
         double const fy = m->gh == m->oh ? y - 0.5 : y * (double)m->gh / (double)m->oh - 0.5;
-        long const i0 = (long)floor(fx), j0 = (long)floor(fy);
+        long const i0 = (long)ALWAN_FLOOR_F64(fx), j0 = (long)ALWAN_FLOOR_F64(fy);
         double const tx = fx - (double)i0, ty = fy - (double)j0;
         if (p->field_interpolation == ALWAN_WARP_FIELD_LINEAR) {
             double f00[2], f10[2], f01[2], f11[2];
@@ -305,7 +305,7 @@ static int alwan_wp_eval_map_raw(alwan_wp_map const *m, double x, double y, doub
     case ALWAN_WARP_MAP_SWIRL: {
         /* c + R(phi(r)) (p - c), phi = angle f(1 - r / R), f the C2 quintic 6s^5 - 15s^4 + 10s^3:
          * a rotation of the displacement, no atan2 and no singularity at the centre */
-        double const dx = x - m->cx, dy = y - m->cy, r = sqrt(dx * dx + dy * dy);
+        double const dx = x - m->cx, dy = y - m->cy, r = ALWAN_SQRT_F64(dx * dx + dy * dy);
         double s = 1.0 - r / m->radius, phi, cs, sn;
         if (s <= 0.0) {
             *sx = x, *sy = y;
@@ -313,8 +313,8 @@ static int alwan_wp_eval_map_raw(alwan_wp_map const *m, double x, double y, doub
         }
         if (s > 1.0) s = 1.0;
         phi = m->angle * (s * s * s * (s * (s * 6.0 - 15.0) + 10.0));
-        cs = cos(phi);
-        sn = sin(phi);
+        cs = ALWAN_COS_F64(phi);
+        sn = ALWAN_SIN_F64(phi);
         *sx = m->cx + cs * dx - sn * dy;
         *sy = m->cy + sn * dx + cs * dy;
         return 1;
@@ -340,7 +340,7 @@ static int alwan_wp_eval_map_raw(alwan_wp_map const *m, double x, double y, doub
  * finite (a callback's inf, a field texel's NaN, a perspective divide by zero) or lies more
  * than 1e9 pixels out, which is outside any image and would not survive a cast to long. */
 static int alwan_wp_eval_map(alwan_wp_map const *m, double x, double y, double *sx, double *sy) {
-    return alwan_wp_eval_map_raw(m, x, y, sx, sy) && fabs(*sx) < 1e9 && fabs(*sy) < 1e9;
+    return alwan_wp_eval_map_raw(m, x, y, sx, sy) && ALWAN_ABS_F64(*sx) < 1e9 && ALWAN_ABS_F64(*sy) < 1e9;
 }
 
 /* One sub-sample: the map at (x, y), the source reconstructed there, or the fill. */
@@ -379,15 +379,15 @@ static void alwan_wp_concentric(double u, double v, double *x, double *y) {
         *x = *y = 0.0;
         return;
     }
-    if (fabs(a) > fabs(b)) {
+    if (ALWAN_ABS_F64(a) > ALWAN_ABS_F64(b)) {
         r = a;
         phi = (pi / 4.0) * (b / a);
     } else {
         r = b;
         phi = pi / 2.0 - (pi / 4.0) * (a / b);
     }
-    *x = r * cos(phi);
-    *y = r * sin(phi);
+    *x = r * ALWAN_COS_F64(phi);
+    *y = r * ALWAN_SIN_F64(phi);
 }
 
 /* The first k points of the R2 sequence (Roberts 2018, the plastic constant) in the unit
@@ -397,8 +397,8 @@ static void alwan_wp_r2_points(double *pts, size_t k, int disk) {
     size_t n;
     for (n = 0; n < k; n++) {
         double u = 0.5 + (double)(n + 1) * a1, v = 0.5 + (double)(n + 1) * a2;
-        u -= floor(u);
-        v -= floor(v);
+        u -= ALWAN_FLOOR_F64(u);
+        v -= ALWAN_FLOOR_F64(v);
         if (disk) alwan_wp_concentric(u, v, &pts[2 * n], &pts[2 * n + 1]);
         else pts[2 * n] = u, pts[2 * n + 1] = v;
     }
@@ -444,13 +444,13 @@ static void alwan_wp_sobol2(uint32_t index, uint32_t seed, double *u, double *v)
  * a set of points spread evenly over the square spreads by the kernel's weight around 0. */
 static void alwan_wp_kernel_offset(alwan_pixel_kernel kernel, double u, double v, double *ox, double *oy) {
     if (kernel == ALWAN_PIXEL_KERNEL_TENT) {
-        *ox = u < 0.5 ? -1.0 + sqrt(2.0 * u) : 1.0 - sqrt(2.0 * (1.0 - u));
-        *oy = v < 0.5 ? -1.0 + sqrt(2.0 * v) : 1.0 - sqrt(2.0 * (1.0 - v));
+        *ox = u < 0.5 ? -1.0 + ALWAN_SQRT_F64(2.0 * u) : 1.0 - ALWAN_SQRT_F64(2.0 * (1.0 - u));
+        *oy = v < 0.5 ? -1.0 + ALWAN_SQRT_F64(2.0 * v) : 1.0 - ALWAN_SQRT_F64(2.0 * (1.0 - v));
     } else if (kernel == ALWAN_PIXEL_KERNEL_GAUSSIAN) {
         /* Box-Muller on the radius cut at 3 s: 1 - exp(-4.5) of the mass */
-        double const r = 0.5 * sqrt(-2.0 * log(1.0 - u * 0.98889100346175773)), t = 6.28318530717958647692 * v;
-        *ox = r * cos(t);
-        *oy = r * sin(t);
+        double const r = 0.5 * ALWAN_SQRT_F64(-2.0 * ALWAN_LN_F64(1.0 - u * 0.98889100346175773)), t = 6.28318530717958647692 * v;
+        *ox = r * ALWAN_COS_F64(t);
+        *oy = r * ALWAN_SIN_F64(t);
     } else {
         *ox = u - 0.5;
         *oy = v - 0.5;
@@ -463,10 +463,10 @@ static double alwan_wp_kernel_radius(alwan_pixel_kernel kernel) {
 }
 
 static double alwan_wp_kernel_weight(alwan_pixel_kernel kernel, double dx, double dy) {
-    if (kernel == ALWAN_PIXEL_KERNEL_TENT) return (1.0 - fabs(dx)) * (1.0 - fabs(dy));
+    if (kernel == ALWAN_PIXEL_KERNEL_TENT) return (1.0 - ALWAN_ABS_F64(dx)) * (1.0 - ALWAN_ABS_F64(dy));
     if (kernel == ALWAN_PIXEL_KERNEL_GAUSSIAN) {
         double const r2 = dx * dx + dy * dy;
-        return r2 <= 2.25 ? exp(-2.0 * r2) : 0.0;
+        return r2 <= 2.25 ? ALWAN_EXP_F64(-2.0 * r2) : 0.0;
     }
     return 1.0;
 }
@@ -477,7 +477,7 @@ static double alwan_wp_kernel_weight(alwan_pixel_kernel kernel, double dx, doubl
 static int alwan_wp_shrinks(double a, double b, double c, double d) {
     double const s = a * a + b * b + c * c + d * d, det = a * d - b * c;
     double const disc = s * s - 4.0 * det * det;
-    return 0.5 * (s - sqrt(disc > 0.0 ? disc : 0.0)) >= 1.0;
+    return 0.5 * (s - ALWAN_SQRT_F64(disc > 0.0 ? disc : 0.0)) >= 1.0;
 }
 
 /* EWA (Heckbert 1989): the Gaussian kernel (s = 0.5 output pixel) carried into the source by
@@ -495,12 +495,12 @@ static size_t alwan_wp_ewa(double *acc, double *wsum, alwan_wp_img const *im, do
     long i, j, i0, i1, j0, j1;
     {
         /* raise either eigenvalue below the floor, along its own axis */
-        double const half = 0.5 * (sxx + syy), disc = sqrt(0.25 * (sxx - syy) * (sxx - syy) + sxy * sxy);
+        double const half = 0.5 * (sxx + syy), disc = ALWAN_SQRT_F64(0.25 * (sxx - syy) * (sxx - syy) + sxy * sxy);
         double l1 = half + disc, l2 = half - disc, v1x, v1y, nrm;
         if (l2 < floor_var || l1 < floor_var) {
-            if (fabs(sxy) > 1e-300) v1x = l1 - syy, v1y = sxy;
+            if (ALWAN_ABS_F64(sxy) > 1e-300) v1x = l1 - syy, v1y = sxy;
             else v1x = sxx >= syy ? 1.0 : 0.0, v1y = sxx >= syy ? 0.0 : 1.0;
-            nrm = sqrt(v1x * v1x + v1y * v1y);
+            nrm = ALWAN_SQRT_F64(v1x * v1x + v1y * v1y);
             v1x /= nrm, v1y /= nrm;
             l1 = l1 < floor_var ? floor_var : l1;
             l2 = l2 < floor_var ? floor_var : l2;
@@ -509,17 +509,17 @@ static size_t alwan_wp_ewa(double *acc, double *wsum, alwan_wp_img const *im, do
             sxy = (l1 - l2) * v1x * v1y;
         }
     }
-    rx = 3.0 * sqrt(sxx), ry = 3.0 * sqrt(syy);
+    rx = 3.0 * ALWAN_SQRT_F64(sxx), ry = 3.0 * ALWAN_SQRT_F64(syy);
     if ((2.0 * rx + 1.0) * (2.0 * ry + 1.0) > cap) {
         /* narrow the whole ellipse to the cap: the area scales with the covariance */
         double const s = cap / ((2.0 * rx + 1.0) * (2.0 * ry + 1.0));
         sxx *= s, sxy *= s, syy *= s;
-        rx = 3.0 * sqrt(sxx), ry = 3.0 * sqrt(syy);
+        rx = 3.0 * ALWAN_SQRT_F64(sxx), ry = 3.0 * ALWAN_SQRT_F64(syy);
     }
     det = sxx * syy - sxy * sxy;
     ia = syy / det, ib = -sxy / det, ic = sxx / det;
-    i0 = (long)floor(qx - 0.5 - rx), i1 = (long)ceil(qx - 0.5 + rx);
-    j0 = (long)floor(qy - 0.5 - ry), j1 = (long)ceil(qy - 0.5 + ry);
+    i0 = (long)ALWAN_FLOOR_F64(qx - 0.5 - rx), i1 = (long)ALWAN_CEIL_F64(qx - 0.5 + rx);
+    j0 = (long)ALWAN_FLOOR_F64(qy - 0.5 - ry), j1 = (long)ALWAN_CEIL_F64(qy - 0.5 + ry);
     *wsum = 0.0;
     for (j = j0; j <= j1; j++) {
         double const dy = (double)j + 0.5 - qy;
@@ -529,7 +529,7 @@ static size_t alwan_wp_ewa(double *acc, double *wsum, alwan_wp_img const *im, do
             double wt, v[4];
             size_t k;
             if (q > 9.0) continue;
-            wt = exp(-0.5 * q);
+            wt = ALWAN_EXP_F64(-0.5 * q);
             if (i >= 0 && i < (long)im->w && j >= 0 && j < (long)im->h)
                 for (k = 0; k < ch; k++) v[k] = alwan_wp_px(im, i, j, k);
             else
@@ -548,7 +548,7 @@ static void alwan_wp_store_mean(void *orow, int kind, size_t i, double v) {
     if (kind == 0) ((alwan_f64 *)orow)[i] = v;
     else if (kind == 1) ((alwan_f32 *)orow)[i] = (alwan_f32)v;
     else {
-        double const t = floor(v + 0.5);
+        double const t = ALWAN_FLOOR_F64(v + 0.5);
         ((unsigned char *)orow)[i] = (unsigned char)(t < 0.0 ? 0.0 : t > 255.0 ? 255.0 : t);
     }
 }
@@ -623,8 +623,8 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                 if (!ok) {
                     fp = 1e9, nl = 1e9;   /* the map loses the source somewhere in the pixel */
                 } else {
-                    double const jx = hypot(qpx - qmx, qpy - qmy), jy = hypot(rpx - rmx, rpy - rmy);
-                    double const hx = hypot(qpx - 2 * q0x + qmx, qpy - 2 * q0y + qmy), hy = hypot(rpx - 2 * q0x + rmx, rpy - 2 * q0y + rmy);
+                    double const jx = ALWAN_HYPOT_F64(qpx - qmx, qpy - qmy), jy = ALWAN_HYPOT_F64(rpx - rmx, rpy - rmy);
+                    double const hx = ALWAN_HYPOT_F64(qpx - 2 * q0x + qmx, qpy - 2 * q0y + qmy), hy = ALWAN_HYPOT_F64(rpx - 2 * q0x + rmx, rpy - 2 * q0y + rmy);
                     double reach;
                     fp = jx > jy ? jx : jy;
                     nl = hx > hy ? hx : hy;
@@ -716,7 +716,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                 } else {
                     double const h1 = (double)hs / 4294967296.0, h2 = (double)alwan_wp_hash(hs ^ 0x9e3779b9U) / 4294967296.0;
                     double const phi = 6.28318530717958647692 * h1;
-                    double const cs = cos(phi), sn = sin(phi);
+                    double const cs = ALWAN_COS_F64(phi), sn = ALWAN_SIN_F64(phi);
                     size_t const pairs = n / 2;
                     if (n % 2) {
                         alwan_wp_subsample(v, &m, im, method, px, py);
@@ -732,7 +732,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                             oy = radius * (sn * pts[2 * k] + cs * pts[2 * k + 1]);
                         } else {
                             double const u = pts[2 * k] + h1, w2 = pts[2 * k + 1] + h2;
-                            alwan_wp_kernel_offset(kernel, u - floor(u), w2 - floor(w2), &ox, &oy);
+                            alwan_wp_kernel_offset(kernel, u - ALWAN_FLOOR_F64(u), w2 - ALWAN_FLOOR_F64(w2), &ox, &oy);
                         }
                         for (sg = -1; sg <= 1; sg += 2) {
                             alwan_wp_subsample(v, &m, im, method, px + sg * ox, py + sg * oy);

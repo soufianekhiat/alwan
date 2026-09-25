@@ -90,7 +90,7 @@ static alwan_status alwan_vg_gauss(double *a, size_t w, size_t h, double sigma, 
     if (!k) return ALWAN_E_NOMEM;
     line = k + r + 1;
     for (i = 0; i <= r; i++) {
-        k[i] = exp(-0.5 / (sigma * sigma) * (double)i * (double)i);
+        k[i] = ALWAN_EXP_F64(-0.5 / (sigma * sigma) * (double)i * (double)i);
         sum += i ? 2.0 * k[i] : k[i];
     }
     for (i = 0; i <= r; i++) k[i] /= sum;
@@ -270,7 +270,7 @@ static size_t alwan_vg_rbf_coordinates(double *out, double pr, double pc, double
             double const rho = k == 6 ? radius : (double)k * (radius / 6.0);
             double const phi = i == 20 ? pi : -pi + (double)i * ((pi - -pi) / 20.0);
             size_t const at = (i * 7 + k) * 2;
-            double x = rho * cos(phi), y = rho * sin(phi);
+            double x = rho * ALWAN_COS_F64(phi), y = rho * ALWAN_SIN_F64(phi);
             x += (alwan_vg_jitter[at] - 0.5) / 1000.0;
             y += (alwan_vg_jitter[at + 1] - 0.5) / 1000.0;
             x /= 2.0 * 1.0 / 0.9;
@@ -289,9 +289,9 @@ static int alwan_vg_solve(double *A, double *b, size_t n) {
     size_t i, j, k;
     for (k = 0; k < n; k++) {
         size_t p = k;
-        double best = fabs(A[k * n + k]);
+        double best = ALWAN_ABS_F64(A[k * n + k]);
         for (i = k + 1; i < n; i++)
-            if (fabs(A[i * n + k]) > best) best = fabs(A[i * n + k]), p = i;
+            if (ALWAN_ABS_F64(A[i * n + k]) > best) best = ALWAN_ABS_F64(A[i * n + k]), p = i;
         if (best == 0.0) return 0;
         if (p != k) {
             for (j = 0; j < n; j++) {
@@ -363,7 +363,7 @@ static int alwan_vg_parabola_bounded(double *best, double const *N, double const
 }
 
 static double alwan_vg_hcosh(double const *p, double x, double y) {
-    return 1.0 - cosh(p[0] * (x - 0.5 - p[1])) * cosh(p[2] * (y - 0.5 - p[3])) + p[4];
+    return 1.0 - ALWAN_COSH_F64(p[0] * (x - 0.5 - p[1])) * ALWAN_COSH_F64(p[2] * (y - 0.5 - p[3])) + p[4];
 }
 
 /* Levenberg-Marquardt on the hyperbolic cosine, the parameters kept within colour-hdri's
@@ -382,7 +382,7 @@ static void alwan_vg_fit_hcosh(double *p, double const *z, double const *xs, dou
         double JtJ[5][5] = { { 0 } }, Jtr[5] = { 0 }, A[25], d[5], trial[5], tcost = 0.0;
         for (q = 0; q < n; q++) {
             double const u = xs[q] - 0.5 - p[1], v = ys[q] - 0.5 - p[3];
-            double const cu = cosh(p[0] * u), cv = cosh(p[2] * v), su = sinh(p[0] * u), sv = sinh(p[2] * v);
+            double const cu = ALWAN_COSH_F64(p[0] * u), cv = ALWAN_COSH_F64(p[2] * v), su = ALWAN_SINH_F64(p[0] * u), sv = ALWAN_SINH_F64(p[2] * v);
             double const r = 1.0 - cu * cv + p[4] - z[q];
             double const g[5] = { -u * su * cv, p[0] * su * cv, -v * cu * sv, p[2] * cu * sv, 1.0 };
             for (i = 0; i < 5; i++) {
@@ -415,7 +415,7 @@ static void alwan_vg_fit_hcosh(double *p, double const *z, double const *xs, dou
         if (!(tcost <= cost)) break;
         {
             double step = 0.0;
-            for (i = 0; i < 5; i++) step += fabs(trial[i] - p[i]), p[i] = trial[i];
+            for (i = 0; i < 5; i++) step += ALWAN_ABS_F64(trial[i] - p[i]), p[i] = trial[i];
             if (cost - tcost <= 1e-15 * (cost > 1e-300 ? cost : 1e-300) && step < 1e-14) break;
             cost = tcost;
         }
@@ -449,7 +449,7 @@ static alwan_status alwan_vg_surface(double *out, size_t w, size_t h, size_t c, 
                 double const r0 = ty[y], c0 = tx[x];
                 double s = 0.0;
                 for (i = 0; i < v->n; i++) {
-                    double const dr = r0 - v->pts[2 * i], dc = c0 - v->pts[2 * i + 1], d = sqrt(dr * dr + dc * dc);
+                    double const dr = r0 - v->pts[2 * i], dc = c0 - v->pts[2 * i + 1], d = ALWAN_SQRT_F64(dr * dr + dc * dc);
                     s += wt[i] * (d * d * d);
                 }
                 s += wt[v->n] + wt[v->n + 1] * ((r0 - v->shift[0]) / v->scale[0]) + wt[v->n + 2] * ((c0 - v->shift[1]) / v->scale[1]);
@@ -613,7 +613,7 @@ static alwan_status alwan_vg_characterise(alwan_vignette **out, void const *src,
                     for (i = 0; i < P * P; i++) A[i] = 0.0;
                     for (i = 0; i < k; i++) {
                         for (j = 0; j < k; j++) {
-                            double const dr = pts[2 * i] - pts[2 * j], dc = pts[2 * i + 1] - pts[2 * j + 1], d = sqrt(dr * dr + dc * dc);
+                            double const dr = pts[2 * i] - pts[2 * j], dc = pts[2 * i + 1] - pts[2 * j + 1], d = ALWAN_SQRT_F64(dr * dr + dc * dc);
                             A[i * P + j] = d * d * d;
                         }
                         A[i * P + i] += smoothing;
@@ -660,7 +660,7 @@ static alwan_status alwan_vg_correct(void *out, size_t out_rs, void const *src, 
                 if (kind == 0) ((alwan_f64 *)orow)[x * ch + c] = r;
                 else if (kind == 1) ((alwan_f32 *)orow)[x * ch + c] = (alwan_f32)r;
                 else {
-                    double const t = floor(r * 255.0 + 0.5);
+                    double const t = ALWAN_FLOOR_F64(r * 255.0 + 0.5);
                     ((unsigned char *)orow)[x * ch + c] = (unsigned char)(t < 0.0 ? 0.0 : t > 255.0 ? 255.0 : t);
                 }
             }

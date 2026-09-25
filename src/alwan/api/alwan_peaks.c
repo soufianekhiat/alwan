@@ -46,10 +46,10 @@ static double alwan_pk_dist(long dr, long dc, double p) {
     double const a = (double)labs(dr), b = (double)labs(dc);
     if (isinf(p)) return a > b ? a : b;
     if (p == 1.0) return a + b;
-    if (p == 2.0) return sqrt(a * a + b * b);
+    if (p == 2.0) return ALWAN_SQRT_F64(a * a + b * b);
     if (a == 0.0) return b;
     if (b == 0.0) return a;
-    return pow(pow(a, p) + pow(b, p), 1.0 / p);
+    return ALWAN_POW_F64(ALWAN_POW_F64(a, p) + ALWAN_POW_F64(b, p), 1.0 / p);
 }
 
 /* Sort the candidates (mask non-zero) of the w x h image v by value, thin them to spacing

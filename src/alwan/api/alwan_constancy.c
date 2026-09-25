@@ -60,7 +60,7 @@ static void alwan_cc_kernel(double *k, int fs, double sigma, int order) {
     int i;
     for (i = -fs; i <= fs; i++) {
         double const x = (double)i;
-        k[i + fs] = 1.0 / (sqrt(2.0 * ALWAN_CC_PI) * sigma) * exp((x * x) / (-2.0 * sigma * sigma));
+        k[i + fs] = 1.0 / (ALWAN_SQRT_F64(2.0 * ALWAN_CC_PI) * sigma) * ALWAN_EXP_F64((x * x) / (-2.0 * sigma * sigma));
     }
     if (order == 0) {
         for (i = 0; i <= 2 * fs; i++) sum += k[i];
@@ -116,7 +116,7 @@ static alwan_status alwan_cc_check(alwan_constancy_params const *p, int *fs) {
     if (!alwan_cc_finite(m) || m < 0.0 || (m > 0.0 && m < 1.0)) return ALWAN_E_INVALID;
     if (!alwan_cc_finite(s) || s < 0.0) return ALWAN_E_INVALID;
     if (!alwan_cc_finite(p->saturation) || p->saturation < 0.0) return ALWAN_E_INVALID;
-    *fs = (int)floor(3.0 * s + 0.5);
+    *fs = (int)ALWAN_FLOOR_F64(3.0 * s + 0.5);
     if (*fs > (ALWAN_CC_TAPS_MAX - 1) / 2) return ALWAN_E_INVALID;
     if (p->order > 0 && *fs < 1) return ALWAN_E_INVALID;
     return ALWAN_OK;
@@ -150,31 +150,31 @@ static alwan_status alwan_cc_run(double out[3], double const *img, unsigned char
         if (p->order == 0) {
             if (p->sigma > 0.0) alwan_cc_filter(a, plane, tmp, w, h, k0, k0, fs);
             else for (i = 0; i < n; i++) a[i] = plane[i];
-            for (i = 0; i < n; i++) a[i] = fabs(a[i]);
+            for (i = 0; i < n; i++) a[i] = ALWAN_ABS_F64(a[i]);
         } else if (p->order == 1) {
             alwan_cc_filter(a, plane, tmp, w, h, k1, k0, fs);
             alwan_cc_filter(b, plane, tmp, w, h, k0, k1, fs);
-            for (i = 0; i < n; i++) a[i] = sqrt(a[i] * a[i] + b[i] * b[i]);
+            for (i = 0; i < n; i++) a[i] = ALWAN_SQRT_F64(a[i] * a[i] + b[i] * b[i]);
         } else {
             alwan_cc_filter(a, plane, tmp, w, h, k2, k0, fs);
             alwan_cc_filter(b, plane, tmp, w, h, k0, k2, fs);
             alwan_cc_filter(c, plane, tmp, w, h, k1, k1, fs);
-            for (i = 0; i < n; i++) a[i] = sqrt(a[i] * a[i] + 4.0 * c[i] * c[i] + b[i] * b[i]);
+            for (i = 0; i < n; i++) a[i] = ALWAN_SQRT_F64(a[i] * a[i] + 4.0 * c[i] * c[i] + b[i] * b[i]);
         }
         if (p->minkowski == 0.0) {
             for (i = 0; i < n; i++) if (use[i] && a[i] > acc) acc = a[i];
         } else if (p->minkowski == 1.0) {
             for (i = 0; i < n; i++) if (use[i]) acc += a[i];
         } else {
-            for (i = 0; i < n; i++) if (use[i]) acc += pow(a[i], p->minkowski);
-            acc = pow(acc, 1.0 / p->minkowski);
+            for (i = 0; i < n; i++) if (use[i]) acc += ALWAN_POW_F64(a[i], p->minkowski);
+            acc = ALWAN_POW_F64(acc, 1.0 / p->minkowski);
         }
         out[ch] = acc;
         norm2 += acc * acc;
     }
     ALWAN_FREE(pool);
     if (!(norm2 > 0.0) || !alwan_cc_finite(norm2)) return ALWAN_E_RANGE;
-    norm2 = sqrt(norm2);
+    norm2 = ALWAN_SQRT_F64(norm2);
     for (ch = 0; ch < 3; ch++) out[ch] /= norm2;
     return ALWAN_OK;
 }
@@ -257,7 +257,7 @@ static int alwan_cc_gains(double g[3], double e0, double e1, double e2) {
     int c;
     for (c = 0; c < 3; c++) {
         if (!(e[c] > 0.0) || !alwan_cc_finite(e[c])) return 0;
-        g[c] = e[c] * sqrt(3.0);
+        g[c] = e[c] * ALWAN_SQRT_F64(3.0);
     }
     return 1;
 }

@@ -178,7 +178,7 @@ static int lum_number(lum_span s, double *out) {
 static int lum_integer(lum_span s, long lo, long hi, long *out) {
     double v;
     if (!lum_number(s, &v)) return 0;
-    if (v != floor(v) || v < (double)lo || v > (double)hi) return 0;
+    if (v != ALWAN_FLOOR_F64(v) || v < (double)lo || v > (double)hi) return 0;
     *out = (long)v;
     return 1;
 }
@@ -315,11 +315,11 @@ static int lum_strictly_increasing(double const *a, size_t n) {
 }
 
 static int lum_near(double a, double b) {
-    return fabs(a - b) <= LUM_ANGLE_TOL;
+    return ALWAN_ABS_F64(a - b) <= LUM_ANGLE_TOL;
 }
 
 static double lum_wrap(double c) {
-    double w = fmod(c, 360.0);
+    double w = ALWAN_FMOD_F64(c, 360.0);
     if (w < 0.0) w += 360.0;
     if (w >= 360.0) w -= 360.0;
     return w;
@@ -874,7 +874,7 @@ alwan_status alwan_luminaire_intensity(double *out, alwan_luminaire const *lum, 
     size_t p, g, nv;
     double c, tp, tg, a, b;
     if (!out || !lum) return ALWAN_E_INVALID;
-    if (c_deg != c_deg || gamma_deg != gamma_deg || !(fabs(c_deg) <= 1.0e12)) return ALWAN_E_INVALID;
+    if (c_deg != c_deg || gamma_deg != gamma_deg || !(ALWAN_ABS_F64(c_deg) <= 1.0e12)) return ALWAN_E_INVALID;
     if (!lum->map) return ALWAN_E_NODATA;
     nv = lum->nv;
     if (gamma_deg < lum->vertical[0] - LUM_ANGLE_TOL || gamma_deg > lum->vertical[nv - 1] + LUM_ANGLE_TOL) {
@@ -904,9 +904,9 @@ static double lum_plane_integral(double const *I, double const *gamma_deg, size_
     for (j = 0; j + 1 < nv; j++) {
         double a = gamma_deg[j] * d2r, b = gamma_deg[j + 1] * d2r, h = b - a;
         if (method == ALWAN_LUMINAIRE_FLUX_TRAPEZOID) {
-            sum += h * (I[j] * sin(a) + I[j + 1] * sin(b)) * 0.5;
+            sum += h * (I[j] * ALWAN_SIN_F64(a) + I[j + 1] * ALWAN_SIN_F64(b)) * 0.5;
         } else {
-            double const ca = cos(a), cb = cos(b), sa = sin(a), sb = sin(b);
+            double const ca = ALWAN_COS_F64(a), cb = ALWAN_COS_F64(b), sa = ALWAN_SIN_F64(a), sb = ALWAN_SIN_F64(b);
             /* integral of (I_a + (I_b - I_a)(t - a)/h) sin t from a to b */
             sum += I[j] * (ca - cb) + (I[j + 1] - I[j]) / h * (sb - sa - h * cb);
         }

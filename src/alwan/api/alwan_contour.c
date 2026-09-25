@@ -442,8 +442,8 @@ alwan_status alwan_approximate_polygon(double *out, size_t *out_count, double co
         double const r0 = points[2 * start], c0 = points[2 * start + 1];
         double const r1 = points[2 * end], c1 = points[2 * end + 1];
         double const dr = r1 - r0, dc = c1 - c0;
-        double const ang = -atan2(dr, dc);
-        double const ca = cos(ang), sa = sin(ang);
+        double const ang = -ALWAN_ATAN2_F64(dr, dc);
+        double const ca = ALWAN_COS_F64(ang), sa = ALWAN_SIN_F64(ang);
         double const sdist = c0 * sa + r0 * ca;
         size_t best = CT_NONE;
         int any = 0;
@@ -454,9 +454,9 @@ alwan_status alwan_approximate_polygon(double *out, size_t *out_count, double co
             double const pl1 = -dr1 * dr - dc1 * dc;
             double d;
             if (pl0 > 0 && pl1 > 0) {
-                d = fabs(r * ca + c * sa - sdist);
+                d = ALWAN_ABS_F64(r * ca + c * sa - sdist);
             } else {
-                double const e0 = sqrt(dc0 * dc0 + dr0 * dr0), e1 = sqrt(dc1 * dc1 + dr1 * dr1);
+                double const e0 = ALWAN_SQRT_F64(dc0 * dc0 + dr0 * dr0), e1 = ALWAN_SQRT_F64(dc1 * dc1 + dr1 * dr1);
                 d = e0 < e1 ? e0 : e1;       /* np.minimum; NaN cannot occur on finite input */
             }
             dists[k] = d;

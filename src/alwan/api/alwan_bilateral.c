@@ -95,8 +95,8 @@ alwan_status alwan__bf_run(void *out, size_t out_row_stride, void const *src, si
                     double const *jp = jb + (yy * w + xx) * joint_ch, *sp = sb + (yy * w + xx) * src_ch;
                     double dist = 0.0, wt;
                     if (r2 > (double)(r * r)) continue;
-                    for (c = 0; c < joint_ch; c++) dist += fabs(j0[c] - jp[c]);
-                    wt = exp(r2 * gs) * exp(dist * dist * gc);
+                    for (c = 0; c < joint_ch; c++) dist += ALWAN_ABS_F64(j0[c] - jp[c]);
+                    wt = ALWAN_EXP_F64(r2 * gs) * ALWAN_EXP_F64(dist * dist * gc);
                     for (c = 0; c < src_ch; c++) sum[c] += wt * sp[c];
                     wsum += wt;
                 }

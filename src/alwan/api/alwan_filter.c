@@ -77,7 +77,7 @@ static void alwan_fl_kernel(double *k, double *phi, double sigma, int order, siz
     double s;
     for (i = 0; i < n; i++) {
         long const x = (long)i - (long)lw;
-        phi[i] = exp(a * (double)(x * x));
+        phi[i] = ALWAN_EXP_F64(a * (double)(x * x));
     }
     s = alwan_fl_sum(phi, n);
     for (i = 0; i < n; i++) phi[i] = phi[i] / s;
@@ -86,7 +86,7 @@ static void alwan_fl_kernel(double *k, double *phi, double sigma, int order, siz
         double q;
         if (order == 0) q = 1.0;
         else if (order == 1) q = 0.0 + (double)x * p;
-        else q = fma((double)(x * x), p * p, p);   /* numpy's dot fuses it (OpenBLAS) */
+        else q = ALWAN_FMA_CR_F64((double)(x * x), p * p, p);   /* numpy's dot fuses it (OpenBLAS) */
         k[n - 1 - i] = order == 0 ? phi[i] : q * phi[i];
     }
 }
@@ -125,14 +125,14 @@ static void alwan_fl_corr(double *out, double const *in, size_t count, size_t le
     long j;
     int sym = 1;
     for (ii = 1; ii <= half; ii++)
-        if (fabs(fw[ii] - fw[-(long)ii]) > DBL_EPSILON) {
+        if (ALWAN_ABS_F64(fw[ii] - fw[-(long)ii]) > DBL_EPSILON) {
             sym = 0;
             break;
         }
     if (!sym) {
         sym = -1;
         for (ii = 1; ii <= half; ii++)
-            if (fabs(fw[ii] + fw[-(long)ii]) > DBL_EPSILON) {
+            if (ALWAN_ABS_F64(fw[ii] + fw[-(long)ii]) > DBL_EPSILON) {
                 sym = 0;
                 break;
             }
@@ -204,9 +204,9 @@ static void alwan_fl_bw_axis(double *r, size_t d, double factor) {
 static double alwan_fl_pow(double q, double order, int f32) {
     if (order == 2.0) return alwan_fl_r(q * q, f32);
     if (order == 1.0) return q;
-    if (order == 0.5) return alwan_fl_r(sqrt(q), f32);
+    if (order == 0.5) return alwan_fl_r(ALWAN_SQRT_F64(q), f32);
     if (order == -1.0) return alwan_fl_r(1.0 / q, f32);
-    return f32 ? (double)powf((float)q, (float)order) : pow(q, order);
+    return f32 ? (double)ALWAN_POW_F32((float)q, (float)order) : ALWAN_POW_F64(q, order);
 }
 
 static alwan_status alwan_fl_butterworth(double *plane, size_t w, size_t h, alwan_filter_params const *p, int f32) {
@@ -250,7 +250,7 @@ static alwan_status alwan_fl_butterworth(double *plane, size_t w, size_t h, alwa
             q = alwan_fl_pow(q, order, f32);
             wf = alwan_fl_r(1.0 / alwan_fl_r(1.0 + q, f32), f32);
             if (!p->low_pass) wf = alwan_fl_r(wf * q, f32);
-            if (p->unsquared) wf = alwan_fl_r(sqrt(wf), f32);
+            if (p->unsquared) wf = alwan_fl_r(ALWAN_SQRT_F64(wf), f32);
             re[y * W + x] *= wf;
             im[y * W + x] *= wf;
         }

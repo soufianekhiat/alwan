@@ -247,7 +247,7 @@ static alwan_status alwan_sg_watershed(uint32_t *labels, size_t labels_rs, size_
                 double r = 0.0;
                 r += dy * dy;
                 r += dx * dx;
-                ne.value += p->compactness * sqrt(r);
+                ne.value += p->compactness * ALWAN_SQRT_F64(r);
             } else if (!wsl) {
                 out[q] = out[e.index];
             }
@@ -309,19 +309,19 @@ static void alwan_sg_grid(long start[3], long stepv[3], double stepf[3], size_t 
         for (i = 0; i < 3; i++) start[i] = 0, stepv[i] = 1, stepf[i] = 1.0;
         return;
     }
-    for (i = 0; i < 3; i++) steps[i] = pow(space / (double)n_points, 1.0 / 3.0);
+    for (i = 0; i < 3; i++) steps[i] = ALWAN_POW_F64(space / (double)n_points, 1.0 / 3.0);
     if (sorted[0] < steps[0] || sorted[1] < steps[1] || sorted[2] < steps[2]) {
         for (dim = 0; dim < 3; dim++) {
             double sp = 1.0;
             steps[dim] = sorted[dim];
             for (i = dim + 1; i < 3; i++) sp *= sorted[i];
-            for (i = dim + 1; i < 3; i++) steps[i] = pow(sp / (double)n_points, 1.0 / (double)(3 - dim - 1));
+            for (i = dim + 1; i < 3; i++) steps[i] = ALWAN_POW_F64(sp / (double)n_points, 1.0 / (double)(3 - dim - 1));
             if (sorted[0] >= steps[0] && sorted[1] >= steps[1] && sorted[2] >= steps[2]) break;
         }
     }
     for (i = 0; i < 3; i++) {
         double const s = steps[rank[i]];
-        start[i] = (long)floor(s / 2.0);
+        start[i] = (long)ALWAN_FLOOR_F64(s / 2.0);
         stepv[i] = (long)nearbyint(s);   /* numpy's round: half to even */
         stepf[i] = (double)stepv[i];
     }

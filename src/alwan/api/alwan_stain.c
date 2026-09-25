@@ -43,8 +43,8 @@ static alwan_status alwan__stain_inverse(double out[9], double const m[9]) {
     double const det = m[0] * c00 + m[1] * c01 + m[2] * c02;
     double scale = 0.0;
     int i;
-    for (i = 0; i < 9; i++) scale = fabs(m[i]) > scale ? fabs(m[i]) : scale;
-    if (!(fabs(det) > 1e-12 * scale * scale * scale)) return ALWAN_E_RANGE;
+    for (i = 0; i < 9; i++) scale = ALWAN_ABS_F64(m[i]) > scale ? ALWAN_ABS_F64(m[i]) : scale;
+    if (!(ALWAN_ABS_F64(det) > 1e-12 * scale * scale * scale)) return ALWAN_E_RANGE;
     out[0] = c00 / det;
     out[1] = (m[2] * m[7] - m[1] * m[8]) / det;
     out[2] = (m[1] * m[5] - m[2] * m[4]) / det;

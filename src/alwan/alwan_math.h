@@ -193,6 +193,14 @@
 /* Force 2-rounding multiply-add. The build also passes
  * `-ffp-contract=off` (clang/gcc) or `/fp:precise` (MSVC) so the
  * compiler can't re-fuse this back into hardware FMA. */
+# undef  ALWAN_HYPOT_F64
+# undef  ALWAN_COSH_F64
+# undef  ALWAN_SINH_F64
+# undef  ALWAN_POWI_F64
+# define ALWAN_HYPOT_F64(x, y)  alwan_det_hypot_f64((x), (y))
+# define ALWAN_COSH_F64(x)      alwan_det_cosh_f64((x))
+# define ALWAN_SINH_F64(x)      alwan_det_sinh_f64((x))
+# define ALWAN_POWI_F64(x, n)   alwan_det_powi_f64((x), (long)(n))
 # undef  ALWAN_FMA
 # undef  ALWAN_FMAF
 # define ALWAN_FMA(a, b, c)   ((a) * (b) + (c))

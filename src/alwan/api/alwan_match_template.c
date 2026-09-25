@@ -192,7 +192,7 @@ static alwan_status alwan_mt_run(void *out, size_t out_rs, void const *img, size
     {
         size_t const Lr = alwan_mt_pow2(Hp), Lc = alwan_mt_pow2(Wp), L = Lr * Lc;
         double const direct = (double)ow * (double)oh * (double)vol;
-        double const viafft = 3.0 * (double)L * (log2((double)L) + 2.0) * 2.5;
+        double const viafft = 3.0 * (double)L * (ALWAN_LOG2_F64((double)L) + 2.0) * 2.5;
         if (direct <= viafft || L / Lr != Lc) {
             size_t or_, oc;
             for (or_ = 0; or_ < oh; or_++)
@@ -250,7 +250,7 @@ static alwan_status alwan_mt_run(void *out, size_t out_rs, void const *img, size
                 double den = (s2 - (s1 * s1) / (double)vol) * tssd;
                 double r;
                 if (den < 0.0) den = 0.0;
-                den = sqrt(den);
+                den = ALWAN_SQRT_F64(den);
                 r = den > eps ? num / den : 0.0;
                 if (kind == 1) ((alwan_f32 *)orow)[oc] = (alwan_f32)r;
                 else ((alwan_f64 *)orow)[oc] = r;

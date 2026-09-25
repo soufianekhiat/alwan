@@ -41,7 +41,7 @@ static alwan_status alwan_mom_about(double *mu, size_t order, void const *src, s
     /* the rows' powers, then A[p][c] = sum_r v[r][c] dr^p */
     for (y = 0; y < h; y++) {
         double const d = (double)y * sp0 - c0;
-        for (pq = 0; pq < o1; pq++) pc[pq] = pow(d, (double)pq);
+        for (pq = 0; pq < o1; pq++) pc[pq] = ALWAN_POWI_F64(d, pq);
         for (x = 0; x < w; x++) {
             double const v = alwan_mom_read(src, rs, x, y, kind);
             for (pq = 0; pq < o1; pq++) A[pq * w + x] += v * pc[pq];
@@ -50,7 +50,7 @@ static alwan_status alwan_mom_about(double *mu, size_t order, void const *src, s
     for (pq = 0; pq < o1 * o1; pq++) mu[pq] = 0.0;
     for (x = 0; x < w; x++) {
         double const d = (double)x * sp1 - c1;
-        for (q = 0; q < o1; q++) pc[q] = pow(d, (double)q);
+        for (q = 0; q < o1; q++) pc[q] = ALWAN_POWI_F64(d, q);
         for (pq = 0; pq < o1; pq++)
             for (q = 0; q < o1; q++) mu[pq * o1 + q] += A[pq * w + x] * pc[q];
     }
@@ -63,7 +63,7 @@ static double alwan_mom_comb(size_t n, size_t k) {
     size_t i;
     if (k > n - k) k = n - k;
     for (i = 1; i <= k; i++) r = r * (double)(n - k + i) / (double)i;
-    return floor(r + 0.5);
+    return ALWAN_FLOOR_F64(r + 0.5);
 }
 
 /* scikit-image's moments_raw_to_central, 2-D */
@@ -82,10 +82,10 @@ static void alwan_mom_raw_to_central(double *mc, double const *m, size_t order) 
             MC(0, 2) = M(0, 2) - cy * M(0, 1);
         }
         if (order > 2) {
-            MC(2, 1) = M(2, 1) - 2 * cx * M(1, 1) - cy * M(2, 0) + pow(cx, 2.0) * M(0, 1) + cy * cx * M(1, 0);
+            MC(2, 1) = M(2, 1) - 2 * cx * M(1, 1) - cy * M(2, 0) + ALWAN_POWI_F64(cx, 2) * M(0, 1) + cy * cx * M(1, 0);
             MC(1, 2) = M(1, 2) - 2 * cy * M(1, 1) - cx * M(0, 2) + 2 * cy * cx * M(0, 1);
-            MC(3, 0) = M(3, 0) - 3 * cx * M(2, 0) + 2 * pow(cx, 2.0) * M(1, 0);
-            MC(0, 3) = M(0, 3) - 3 * cy * M(0, 2) + 2 * pow(cy, 2.0) * M(0, 1);
+            MC(3, 0) = M(3, 0) - 3 * cx * M(2, 0) + 2 * ALWAN_POWI_F64(cx, 2) * M(1, 0);
+            MC(0, 3) = M(0, 3) - 3 * cy * M(0, 2) + 2 * ALWAN_POWI_F64(cy, 2) * M(0, 1);
         }
         return;
     }
@@ -95,9 +95,9 @@ static void alwan_mom_raw_to_central(double *mc, double const *m, size_t order) 
             for (q = 0; q <= order; q++) {
                 if (p + q > order) continue;
                 for (i = 0; i <= p; i++) {
-                    double const term1 = alwan_mom_comb(p, i) * pow(-c0, (double)(p - i));
+                    double const term1 = alwan_mom_comb(p, i) * ALWAN_POWI_F64(-c0, (long)(p - i));
                     for (j = 0; j <= q; j++) {
-                        double const term2 = alwan_mom_comb(q, j) * pow(-c1, (double)(q - j));
+                        double const term2 = alwan_mom_comb(q, j) * ALWAN_POWI_F64(-c1, (long)(q - j));
                         MC(p, q) += term1 * term2 * M(i, j);
                     }
                 }
@@ -151,6 +151,19 @@ alwan_status alwan_moments_f32(double *mu, size_t order, alwan_f32 const *src, s
 }
 #endif
 
+/* mu0^(twice / 2): libm's pow in ordinary builds, bit for bit. The deterministic build's pow
+ * takes a positive base only, so there the power is split into an integer power and, for an
+ * odd twice, one square root: exact in sign for an even power of a negative mass, NaN for an
+ * odd one, as pow gives. */
+static double alwan_mom_pow_half(double x, size_t twice) {
+#if defined(ALWAN_DETERMINISTIC) && ALWAN_DETERMINISTIC
+    double const r = ALWAN_POWI_F64(x, (long)(twice / 2));
+    return (twice & 1u) ? r * ALWAN_SQRT_F64(x) : r;
+#else
+    return ALWAN_POW_F64(x, (double)twice / 2.0);
+#endif
+}
+
 alwan_status alwan_moments_normalized(double *nu, double const *mu, size_t order, double const *spacing) {
     size_t const o1 = order + 1;
     double scale = 1.0, mu0;
@@ -161,7 +174,7 @@ alwan_status alwan_moments_normalized(double *nu, double const *mu, size_t order
     for (p = 0; p < o1; p++)
         for (q = 0; q < o1; q++) {
             size_t const s = p + q;
-            nu[p * o1 + q] = s < 2 ? NAN : (mu[p * o1 + q] / pow(scale, (double)s)) / pow(mu0, (double)s / 2.0 + 1.0);
+            nu[p * o1 + q] = s < 2 ? NAN : (mu[p * o1 + q] / ALWAN_POWI_F64(scale, (long)s)) / alwan_mom_pow_half(mu0, s + 2);
         }
     return ALWAN_OK;
 }
@@ -207,7 +220,7 @@ alwan_status alwan_inertia_tensor(double *tensor, double *eigvals, double const 
         tensor[2] = t01, tensor[3] = t11;
     }
     if (eigvals) {
-        double const half = (t00 + t11) / 2.0, root = hypot((t00 - t11) / 2.0, t01);
+        double const half = (t00 + t11) / 2.0, root = ALWAN_HYPOT_F64((t00 - t11) / 2.0, t01);
         double l1 = half + root, l2 = half - root;
         if (l1 < 0.0) l1 = 0.0;
         if (l2 < 0.0) l2 = 0.0;

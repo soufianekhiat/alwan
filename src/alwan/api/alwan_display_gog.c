@@ -77,7 +77,7 @@ static int alwan_gog_finite(double v) {
 static double alwan_gog_eval_raw(double a, double b, double g, double c, double d) {
     double const base = a * d + b;
     if (base <= 0.0) return c;                  /* the model floors at the flare */
-    return pow(base, g) + c;
+    return ALWAN_POW_F64(base, g) + c;
 }
 
 /* The luminance residual, which is the error a caller cares about. */
@@ -89,7 +89,7 @@ static double alwan_gog_rms(alwan_gog_data const *data, double a, double b, doub
         if (!alwan_gog_finite(e)) return 1e308;
         sum += e * e;
     }
-    return sqrt(sum / (double)data->n);
+    return ALWAN_SQRT_F64(sum / (double)data->n);
 }
 
 /* Best a and b for a fixed gamma and flare, in closed form: with the curve
@@ -102,7 +102,7 @@ static int alwan_gog_linear(alwan_gog_data const *data, double g, double c,
         double const t = data->l[i] - c;
         double y;
         if (t < 0.0) continue;                  /* below the flare: no real root */
-        y = pow(t, 1.0 / g);
+        y = ALWAN_POW_F64(t, 1.0 / g);
         if (!alwan_gog_finite(y)) continue;
         sx += data->d[i];
         sy += y;
@@ -183,7 +183,7 @@ static void alwan_gog_refine(alwan_gog_data const *data, double *p, int np) {
     for (i = 0; i <= np; i++) {
         for (j = 0; j < np; j++) simplex[i][j] = p[j];
         if (i > 0) {
-            double const step = (fabs(p[i - 1]) > 1e-6) ? 0.05 * fabs(p[i - 1]) : 0.01;
+            double const step = (ALWAN_ABS_F64(p[i - 1]) > 1e-6) ? 0.05 * ALWAN_ABS_F64(p[i - 1]) : 0.01;
             simplex[i][i - 1] += step;
         }
         err[i] = alwan_gog_rms(data, simplex[i][0], simplex[i][1], simplex[i][2],
@@ -381,7 +381,7 @@ static alwan_status alwan_gog_invert(double *out, double a, double b, double g, 
     if (l < c) return ALWAN_E_RANGE;            /* darker than the display's own black */
     if (a == 0.0) return ALWAN_E_DIVZERO;
     if (g == 0.0) return ALWAN_E_DIVZERO;
-    base = pow(l - c, 1.0 / g);
+    base = ALWAN_POW_F64(l - c, 1.0 / g);
     *out = (base - b) / a;
     return alwan_gog_finite(*out) ? ALWAN_OK : ALWAN_E_RANGE;
 }

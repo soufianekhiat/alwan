@@ -218,6 +218,44 @@ ALWAN_INLINE alwan_f32 alwan_det_pow_pos_f32(alwan_f32 x, alwan_f32 e) {
 
 /* Cube root via pow_pos. Handles negative x by sign-preservation
  * (matches libm cbrt behaviour). */
+/* x to an integer power by repeated squaring: only IEEE multiplications and one division,
+ * so the same on every platform, exact in sign for a negative base, 1 for n = 0. */
+ALWAN_INLINE alwan_f64 alwan_det_powi_f64(alwan_f64 x, long n) {
+    alwan_f64 r = 1.0, b = x;
+    unsigned long k = (n < 0) ? (unsigned long)(-(n + 1)) + 1UL : (unsigned long)n;
+    while (k) {
+        if (k & 1UL) r *= b;
+        b *= b;
+        k >>= 1;
+    }
+    return (n < 0) ? 1.0 / r : r;
+}
+
+/* hypot scaled so neither square overflows nor underflows first: IEEE operations only. */
+ALWAN_INLINE alwan_f64 alwan_det_hypot_f64(alwan_f64 x, alwan_f64 y) {
+    const alwan_f64 a = (x < 0.0) ? -x : x, b = (y < 0.0) ? -y : y;
+    const alwan_f64 m = (a > b) ? a : b, s = (a > b) ? b : a;
+    alwan_f64 r;
+    if (m == 0.0 || m != m || s != s) return (m != m || s != s) ? (a + b) : 0.0;
+    r = s / m;
+    return m * sqrt(1.0 + r * r);
+}
+
+/* cosh and sinh from the deterministic exp; sinh takes its series below 1e-4, where
+ * (e^x - e^-x) / 2 would cancel. */
+ALWAN_INLINE alwan_f64 alwan_det_cosh_f64(alwan_f64 x) {
+    const alwan_f64 e = alwan_det_exp_f64(x < 0.0 ? -x : x);
+    return 0.5 * (e + 1.0 / e);
+}
+ALWAN_INLINE alwan_f64 alwan_det_sinh_f64(alwan_f64 x) {
+    const alwan_f64 a = (x < 0.0) ? -x : x;
+    alwan_f64 e, r;
+    if (a < 1e-4) return x + x * x * x / 6.0;
+    e = alwan_det_exp_f64(a);
+    r = 0.5 * (e - 1.0 / e);
+    return (x < 0.0) ? -r : r;
+}
+
 ALWAN_INLINE alwan_f64 alwan_det_cbrt_f64(alwan_f64 x) {
     if (x == 0.0) return 0.0;
     const alwan_f64 a = (x < 0.0) ? -x : x;

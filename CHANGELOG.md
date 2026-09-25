@@ -2,6 +2,25 @@
 
 ### Fixed: output differs
 
+- **Deterministic builds were not deterministic for 43 families.** 519 math calls in
+  src/alwan went straight to libm instead of through alwan_math.h's macros, 180 of them
+  transcendentals (pow, exp, log, log2, log10, sin, cos, atan, atan2, acos, cosh, sinh,
+  hypot), so under ALWAN_DETERMINISTIC those functions still took the platform libm's last
+  bits: bilateral, CLF import, colour transfer, constancy, contours, corners, corresponding
+  chromaticities, denoise and NL-means, the GOG and display models, domain transform, edge
+  detection, ellipses, the fast global smoother, the FFT, film grain, alwan_filter, gamut
+  mapping, OCIO grading, image metrics, L0 smoothing, light probes, local Laplacian,
+  luminaires, template matching, moments, peaks, region properties, registration, resize,
+  ridges, segmentation, sharpening, texture, thin films, thresholds, local tone mapping,
+  vignetting, vision and warping. Every call now goes through the macros
+  (tools/check_no_raw_libm.py passes). Ordinary builds are unchanged, bit for bit: there the
+  macros are the same libm calls. Deterministic builds of those families move by their
+  polynomials' precision, at most 1.3e-10 of the range (a difference of Gaussians on a
+  7 x 5 frame); new ALWAN_HYPOT_F64, ALWAN_COSH_F64, ALWAN_SINH_F64, ALWAN_POWI_F64 (an
+  exact integer power, where the deterministic pow takes a positive base only) and
+  ALWAN_FMA_CR_F64 (the correctly rounded fma, kept in deterministic builds) cover the
+  calls the macro set lacked.
+
 - **`ALWAN_VIEW_TONY_MCMAPFACE` was not Tony McMapface.** It was an analytic curve with no
   source, 0.52 off at worst and 0.026 at the median against the transform it was named
   after. Tony McMapface (Tomasz Stachowiak, 2023) is a 48^3 cube read at `x / (x + 1)` with

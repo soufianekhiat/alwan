@@ -49,7 +49,7 @@ static alwan_cx alwan_cx_mul(alwan_cx a, alwan_cx b) { return alwan_cx_make(a.re
 static alwan_cx alwan_cx_scale(alwan_cx a, double s) { return alwan_cx_make(a.re * s, a.im * s); }
 static alwan_cx alwan_cx_div(alwan_cx a, alwan_cx b) {
     /* Smith's algorithm */
-    if (fabs(b.re) >= fabs(b.im)) {
+    if (ALWAN_ABS_F64(b.re) >= ALWAN_ABS_F64(b.im)) {
         double const r = b.im / b.re, d = b.re + b.im * r;
         return alwan_cx_make((a.re + a.im * r) / d, (a.im - a.re * r) / d);
     } else {
@@ -61,19 +61,19 @@ static double alwan_cx_abs2(alwan_cx a) { return a.re * a.re + a.im * a.im; }
 static alwan_cx alwan_cx_conj(alwan_cx a) { return alwan_cx_make(a.re, -a.im); }
 static alwan_cx alwan_cx_sqrt(alwan_cx z) {
     /* the principal root */
-    double const m = hypot(z.re, z.im);
-    double re = sqrt(0.5 * (m + z.re)), im = sqrt(0.5 * (m - z.re));
+    double const m = ALWAN_HYPOT_F64(z.re, z.im);
+    double re = ALWAN_SQRT_F64(0.5 * (m + z.re)), im = ALWAN_SQRT_F64(0.5 * (m - z.re));
     if (z.im < 0.0) im = -im;
     return alwan_cx_make(re, im);
 }
 static alwan_cx alwan_cx_exp(alwan_cx z) {
-    double const e = exp(z.re);
-    return alwan_cx_make(e * cos(z.im), e * sin(z.im));
+    double const e = ALWAN_EXP_F64(z.re);
+    return alwan_cx_make(e * ALWAN_COS_F64(z.im), e * ALWAN_SIN_F64(z.im));
 }
 
 /* Byrnes's is_forward_angle, on n cos(theta): the wave decays forward, or travels forward. */
 static int alwan_tf_forward(alwan_cx ncos) {
-    return fabs(ncos.im) > 100.0 * 2.220446049250313e-16 ? ncos.im > 0.0 : ncos.re > 0.0;
+    return ALWAN_ABS_F64(ncos.im) > 100.0 * 2.220446049250313e-16 ? ncos.im > 0.0 : ncos.re > 0.0;
 }
 
 /* The angle's cosine in a medium of index n from the invariant n_0 sin(theta_0). */
@@ -117,7 +117,7 @@ alwan_status alwan_multilayer_tmm_f64(double *R, double *T, double const *wavele
     for (w = 0; w < count; w++) {
         double const lambda = wavelengths[w];
         alwan_cx const n0 = alwan_tf_index(stack, 0, w);
-        alwan_cx const nsin0 = alwan_cx_scale(n0, sin(th));
+        alwan_cx const nsin0 = alwan_cx_scale(n0, ALWAN_SIN_F64(th));
         alwan_cx c_prev, n_prev;
         int pol;
         if (!(lambda > 0.0) || lambda - lambda != 0.0) return ALWAN_E_RANGE;
@@ -182,7 +182,7 @@ alwan_status alwan_fresnel_f64(double *amplitudes, double n1, double k1, double 
     int pol;
     if (!amplitudes) return ALWAN_E_INVALID;
     if (!(theta_degrees >= 0.0 && theta_degrees < 90.0) || k1 != 0.0 || !(n1 > 0.0) || n2 - n2 != 0.0 || k2 - k2 != 0.0) return ALWAN_E_RANGE;
-    nsin0 = alwan_cx_scale(a, sin(theta_degrees * (3.14159265358979323846 / 180.0)));
+    nsin0 = alwan_cx_scale(a, ALWAN_SIN_F64(theta_degrees * (3.14159265358979323846 / 180.0)));
     ca = alwan_tf_cos(a, nsin0, 1);
     cb = alwan_tf_cos(b, nsin0, 1);
     for (pol = 0; pol < 2; pol++) {
@@ -203,7 +203,7 @@ alwan_status alwan_water_refractive_index_f64(double *n_out, double wavelength_n
     LL = 0.243905091 + 9.53518094e-3 * p + -3.64358110e-3 * Tn + 2.65666426e-4 * wl2 * Tn + 1.59189325e-3 / wl2 +
          (2.45733798e-3 / (wl2 - wl_uv * wl_uv)) + (0.897478251 / (wl2 - wl_ir * wl_ir)) + -1.63066183e-2 * p * p;
     if (!(1.0 / p - LL > 0.0)) return ALWAN_E_RANGE;
-    *n_out = sqrt((2.0 * LL + 1.0 / p) / (1.0 / p - LL));
+    *n_out = ALWAN_SQRT_F64((2.0 * LL + 1.0 / p) / (1.0 / p - LL));
     return ALWAN_OK;
 }
 

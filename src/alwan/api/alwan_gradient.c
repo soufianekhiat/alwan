@@ -44,7 +44,7 @@ static void alwan_gr_convolve(double *out, double const *img, size_t w, size_t h
                 size_t const sy = alwan_gr_reflect((long)y + (long)a - cy, h);
                 for (b = 0; b < kw; b++) {
                     double const wt = k[(kh - 1 - a) * kw + (kw - 1 - b)];   /* flipped */
-                    if (fabs(wt) <= DBL_EPSILON) continue;
+                    if (ALWAN_ABS_F64(wt) <= DBL_EPSILON) continue;
                     t += img[sy * w + alwan_gr_reflect((long)x + (long)b - cx, w)] * wt;
                 }
             }
@@ -125,11 +125,11 @@ static alwan_status alwan_gr_run(void *out, size_t out_rs, void const *src, size
                 double s;
                 if (method == ALWAN_GRADIENT_ROBERTS) {
                     s = alwan_gr_r(alwan_gr_r(d0[i] * d0[i], f32) + alwan_gr_r(d1[i] * d1[i], f32), f32);
-                    d0[i] = alwan_gr_r(alwan_gr_r(sqrt(s), f32) / sqrt(2.0), f32);
+                    d0[i] = alwan_gr_r(alwan_gr_r(ALWAN_SQRT_F64(s), f32) / ALWAN_SQRT_F64(2.0), f32);
                 } else {
                     s = alwan_gr_r(0.0 + alwan_gr_r(d0[i] * d0[i], f32), f32);
                     s = alwan_gr_r(s + alwan_gr_r(d1[i] * d1[i], f32), f32);
-                    d0[i] = alwan_gr_r(alwan_gr_r(sqrt(s), f32) / alwan_gr_r(sqrt(2.0), f32), f32);
+                    d0[i] = alwan_gr_r(alwan_gr_r(ALWAN_SQRT_F64(s), f32) / alwan_gr_r(ALWAN_SQRT_F64(2.0), f32), f32);
                 }
             }
         } else if (p->component == 2) {

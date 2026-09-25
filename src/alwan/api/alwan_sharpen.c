@@ -79,7 +79,7 @@ static alwan_status alwan_sh_unsharp(void *out, size_t out_rs, void const *src, 
     }
     tmp = data + n * ch;
     for (j = -r; j <= r; j++) {
-        k[j + r] = exp(-0.5 / (radius * radius) * (double)(j * j));
+        k[j + r] = ALWAN_EXP_F64(-0.5 / (radius * radius) * (double)(j * j));
         ksum += k[j + r];
     }
     for (j = 0; j <= 2 * r; j++) k[j] /= ksum;
@@ -132,8 +132,8 @@ static alwan_status alwan_sh_unsharp(void *out, size_t out_rs, void const *src, 
 /* Pillow's _gaussian_blur_radius, in float as it runs. */
 static float alwan_usm_box_radius(float radius, int passes) {
     float const sigma2 = radius * radius / (float)passes;
-    float const L = (float)sqrt(12.0 * (double)sigma2 + 1.0);
-    float const l = (float)floor(((double)L - 1.0) / 2.0);
+    float const L = (float)ALWAN_SQRT_F64(12.0 * (double)sigma2 + 1.0);
+    float const l = (float)ALWAN_FLOOR_F64(((double)L - 1.0) / 2.0);
     float a = (2.0f * l + 1.0f) * (l * (l + 1.0f) - 3.0f * sigma2);
     a /= 6.0f * (sigma2 - (l + 1.0f) * (l + 1.0f));
     return l + a;
@@ -199,10 +199,10 @@ static alwan_status alwan_sh_usm_box(unsigned char *out, size_t out_rs, unsigned
     if (src_rs / ch < w || out_rs / ch < w || n / w / ch != h) return ALWAN_E_INVALID;
     if (w > 0x7fffffff || h > 0x7fffffff) return ALWAN_E_RANGE;
     if (!alwan_sh_finite(radius) || !alwan_sh_finite(amount) || radius < 0.0 || radius > 1000.0 ||
-        fabs(amount) > 1000.0) {
+        ALWAN_ABS_F64(amount) > 1000.0) {
         return ALWAN_E_RANGE;
     }
-    percent = (int)floor(amount * 100.0 + 0.5);
+    percent = (int)ALWAN_FLOOR_F64(amount * 100.0 + 0.5);
     img = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size(n, 1) + (w > h ? w : h), 1);
     if (!img) return ALWAN_E_NOMEM;
     line = img + n;

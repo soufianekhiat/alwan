@@ -61,7 +61,7 @@ static alwan_status alwan_lc_llf_int(void *out, size_t out_rs, void const *src, 
         for (y = 0; y < h; y++) {
             char *row = (char *)out + y * out_rs;
             for (x = 0; x < w * ch; x++) {
-                double v = floor(buf[y * w * ch + x] * top + 0.5);
+                double v = ALWAN_FLOOR_F64(buf[y * w * ch + x] * top + 0.5);
                 v = v < 0.0 ? 0.0 : v > top ? top : v;
                 if (is16) ((unsigned short *)row)[x] = (unsigned short)v;
                 else ((unsigned char *)row)[x] = (unsigned char)v;
@@ -101,8 +101,8 @@ static alwan_status alwan_lc_he_u8(unsigned char *out, size_t out_rs, unsigned c
         sum += hist[v];
         r = (float)sum * scale;
         {   /* cvRound: half to even */
-            float const fl = floorf(r), d = r - fl;
-            r = (d > 0.5f || (d == 0.5f && fmodf(fl, 2.0f) != 0.0f)) ? fl + 1.0f : fl;
+            float const fl = ALWAN_FLOOR_F32(r), d = r - fl;
+            r = (d > 0.5f || (d == 0.5f && ALWAN_FMOD_F32(fl, 2.0f) != 0.0f)) ? fl + 1.0f : fl;
         }
         lut[v] = (unsigned char)(r < 0.0f ? 0.0f : r > 255.0f ? 255.0f : r);
     }

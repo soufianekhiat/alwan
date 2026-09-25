@@ -132,7 +132,7 @@ static alwan_status alwan_gp_prepare(alwan_gp_render *r, alwan_grading_style sty
             r->power[c] = inverse ? g : 1.0 / g;
         } else if (style == ALWAN_GRADING_LIN) {
             double const o = v->offset.master + ch[c][3];
-            double const e = pow(2.0, v->exposure.master + ch[c][4]);
+            double const e = ALWAN_POW_F64(2.0, v->exposure.master + ch[c][4]);
             double const k = v->contrast.master * ch[c][1];
             r->add[c] = inverse ? -o : o;
             r->scale[c] = inverse ? 1.0 / e : e;
@@ -151,7 +151,7 @@ static alwan_status alwan_gp_prepare(alwan_gp_render *r, alwan_grading_style sty
     }
     r->power_identity = r->power[0] == 1.0 && r->power[1] == 1.0 && r->power[2] == 1.0;
     r->pivot = style == ALWAN_GRADING_LOG ? 0.5 + v->pivot * 0.5
-             : style == ALWAN_GRADING_LIN ? 0.18 * pow(2.0, v->pivot) : 0.0;
+             : style == ALWAN_GRADING_LIN ? 0.18 * ALWAN_POW_F64(2.0, v->pivot) : 0.0;
     return ALWAN_OK;
 }
 
@@ -170,7 +170,7 @@ static void alwan_gp_contrast(double *p, double const *k, double pivot) {
 
 static void alwan_gp_lin_contrast(double *p, double const *k, double pivot) {
     int c;
-    for (c = 0; c < 3; c++) p[c] = pow(fabs(p[c] / pivot), k[c]) * copysign(pivot, p[c]);
+    for (c = 0; c < 3; c++) p[c] = ALWAN_POW_F64(ALWAN_ABS_F64(p[c] / pivot), k[c]) * copysign(pivot, p[c]);
 }
 
 static void alwan_gp_gamma(double *p, double const *g, double black, double white) {
@@ -178,7 +178,7 @@ static void alwan_gp_gamma(double *p, double const *g, double black, double whit
     int c;
     for (c = 0; c < 3; c++) {
         double const d = p[c] - black;
-        p[c] = pow(fabs(d) / range, g[c]) * copysign(1.0, d) * range + black;
+        p[c] = ALWAN_POW_F64(ALWAN_ABS_F64(d) / range, g[c]) * copysign(1.0, d) * range + black;
     }
 }
 
@@ -302,9 +302,9 @@ static double alwan_gt_faux_rev(double t, double x0, double x2, double y0, doubl
     double const y1 = (0.5 / ((x2 - x1) + (x1 - x0))) *
                       ((2. * y0 + m0 * (x1 - x0)) * (x2 - x1) + (2. * y2 - m2 * (x2 - x1)) * (x1 - x0));
     double const cL = y0 - t, bL = m0 * (x1 - x0), aL = y1 - y0 - m0 * (x1 - x0);
-    double const outL = (2. * cL) / (-sqrt(bL * bL - 4. * aL * cL) - bL) * (x1 - x0) + x0;
+    double const outL = (2. * cL) / (-ALWAN_SQRT_F64(bL * bL - 4. * aL * cL) - bL) * (x1 - x0) + x0;
     double const cR = y1 - t, bR = 2. * y2 - 2. * y1 - m2 * (x2 - x1), aR = y1 - y2 + m2 * (x2 - x1);
-    double const outR = (2. * cR) / (-sqrt(bR * bR - 4. * aR * cR) - bR) * (x2 - x1) + x1;
+    double const outR = (2. * cR) / (-ALWAN_SQRT_F64(bR * bR - 4. * aR * cR) - bR) * (x2 - x1) + x1;
     double res = (t < y1) ? outL : outR;
     res = (t < y0) ? x0 + (t - y0) / m0 : res;
     res = (t > y2) ? x2 + (t - y2) / m2 : res;
@@ -550,7 +550,7 @@ static double alwan_gt_mid_fwd(alwan_gt_render const *r, int ch, double t, int m
 
 static double alwan_gt_mid_seg_rev(double t, double xa, double xb, double ya, double ma, double mb) {
     double const c = ya - t, b = ma * (xb - xa), a = 0.5 * (mb - ma) * (xb - xa);
-    return (2. * c) / (-sqrt(b * b - 4. * a * c) - b) * (xb - xa) + xa;
+    return (2. * c) / (-ALWAN_SQRT_F64(b * b - 4. * a * c) - b) * (xb - xa) + xa;
 }
 
 static double alwan_gt_mid_rev(alwan_gt_render const *r, int ch, double t, int master) {
@@ -593,9 +593,9 @@ static double alwan_gt_hs_fwd(double const *x, double const *y, double const *m,
 
 static double alwan_gt_hs_rev(double const *x, double const *y, double const *m, double t) {
     double const bL = m[0] * (x[1] - x[0]), aL = y[1] - y[0] - m[0] * (x[1] - x[0]), cL = y[0] - t;
-    double const outL = (-2. * cL) / (sqrt(bL * bL - 4. * aL * cL) + bL) * (x[1] - x[0]) + x[0];
+    double const outL = (-2. * cL) / (ALWAN_SQRT_F64(bL * bL - 4. * aL * cL) + bL) * (x[1] - x[0]) + x[0];
     double const bR = 2. * y[2] - 2. * y[1] - m[1] * (x[2] - x[1]), aR = y[1] - y[2] + m[1] * (x[2] - x[1]), cR = y[1] - t;
-    double const outR = (-2. * cR) / (sqrt(bR * bR - 4. * aR * cR) + bR) * (x[2] - x[1]) + x[1];
+    double const outR = (-2. * cR) / (ALWAN_SQRT_F64(bR * bR - 4. * aR * cR) + bR) * (x[2] - x[1]) + x[1];
     double res = t < y[1] ? outL : outR;
     res = t < y[0] ? (t - y[0]) / m[0] + x[0] : res;
     res = t < y[2] ? res : (t - y[2]) / m[1] + x[2];
@@ -626,7 +626,7 @@ static double alwan_gt_wb(alwan_gt_render const *r, int k, int ch, double t, int
             t = (t - x[0]) / gain + x[0];
             {
                 double const c = cc - t;
-                double const res1 = (-2. * c) / (sqrt(bb * bb - 4. * aa * c) + bb);
+                double const res1 = (-2. * c) / (ALWAN_SQRT_F64(bb * bb - 4. * aa * c) + bb);
                 return t < brk ? res : res1;
             }
         }
@@ -636,7 +636,7 @@ static double alwan_gt_wb(alwan_gt_render const *r, int k, int ch, double t, int
         double c, res;
         if (mtest > 1.) t = !k ? (t - x[0]) * gain + x[0] : (t - x[1]) * gain + x[1];
         c = y[0] - t;
-        res = (-2. * c) / (sqrt(b * b - 4. * a * c) + b) * (x[1] - x[0]) + x[0];
+        res = (-2. * c) / (ALWAN_SQRT_F64(b * b - 4. * a * c) + b) * (x[1] - x[0]) + x[0];
         res = t < y[0] ? x[0] + (t - y[0]) / m[0] : res;
         if (mtest < 1.) return t < y[1] ? res : x[1] + (t - y[1]) / m[1];
         if (!k) {
@@ -669,12 +669,12 @@ static double alwan_gt_sc(alwan_gt_render const *r, double t, int fwd) {
         out = t < xb[1] ? yb[1] + (t - xb[1]) * mb[0] : out;
     } else {
         double b = mt[0] * (xt[2] - xt[1]), a = (mt[1] - mt[0]) * 0.5 * (xt[2] - xt[1]), c = yt[1] - t;
-        double res = (xt[2] - xt[1]) * (-2. * c) / (sqrt(b * b - 4. * a * c) + b) + xt[1];
+        double res = (xt[2] - xt[1]) * (-2. * c) / (ALWAN_SQRT_F64(b * b - 4. * a * c) + b) + xt[1];
         out = (t - r->pivot) / r->sc + r->pivot;
         out = t < yt[1] ? out : res;
         out = t < yt[2] ? out : xt[2] + (t - yt[2]) / mt[1];
         b = mb[0] * (xb[2] - xb[1]); a = (mb[1] - mb[0]) * 0.5 * (xb[2] - xb[1]); c = yb[1] - t;
-        res = (xb[2] - xb[1]) * (-2. * c) / (sqrt(b * b - 4. * a * c) + b) + xb[1];
+        res = (xb[2] - xb[1]) * (-2. * c) / (ALWAN_SQRT_F64(b * b - 4. * a * c) + b) + xb[1];
         out = t < yb[2] ? res : out;
         out = t < yb[1] ? xb[1] + (t - yb[1]) / mb[0] : out;
     }
@@ -716,12 +716,12 @@ static void alwan_gt_wbz(alwan_gt_render const *r, int k, int ch, double *p, int
 
 static double alwan_gt_linlog(double x) {
     double const m = (double)(1.f / (0.18f + -0.000157849851665374f));
-    return x < ALWAN_GT_XBRK ? x * ALWAN_GT_GAIN + -7.0 : log2((x + ALWAN_GT_SHIFT) * m);
+    return x < ALWAN_GT_XBRK ? x * ALWAN_GT_GAIN + -7.0 : ALWAN_LOG2_F64((x + ALWAN_GT_SHIFT) * m);
 }
 
 static double alwan_gt_loglin(double y) {
     return y < -5.5 ? (y - -7.0) / ALWAN_GT_GAIN
-                    : pow(2.0, y) * (double)(0.18f + -0.000157849851665374f) - ALWAN_GT_SHIFT;
+                    : ALWAN_POW_F64(2.0, y) * (double)(0.18f + -0.000157849851665374f) - ALWAN_GT_SHIFT;
 }
 
 static void alwan_gt_pixel(double *p, alwan_gt_render const *r) {
@@ -780,14 +780,14 @@ static void alwan_gc_estimate_rgb_slopes(float const *x, float const *y, int n, 
     for (i = 0; i < n - 1; i++) {
         float const dx = x[i + 1] - x[i], dy = y[i + 1] - y[i];
         secant[i] = dy / dx;
-        len[i] = sqrtf(dx * dx + dy * dy);
+        len[i] = ALWAN_SQRT_F32(dx * dx + dy * dy);
     }
     if (n == 2) { slopes[0] = slopes[1] = secant[0]; return; }
     i = 0;
     for (;;) {
         int j = i;
         float dl = len[i];
-        while (j < n - 2 && fabsf(secant[j + 1] - secant[j]) < 1e-6f) { dl += len[j + 1]; j++; }
+        while (j < n - 2 && ALWAN_ABS_F32(secant[j + 1] - secant[j]) < 1e-6f) { dl += len[j + 1]; j++; }
         for (k = i; k <= j; k++) len[k] = dl;
         if (j >= n - 3) break;
         i = j + 1;
@@ -818,13 +818,13 @@ static void alwan_gc_fit_rgb(float const *x, float const *y, int n, float const 
     for (i = 0; i < n - 1; i++) {
         float const xi = x[i], xi1 = x[i + 1], yi = y[i];
         float const dx = xi1 - xi, dy = y[i + 1] - yi, sec = dy / dx;
-        if (fabsf((slopes[i] + slopes[i + 1]) - 2.f * sec) < 1e-6f) {
+        if (ALWAN_ABS_F32((slopes[i] + slopes[i + 1]) - 2.f * sec) < 1e-6f) {
             alwan_gc_push(f, 0.5f * (slopes[i + 1] - slopes[i]) / dx, slopes[i], yi);
         } else {
             float ksi, s_bar, eta;
             float const aa = slopes[i] - sec, bb = slopes[i + 1] - sec;
             if (aa * bb >= 0.f) ksi = (xi + xi1) * 0.5f;
-            else if (fabsf(aa) > fabsf(bb)) ksi = xi1 + aa * dx / (slopes[i + 1] - slopes[i]);
+            else if (ALWAN_ABS_F32(aa) > ALWAN_ABS_F32(bb)) ksi = xi1 + aa * dx / (slopes[i + 1] - slopes[i]);
             else ksi = xi + bb * dx / (slopes[i + 1] - slopes[i]);
             s_bar = (2.f * sec - slopes[i + 1]) + (slopes[i + 1] - slopes[i]) * (ksi - xi) / dx;
             eta = (s_bar - slopes[i]) / (ksi - xi);
@@ -929,17 +929,17 @@ static double alwan_gc_eval_rev(alwan_gc_fit const *f, double y) {
         yend = (a * t + b) * t + c;
         if (y >= yend && !(y <= ystart)) {
             double const slope = 2. * a * t + b;
-            return fabs(slope) < 1e-5 ? kend : (y - yend) / slope + kend;
+            return ALWAN_ABS_F64(slope) < 1e-5 ? kend : (y - yend) / slope + kend;
         }
     }
     if (y <= ystart) {
         double const b = f->b[0];
-        return fabs(b) < 1e-5 ? kstart : (y - ystart) / b + kstart;
+        return ALWAN_ABS_F64(b) < 1e-5 ? kstart : (y - ystart) / b + kstart;
     }
     for (i = 0; i < nk - 2; i++) if (y < f->c[i + 1]) break;
     {
         double const a = f->a[i], b = f->b[i], c0 = (double)f->c[i] - y;
-        return (double)f->knots[i] + (-2. * c0) / (sqrt(b * b - 4. * a * c0) + b);
+        return (double)f->knots[i] + (-2. * c0) / (ALWAN_SQRT_F64(b * b - 4. * a * c0) + b);
     }
 }
 
@@ -1037,7 +1037,7 @@ static int alwan_gh_valid(alwan_grading_curve const *cv, int type) {
     }
     if (n == 2 && (type == ALWAN_GS_PERIODIC_1 || type == ALWAN_GS_PERIODIC_0 || type == ALWAN_GS_HUE_HUE)) {
         float const dx = (float)cv->points[1].x - (float)cv->points[0].x;
-        if (fabsf(1.f - dx) < 1e-3f) return 0;
+        if (ALWAN_ABS_F32(1.f - dx) < 1e-3f) return 0;
     }
     return 1;
 }
@@ -1098,14 +1098,14 @@ static void alwan_gh_estimate_slopes(float const *x, float const *y, int n, floa
     for (i = 0; i < n - 1; i++) {
         float const dx = x[i + 1] - x[i], dy = y[i + 1] - y[i];
         secant[i] = dy / dx;
-        len[i] = sqrtf(dx * dx + dy * dy);
+        len[i] = ALWAN_SQRT_F32(dx * dx + dy * dy);
     }
     if (n == 2) { slopes[0] = slopes[1] = secant[0]; return; }
     slopes[0] = 0.f;
     if (horizontal) {
         for (i = 1; i < n - 1; i++) {
             float s, denom = secant[i] + secant[i - 1];
-            if (fabsf(denom) < 1e-3f) s = 2.f * secant[i] * secant[i - 1] / (denom < 0.f ? -1e-3f : 1e-3f);
+            if (ALWAN_ABS_F32(denom) < 1e-3f) s = 2.f * secant[i] * secant[i - 1] / (denom < 0.f ? -1e-3f : 1e-3f);
             else s = 2.f * secant[i] * secant[i - 1] / denom;
             if (secant[i] * secant[i - 1] <= 0.f) s = 0.f;
             slopes[i] = s;
@@ -1117,7 +1117,7 @@ static void alwan_gh_estimate_slopes(float const *x, float const *y, int n, floa
         for (;;) {
             int j = i;
             float dl = len[i];
-            while (j < n - 2 && fabsf(secant[j + 1] - secant[j]) < 1e-6f) { dl += len[j + 1]; j++; }
+            while (j < n - 2 && ALWAN_ABS_F32(secant[j + 1] - secant[j]) < 1e-6f) { dl += len[j + 1]; j++; }
             for (k = i; k <= j; k++) len[k] = dl;
             if (j >= n - 3) break;
             i = j + 1;
@@ -1134,7 +1134,7 @@ static void alwan_gh_estimate_slopes(float const *x, float const *y, int n, floa
     }
     for (i = 0; i < n - 1; i++) {   /* shape preservation */
         float kk = 0.2f, near_min, scale = 1.f;
-        if (fabsf(slopes[i]) > fabsf(slopes[i + 1])) kk = 1.f - kk;
+        if (ALWAN_ABS_F32(slopes[i]) > ALWAN_ABS_F32(slopes[i + 1])) kk = 1.f - kk;
         near_min = slopes[i] + kk * (slopes[i + 1] - slopes[i]);
         if (near_min != 0.f) scale = 0.75f * 2.f * secant[i] / near_min;
         if (scale < 1.f) { slopes[i] *= scale; slopes[i + 1] *= scale; }
@@ -1178,7 +1178,7 @@ static void alwan_gh_fit(float const *x, float const *y, int n, float const *slo
     f->knots[f->nknots++] = x[0];
     for (i = 0; i < n - 1; i++) {
         float const dx = x[i + 1] - x[i], sec = (y[i + 1] - y[i]) / dx;
-        if (fabsf((slopes[i] + slopes[i + 1]) - 2.f * sec) <= 1e-5f) {
+        if (ALWAN_ABS_F32((slopes[i] + slopes[i + 1]) - 2.f * sec) <= 1e-5f) {
             alwan_gc_push(f, 0.5f * (slopes[i + 1] - slopes[i]) / dx, slopes[i], y[i]);
         } else {
             float const ksi = alwan_gh_ksi(i, x, y, slopes);
@@ -1237,8 +1237,8 @@ static double alwan_gh_eval_rev_hue(alwan_gc_fit const *f, double y, int is_fx) 
         yend = (aa * t + bb) * t + cc;
         yend = is_fx ? yend + kend : yend;
     }
-    if (y < ystart) y += ceil(ystart - y);
-    else if (y > yend) y -= ceil(y - yend);
+    if (y < ystart) y += ALWAN_CEIL_F64(ystart - y);
+    else if (y > yend) y -= ALWAN_CEIL_F64(y - yend);
     for (i = 0; i < nk - 2; i++) {
         double cy = f->c[i + 1];
         cy = is_fx ? cy + (double)f->knots[i + 1] : cy;
@@ -1247,7 +1247,7 @@ static double alwan_gh_eval_rev_hue(alwan_gc_fit const *f, double y, int is_fx) 
     a = f->a[i]; b = f->b[i]; c = f->c[i]; kn = f->knots[i];
     if (is_fx) { c += kn; b += 1.; }
     c0 = c - y;
-    return kn + (-2. * c0) / (sqrt(b * b - 4. * a * c0) + b);
+    return kn + (-2. * c0) / (ALWAN_SQRT_F64(b * b - 4. * a * c0) + b);
 }
 
 /* applyRGBToHSY; style 0 log, 1 lin, 2 video */
@@ -1256,7 +1256,7 @@ static void alwan_gh_rgb_to_hsy(double *p, int style) {
     double const mn = (r < g ? r : g) < b ? (r < g ? r : g) : b;
     double const mx = (r > g ? r : g) > b ? (r > g ? r : g) : b;
     double const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    double const dist = fabs(r - luma) + fabs(g - luma) + fabs(b - luma);
+    double const dist = ALWAN_ABS_F64(r - luma) + ALWAN_ABS_F64(g - luma) + ALWAN_ABS_F64(b - luma);
     double sat, hue = 0.0;
     if (style == ALWAN_GRADING_LIN) {
         double const sum = r + g + b, k = 0.15;
@@ -1284,15 +1284,15 @@ static void alwan_gh_hsy_to_rgb(double *p, int style) {
     double const luma = p[2];
     double red, grn, blu, cur, dist, gain = sat;
     hue = luma < 0.0 ? hue + 0.5 : hue;
-    hue = (hue - floor(hue)) * 6.0;
-    red = alwan_gt_clampd(fabs(hue - 3.0) - 1.0, 0.0, 1.0);
-    grn = alwan_gt_clampd(2.0 - fabs(hue - 2.0), 0.0, 1.0);
-    blu = alwan_gt_clampd(2.0 - fabs(hue - 4.0), 0.0, 1.0);
+    hue = (hue - ALWAN_FLOOR_F64(hue)) * 6.0;
+    red = alwan_gt_clampd(ALWAN_ABS_F64(hue - 3.0) - 1.0, 0.0, 1.0);
+    grn = alwan_gt_clampd(2.0 - ALWAN_ABS_F64(hue - 2.0), 0.0, 1.0);
+    blu = alwan_gt_clampd(2.0 - ALWAN_ABS_F64(hue - 4.0), 0.0, 1.0);
     cur = 0.2126 * red + 0.7152 * grn + 0.0722 * blu;
     red *= luma / cur;
     grn *= luma / cur;
     blu *= luma / cur;
-    dist = fabs(red - luma) + fabs(grn - luma) + fabs(blu - luma);
+    dist = ALWAN_ABS_F64(red - luma) + ALWAN_ABS_F64(grn - luma) + ALWAN_ABS_F64(blu - luma);
     if (style == ALWAN_GRADING_LIN) {
         double const sum = red + grn + blu, k = 0.15, lo_gain = 5.0;
         double tmp, s1, s0, alpha;
@@ -1309,7 +1309,7 @@ static void alwan_gh_hsy_to_rgb(double *p, int style) {
             double const a = dist * lo_gain * (1.0 - alpha) * (sum - 3.0 * luma);
             double const b = dist * lo_gain * (1.0 - alpha) * (k + 3.0 * luma) + dist * alpha - sat * (sum - 3.0 * luma);
             double const c = -sat * (k + 3.0 * luma);
-            double const disc = sqrt(b * b - 4.0 * a * c);
+            double const disc = ALWAN_SQRT_F64(b * b - 4.0 * a * c);
             double const den = -disc - b;
             gain = (2.0 * c) / den;
             gain = gain >= 0.0 ? gain : (2.0 * c) / (den + disc * 2.0);
@@ -1400,13 +1400,13 @@ static void alwan_ghc_pixel(double *p, alwan_ghc_render const *r) {
         if (lin) p[2] = alwan_gt_loglin(p[2]);
         hue_lum = 1.0 - (1.0 - hue_lum) * (p[1] < 1.0 ? p[1] : 1.0);
         p[2] = lin ? p[2] * hue_lum * sat_lum : p[2] + (hue_lum + sat_lum - 2.0) * 0.1;
-        p[0] = p[0] - floor(p[0]);
+        p[0] = p[0] - ALWAN_FLOOR_F64(p[0]);
         p[0] = p[0] + alwan_gc_eval(&cv[ALWAN_GH_HUE_FX], p[0], 0.0);
     } else {
         double hue_sat, hue_lum, sat_lum, lum_gain, lum_sat, sat_gain;
         p[0] = alwan_gh_eval_rev_hue(&cv[ALWAN_GH_HUE_FX], p[0], 1);
         p[0] = alwan_gh_eval_rev_hue(&cv[ALWAN_GH_HUE_HUE], p[0], 0);
-        p[0] = p[0] - floor(p[0]);
+        p[0] = p[0] - ALWAN_FLOOR_F64(p[0]);
         hue_sat = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_HUE_SAT], p[0], 1.0));
         hue_lum = alwan_gh_max0(alwan_gc_eval(&cv[ALWAN_GH_HUE_LUM], p[0], 1.0));
         p[1] = alwan_gh_max0(p[1]);
@@ -1467,7 +1467,7 @@ static alwan_status alwan_gec_prepare(alwan_gec_render *r, alwan_grading_style s
     r->inverse = inverse;
     pivot = ec->pivot > 0.001 ? ec->pivot : 0.001;
     if (style == ALWAN_GRADING_LOG) {
-        double const p = log2(pivot / 0.18) * ec->log_exposure_step + ec->log_mid_gray;
+        double const p = ALWAN_LOG2_F64(pivot / 0.18) * ec->log_exposure_step + ec->log_mid_gray;
         double const cg = ec->contrast * ec->gamma;
         r->pivot = p > 0.0 ? p : 0.0;
         r->e = ec->exposure * ec->log_exposure_step;
@@ -1476,11 +1476,11 @@ static alwan_status alwan_gec_prepare(alwan_gec_render *r, alwan_grading_style s
     } else {
         double const cg = ec->contrast * ec->gamma;
         r->c = cg > 0.001 ? cg : 0.001;
-        r->e = pow(2.0, ec->exposure);
+        r->e = ALWAN_POW_F64(2.0, ec->exposure);
         r->pivot = pivot;
         if (style == ALWAN_GRADING_VIDEO) {
-            r->e = pow(r->e, video_power);
-            r->pivot = pow(pivot, video_power);
+            r->e = ALWAN_POW_F64(r->e, video_power);
+            r->pivot = ALWAN_POW_F64(pivot, video_power);
         }
     }
     return ALWAN_OK;
@@ -1505,10 +1505,10 @@ static void alwan_gec_pixel(double *p, alwan_gec_render const *r) {
     for (k = 0; k < 3; k++) {
         if (!r->inverse) {
             double const v = p[k] * (r->e / r->pivot);
-            p[k] = pow(v > 0.0 ? v : 0.0, r->c) * r->pivot;
+            p[k] = ALWAN_POW_F64(v > 0.0 ? v : 0.0, r->c) * r->pivot;
         } else {
             double const v = p[k] / r->pivot;
-            p[k] = pow(v > 0.0 ? v : 0.0, 1.0 / r->c) * (r->pivot / r->e);
+            p[k] = ALWAN_POW_F64(v > 0.0 ? v : 0.0, 1.0 / r->c) * (r->pivot / r->e);
         }
     }
 }

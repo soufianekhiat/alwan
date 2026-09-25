@@ -87,7 +87,7 @@ static void alwan_mtk_resize(double *dst, size_t dw, size_t dh,
     size_t x, y;
     for (y = 0; y < dh; y++) {
         double fy = ((double)y + 0.5) * scale_y - 0.5;
-        ptrdiff_t iy = (ptrdiff_t)floor(fy);
+        ptrdiff_t iy = (ptrdiff_t)ALWAN_FLOOR_F64(fy);
         size_t iy0, iy1;
         fy -= (double)iy;
         if (iy < 0) { iy = 0; fy = 0.0; }
@@ -96,7 +96,7 @@ static void alwan_mtk_resize(double *dst, size_t dw, size_t dh,
         iy1 = iy0 + 1 < sh ? iy0 + 1 : iy0;
         for (x = 0; x < dw; x++) {
             double fx = ((double)x + 0.5) * scale_x - 0.5;
-            ptrdiff_t ix = (ptrdiff_t)floor(fx);
+            ptrdiff_t ix = (ptrdiff_t)ALWAN_FLOOR_F64(fx);
             size_t ix0, ix1;
             double a, b, c, d;
             fx -= (double)ix;
@@ -140,7 +140,7 @@ static void alwan_mtk_transpose(double *dst, double const *src, size_t w, size_t
  * It makes no difference to the value, since |0|^p is zero, and it is written this way
  * so the two implementations cannot drift apart on it. */
 static double alwan_mtk_signed_pow(double v, double p) {
-    double const m = ALWAN_POW_F64(fabs(v), p);
+    double const m = ALWAN_POW_F64(ALWAN_ABS_F64(v), p);
     return v > 0.0 ? m : -m;
 }
 
@@ -223,7 +223,7 @@ static alwan_status alwan_mtk_run(double *rgb, size_t width, size_t height,
      * under an integer would drop a level and change the answer. */
     {
         float const m = (float)(width < height ? width : height);
-        int levels = (int)(logf(m) / logf(2.0f));
+        int levels = (int)(ALWAN_LN_F32(m) / ALWAN_LN_F32(2.0f));
         if (levels < 1) levels = 1;
         if (levels > ALWAN_MTK_MAX_LEVELS) levels = ALWAN_MTK_MAX_LEVELS;
         ctx.levels = levels;

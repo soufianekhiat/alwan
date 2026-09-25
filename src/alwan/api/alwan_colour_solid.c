@@ -134,7 +134,7 @@ static alwan_status alwan_colour_solid_facets(alwan_colour_solid *s) {
             double nx = a[1] * b[2] - a[2] * b[1];
             double ny = a[2] * b[0] - a[0] * b[2];
             double nz = a[0] * b[1] - a[1] * b[0];
-            double len = sqrt(nx * nx + ny * ny + nz * nz);
+            double len = ALWAN_SQRT_F64(nx * nx + ny * ny + nz * nz);
             if (len > longest) longest = len;
         }
     }
@@ -147,7 +147,7 @@ static alwan_status alwan_colour_solid_facets(alwan_colour_solid *s) {
             double nx = a[1] * b[2] - a[2] * b[1];
             double ny = a[2] * b[0] - a[0] * b[2];
             double nz = a[0] * b[1] - a[1] * b[0];
-            double len = sqrt(nx * nx + ny * ny + nz * nz);
+            double len = ALWAN_SQRT_F64(nx * nx + ny * ny + nz * nz);
             double hp = 0.0, hm = 0.0;
             if (!(len > cutoff)) continue;
             nx /= len; ny /= len; nz /= len;

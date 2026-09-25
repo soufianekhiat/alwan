@@ -17,7 +17,7 @@ static double ALWAN_CORE_FN(halation_fresnel)(double n, double cos_i, double sin
     double const sin_t = n * sin_i;
     double cos_t, rs, rp;
     if (sin_t >= 1.0) return 1.0;
-    cos_t = sqrt(1.0 - sin_t * sin_t);
+    cos_t = ALWAN_SQRT_F64(1.0 - sin_t * sin_t);
     rs = (n * cos_i - cos_t) / (n * cos_i + cos_t);
     rp = (cos_i - n * cos_t) / (cos_i + n * cos_t);
     return 0.5 * (rs * rs + rp * rp);
@@ -26,9 +26,9 @@ static double ALWAN_CORE_FN(halation_fresnel)(double n, double cos_i, double sin
 /* K(r) before normalisation: R(theta) cos^4(theta), with tan(theta) = r / 2d and
  * 2d = r_c sqrt(n^2 - 1), so the rim lands at r_c whatever the thickness. */
 static double ALWAN_CORE_FN(halation_profile)(double r, double rim, double n) {
-    double const two_d = rim * sqrt(n * n - 1.0);
+    double const two_d = rim * ALWAN_SQRT_F64(n * n - 1.0);
     double const t = r / two_d;
-    double const cos_i = 1.0 / sqrt(1.0 + t * t);
+    double const cos_i = 1.0 / ALWAN_SQRT_F64(1.0 + t * t);
     double const sin_i = t * cos_i;
     double const c2 = cos_i * cos_i;
     return ALWAN_CORE_FN(halation_fresnel)(n, cos_i, sin_i) * c2 * c2;
@@ -41,7 +41,7 @@ static int ALWAN_CORE_FN(halation_params_ok)(alwan_film_halation_params const *p
 }
 
 static size_t ALWAN_CORE_FN(halation_radius)(alwan_film_halation_params const *p) {
-    double const r = ceil(p->reach * p->rim_radius);
+    double const r = ALWAN_CEIL_F64(p->reach * p->rim_radius);
     return r < 1.0 ? 1 : (size_t)r;
 }
 
@@ -67,7 +67,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_film_halation_kernel)(ALWAN_CORE_T *kernel_o
     for (j = 0; j < n; j++) {
         for (i = 0; i < n; i++) {
             double const dx = (double)i - (double)R, dy = (double)j - (double)R;
-            double const v = ALWAN_CORE_FN(halation_profile)(sqrt(dx * dx + dy * dy), params->rim_radius, params->index);
+            double const v = ALWAN_CORE_FN(halation_profile)(ALWAN_SQRT_F64(dx * dx + dy * dy), params->rim_radius, params->index);
             kernel_out[j * n + i] = (ALWAN_CORE_T)v;
             sum += v;
         }

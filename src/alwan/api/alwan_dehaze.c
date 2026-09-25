@@ -128,7 +128,7 @@ static alwan_status alwan_dh_run(void *out, size_t out_row_stride, void *t_out, 
     alwan_dh_min_filter(dark, tmp, w, h, p->patch_radius, t);
     for (i = 0; i < n; i++) { rank[i].v = dark[i]; rank[i].i = i; }
     qsort(rank, n, sizeof *rank, alwan_dh_cmp_desc);
-    ntop = (size_t)ceil(p->top_fraction * (double)n);
+    ntop = (size_t)ALWAN_CEIL_F64(p->top_fraction * (double)n);
     if (ntop < 1) ntop = 1;
     if (ntop > n) ntop = n;
     best = rank[0].i;

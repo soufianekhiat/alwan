@@ -56,25 +56,25 @@ static int alwan__cubic_real_roots(double p2, double p1, double p0, double *root
         return 1;
     }
     if (disc > 0.0) {
-        double const s = sqrt(disc);
+        double const s = ALWAN_SQRT_F64(disc);
         double const u = -q / 2.0 + s;
         double const v = -q / 2.0 - s;
-        double const cu = (u >= 0.0) ? pow(u, 1.0 / 3.0) : -pow(-u, 1.0 / 3.0);
-        double const cv = (v >= 0.0) ? pow(v, 1.0 / 3.0) : -pow(-v, 1.0 / 3.0);
+        double const cu = (u >= 0.0) ? ALWAN_POW_F64(u, 1.0 / 3.0) : -ALWAN_POW_F64(-u, 1.0 / 3.0);
+        double const cv = (v >= 0.0) ? ALWAN_POW_F64(v, 1.0 / 3.0) : -ALWAN_POW_F64(-v, 1.0 / 3.0);
         roots[0] = cu + cv - shift;
         return 1;
     }
     {
         /* Three real roots: p is negative here, so the arc cosine is defined. */
-        double const m = 2.0 * sqrt(-p / 3.0);
+        double const m = 2.0 * ALWAN_SQRT_F64(-p / 3.0);
         double arg = 3.0 * q / (p * m);
         double phi;
         int i;
         if (arg > 1.0) arg = 1.0;
         if (arg < -1.0) arg = -1.0;
-        phi = acos(arg) / 3.0;
+        phi = ALWAN_ACOS_F64(arg) / 3.0;
         for (i = 0; i < 3; i++) {
-            roots[i] = m * cos(phi - 2.0 * 3.14159265358979323846 * (double)i / 3.0) - shift;
+            roots[i] = m * ALWAN_COS_F64(phi - 2.0 * 3.14159265358979323846 * (double)i / 3.0) - shift;
         }
         return 3;
     }
@@ -94,7 +94,7 @@ static int alwan__null_vector3(double const *m, double *v) {
         double const x = a[1] * b[2] - a[2] * b[1];
         double const y = a[2] * b[0] - a[0] * b[2];
         double const z = a[0] * b[1] - a[1] * b[0];
-        double const len = sqrt(x * x + y * y + z * z);
+        double const len = ALWAN_SQRT_F64(x * x + y * y + z * z);
         if (len > best) {
             best = len;
             v[0] = x / len;
@@ -219,7 +219,7 @@ static alwan_status alwan__ellipse_solve(double *out, double const *s1,
      * sign depended on an eigen solver would only be reproducible against that
      * solver. 4ac > b^2 forces a and c to share a sign, so a is never zero. */
     for (i = 0; i < 6; i++) norm += out[i] * out[i];
-    norm = sqrt(norm);
+    norm = ALWAN_SQRT_F64(norm);
     if (!(norm > 0.0)) return ALWAN_E_RANGE;
     if (out[0] < 0.0) norm = -norm;
     for (i = 0; i < 6; i++) out[i] /= norm;
@@ -241,7 +241,7 @@ static void alwan__ellipse_renormalise(double *k) {
     double norm = 0.0;
     int i;
     for (i = 0; i < 6; i++) norm += k[i] * k[i];
-    norm = sqrt(norm);
+    norm = ALWAN_SQRT_F64(norm);
     if (!(norm > 0.0)) return;
     if (k[0] < 0.0) norm = -norm;
     for (i = 0; i < 6; i++) k[i] /= norm;
@@ -290,7 +290,7 @@ static alwan_status alwan__ellipse_fit(double *out, void const *points, size_t c
         dy = xy[1] - cy;
         scale += dx * dx + dy * dy;
     }
-    scale = sqrt(scale / (double)count);
+    scale = ALWAN_SQRT_F64(scale / (double)count);
     if (!(scale > 0.0)) return ALWAN_E_RANGE;      /* every point the same */
 
     memset(s1, 0, sizeof s1);
@@ -335,12 +335,12 @@ static alwan_status alwan__ellipse_canonical(double *out, double const *k) {
     double n1, n2;
     if (!(d1 < 0.0)) return ALWAN_E_RANGE;          /* not an ellipse */
     n1 = 2.0 * (a * e * e + c * d * d - b * d * e + d1 * f);
-    n2 = sqrt((a - c) * (a - c) + b * b);
+    n2 = ALWAN_SQRT_F64((a - c) * (a - c) + b * b);
     if (!(n1 * (a + c + n2) >= 0.0) || !(n1 * (a + c - n2) >= 0.0)) return ALWAN_E_RANGE;
     out[0] = (2.0 * c * d - b * e) / d1;
     out[1] = (2.0 * a * e - b * d) / d1;
-    out[2] = -sqrt(n1 * (a + c + n2)) / d1;
-    out[3] = -sqrt(n1 * (a + c - n2)) / d1;
+    out[2] = -ALWAN_SQRT_F64(n1 * (a + c + n2)) / d1;
+    out[3] = -ALWAN_SQRT_F64(n1 * (a + c - n2)) / d1;
     /* A CIRCLE HAS NO ROTATION, and asking for one gives a garbage answer
      * rather than an error. n2 is what separates the two axes: when it is
      * negligible against a + c the ellipse is a circle to within rounding, the
@@ -350,19 +350,19 @@ static alwan_status alwan__ellipse_canonical(double *out, double const *k) {
      * zero and land in that branch: measured, it returned -9.43 degrees for a
      * circle. Zero is the conventional answer and the one colour-science's own
      * selection falls through to. */
-    if (n2 <= 1e-12 * (fabs(a) + fabs(c))) {
+    if (n2 <= 1e-12 * (ALWAN_ABS_F64(a) + ALWAN_ABS_F64(c))) {
         out[4] = 0.0;
     } else if (b == 0.0) {
         out[4] = (a < c) ? 0.0 : 90.0;
     } else {
-        out[4] = atan((c - a - n2) / b) * (180.0 / 3.14159265358979323846);
+        out[4] = ALWAN_ATAN_F64((c - a - n2) / b) * (180.0 / 3.14159265358979323846);
     }
     return ALWAN_OK;
 }
 
 static void alwan__ellipse_general(double *out, double const *k) {
     double const theta = k[4] * (3.14159265358979323846 / 180.0);
-    double const ct = cos(theta), st = sin(theta);
+    double const ct = ALWAN_COS_F64(theta), st = ALWAN_SIN_F64(theta);
     double const aa = k[2] * k[2], bb = k[3] * k[3];
     double const a = aa * st * st + bb * ct * ct;
     double const b = 2.0 * (bb - aa) * st * ct;
@@ -415,7 +415,7 @@ alwan_status alwan_ellipse_general_f32(alwan_f32 *coefficients_out, alwan_f32 co
 static void alwan__ellipse_point(double xy[2], double const c[5], double phi_deg) {
     double const phi = phi_deg * (3.14159265358979323846 / 180.0);
     double const theta = c[4] * (3.14159265358979323846 / 180.0);
-    double const cp = cos(phi), sp = sin(phi), ct = cos(theta), st = sin(theta);
+    double const cp = ALWAN_COS_F64(phi), sp = ALWAN_SIN_F64(phi), ct = ALWAN_COS_F64(theta), st = ALWAN_SIN_F64(theta);
     xy[0] = c[0] + c[2] * ct * cp - c[3] * st * sp;
     xy[1] = c[1] + c[2] * st * cp + c[3] * ct * sp;
 }

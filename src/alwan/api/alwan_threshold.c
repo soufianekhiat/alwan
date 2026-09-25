@@ -155,7 +155,7 @@ static double alwan_th_li(double const *v, size_t n, double vmin, double toleran
         t_next = sum / (double)n;
         t_curr = -2.0 * tol;
         nb = alwan_th_histogram(counts, centres, img, n, 0.0, vmax, 0, 2);
-        while (fabs(t_next - t_curr) > tol) {
+        while (ALWAN_ABS_F64(t_next - t_curr) > tol) {
             double sf = 0.0, wf = 0.0, sb = 0.0, wb = 0.0, mf, mb;
             t_curr = t_next;
             for (i = 0; i < nb; i++) {
@@ -170,7 +170,7 @@ static double alwan_th_li(double const *v, size_t n, double vmin, double toleran
             mf = sf / wf;
             mb = sb / wb;
             if (mb == 0.0) break;
-            t_next = (mb - mf) / (log(mb) - log(mf));
+            t_next = (mb - mf) / (ALWAN_LN_F64(mb) - ALWAN_LN_F64(mf));
         }
         return t_next + vmin;
     }
@@ -188,7 +188,7 @@ static double alwan_th_li(double const *v, size_t n, double vmin, double toleran
     }
     t_next = alwan_th_mean(img, n, f32);
     t_curr = alwan_th_r(-2.0 * tol, f32);
-    while (alwan_th_r(fabs(alwan_th_r(t_next - t_curr, f32)), f32) > tol) {
+    while (alwan_th_r(ALWAN_ABS_F64(alwan_th_r(t_next - t_curr, f32)), f32) > tol) {
         size_t nf = 0, nbk = 0;
         double mf, mb;
         t_curr = t_next;
@@ -202,9 +202,9 @@ static double alwan_th_li(double const *v, size_t n, double vmin, double toleran
         mb = alwan_th_mean(sel, nbk, f32);
         if (mb == 0.0) break;
         if (f32) {
-            t_next = alwan_th_r32(alwan_th_r32(mb - mf) / alwan_th_r32((double)logf((float)mb) - (double)logf((float)mf)));
+            t_next = alwan_th_r32(alwan_th_r32(mb - mf) / alwan_th_r32((double)ALWAN_LN_F32((float)mb) - (double)ALWAN_LN_F32((float)mf)));
         } else {
-            t_next = (mb - mf) / (log(mb) - log(mf));
+            t_next = (mb - mf) / (ALWAN_LN_F64(mb) - ALWAN_LN_F64(mf));
         }
     }
     return alwan_th_r(t_next + vmin, f32);
@@ -278,7 +278,7 @@ static alwan_status alwan_th_channel(double *out, double const *v, size_t n, alw
         for (i = 0; i + 1 < nb; i++) {
             double const inv = alwan_th_r32(1.0 / alwan_th_r32(b[i] * c[i + 1]));
             double const x = alwan_th_r32(a[i] * alwan_th_r32(1.0 - a[i]));
-            work[i] = (double)logf((float)alwan_th_r32(inv * alwan_th_r32(x * x)));
+            work[i] = (double)ALWAN_LN_F32((float)alwan_th_r32(inv * alwan_th_r32(x * x)));
         }
         *out = centres[alwan_th_argmax(work, nb - 1, 1.0)];
         return ALWAN_OK;
@@ -324,7 +324,7 @@ static alwan_status alwan_th_channel(double *out, double const *v, size_t n, alw
             peak = nb - peak - 1;
         }
         width = peak - low;
-        norm = sqrt(ph * ph + (double)width * (double)width);
+        norm = ALWAN_SQRT_F64(ph * ph + (double)width * (double)width);
         phn = ph / norm;
         wn = (double)width / norm;
         for (i = 0; i < width; i++) work[i] = phn * (double)i - wn * counts[i + low];

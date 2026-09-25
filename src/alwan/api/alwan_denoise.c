@@ -66,13 +66,13 @@ static void alwan_tv_plane(double *u, size_t w, size_t h, double weight, double 
                 double nrm;
                 gy[q] = y + 1 < h ? u[q + w] - u[q] : 0.0;
                 gx[q] = x + 1 < w ? u[q + 1] - u[q] : 0.0;
-                nrm = sqrt(gy[q] * gy[q] + gx[q] * gx[q]);
+                nrm = ALWAN_SQRT_F64(gy[q] * gy[q] + gx[q] * gx[q]);
                 tv += nrm;
             }
         }
         e = (e + weight * tv) / (double)n;
         for (p = 0; p < n; p++) {
-            double const nrm = sqrt(gy[p] * gy[p] + gx[p] * gx[p]) * (tau / weight) + 1.0;
+            double const nrm = ALWAN_SQRT_F64(gy[p] * gy[p] + gx[p] * gx[p]) * (tau / weight) + 1.0;
             py[p] = (py[p] - tau * gy[p]) / nrm;
             px[p] = (px[p] - tau * gx[p]) / nrm;
         }
@@ -80,7 +80,7 @@ static void alwan_tv_plane(double *u, size_t w, size_t h, double weight, double 
             e_init = e;
             e_prev = e;
         } else {
-            if (fabs(e_prev - e) < eps * e_init) break;
+            if (ALWAN_ABS_F64(e_prev - e) < eps * e_init) break;
             e_prev = e;
         }
     }
@@ -202,12 +202,12 @@ static alwan_status alwan_nlm_run(unsigned char *out, size_t out_row_stride, uns
 
     for (k = 0; k < amax; k++) {
         double const d = (double)k * mult;
-        double wv = exp(-d / (double)hh);
+        double wv = ALWAN_EXP_F64(-d / (double)hh);
         double r;
         long rv;
         if (wv != wv) wv = 1.0; /* h = 0: 0 / 0 at d = 0 */
         r = (double)fpm * wv;
-        rv = (long)floor(r);
+        rv = (long)ALWAN_FLOOR_F64(r);
         if (r - (double)rv > 0.5 || (r - (double)rv == 0.5 && (rv & 1))) rv++; /* cvRound, ties to even */
         if ((double)rv < 0.001 * (double)fpm) rv = 0;
         lut[k] = (int)rv;
@@ -318,9 +318,9 @@ static alwan_status alwan_nlm_run(unsigned char *out, size_t out_row_stride, uns
  * OpenCV calls, and that is what the test holds it to.
  */
 static long alwan_ad_round(float v) {
-    float f = floorf(v);
+    float f = ALWAN_FLOOR_F32(v);
     float const d = v - f;
-    if (d > 0.5f || (d == 0.5f && fmodf(f, 2.0f) != 0.0f)) f += 1.0f;
+    if (d > 0.5f || (d == 0.5f && ALWAN_FMOD_F32(f, 2.0f) != 0.0f)) f += 1.0f;
     return (long)f;
 }
 
@@ -354,7 +354,7 @@ static alwan_status alwan_ad_run(unsigned char *out, size_t out_row_stride, unsi
         return ALWAN_E_NOMEM;
     }
     b = a + pw * ph * ch;
-    for (i = 0; i < tabn; i++) tab[i] = expf(-(float)(int)(i * i) * isigma2);
+    for (i = 0; i < tabn; i++) tab[i] = ALWAN_EXP_F32(-(float)(int)(i * i) * isigma2);
     for (y = 0; y < h; y++) memcpy(a + ((y + 1) * pw + 1) * ch, src + y * src_row_stride, w * ch);
 
     for (it = 0; it < iterations; it++) {
@@ -421,7 +421,7 @@ static alwan_status alwan_dct_run(void *out, size_t out_rs, void const *src, siz
     double const thresh = 3.0 * sigma;
     double *plane, *acc, *cnt, *cm, *pa, *pb;
     size_t x, y, c, i, j, k, x0, y0;
-    double const s3 = 1.0 / sqrt(3.0), s2 = 1.0 / sqrt(2.0), s6 = 1.0 / sqrt(6.0);
+    double const s3 = 1.0 / ALWAN_SQRT_F64(3.0), s2 = 1.0 / ALWAN_SQRT_F64(2.0), s6 = 1.0 / ALWAN_SQRT_F64(6.0);
     double const opp[3][3] = { { s3, s3, s3 }, { s2, 0.0, -s2 }, { s6, -2.0 * s6, s6 } };
     if (!out || !src) return ALWAN_E_INVALID;
     if (w == 0 || h == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
@@ -441,8 +441,8 @@ static alwan_status alwan_dct_run(void *out, size_t out_rs, void const *src, siz
     pa = cm + ps * ps;
     pb = pa + ps * ps;
     for (k = 0; k < ps; k++) {
-        double const a = k == 0 ? sqrt(1.0 / (double)ps) : sqrt(2.0 / (double)ps);
-        for (i = 0; i < ps; i++) cm[k * ps + i] = a * cos(3.14159265358979323846 * (double)((2 * i + 1) * k) / (double)(2 * ps));
+        double const a = k == 0 ? ALWAN_SQRT_F64(1.0 / (double)ps) : ALWAN_SQRT_F64(2.0 / (double)ps);
+        for (i = 0; i < ps; i++) cm[k * ps + i] = a * ALWAN_COS_F64(3.14159265358979323846 * (double)((2 * i + 1) * k) / (double)(2 * ps));
     }
 
     for (y = 0; y < h; y++) {
@@ -482,7 +482,7 @@ static alwan_status alwan_dct_run(void *out, size_t out_rs, void const *src, siz
                     for (j = 0; j < ps; j++) {
                         double s = 0.0;
                         for (i = 0; i < ps; i++) s += pb[k * ps + i] * cm[j * ps + i];
-                        pa[k * ps + j] = fabs(s) > thresh ? s : 0.0;
+                        pa[k * ps + j] = ALWAN_ABS_F64(s) > thresh ? s : 0.0;
                     }
                 }
                 /* the inverse: C^T D C */
@@ -521,9 +521,9 @@ static alwan_status alwan_dct_run(void *out, size_t out_rs, void const *src, siz
                 } else if (kind == 1) {
                     ((alwan_f32 *)row)[x * ch + c] = (alwan_f32)v;
                 } else {
-                    double f = floor(v);
+                    double f = ALWAN_FLOOR_F64(v);
                     double const d = v - f;
-                    if (d > 0.5 || (d == 0.5 && fmod(f, 2.0) != 0.0)) f += 1.0;
+                    if (d > 0.5 || (d == 0.5 && ALWAN_FMOD_F64(f, 2.0) != 0.0)) f += 1.0;
                     ((unsigned char *)row)[x * ch + c] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
                 }
             }
@@ -669,7 +669,7 @@ static alwan_status alwan_wv_plane(double *img, size_t w, size_t h, alwan_f64 co
         size_t const nd = lw[0] * lh[0];
         size_t nz = 0;
         double *v = tmp;
-        for (i = 0; i < nd; i++) if (dd[i] != 0.0) v[nz++] = fabs(dd[i]);
+        for (i = 0; i < nd; i++) if (dd[i] != 0.0) v[nz++] = ALWAN_ABS_F64(dd[i]);
         if (nz == 0) {
             sigma = 0.0;
         } else {
@@ -684,16 +684,16 @@ static alwan_status alwan_wv_plane(double *img, size_t w, size_t h, alwan_f64 co
             double *b = bands + off[l] + k * nb;
             double t;
             if (visu) {
-                t = sigma * sqrt(2.0 * log((double)(w * h)));
+                t = sigma * ALWAN_SQRT_F64(2.0 * ALWAN_LN_F64((double)(w * h)));
             } else {
                 double m2 = 0.0, dv;
                 for (i = 0; i < nb; i++) m2 += b[i] * b[i];
                 m2 /= (double)nb;
                 dv = m2 - sigma * sigma;
-                t = sigma * sigma / sqrt(dv > DBL_EPSILON ? dv : DBL_EPSILON);
+                t = sigma * sigma / ALWAN_SQRT_F64(dv > DBL_EPSILON ? dv : DBL_EPSILON);
             }
             for (i = 0; i < nb; i++) {
-                double const a = fabs(b[i]);
+                double const a = ALWAN_ABS_F64(b[i]);
                 if (hard) b[i] = a < t ? 0.0 : b[i];
                 else b[i] = a > t ? (b[i] > 0.0 ? a - t : t - a) : 0.0;
             }
@@ -779,7 +779,7 @@ static alwan_status alwan_wv_run(void *out, size_t out_rs, void const *src, size
                     } else if (kind == 1) {
                         ((alwan_f32 *)row)[x * ch + c] = (alwan_f32)v;
                     } else {
-                        double f = floor(v * 255.0 + 0.5);
+                        double f = ALWAN_FLOOR_F64(v * 255.0 + 0.5);
                         ((unsigned char *)row)[x * ch + c] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
                     }
                 }
@@ -972,7 +972,7 @@ static void alwan_tvb_plane(double *img_out, double const *f, size_t w, size_t h
                 t = unew - uprev;
                 rmse += t * t;
                 if (!aniso) {
-                    double const tx = ux + bxx, ty = uy + byy, s = sqrt(tx * tx + ty * ty);
+                    double const tx = ux + bxx, ty = uy + byy, s = ALWAN_SQRT_F64(tx * tx + ty * ty);
                     dxx = s * lam * tx / (s * lam + 1.0);
                     dyy = s * lam * ty / (s * lam + 1.0);
                 } else {
@@ -987,7 +987,7 @@ static void alwan_tvb_plane(double *img_out, double const *f, size_t w, size_t h
                 by[i] += uy - dyy;
             }
         }
-        rmse = sqrt(rmse / (double)(w * h));
+        rmse = ALWAN_SQRT_F64(rmse / (double)(w * h));
         it++;
     }
     for (y = 0; y < h; y++) for (x = 0; x < w; x++) img_out[y * w + x] = u[(y + 1) * W + x + 1];
@@ -1031,7 +1031,7 @@ static alwan_status alwan_tvb_run(void *out, size_t out_rs, void const *src, siz
                 } else if (kind == 1) {
                     ((alwan_f32 *)row)[x * ch + c] = (alwan_f32)v;
                 } else {
-                    double fl = floor(v * 255.0 + 0.5);
+                    double fl = ALWAN_FLOOR_F64(v * 255.0 + 0.5);
                     ((unsigned char *)row)[x * ch + c] = (unsigned char)(fl < 0.0 ? 0.0 : fl > 255.0 ? 255.0 : fl);
                 }
             }
@@ -1072,9 +1072,9 @@ static alwan_status alwan_tv_u8(unsigned char *out, size_t out_row_stride, unsig
     if (st == ALWAN_OK) {
         for (y = 0; y < h; y++) {
             for (x = 0; x < w * ch; x++) {
-                double v = buf[y * w * ch + x] * 255.0, f = floor(v);
+                double v = buf[y * w * ch + x] * 255.0, f = ALWAN_FLOOR_F64(v);
                 double const d = v - f;
-                if (d > 0.5 || (d == 0.5 && fmod(f, 2.0) != 0.0)) f += 1.0;
+                if (d > 0.5 || (d == 0.5 && ALWAN_FMOD_F64(f, 2.0) != 0.0)) f += 1.0;
                 out[y * out_row_stride + x] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
             }
         }

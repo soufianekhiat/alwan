@@ -219,9 +219,9 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_NN_FN_(alwan_nn_upsample2d_at)(ALWAN_NN_IN_PARAM
         const ALWAN_CORE_T v01 = ALWAN_NN_READ_IN((y0 * W + x1) * C + c);
         const ALWAN_CORE_T v10 = ALWAN_NN_READ_IN((y1 * W + x0) * C + c);
         const ALWAN_CORE_T v11 = ALWAN_NN_READ_IN((y1 * W + x1) * C + c);
-        ALWAN_DET_PRECISE const ALWAN_CORE_T top = v00 * (ALWAN_CORE_LITERAL(1.0) - fx) + v01 * fx;
-        ALWAN_DET_PRECISE const ALWAN_CORE_T bot = v10 * (ALWAN_CORE_LITERAL(1.0) - fx) + v11 * fx;
-        ALWAN_DET_PRECISE const ALWAN_CORE_T r = top * (ALWAN_CORE_LITERAL(1.0) - fy) + bot * fy;
+        const ALWAN_DET_PRECISE ALWAN_CORE_T top = v00 * (ALWAN_CORE_LITERAL(1.0) - fx) + v01 * fx;
+        const ALWAN_DET_PRECISE ALWAN_CORE_T bot = v10 * (ALWAN_CORE_LITERAL(1.0) - fx) + v11 * fx;
+        const ALWAN_DET_PRECISE ALWAN_CORE_T r = top * (ALWAN_CORE_LITERAL(1.0) - fy) + bot * fy;
         return r;
     }
 }

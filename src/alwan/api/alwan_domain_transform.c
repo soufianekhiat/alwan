@@ -118,7 +118,7 @@ alwan_status alwan__dt_run(void *out, size_t out_row_stride, void const *src, si
             idh[y * (w + 1)] = 0.0f;
             for (x = 1; x < w; x++) {
                 float d = 0.0f;
-                for (c = 0; c < gch; c++) d += fabsf(g[(y * w + x - 1) * gch + c] - g[(y * w + x) * gch + c]);
+                for (c = 0; c < gch; c++) d += ALWAN_ABS_F32(g[(y * w + x - 1) * gch + c] - g[(y * w + x) * gch + c]);
                 cur += (float)(1.0f + ss / sr * d);
                 idh[y * (w + 1) + x] = cur;
             }
@@ -129,34 +129,34 @@ alwan_status alwan__dt_run(void *out, size_t out_row_stride, void const *src, si
             idv[x * (h + 1)] = 0.0f;
             for (y = 1; y < h; y++) {
                 float d = 0.0f;
-                for (c = 0; c < gch; c++) d += fabsf(g[((y - 1) * w + x) * gch + c] - g[(y * w + x) * gch + c]);
+                for (c = 0; c < gch; c++) d += ALWAN_ABS_F32(g[((y - 1) * w + x) * gch + c] - g[(y * w + x) * gch + c]);
                 cur += (float)(1.0f + ss / sr * d);
                 idv[x * (h + 1) + y] = cur;
             }
             idv[x * (h + 1) + h] = FLT_MAX;
         }
         for (k = 1; k <= iterations; k++) {
-            double const sh = (double)ss * pow(2.0, (double)(iterations - k)) / sqrt(pow(4.0, (double)iterations) - 1.0);
+            double const sh = (double)ss * ALWAN_POW_F64(2.0, (double)(iterations - k)) / ALWAN_SQRT_F64(ALWAN_POW_F64(4.0, (double)iterations) - 1.0);
             float const radius = (float)(3.0 * sh);
             alwan_dt_nc_pass(tmp, data, idh, h, w, sch, radius, isum);    /* rows, into columns-as-rows */
             alwan_dt_nc_pass(data, tmp, idv, w, h, sch, radius, isum);    /* columns, back */
         }
     } else {
-        double const sh1 = (double)ss * pow(2.0, (double)(iterations - 1)) / sqrt(pow(4.0, (double)iterations) - 1.0);
-        float const alpha1 = (float)exp(-sqrt(2.0 / 3.0) / sh1);
-        float const lna = logf(alpha1);
+        double const sh1 = (double)ss * ALWAN_POW_F64(2.0, (double)(iterations - 1)) / ALWAN_SQRT_F64(ALWAN_POW_F64(4.0, (double)iterations) - 1.0);
+        float const alpha1 = (float)ALWAN_EXP_F64(-ALWAN_SQRT_F64(2.0 / 3.0) / sh1);
+        float const lna = ALWAN_LN_F32(alpha1);
         for (y = 0; y < h; y++) {
             for (x = 0; x + 1 < w; x++) {
                 float d = 0.0f;
-                for (c = 0; c < gch; c++) d += fabsf(g[(y * w + x) * gch + c] - g[(y * w + x + 1) * gch + c]);
-                ah[y * w + x] = exp((double)(lna * (float)(1.0f + ss / sr * d)));
+                for (c = 0; c < gch; c++) d += ALWAN_ABS_F32(g[(y * w + x) * gch + c] - g[(y * w + x + 1) * gch + c]);
+                ah[y * w + x] = ALWAN_EXP_F64((double)(lna * (float)(1.0f + ss / sr * d)));
             }
         }
         for (y = 0; y + 1 < h; y++) {
             for (x = 0; x < w; x++) {
                 float d = 0.0f;
-                for (c = 0; c < gch; c++) d += fabsf(g[(y * w + x) * gch + c] - g[((y + 1) * w + x) * gch + c]);
-                av[y * w + x] = exp((double)(lna * (float)(1.0f + ss / sr * d)));
+                for (c = 0; c < gch; c++) d += ALWAN_ABS_F32(g[(y * w + x) * gch + c] - g[((y + 1) * w + x) * gch + c]);
+                av[y * w + x] = ALWAN_EXP_F64((double)(lna * (float)(1.0f + ss / sr * d)));
             }
         }
         for (k = 1; k <= iterations; k++) {

@@ -27,8 +27,8 @@ static int ALWAN_CORE_FN(grain_params_ok)(alwan_film_grain_params const *p) {
 static int ALWAN_CORE_FN(grain_covered)(double x, double y, ALWAN_CORE_T const *src, size_t width, size_t height,
                                         int channels, int channel, alwan_film_grain_params const *p, double r_max,
                                         double inv_pi_er2, double ln_mu, double ln_sigma) {
-    long const i0 = (long)floor(x - r_max), i1 = (long)floor(x + r_max);
-    long const j0 = (long)floor(y - r_max), j1 = (long)floor(y + r_max);
+    long const i0 = (long)ALWAN_FLOOR_F64(x - r_max), i1 = (long)ALWAN_FLOOR_F64(x + r_max);
+    long const j0 = (long)ALWAN_FLOOR_F64(y - r_max), j1 = (long)ALWAN_FLOOR_F64(y + r_max);
     long i, j;
     for (j = j0; j <= j1; j++) {
         long const cj = j < 0 ? 0 : (j >= (long)height ? (long)height - 1 : j);
@@ -40,7 +40,7 @@ static int ALWAN_CORE_FN(grain_covered)(double x, double y, ALWAN_CORE_T const *
             u = (double)src[((size_t)cj * width + (size_t)ci) * (size_t)channels + (size_t)channel];
             if (u <= 0.0) continue;
             if (u > 0.9999) u = 0.9999;
-            lambda = -log(1.0 - u) * inv_pi_er2;
+            lambda = -ALWAN_LN_F64(1.0 - u) * inv_pi_er2;
             alwan__grain_seed(&g, (uint64_t)p->seed, i, j, (uint64_t)channel);
             n = alwan__grain_poisson(&g, lambda);
             for (k = 0; k < n; k++) {
@@ -48,7 +48,7 @@ static int ALWAN_CORE_FN(grain_covered)(double x, double y, ALWAN_CORE_T const *
                 double const cy = (double)j + alwan__grain_uniform(&g);
                 double r = p->radius;
                 double dx, dy;
-                if (p->radius_sigma > 0.0) r = exp(ln_mu + ln_sigma * alwan__grain_normal(&g));
+                if (p->radius_sigma > 0.0) r = ALWAN_EXP_F64(ln_mu + ln_sigma * alwan__grain_normal(&g));
                 dx = x - cx;
                 dy = y - cy;
                 if (dx * dx + dy * dy <= r * r) return 1;
@@ -87,10 +87,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_film_grain)(ALWAN_CORE_T *image, size_t row_
     inv_pi_er2 = 1.0 / (3.141592653589793 * er2);
     r_max = params->radius;
     if (params->radius_sigma > 0.0) {
-        double const s2 = log(1.0 + (params->radius_sigma / params->radius) * (params->radius_sigma / params->radius));
-        ln_sigma = sqrt(s2);
-        ln_mu = log(params->radius) - 0.5 * s2;
-        r_max = exp(ln_mu + 3.0 * ln_sigma);
+        double const s2 = ALWAN_LN_F64(1.0 + (params->radius_sigma / params->radius) * (params->radius_sigma / params->radius));
+        ln_sigma = ALWAN_SQRT_F64(s2);
+        ln_mu = ALWAN_LN_F64(params->radius) - 0.5 * s2;
+        r_max = ALWAN_EXP_F64(ln_mu + 3.0 * ln_sigma);
     }
     for (y = 0; y < height; y++) {
         ALWAN_CORE_T *row = (ALWAN_CORE_T *)((char *)image + y * row_stride);
@@ -135,7 +135,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_film_grain_density)(ALWAN_CORE_T *density, s
         return ALWAN_E_INVALID;
     }
     if (row_stride < width * 3 * sizeof(ALWAN_CORE_T)) return ALWAN_E_INVALID;
-    scale = (params->rms_granularity / 1000.0) * sqrt(a48 / (params->pixel_pitch * params->pixel_pitch));
+    scale = (params->rms_granularity / 1000.0) * ALWAN_SQRT_F64(a48 / (params->pixel_pitch * params->pixel_pitch));
     for (y = 0; y < height; y++) {
         ALWAN_CORE_T *row = (ALWAN_CORE_T *)((char *)density + y * row_stride);
         for (x = 0; x < width; x++) {
@@ -145,7 +145,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_film_grain_density)(ALWAN_CORE_T *density, s
                 double sigma;
                 if (!(d > 0.0) || params->layer_scale[c] == 0.0) continue;
                 alwan__grain_seed(&g, (uint64_t)params->seed, (long)x, (long)y, (uint64_t)c + 32u);
-                sigma = scale * params->layer_scale[c] * sqrt(d);
+                sigma = scale * params->layer_scale[c] * ALWAN_SQRT_F64(d);
                 d += sigma * alwan__grain_normal(&g);
                 row[x * 3 + (size_t)c] = (ALWAN_CORE_T)(d > 0.0 ? d : 0.0);
             }

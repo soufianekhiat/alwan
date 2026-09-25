@@ -152,7 +152,7 @@ static alwan_status alwan_tl_run(void *out, size_t out_rs, void const *src, size
         double s;
         for (i = 0; i <= 2 * lw; i++) {
             long const xi = (long)i - (long)lw;
-            wts[i] = exp(a * (double)(xi * xi));
+            wts[i] = ALWAN_EXP_F64(a * (double)(xi * xi));
         }
         s = alwan_tl_sum(wts, 2 * lw + 1);
         for (i = 0; i <= 2 * lw; i++) wts[i] = wts[i] / s;
@@ -230,7 +230,7 @@ static alwan_status alwan_tl_run(void *out, size_t out_rs, void const *src, size
                     m = alwan_tl_r(alwan_tl_r(m, f32) / area, f32);
                     g2 = alwan_tl_r(alwan_tl_r(g2, f32) / area, f32);
                     s = alwan_tl_r(g2 - alwan_tl_r(m * m, f32), f32);
-                    s = alwan_tl_r(sqrt(s > 0.0 ? s : 0.0), f32);
+                    s = alwan_tl_r(ALWAN_SQRT_F64(s > 0.0 ? s : 0.0), f32);
                     if (method == ALWAN_THRESHOLD_LOCAL_NIBLACK) {
                         t = alwan_tl_r(m - alwan_tl_r(k * s, f32), f32);
                     } else {

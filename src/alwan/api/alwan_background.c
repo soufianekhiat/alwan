@@ -51,7 +51,7 @@ static alwan_status alwan_bg_run(void *out, size_t out_rs, void const *src, size
     } else {
         double const r = p->radius == 0.0 ? 100.0 : p->radius;
         if (!(r > 0.0) || r > 2000.0) return ALWAN_E_RANGE;
-        ax = ay = (long)ceil(r);
+        ax = ay = (long)ALWAN_CEIL_F64(r);
     }
     kw = 2 * ax + 1;
     kh = 2 * ay + 1;
@@ -66,10 +66,10 @@ static alwan_status alwan_bg_run(void *out, size_t out_rs, void const *src, size
             double k;
             if (p->ellipsoid_width != 0) {
                 double const s = 1.0 - (ox / (double)ax) * (ox / (double)ax) - (oy / (double)ay) * (oy / (double)ay);
-                k = s < 0.0 ? HUGE_VAL : p->ellipsoid_intensity * sqrt(s);
+                k = s < 0.0 ? HUGE_VAL : p->ellipsoid_intensity * ALWAN_SQRT_F64(s);
             } else {
                 double const r = p->radius == 0.0 ? 100.0 : p->radius, ss = ox * ox + oy * oy;
-                k = sqrt(ss) > r ? HUGE_VAL : sqrt(r * r - ss > 0.0 ? r * r - ss : 0.0);
+                k = ALWAN_SQRT_F64(ss) > r ? HUGE_VAL : ALWAN_SQRT_F64(r * r - ss > 0.0 ? r * r - ss : 0.0);
             }
             diff[i * kw + j] = k;
         }
@@ -115,7 +115,7 @@ static alwan_status alwan_bg_run(void *out, size_t out_rs, void const *src, size
                 double const v = bg[(size_t)y * w + (size_t)x];
                 if (kind == 0) ((alwan_f64 *)row)[(size_t)x * ch + c] = v;
                 else if (kind == 1) ((alwan_f32 *)row)[(size_t)x * ch + c] = (alwan_f32)v;
-                else ((unsigned char *)row)[(size_t)x * ch + c] = (unsigned char)(v < 0.0 ? 0.0 : v > 255.0 ? 255.0 : floor(v));
+                else ((unsigned char *)row)[(size_t)x * ch + c] = (unsigned char)(v < 0.0 ? 0.0 : v > 255.0 ? 255.0 : ALWAN_FLOOR_F64(v));
             }
         }
     }

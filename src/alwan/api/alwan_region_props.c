@@ -229,7 +229,7 @@ static alwan_status alwan_rp_shape(alwan_region_props *pr, unsigned char const *
                     long long const dx = hull[i].x - hull[j].x, dy = hull[i].y - hull[j].y, d2 = dx * dx + dy * dy;
                     if (d2 > best) best = d2;
                 }
-            pr->feret_diameter_max = sqrt((double)best / 4.0);
+            pr->feret_diameter_max = ALWAN_SQRT_F64((double)best / 4.0);
         }
     }
     /* Euler number and Crofton perimeter: 2 x 2 configurations of the mask padded by 1 */
@@ -244,7 +244,7 @@ static alwan_status alwan_rp_shape(alwan_region_props *pr, unsigned char const *
         }
     {
         static int const e8[16] = {0, 0, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 0, -1, 0};
-        double const pi = 3.14159265358979323846, s2 = sqrt(2.0);
+        double const pi = 3.14159265358979323846, s2 = ALWAN_SQRT_F64(2.0);
         double const c1 = pi / 4 * (1 + 1 / s2), c2 = pi / (4 * s2), c3 = pi / (2 * s2), c8 = pi / 4, c9 = pi / 2;
         double const cr[16] = {0, c1, c2, c3, 0, c1, 0, c2, c8, c9, c2, c2, c8, c9, 0, 0};
         long e = 0;
@@ -361,23 +361,23 @@ static alwan_status alwan_rp_run(alwan_region_props *props, size_t capacity, siz
         }
         {
             double const mu0 = (double)pr->area, a = mu02 / mu0, b = -mu11 / mu0, cq = mu20 / mu0;
-            double const half = (a + cq) / 2.0, root = sqrt(((a - cq) / 2.0) * ((a - cq) / 2.0) + b * b);
+            double const half = (a + cq) / 2.0, root = ALWAN_SQRT_F64(((a - cq) / 2.0) * ((a - cq) / 2.0) + b * b);
             double l1 = half + root, l2 = half - root;
             if (l1 < 0.0) l1 = 0.0;
             if (l2 < 0.0) l2 = 0.0;
-            pr->axis_major_length = 4.0 * sqrt(l1);
-            pr->axis_minor_length = 4.0 * sqrt(l2);
-            pr->eccentricity = l1 == 0.0 ? 0.0 : sqrt(1.0 - l2 / l1);
+            pr->axis_major_length = 4.0 * ALWAN_SQRT_F64(l1);
+            pr->axis_minor_length = 4.0 * ALWAN_SQRT_F64(l2);
+            pr->eccentricity = l1 == 0.0 ? 0.0 : ALWAN_SQRT_F64(1.0 - l2 / l1);
             if (a - cq == 0.0) pr->orientation = b < 0.0 ? 3.14159265358979323846 / 4.0 : -3.14159265358979323846 / 4.0;
-            else pr->orientation = 0.5 * atan2(-2.0 * b, cq - a);
+            else pr->orientation = 0.5 * ALWAN_ATAN2_F64(-2.0 * b, cq - a);
         }
-        pr->equivalent_diameter = pow(4.0 * (double)pr->area / 3.14159265358979323846, 0.5);
+        pr->equivalent_diameter = ALWAN_POW_F64(4.0 * (double)pr->area / 3.14159265358979323846, 0.5);
         /* perimeter: the 4-connected border inside the box, coded and weighted */
         {
             size_t const bw = c1 - c0 + 1, bh = r1 - r0 + 1;
             unsigned char *m = box, *bd = box + bw * bh;
             size_t hist[50], yy, xx;
-            double const s2 = sqrt(2.0);
+            double const s2 = ALWAN_SQRT_F64(2.0);
             memset(m, 0, bw * bh);
             memset(hist, 0, sizeof(hist));
             for (k = start; k < end; k++) {

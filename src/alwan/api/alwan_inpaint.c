@@ -69,10 +69,10 @@ static int alwan_ip_band_solve(double *B, size_t n, size_t kl, size_t ku, double
         size_t const last = k + kl < n - 1 ? k + kl : n - 1;
         size_t const jend = k + ue < n - 1 ? k + ue : n - 1;
         size_t p = k;
-        double best = fabs(AB(k, k));
+        double best = ALWAN_ABS_F64(AB(k, k));
         for (i = k + 1; i <= last; i++) {
-            if (fabs(AB(i, k)) > best) {
-                best = fabs(AB(i, k));
+            if (ALWAN_ABS_F64(AB(i, k)) > best) {
+                best = ALWAN_ABS_F64(AB(i, k));
                 p = i;
             }
         }

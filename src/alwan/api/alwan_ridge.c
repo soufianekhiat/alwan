@@ -65,7 +65,7 @@ static void alwan_rd_kernels(double *k0, double *k1, double sigma, size_t lw) {
     size_t i, n = 2 * lw + 1;
     for (i = 0; i < n; i++) {
         long const x = (long)i - (long)lw;
-        k0[i] = exp(a * (double)(x * x));
+        k0[i] = ALWAN_EXP_F64(a * (double)(x * x));
     }
     s = alwan_rd_sum(k0, n);
     for (i = 0; i < n; i++) k0[i] = k0[i] / s;
@@ -124,7 +124,7 @@ static alwan_status alwan_rd_run(void *out, size_t out_rs, void const *src, size
         double const tr = sigmas[k] > 1.0 ? 8.0 : 100.0;
         size_t lw;
         if (!(sigmas[k] > 0.0) || sigmas[k] > 64.0) return ALWAN_E_RANGE;
-        lw = (size_t)(tr * ((1.0 / sqrt(2.0)) * sigmas[k]) + 0.5);
+        lw = (size_t)(tr * ((1.0 / ALWAN_SQRT_F64(2.0)) * sigmas[k]) + 0.5);
         if (lw > lwmax) lwmax = lw;
     }
     if (!(p->alpha >= 0.0) || !(p->beta >= 0.0) || !(p->gamma >= 0.0)) return ALWAN_E_RANGE;
@@ -148,7 +148,7 @@ static alwan_status alwan_rd_run(void *out, size_t out_rs, void const *src, size
     }
     for (i = 0; i < n; i++) best[i] = 0.0;
     for (k = 0; k < ns; k++) {
-        double const sig = sigmas[k], sd = (1.0 / sqrt(2.0)) * sig, tr = sig > 1.0 ? 8.0 : 100.0;
+        double const sig = sigmas[k], sd = (1.0 / ALWAN_SQRT_F64(2.0)) * sig, tr = sig > 1.0 ? 8.0 : 100.0;
         size_t const lw = (size_t)(tr * sd + 0.5);
         double smax = 0.0, vmax = 0.0;
         alwan_rd_kernels(k0, k1, sd, lw);
@@ -162,7 +162,7 @@ static alwan_status alwan_rd_run(void *out, size_t out_rs, void const *src, size
             double const half = alwan_rd_r(alwan_rd_r(hrr[i] + hcc[i], f32) / 2.0, f32);
             double const dh = alwan_rd_r(alwan_rd_r(hrr[i] - hcc[i], f32) / 2.0, f32);
             double const q = alwan_rd_r(alwan_rd_r(hrc[i] * hrc[i], f32) + alwan_rd_r(dh * dh, f32), f32);
-            double const r = alwan_rd_r(sqrt(q), f32);
+            double const r = alwan_rd_r(ALWAN_SQRT_F64(q), f32);
             hrr[i] = alwan_rd_r(half + r, f32);
             hcc[i] = alwan_rd_r(half - r, f32);
         }
@@ -171,8 +171,8 @@ static alwan_status alwan_rd_run(void *out, size_t out_rs, void const *src, size
             /* s, then gamma at the first scale when not given */
             for (i = 0; i < n; i++) {
                 double const e0 = hrr[i], e1 = hcc[i];
-                double const l1 = fabs(e0) <= fabs(e1) ? e0 : e1, l2 = fabs(e0) <= fabs(e1) ? e1 : e0;
-                double const s = alwan_rd_r(sqrt(alwan_rd_r(alwan_rd_r(l1 * l1, f32) + alwan_rd_r(l2 * l2, f32), f32)), f32);
+                double const l1 = ALWAN_ABS_F64(e0) <= ALWAN_ABS_F64(e1) ? e0 : e1, l2 = ALWAN_ABS_F64(e0) <= ALWAN_ABS_F64(e1) ? e1 : e0;
+                double const s = alwan_rd_r(ALWAN_SQRT_F64(alwan_rd_r(alwan_rd_r(l1 * l1, f32) + alwan_rd_r(l2 * l2, f32), f32)), f32);
                 tmp[i] = s;
                 if (s > smax) smax = s;
             }
@@ -184,12 +184,12 @@ static alwan_status alwan_rd_run(void *out, size_t out_rs, void const *src, size
                 double const g2 = alwan_rd_r(2.0 * alwan_rd_r(gamma * gamma, f32), f32);
                 for (i = 0; i < n; i++) {
                     double const e0 = hrr[i], e1 = hcc[i];
-                    double const l1 = fabs(e0) <= fabs(e1) ? e0 : e1, l2r = fabs(e0) <= fabs(e1) ? e1 : e0;
+                    double const l1 = ALWAN_ABS_F64(e0) <= ALWAN_ABS_F64(e1) ? e0 : e1, l2r = ALWAN_ABS_F64(e0) <= ALWAN_ABS_F64(e1) ? e1 : e0;
                     double const l2 = l2r > floor_ ? l2r : floor_;
-                    double const rb = alwan_rd_r(fabs(l1) / l2, f32), s = tmp[i];
-                    double const eb = f32 ? (double)expf((float)alwan_rd_r(-alwan_rd_r(rb * rb, f32) / b2, f32))
-                                          : exp(-(rb * rb) / b2);
-                    double const es = f32 ? (double)expf((float)alwan_rd_r(-alwan_rd_r(s * s, f32) / g2, f32)) : exp(-(s * s) / g2);
+                    double const rb = alwan_rd_r(ALWAN_ABS_F64(l1) / l2, f32), s = tmp[i];
+                    double const eb = f32 ? (double)ALWAN_EXP_F32((float)alwan_rd_r(-alwan_rd_r(rb * rb, f32) / b2, f32))
+                                          : ALWAN_EXP_F64(-(rb * rb) / b2);
+                    double const es = f32 ? (double)ALWAN_EXP_F32((float)alwan_rd_r(-alwan_rd_r(s * s, f32) / g2, f32)) : ALWAN_EXP_F64(-(s * s) / g2);
                     double const v = alwan_rd_r(eb * alwan_rd_r(1.0 - es, f32), f32);
                     if (v > best[i]) best[i] = v;
                 }
@@ -205,7 +205,7 @@ static alwan_status alwan_rd_run(void *out, size_t out_rs, void const *src, size
             for (i = 0; i < n; i++) {
                 double const v0 = alwan_rd_r(hrr[i] + alwan_rd_r(a * hcc[i], f32), f32);
                 double const v1 = alwan_rd_r(alwan_rd_r(a * hrr[i], f32) + hcc[i], f32);
-                double v = fabs(v1) > fabs(v0) ? v1 : v0;
+                double v = ALWAN_ABS_F64(v1) > ALWAN_ABS_F64(v0) ? v1 : v0;
                 v = v > 0.0 ? v : 0.0;
                 vals[i] = v;
                 if (v > vmax) vmax = v;

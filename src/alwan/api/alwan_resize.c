@@ -52,7 +52,7 @@ static double alwan_rs_filter(int m, double x) {
         if (x == 0.0) return 1.0;
         if (x >= 1.0) return 0.0;
         x = x * pi;
-        return sin(x) / x * ((double)0.54f + (double)0.46f * cos(x));
+        return ALWAN_SIN_F64(x) / x * ((double)0.54f + (double)0.46f * ALWAN_COS_F64(x));
     case ALWAN_RESIZE_BICUBIC:
         if (x < 0.0) x = -x;
         if (x < 1.0) return ((-0.5 + 2.0) * x - (-0.5 + 3.0)) * x * x + 1;
@@ -64,13 +64,13 @@ static double alwan_rs_filter(int m, double x) {
         if (x == 0.0) s1 = 1.0;
         else {
             y = x * pi;
-            s1 = sin(y) / y;
+            s1 = ALWAN_SIN_F64(y) / y;
         }
         y = x / 3;
         if (y == 0.0) s3 = 1.0;
         else {
             y = y * pi;
-            s3 = sin(y) / y;
+            s3 = ALWAN_SIN_F64(y) / y;
         }
         return s1 * s3;
     }
@@ -86,7 +86,7 @@ static int alwan_rs_coeffs(double *kk, int *b, int in_size, float in0, float in1
     double const scale = (double)(in1 - in0) / out_size;
     double const filterscale = scale < 1.0 ? 1.0 : scale;
     double const support = alwan_rs_support(m) * filterscale;
-    int const ksize = (int)ceil(support) * 2 + 1;
+    int const ksize = (int)ALWAN_CEIL_F64(support) * 2 + 1;
     int xx, x;
     for (xx = 0; xx < out_size; xx++) {
         double const center = in0 + (xx + 0.5) * scale, ss = 1.0 / filterscale;
@@ -188,7 +188,7 @@ static alwan_status alwan_rs_subpixel(void *out, size_t out_rs, size_t ow, size_
                     if (kind == 0) ((alwan_f64 *)orow)[x * ch + c] = v;
                     else if (kind == 1) ((alwan_f32 *)orow)[x * ch + c] = (alwan_f32)v;
                     else {
-                        double const r = floor(v + 0.5);
+                        double const r = ALWAN_FLOOR_F64(v + 0.5);
                         ((unsigned char *)orow)[x * ch + c] = (unsigned char)(r < 0.0 ? 0.0 : r > 255.0 ? 255.0 : r);
                     }
                 }
@@ -259,8 +259,8 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
         int const need_h = ow != w || bx0 != 0.0f || bx1 != (float)ow;
         int const need_v = oh != h || by0 != 0.0f || by1 != (float)oh;
         double const sh = (double)(bx1 - bx0) / (double)ow, sv = (double)(by1 - by0) / (double)oh;
-        size_t const kh = (size_t)ceil(alwan_rs_support(method) * (sh < 1.0 ? 1.0 : sh)) * 2 + 1;
-        size_t const kv = (size_t)ceil(alwan_rs_support(method) * (sv < 1.0 ? 1.0 : sv)) * 2 + 1;
+        size_t const kh = (size_t)ALWAN_CEIL_F64(alwan_rs_support(method) * (sh < 1.0 ? 1.0 : sh)) * 2 + 1;
+        size_t const kv = (size_t)ALWAN_CEIL_F64(alwan_rs_support(method) * (sv < 1.0 ? 1.0 : sv)) * 2 + 1;
         double *kkh = (double *)ALWAN_ALLOC(alwan_safe_array_size(ow * kh + oh * kv, sizeof(double)), sizeof(double));
         int *bh = (int *)ALWAN_ALLOC(alwan_safe_array_size(2 * (ow + oh), sizeof(int)), sizeof(int));
         double *kkv, *tmp = NULL;

@@ -445,20 +445,20 @@ static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *n
 static double clf_exponent_channel(double x, int style, double g, double a) {
     switch (style) {
         case CLF_BASIC_FWD:
-            return x > 0.0 ? pow(x, g) : 0.0;
+            return x > 0.0 ? ALWAN_POW_F64(x, g) : 0.0;
         case CLF_BASIC_REV:
-            return x > 0.0 ? pow(x, 1.0 / g) : 0.0;
+            return x > 0.0 ? ALWAN_POW_F64(x, 1.0 / g) : 0.0;
         case CLF_MON_FWD: {
             double const xb = a / (g - 1.0);
-            double const yb = pow((xb + a) / (1.0 + a), g);
+            double const yb = ALWAN_POW_F64((xb + a) / (1.0 + a), g);
             if (x <= xb) return x * (yb / xb);
-            return pow((x + a) / (1.0 + a), g);
+            return ALWAN_POW_F64((x + a) / (1.0 + a), g);
         }
         default: {
             double const xb = a / (g - 1.0);
-            double const yb = pow((xb + a) / (1.0 + a), g);
+            double const yb = ALWAN_POW_F64((xb + a) / (1.0 + a), g);
             if (x <= yb) return x * (xb / yb);
-            return (1.0 + a) * pow(x, 1.0 / g) - a;
+            return (1.0 + a) * ALWAN_POW_F64(x, 1.0 / g) - a;
         }
     }
 }
@@ -530,7 +530,7 @@ static void clf_apply_cdl(clf_op const *op, double *v) {
         for (c = 0; c < 3; c++) {
             double x = v[c] * op->slope[c] + op->cdl_offset[c];
             if (clamp) x = clf_unit(x);
-            v[c] = (x > 0.0) ? pow(x, op->power[c]) : x;
+            v[c] = (x > 0.0) ? ALWAN_POW_F64(x, op->power[c]) : x;
             if (clamp) v[c] = clf_unit(v[c]);
         }
         luma = clf_cdl_luma(v);
@@ -548,7 +548,7 @@ static void clf_apply_cdl(clf_op const *op, double *v) {
     for (c = 0; c < 3; c++) {
         double x = v[c];
         if (clamp) x = clf_unit(x);
-        if (x > 0.0 && op->power[c] != 0.0) x = pow(x, 1.0 / op->power[c]);
+        if (x > 0.0 && op->power[c] != 0.0) x = ALWAN_POW_F64(x, 1.0 / op->power[c]);
         x = (op->slope[c] != 0.0) ? (x - op->cdl_offset[c]) / op->slope[c] : 0.0;
         v[c] = clamp ? clf_unit(x) : x;
     }
@@ -559,48 +559,48 @@ static void clf_apply_cdl(clf_op const *op, double *v) {
  * below linSideBreak whose slope is the curve's own slope there unless the file
  * states one. All measured against OCIO. */
 static double clf_log_channel(clf_op const *op, double x) {
-    double const lb = log(op->log_base);
+    double const lb = ALWAN_LN_F64(op->log_base);
     switch (op->style) {
         case CLF_LOG_LOG2:
-            return log(x < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : x) / log(2.0);
+            return ALWAN_LN_F64(x < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : x) / ALWAN_LN_F64(2.0);
         case CLF_LOG_LOG10:
-            return log10(x < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : x);
+            return ALWAN_LOG10_F64(x < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : x);
         case CLF_LOG_ANTILOG2:
-            return pow(2.0, x);
+            return ALWAN_POW_F64(2.0, x);
         case CLF_LOG_ANTILOG10:
-            return pow(10.0, x);
+            return ALWAN_POW_F64(10.0, x);
         case CLF_LOG_LIN_TO_LOG: {
             double const arg = op->lin_slope * x + op->lin_offset;
-            return op->ls_slope * log(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb + op->ls_offset;
+            return op->ls_slope * ALWAN_LN_F64(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb + op->ls_offset;
         }
         case CLF_LOG_LOG_TO_LIN: {
             double const e = (x - op->ls_offset) / op->ls_slope;
-            return (pow(op->log_base, e) - op->lin_offset) / op->lin_slope;
+            return (ALWAN_POW_F64(op->log_base, e) - op->lin_offset) / op->lin_slope;
         }
         case CLF_LOG_CAM_LIN_TO_LOG: {
             double const xb = op->lin_break;
             double const arg = op->lin_slope * xb + op->lin_offset;
-            double const yb = op->ls_slope * log(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb
+            double const yb = op->ls_slope * ALWAN_LN_F64(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb
                               + op->ls_offset;
             double const m = op->has_linear_slope ? op->linear_slope
                                                   : (op->ls_slope * op->lin_slope) / (arg * lb);
             if (x <= xb) return yb + (x - xb) * m;
             {
                 double const a2 = op->lin_slope * x + op->lin_offset;
-                return op->ls_slope * log(a2 < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : a2) / lb + op->ls_offset;
+                return op->ls_slope * ALWAN_LN_F64(a2 < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : a2) / lb + op->ls_offset;
             }
         }
         default: {
             double const xb = op->lin_break;
             double const arg = op->lin_slope * xb + op->lin_offset;
-            double const yb = op->ls_slope * log(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb
+            double const yb = op->ls_slope * ALWAN_LN_F64(arg < CLF_LOG_FLOOR ? CLF_LOG_FLOOR : arg) / lb
                               + op->ls_offset;
             double const m = op->has_linear_slope ? op->linear_slope
                                                   : (op->ls_slope * op->lin_slope) / (arg * lb);
             if (x <= yb) return (m != 0.0) ? xb + (x - yb) / m : xb;
             {
                 double const e = (x - op->ls_offset) / op->ls_slope;
-                return (pow(op->log_base, e) - op->lin_offset) / op->lin_slope;
+                return (ALWAN_POW_F64(op->log_base, e) - op->lin_offset) / op->lin_slope;
             }
         }
     }

@@ -62,7 +62,7 @@ static alwan_status alwan_cc_cmccat2000(double *out, double const *in, double co
     alwan_cc_mul(rgb, M, in);
     alwan_cc_mul(rgb_w, M, w);
     alwan_cc_mul(rgb_wr, M, wr);
-    D = F * (0.08 * log10(0.5 * (L_A1 + L_A2)) + 0.76 - 0.45 * (L_A1 - L_A2) / (L_A1 + L_A2));
+    D = F * (0.08 * ALWAN_LOG10_F64(0.5 * (L_A1 + L_A2)) + 0.76 - 0.45 * (L_A1 - L_A2) / (L_A1 + L_A2));
     D = D < 0.0 ? 0.0 : D > 1.0 ? 1.0 : D;
     a = D * w[1] / wr[1];
     for (i = 0; i < 3; i++) {

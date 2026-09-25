@@ -39,7 +39,7 @@ static alwan_status alwan_ef_route(void *out, size_t out_rs, void const *src, si
     case ALWAN_EDGE_FILTER_JOINT_BILATERAL:
     case ALWAN_EDGE_FILTER_ROLLING_GUIDANCE: {
         double const ss = alwan_ef_or(p->sigma_space, 3.0), sc = alwan_ef_or(p->sigma_color, 0.1);
-        size_t const r = p->radius != 0 ? p->radius : (size_t)floor(1.5 * ss + 0.5);
+        size_t const r = p->radius != 0 ? p->radius : (size_t)ALWAN_FLOOR_F64(1.5 * ss + 0.5);
         if (method == ALWAN_EDGE_FILTER_JOINT_BILATERAL) {
             return alwan__bf_run(out, out_rs, src, src_rs, sch, guide, guide_rs, gch, w, h, r, sc, ss, is_f32);
         }
