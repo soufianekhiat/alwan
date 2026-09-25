@@ -1040,12 +1040,12 @@ void alwan_oklch_to_xyz_f64(alwan_xyz_f64 *xyz, alwan_oklch_f64 const *oklch);
 typedef enum {
     ALWAN_GAMUT_MAP_CLIP = 0,         /* Simple clipping to [0,1] */
     ALWAN_GAMUT_MAP_HUE_PRESERVING = 1, /* Project to gamut boundary preserving hue */
-    ALWAN_GAMUT_MAP_ADAPTIVE_L0 = 2, /* Adaptive L0 (project toward L=0.5) - P9.5 */
-    ALWAN_GAMUT_MAP_ADAPTIVE_CUSP = 3, /* Adaptive toward cusp (hue-dependent) - P9.5 */
-    ALWAN_GAMUT_MAP_CHROMA_COMPRESS = 4, /* Chroma compression - P9.5 */
-    ALWAN_GAMUT_MAP_SGCK = 5, /* SGCK 2004 (Segment-Maximal Gamut Clipping with Knee) - P9.5 */
-    ALWAN_GAMUT_MAP_HPMINDE = 6, /* HPMINDE (Hue-Preserving Minimum dE) - P9.5 */
-    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE = 7, /* Lightness Preserving - P9.5 */
+    ALWAN_GAMUT_MAP_ADAPTIVE_L0 = 2, /* Ottosson's gamut_clip_adaptive_L0_0_5, alpha 0.05, in Oklab */
+    ALWAN_GAMUT_MAP_ADAPTIVE_CUSP = 3, /* Ottosson's gamut_clip_adaptive_L0_L_cusp, alpha 0.05, in Oklab */
+    ALWAN_GAMUT_MAP_CHROMA_COMPRESS = 4, /* Ottosson's gamut_clip_preserve_chroma: the same projection as 7 */
+    ALWAN_GAMUT_MAP_SGCK = 5, /* CIE 156:2004 SGCK in CIELAB, as a clip along its mapping line (no source gamut) */
+    ALWAN_GAMUT_MAP_HPMINDE = 6, /* CIE 156:2004 HPMINDE: nearest dE*ab colour of the same CIELAB hue */
+    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE = 7, /* Ottosson's gamut_clip_preserve_chroma: Oklab L and h kept */
     ALWAN_GAMUT_MAP_RAYTRACE = 8,     /* Oklch chroma reduction by ray tracing the linear RGB cube (ColorAide 'raytrace') */
     ALWAN_GAMUT_MAP_CSS4 = 9          /* CSS Color 4 Oklch binary search with the deltaE OK JND (ColorAide 'oklch-chroma') */
 } alwan_gamut_map_method;
@@ -1056,16 +1056,27 @@ typedef enum {
  *   ------------------  --------------------------  -------------------  -------------------------------------
  *   CLIP                per-channel clamp           nothing perceptual   final encode; content already ~in gamut
  *   HUE_PRESERVING      RGB scale toward neutral    RGB channel ratios   real-time paths (no Oklab cost)
- *   ADAPTIVE_L0         Oklab project toward L=0.5  hue; balances L/C    general-purpose photographic default
- *   ADAPTIVE_CUSP       Oklab project toward cusp   hue; max chroma      saturated graphics / brand colors
- *   CHROMA_COMPRESS     reduce C, hold L and h      lightness + hue      hue fidelity paramount (CSS-like)
- *   SGCK                knee-compressed segment     gradient smoothness  wide->narrow images with smooth ramps
- *   HPMINDE             min dE on hue leaf          colorimetric close   proofing (smallest visible error)
- *   LIGHTNESS_PRESERVE  hold L, sacrifice C         lightness contrast   text overlays / skin tones
+ *   ADAPTIVE_L0         Oklab, toward an L0 near 0.5 hue; balances L/C    general-purpose photographic default
+ *   ADAPTIVE_CUSP       Oklab, toward an L0 near    hue; max chroma      saturated graphics / brand colors
+ *                       the cusp's lightness
+ *   CHROMA_COMPRESS     = LIGHTNESS_PRESERVE        Oklab L and h        (the same projection; kept for the enum)
+ *   SGCK                CIELAB, along the line to   CIELAB hue           CIE 156 comparisons
+ *                       the cusp lightness
+ *   HPMINDE             CIELAB, least dE*ab on the  CIELAB hue           proofing (smallest visible error)
+ *                       hue leaf
+ *   LIGHTNESS_PRESERVE  Oklab, hold L, cut C        Oklab L and h        text overlays / skin tones
+ *   RAYTRACE, CSS4      Oklch, see below            Oklch L and h        any target, its own cube
  *
- * Honesty notes: (1) the perceptual (Oklab) boundary model is currently
- * sRGB-anchored -- for targets wider than sRGB the Oklab methods over-compress;
- * (2) for HDR (PQ/HLG, absolute nits) use alwan_hdr_gamut_map_ictcp instead. */
+ * Methods 2, 3, 4 and 7 are Bjorn Ottosson's "sRGB gamut clipping" (2021, MIT) in Oklab on
+ * the linear sRGB gamut: for a target other than sRGB the colour is mapped to sRGB's boundary
+ * and then clamped into the target's cube, so a wider target is over-compressed. SGCK and
+ * HPMINDE (CIE 156:2004) work in CIELAB against the target's white and in the target's own
+ * cube; they are searches, about half a millisecond a colour. SGCK's knee needs the
+ * source gamut's boundary, which a single colour does not carry: here it clips along SGCK's
+ * mapping line. Until 2026-09-25 methods 3, 5 and 6 were one projection toward the Oklab cusp
+ * and 4 and 7 another, the alpha values were never used, the boundary intersection's Halley
+ * step had wrong derivatives, and a grey above white came back unmapped (suite 264).
+ * For HDR (PQ/HLG, absolute nits) use alwan_hdr_gamut_map_ictcp instead. */
 
 /* Exact RGB gamut volume in linear XYZ.
  * The RGB unit cube maps to a parallelepiped under the RGB->XYZ matrix M,
@@ -5609,7 +5620,8 @@ alwan_status alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
  * using perceptually-aware algorithms
  * method: any alwan_gamut_map_method. CLIP clamps in `space`'s own cube;
  *         HUE_PRESERVING is the projection the plain alwan_gamut_{T} maps run,
- *         applied in the working space; 2 to 7 are the Oklab projections.
+ *         applied in the working space; 2, 3, 4 and 7 are Ottosson's Oklab
+ *         clipping, 5 and 6 the CIE 156 methods in CIELAB (see the table above).
  *         RAYTRACE and CSS4 reduce Oklch chroma at constant lightness and
  *         hue in `space`'s own linear cube, as ColorAide 8.13's 'raytrace' and
  *         'oklch-chroma' fits do (suite 243): RAYTRACE casts rays from the

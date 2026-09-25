@@ -39,19 +39,22 @@ legal-range scaling, numerical guards.
 |---|---|---|---|---|
 | `CLIP` | per-channel clamp | nothing perceptual | final encode; content already ~in gamut | trivial |
 | `HUE_PRESERVING` | RGB scale toward neutral | RGB channel ratios | real-time paths where Oklab cost is too high | low |
-| `ADAPTIVE_L0` | Oklab project toward L=0.5 | hue; balances L/C | general-purpose photographic default | medium |
-| `ADAPTIVE_CUSP` | Oklab project toward hue cusp | hue; max chroma at cusp | saturated graphics, logos, brand colors | medium |
-| `CHROMA_COMPRESS` | reduce C, hold L and h | lightness + hue | hue fidelity paramount (CSS-like) | medium |
-| `SGCK` | knee-compressed segment map | gradient smoothness | wide->narrow images with smooth ramps | medium |
-| `HPMINDE` | min DeltaE on hue leaf | colorimetric closeness | proofing / soft-proof (smallest visible error) | medium |
-| `LIGHTNESS_PRESERVE` | hold L, sacrifice C | lightness contrast | text overlays, skin tones | medium |
+| `ADAPTIVE_L0` | Ottosson's gamut_clip_adaptive_L0_0_5 (alpha 0.05): Oklab, toward an L0 that moves from 0.5 toward the colour's own lightness as chroma falls | Oklab hue; balances L/C | general-purpose photographic default | medium |
+| `ADAPTIVE_CUSP` | Ottosson's gamut_clip_adaptive_L0_L_cusp (alpha 0.05): the same about the cusp's lightness | Oklab hue; more chroma | saturated graphics, logos, brand colors | medium |
+| `CHROMA_COMPRESS` | the same projection as `LIGHTNESS_PRESERVE` | Oklab lightness + hue | kept for the enum | medium |
+| `SGCK` | CIE 156:2004 SGCK in CIELAB, as a clip along its mapping line toward the cusp's lightness (a single colour carries no source gamut for the knee) | CIELAB hue | CIE 156 comparisons | high (a search) |
+| `HPMINDE` | CIE 156:2004: the in-gamut colour of the same CIELAB hue with the least dE*ab | CIELAB hue; colorimetric closeness | proofing (smallest visible error) | high (a search) |
+| `LIGHTNESS_PRESERVE` | Ottosson's gamut_clip_preserve_chroma: hold Oklab L, cut chroma | Oklab lightness + hue | text overlays, skin tones | medium |
 | `RAYTRACE` | Oklch chroma reduction, rays cast to the target's linear cube | Oklch lightness + hue | any target, wide gamuts included; ColorAide's default | medium |
 | `CSS4` | CSS Color 4 binary search on Oklch chroma, JND 0.02 | Oklch lightness + hue, within a JND | matching browsers' CSS gamut mapping | medium-high |
 
 Honesty notes:
-1. The perceptual (Oklab) boundary model is **sRGB-anchored**
-   (`core/alwan_gamut_core.inc`): for targets wider than sRGB the six Oklab
-   methods over-compress. `RAYTRACE` and `CSS4` work in the target's own cube.
+1. Ottosson's four methods (2, 3, 4, 7) use his **sRGB** boundary model
+   (`core/alwan_gamut_core.inc`): for targets wider than sRGB they over-compress.
+   `SGCK`, `HPMINDE`, `RAYTRACE` and `CSS4` work in the target's own cube.
+   Until 2026-09-25 methods 3, 5 and 6 were one projection toward the Oklab cusp and
+   4 and 7 another, the alpha values were unused and the boundary intersection's
+   Halley step had wrong derivatives (suite 264).
 2. The methods are SDR-oriented. For HDR (absolute nits) use
    `alwan_hdr_gamut_map_ictcp`.
 

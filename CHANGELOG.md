@@ -2,6 +2,37 @@
 
 ### Fixed: output differs
 
+- **alwan_gamut_map_advanced_{T} methods 2 to 7 did not compute what they were named.**
+  ADAPTIVE_CUSP, SGCK and HPMINDE were one projection toward the Oklab cusp, and
+  CHROMA_COMPRESS and LIGHTNESS_PRESERVE another; ADAPTIVE_L0 and ADAPTIVE_CUSP never used
+  their alpha; the Halley step of the boundary intersection (Ottosson's
+  find_gamut_intersection) had wrong derivatives and a wrong test for which edge the line
+  meets, and compute_max_saturation took a Newton step for his Halley step; a grey outside
+  the cube (Oklab chroma under 1e-4) came back unmapped, so (1.2, 1.2, 1.2) stayed
+  (1.2, 1.2, 1.2). The suites only checked "in [0,1]" and "dominant channel stays
+  dominant". Now:
+  - ADAPTIVE_L0, ADAPTIVE_CUSP and LIGHTNESS_PRESERVE (and CHROMA_COMPRESS, the same
+    projection) are Ottosson's gamut_clip_adaptive_L0_0_5, gamut_clip_adaptive_L0_L_cusp
+    (alpha 0.05) and gamut_clip_preserve_chroma ("sRGB gamut clipping", 2021, MIT), within
+    3.4e-15 of his code ported to numpy on alwan's CSS Oklab matrices;
+  - SGCK and HPMINDE are the CIE 156:2004 methods in CIELAB against the target's white and
+    its own cube (they ran in Oklab on the sRGB gamut): HPMINDE the least dE*ab on the hue
+    leaf, SGCK the clip along its mapping line toward the cusp's lightness. The leaf
+    boundary is found exactly, as the last exit of each channel's piecewise cubic, since
+    CIELAB folds the cube near the yellow cusp. Within 7e-8 of a reference computed from
+    the definitions by numpy.roots and scipy.
+  Measured on 83 out-of-gamut sRGB colours, outputs moved by up to 0.61 (ADAPTIVE_L0),
+  0.74 (ADAPTIVE_CUSP, SGCK), 0.83 (CHROMA_COMPRESS, LIGHTNESS_PRESERVE) and 0.96 (HPMINDE)
+  in linear RGB. A grey above white now maps to white and one below black to black. SGCK
+  and HPMINDE are searches, about half a millisecond a colour. Suite 264.
+- **The gamut mappers' linear sRGB working space had a white of (0.31271, 0.32902)**, not
+  sRGB's (0.3127, 0.3290), with no adaptation between them, so the white of a D65 target
+  (Display P3, BT.2020) reached it as (1.00001, 0.99998, 1.00017). It is now (0.3127, 0.3290),
+  as ALWAN_RGB_SPACE_SRGB has it. This moves alwan_gamut_map_advanced_{T} with
+  HUE_PRESERVING and methods 2, 3, 4 and 7 on targets other than sRGB (sRGB itself snaps
+  to the identity and does not move): on P3, ADAPTIVE_L0 moved by up to 1.8e-3 and the
+  others by up to 1.3e-3; on BT.2020 by up to 1.8e-4. HUE_PRESERVING's shift was not
+  measured separately. Suite 264.
 - **Deterministic builds were not deterministic for 43 families.** 519 math calls in
   src/alwan went straight to libm instead of through alwan_math.h's macros, 180 of them
   transcendentals (pow, exp, log, log2, log10, sin, cos, atan, atan2, acos, cosh, sinh,

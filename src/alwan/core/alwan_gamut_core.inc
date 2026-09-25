@@ -67,53 +67,44 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(gamut_oklab_to_linear_srgb)(ALWAN
  * Coefficients from Ottosson (2021) "Gamut clipping"
  *   https://bottosson.github.io/posts/gamutclipping/ reference implementation. */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(gamut_compute_max_saturation)(ALWAN_CORE_T a, ALWAN_CORE_T b) {
+    /* Ottosson (2021) "sRGB gamut clipping", compute_max_saturation, MIT, Copyright (c) 2021
+     * Bjorn Ottosson: a polynomial first guess, then one Halley step on the gamut face. */
     ALWAN_CORE_T k0, k1, k2, k3, k4, wl, wm, ws;
-
     if (-ALWAN_CORE_LITERAL(1.88170328) * a - ALWAN_CORE_LITERAL(0.80936493) * b > ALWAN_CORE_LITERAL(1.0)) {
-        k0 = +ALWAN_CORE_LITERAL(1.19086277); k1 = +ALWAN_CORE_LITERAL(1.76576728);
-        k2 = +ALWAN_CORE_LITERAL(0.59662641); k3 = +ALWAN_CORE_LITERAL(0.75515197);
-        k4 = +ALWAN_CORE_LITERAL(0.56771245);
-        wl = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[0]; wm = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[1];
-        ws = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[2];
+        k0 = +ALWAN_CORE_LITERAL(1.19086277); k1 = +ALWAN_CORE_LITERAL(1.76576728); k2 = +ALWAN_CORE_LITERAL(0.59662641);
+        k3 = +ALWAN_CORE_LITERAL(0.75515197); k4 = +ALWAN_CORE_LITERAL(0.56771245);
+        wl = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[0]; wm = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[1]; ws = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[2];
     } else if (ALWAN_CORE_LITERAL(1.81444104) * a - ALWAN_CORE_LITERAL(1.19445276) * b > ALWAN_CORE_LITERAL(1.0)) {
-        k0 = +ALWAN_CORE_LITERAL(0.73956515); k1 = -ALWAN_CORE_LITERAL(0.45954404);
-        k2 = +ALWAN_CORE_LITERAL(0.08285427); k3 = +ALWAN_CORE_LITERAL(0.12541070);
-        k4 = +ALWAN_CORE_LITERAL(0.14503204);
-        wl = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[3]; wm = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[4];
-        ws = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[5];
+        k0 = +ALWAN_CORE_LITERAL(0.73956515); k1 = -ALWAN_CORE_LITERAL(0.45954404); k2 = +ALWAN_CORE_LITERAL(0.08285427);
+        k3 = +ALWAN_CORE_LITERAL(0.12541070); k4 = +ALWAN_CORE_LITERAL(0.14503204);
+        wl = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[3]; wm = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[4]; ws = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[5];
     } else {
-        k0 = +ALWAN_CORE_LITERAL(1.35733652); k1 = -ALWAN_CORE_LITERAL(0.00915799);
-        k2 = -ALWAN_CORE_LITERAL(1.15130210); k3 = -ALWAN_CORE_LITERAL(0.50559606);
-        k4 = +ALWAN_CORE_LITERAL(0.00692167);
-        wl = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[6]; wm = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[7];
-        ws = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[8];
+        k0 = +ALWAN_CORE_LITERAL(1.35733652); k1 = -ALWAN_CORE_LITERAL(0.00915799); k2 = -ALWAN_CORE_LITERAL(1.15130210);
+        k3 = -ALWAN_CORE_LITERAL(0.50559606); k4 = +ALWAN_CORE_LITERAL(0.00692167);
+        wl = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[6]; wm = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[7]; ws = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[8];
     }
-
     ALWAN_CORE_T S = k0 + k1 * a + k2 * b + k3 * a * a + k4 * a * b;
-
     {
         ALWAN_CORE_T k_l = ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[1] * a + ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[2] * b;
         ALWAN_CORE_T k_m = ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[4] * a + ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[5] * b;
         ALWAN_CORE_T k_s = ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[7] * a + ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[8] * b;
-
-        ALWAN_CORE_T l_ = ALWAN_CORE_LITERAL(1.0) + S * k_l;
-        ALWAN_CORE_T m_ = ALWAN_CORE_LITERAL(1.0) + S * k_m;
-        ALWAN_CORE_T s_ = ALWAN_CORE_LITERAL(1.0) + S * k_s;
-
+        ALWAN_CORE_T l_ = ALWAN_CORE_ONE + S * k_l;
+        ALWAN_CORE_T m_ = ALWAN_CORE_ONE + S * k_m;
+        ALWAN_CORE_T s_ = ALWAN_CORE_ONE + S * k_s;
         ALWAN_CORE_T l = l_ * l_ * l_;
         ALWAN_CORE_T m = m_ * m_ * m_;
         ALWAN_CORE_T s = s_ * s_ * s_;
-
         ALWAN_CORE_T l_dS = ALWAN_CORE_LITERAL(3.0) * k_l * l_ * l_;
         ALWAN_CORE_T m_dS = ALWAN_CORE_LITERAL(3.0) * k_m * m_ * m_;
         ALWAN_CORE_T s_dS = ALWAN_CORE_LITERAL(3.0) * k_s * s_ * s_;
-
-        ALWAN_CORE_T f   = wl * l   + wm * m   + ws * s;
-        ALWAN_CORE_T f_dS = wl * l_dS + wm * m_dS + ws * s_dS;
-
-        S = S - f / f_dS;
+        ALWAN_CORE_T l_dS2 = ALWAN_CORE_LITERAL(6.0) * k_l * k_l * l_;
+        ALWAN_CORE_T m_dS2 = ALWAN_CORE_LITERAL(6.0) * k_m * k_m * m_;
+        ALWAN_CORE_T s_dS2 = ALWAN_CORE_LITERAL(6.0) * k_s * k_s * s_;
+        ALWAN_CORE_T f = wl * l + wm * m + ws * s;
+        ALWAN_CORE_T f1 = wl * l_dS + wm * m_dS + ws * s_dS;
+        ALWAN_CORE_T f2 = wl * l_dS2 + wm * m_dS2 + ws * s_dS2;
+        S = S - f * f1 / (f1 * f1 - ALWAN_CORE_LITERAL(0.5) * f * f2);
     }
-
     return S;
 }
 
@@ -147,86 +138,69 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(gamut_find_cusp)(ALWAN_CORE_T a, 
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(gamut_find_intersection)(ALWAN_CORE_T a, ALWAN_CORE_T b,
                                                      ALWAN_CORE_T L1, ALWAN_CORE_T C1,
-                                                     ALWAN_CORE_T L0, ALWAN_CORE_T C0) {
+                                                     ALWAN_CORE_T L0) {
+    /* Ottosson (2021) "sRGB gamut clipping", find_gamut_intersection, MIT, Copyright (c) 2021
+     * Bjorn Ottosson: where the line from (L0, 0) to (L1, C1) in the hue plane (a, b) leaves
+     * the gamut, as the fraction t of the way to (L1, C1). Below the cusp's line the lower edge
+     * is exact; above it the triangle approximation is refined by one Halley step on each RGB
+     * face. */
     ALWAN_CORE_VEC2 cusp = ALWAN_CORE_FNVLIT(gamut_find_cusp)(a, b);
     ALWAN_CORE_T L_cusp = cusp.v[0];
     ALWAN_CORE_T C_cusp = cusp.v[1];
-
     ALWAN_CORE_T t;
-    if (((L1 - L0) * C_cusp - (C1 - C0) * L_cusp) <= ALWAN_CORE_ZERO) {
+    if (((L1 - L0) * C_cusp - (L_cusp - L0) * C1) <= ALWAN_CORE_ZERO) {
         t = C_cusp * L0 / (C1 * L_cusp + C_cusp * (L0 - L1));
     } else {
-        t = C_cusp * (L0 - ALWAN_CORE_ONE) / (C1 * (L_cusp - ALWAN_CORE_ONE) +
-                                           C_cusp * (L0 - L1));
-
+        ALWAN_CORE_T dL = L1 - L0;
+        ALWAN_CORE_T dC = C1;
+        ALWAN_CORE_T k_l = ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[1] * a + ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[2] * b;
+        ALWAN_CORE_T k_m = ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[4] * a + ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[5] * b;
+        ALWAN_CORE_T k_s = ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[7] * a + ALWAN_CORE_FNLIT(CSS_LAB_TO_LMS).m[8] * b;
+        ALWAN_CORE_T l_dt = dL + dC * k_l;
+        ALWAN_CORE_T m_dt = dL + dC * k_m;
+        ALWAN_CORE_T s_dt = dL + dC * k_s;
+        ALWAN_CORE_T Lt, Ct, l_, m_, s_, l, m, s, ldt, mdt, sdt, ldt2, mdt2, sdt2;
+        ALWAN_CORE_T t_r, t_g, t_b, t_min;
+        t = C_cusp * (L0 - ALWAN_CORE_ONE) / (C1 * (L_cusp - ALWAN_CORE_ONE) + C_cusp * (L0 - L1));
+        Lt = L0 * (ALWAN_CORE_ONE - t) + t * L1;
+        Ct = t * C1;
+        l_ = Lt + Ct * k_l;
+        m_ = Lt + Ct * k_m;
+        s_ = Lt + Ct * k_s;
+        l = l_ * l_ * l_;
+        m = m_ * m_ * m_;
+        s = s_ * s_ * s_;
+        ldt = ALWAN_CORE_LITERAL(3.0) * l_dt * l_ * l_;
+        mdt = ALWAN_CORE_LITERAL(3.0) * m_dt * m_ * m_;
+        sdt = ALWAN_CORE_LITERAL(3.0) * s_dt * s_ * s_;
+        ldt2 = ALWAN_CORE_LITERAL(6.0) * l_dt * l_dt * l_;
+        mdt2 = ALWAN_CORE_LITERAL(6.0) * m_dt * m_dt * m_;
+        sdt2 = ALWAN_CORE_LITERAL(6.0) * s_dt * s_dt * s_;
         {
-            ALWAN_CORE_T dL = L1 - L0;
-            ALWAN_CORE_T dC = C1 - C0;
-
-            ALWAN_CORE_T L = L0 * (ALWAN_CORE_ONE - t) + t * L1;
-            ALWAN_CORE_T C = t * C1;
-
-            ALWAN_CORE_T k_l = +ALWAN_CORE_LITERAL(0.3963377774) * a + ALWAN_CORE_LITERAL(0.2158037573) * b;
-            ALWAN_CORE_T k_m = -ALWAN_CORE_LITERAL(0.1055613458) * a - ALWAN_CORE_LITERAL(0.0638541728) * b;
-            ALWAN_CORE_T k_s = -ALWAN_CORE_LITERAL(0.0894841775) * a - ALWAN_CORE_LITERAL(1.2914855480) * b;
-
-            ALWAN_CORE_T l_ = L + C * k_l;
-            ALWAN_CORE_T m_ = L + C * k_m;
-            ALWAN_CORE_T s_ = L + C * k_s;
-
-            ALWAN_CORE_T l = l_ * l_ * l_;
-            ALWAN_CORE_T m = m_ * m_ * m_;
-            ALWAN_CORE_T s = s_ * s_ * s_;
-
-            ALWAN_CORE_T ldt  = ALWAN_CORE_LITERAL(3.0) * dL * l_ * l_;
-            ALWAN_CORE_T mdt  = ALWAN_CORE_LITERAL(3.0) * dL * m_ * m_;
-            ALWAN_CORE_T sdt  = ALWAN_CORE_LITERAL(3.0) * dL * s_ * s_;
-
-            ALWAN_CORE_T ldt2 = ALWAN_CORE_LITERAL(3.0) * dC * l_ * l_;
-            ALWAN_CORE_T mdt2 = ALWAN_CORE_LITERAL(3.0) * dC * m_ * m_;
-            ALWAN_CORE_T sdt2 = ALWAN_CORE_LITERAL(3.0) * dC * s_ * s_;
-
-            ALWAN_CORE_T r  = ALWAN_CORE_LITERAL(4.0767416621) * l  - ALWAN_CORE_LITERAL(3.3077115913) * m  +
-                              ALWAN_CORE_LITERAL(0.2309699292) * s  - ALWAN_CORE_ONE;
-            ALWAN_CORE_T r1 = ALWAN_CORE_LITERAL(4.0767416621) * ldt - ALWAN_CORE_LITERAL(3.3077115913) * mdt +
-                              ALWAN_CORE_LITERAL(0.2309699292) * sdt;
-            ALWAN_CORE_T r2 = ALWAN_CORE_LITERAL(4.0767416621) * ldt2 - ALWAN_CORE_LITERAL(3.3077115913) * mdt2 +
-                              ALWAN_CORE_LITERAL(0.2309699292) * sdt2;
-
-            ALWAN_CORE_T u_r = r1 / (r1 - r2);
-            ALWAN_CORE_T t_r = -r / r1;
-
-            ALWAN_CORE_T g  = -ALWAN_CORE_LITERAL(1.2684380046) * l  + ALWAN_CORE_LITERAL(2.6097574011) * m  -
-                               ALWAN_CORE_LITERAL(0.3413193965) * s  - ALWAN_CORE_ONE;
-            ALWAN_CORE_T g1 = -ALWAN_CORE_LITERAL(1.2684380046) * ldt + ALWAN_CORE_LITERAL(2.6097574011) * mdt -
-                               ALWAN_CORE_LITERAL(0.3413193965) * sdt;
-            ALWAN_CORE_T g2 = -ALWAN_CORE_LITERAL(1.2684380046) * ldt2 + ALWAN_CORE_LITERAL(2.6097574011) * mdt2 -
-                               ALWAN_CORE_LITERAL(0.3413193965) * sdt2;
-
-            ALWAN_CORE_T u_g = g1 / (g1 - g2);
-            ALWAN_CORE_T t_g = -g / g1;
-
-            ALWAN_CORE_T b_val = -ALWAN_CORE_LITERAL(0.0041960863) * l  - ALWAN_CORE_LITERAL(0.7034186147) * m  +
-                                  ALWAN_CORE_LITERAL(1.7076147010) * s  - ALWAN_CORE_ONE;
-            ALWAN_CORE_T b1    = -ALWAN_CORE_LITERAL(0.0041960863) * ldt - ALWAN_CORE_LITERAL(0.7034186147) * mdt +
-                                  ALWAN_CORE_LITERAL(1.7076147010) * sdt;
-            ALWAN_CORE_T b2    = -ALWAN_CORE_LITERAL(0.0041960863) * ldt2 - ALWAN_CORE_LITERAL(0.7034186147) * mdt2 +
-                                  ALWAN_CORE_LITERAL(1.7076147010) * sdt2;
-
-            ALWAN_CORE_T u_b = b1 / (b1 - b2);
-            ALWAN_CORE_T t_b = -b_val / b1;
-
-            t_r = ALWAN_CORE_SELECT(u_r >= ALWAN_CORE_ZERO, t_r, ALWAN_CORE_LITERAL(10000.0));
-            t_g = ALWAN_CORE_SELECT(u_g >= ALWAN_CORE_ZERO, t_g, ALWAN_CORE_LITERAL(10000.0));
-            t_b = ALWAN_CORE_SELECT(u_b >= ALWAN_CORE_ZERO, t_b, ALWAN_CORE_LITERAL(10000.0));
-
-            ALWAN_CORE_T t_min = ALWAN_CORE_SELECT(t_r < t_g, t_r, t_g);
-            t_min = ALWAN_CORE_SELECT(t_b < t_min, t_b, t_min);
-
-            t += t_min;
+            ALWAN_CORE_T f = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[0] * l + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[1] * m + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[2] * s - ALWAN_CORE_ONE;
+            ALWAN_CORE_T f1 = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[0] * ldt + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[1] * mdt + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[2] * sdt;
+            ALWAN_CORE_T f2 = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[0] * ldt2 + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[1] * mdt2 + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[2] * sdt2;
+            ALWAN_CORE_T u = f1 / (f1 * f1 - ALWAN_CORE_LITERAL(0.5) * f * f2);
+            t_r = ALWAN_CORE_SELECT(u >= ALWAN_CORE_ZERO, -f * u, ALWAN_CORE_LITERAL(1e30));
         }
+        {
+            ALWAN_CORE_T f = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[3] * l + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[4] * m + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[5] * s - ALWAN_CORE_ONE;
+            ALWAN_CORE_T f1 = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[3] * ldt + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[4] * mdt + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[5] * sdt;
+            ALWAN_CORE_T f2 = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[3] * ldt2 + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[4] * mdt2 + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[5] * sdt2;
+            ALWAN_CORE_T u = f1 / (f1 * f1 - ALWAN_CORE_LITERAL(0.5) * f * f2);
+            t_g = ALWAN_CORE_SELECT(u >= ALWAN_CORE_ZERO, -f * u, ALWAN_CORE_LITERAL(1e30));
+        }
+        {
+            ALWAN_CORE_T f = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[6] * l + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[7] * m + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[8] * s - ALWAN_CORE_ONE;
+            ALWAN_CORE_T f1 = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[6] * ldt + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[7] * mdt + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[8] * sdt;
+            ALWAN_CORE_T f2 = ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[6] * ldt2 + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[7] * mdt2 + ALWAN_CORE_FNLIT(CSS_LMS_TO_SRGB).m[8] * sdt2;
+            ALWAN_CORE_T u = f1 / (f1 * f1 - ALWAN_CORE_LITERAL(0.5) * f * f2);
+            t_b = ALWAN_CORE_SELECT(u >= ALWAN_CORE_ZERO, -f * u, ALWAN_CORE_LITERAL(1e30));
+        }
+        t_min = ALWAN_CORE_SELECT(t_r < t_g, t_r, t_g);
+        t_min = ALWAN_CORE_SELECT(t_b < t_min, t_b, t_min);
+        t += t_min;
     }
-
     return t;
 }
 

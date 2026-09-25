@@ -36,12 +36,12 @@ outputs precede inputs, `count` follows the buffer/stride block, and enums/scala
 typedef enum {
     ALWAN_GAMUT_MAP_CLIP = 0,            /* Simple clipping to [0,1] */
     ALWAN_GAMUT_MAP_HUE_PRESERVING = 1,  /* Project to gamut boundary preserving hue */
-    ALWAN_GAMUT_MAP_ADAPTIVE_L0,         /* Adaptive L0 (project toward L=0.5) */
-    ALWAN_GAMUT_MAP_ADAPTIVE_CUSP,       /* Adaptive toward cusp (hue-dependent) */
-    ALWAN_GAMUT_MAP_CHROMA_COMPRESS,     /* Chroma compression */
-    ALWAN_GAMUT_MAP_SGCK,                /* SGCK 2004 (Segment-Maximal Gamut Clipping w/ Knee) */
-    ALWAN_GAMUT_MAP_HPMINDE,             /* Hue-Preserving Minimum dE */
-    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE,  /* Lightness Preserving */
+    ALWAN_GAMUT_MAP_ADAPTIVE_L0,         /* Ottosson's gamut_clip_adaptive_L0_0_5, Oklab */
+    ALWAN_GAMUT_MAP_ADAPTIVE_CUSP,       /* Ottosson's gamut_clip_adaptive_L0_L_cusp, Oklab */
+    ALWAN_GAMUT_MAP_CHROMA_COMPRESS,     /* the same projection as LIGHTNESS_PRESERVE */
+    ALWAN_GAMUT_MAP_SGCK,                /* CIE 156 SGCK in CIELAB, a clip along its line */
+    ALWAN_GAMUT_MAP_HPMINDE,             /* CIE 156: least dE*ab on the CIELAB hue leaf */
+    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE,  /* Ottosson's gamut_clip_preserve_chroma, Oklab */
     ALWAN_GAMUT_MAP_RAYTRACE = 8,        /* Oklch chroma reduction by ray tracing the linear RGB cube */
     ALWAN_GAMUT_MAP_CSS4 = 9             /* CSS Color 4 Oklch binary search, JND 0.02 in deltaE OK */
 } alwan_gamut_map_method;
@@ -652,21 +652,18 @@ referenced below.
 > **The `[0,1]` guarantee holds only for `ALWAN_GAMUT_MAP_CLIP`.** It is printed in every
 > header comment that introduces the `_gamut_safe` twins (above the raw YCbCr and
 > YcCbcCrc decoders, above the bulk twins, and above the CVD twins), and it is repeated
-> for `alwan_gamut_map_advanced_{T}` earlier on this page. The six Oklab methods all
-> route through `alwan_gamut_map_advanced_{T}`, which returns near-achromatic input
-> verbatim with `ALWAN_OK` and no clamp at all when Oklab chroma `C < 0.0001`. Grey is
-> near-achromatic by construction: `(1.05, 1.05, 1.05)` has Oklab `C = 3.79e-8`,
-> `(-0.1, -0.1, -0.1)` has `C = 1.73e-8`. So super-white and super-black pass straight
-> through. `alwan_ycbcr_to_rgb_gamut_safe_f64` on `Y = 1.05, Cb = Cr = 0.5`,
-> `ALWAN_YCBCR_BT709`, `ALWAN_GAMUT_MAP_CHROMA_COMPRESS` returns `(1.05, 1.05, 1.05)` and
-> `ALWAN_OK`. The shipped tests call the `_gamut_safe` entries only with
-> `ALWAN_GAMUT_MAP_CLIP`, which is why this survived.
+> for `alwan_gamut_map_advanced_{T}` earlier on this page. Until 2026-09-25 the Oklab
+> methods returned near-achromatic input verbatim when Oklab chroma was under 1e-4, so
+> super-white and super-black passed straight through (`(1.05, 1.05, 1.05)` came back
+> unchanged). They now follow Ottosson, who floors the chroma at 1e-5 and maps greys like
+> any colour: a grey above white becomes white, one below black becomes black, and every
+> method returns a colour inside the cube (suite 264).
 
 > **The two families do not accept the same methods.** `alwan_gamut_map_advanced_{T}`,
 > and so every `_gamut_safe` function, takes all ten. It returned `ALWAN_E_INVALID` for
 > HUE_PRESERVING until 2026-09-22. The batch mappers at the top of this page
 > (`alwan_gamut_{T}_map_interleave` / `_map_planar`) take no space descriptor and accept
-> CLIP and HUE_PRESERVING only; they return `ALWAN_E_INVALID` for the Oklab methods,
+> CLIP and HUE_PRESERVING only; they return `ALWAN_E_INVALID` for methods 2 to 7,
 > RAYTRACE and CSS4.
 
 | Method | value | `alwan_gamut_map_advanced_{T}` and every `_gamut_safe` | `alwan_gamut_{T}_map_interleave` / `_map_planar` |
@@ -693,16 +690,17 @@ steps: run the raw conversion, then call `alwan_gamut_map_advanced_{T}` in place
 fixed RGB space descriptor chosen by the entry point. Everything below is a property of
 that mapper and therefore applies to all of them.
 
-- **Near-achromatic bypass.** Oklab `C < 0.0001` returns the input unmodified with
-  `ALWAN_OK`. So does any input already inside `[0,1]^3`. Only the six Oklab methods
-  reach this test: CLIP short-circuits into the per-channel clamp before it, and
-  HUE_PRESERVING, RAYTRACE and CSS4 take their own paths.
-- **The boundary model is sRGB, always.** The mapper converts the color to linear sRGB,
-  projects against the hard-coded sRGB cusp/intersection fit, converts back, and only
-  then clamps into the caller's cube. Feeding it a BT.2020 descriptor does not give a
+- **Inputs inside `[0,1]^3` come back unchanged** with `ALWAN_OK`, for every method.
+  Greys outside it are mapped (there was a near-achromatic bypass until 2026-09-25).
+- **Ottosson's methods (2, 3, 4, 7) use an sRGB boundary.** The mapper converts the
+  color to linear sRGB, projects against Ottosson's sRGB cusp/intersection fit, converts
+  back, and only then clamps into the caller's cube. SGCK and HPMINDE work in CIELAB in
+  the caller's own cube. Feeding it a BT.2020 descriptor does not give a
   BT.2020 boundary: a wide-gamut color is desaturated all the way to the sRGB gamut, then
   clipped in BT.2020. The header notes this once, in the method table's honesty notes,
-  and at none of the `_gamut_safe` declarations.
+  and at none of the `_gamut_safe` declarations. The working sRGB's white is
+  (0.3127, 0.3290), sRGB's own; it was (0.31271, 0.32902) until 2026-09-25, so a D65
+  target's white arrived there slightly coloured.
 - **`desc->has_matrices` is ignored.** `alwan_rgb_derive_matrices_{T}` re-derives from
   `primaries_xy` / `white_xy` on every call and never reads `has_matrices`, so a
   CAT-adapted or measured NPM supplied in the descriptor is discarded silently. This is

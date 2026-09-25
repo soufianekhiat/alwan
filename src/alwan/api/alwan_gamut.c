@@ -880,9 +880,8 @@ static void alwan_find_cusp(alwan_f64 a, alwan_f64 b, alwan_f64 *L_cusp, alwan_f
 
 /* Find intersection of gamut boundary */
 static alwan_f64 alwan_find_gamut_intersection(alwan_f64 a, alwan_f64 b,
-                                                    alwan_f64 L1, alwan_f64 C1,
-                                                    alwan_f64 L0, alwan_f64 C0) {
-    return gamut_find_intersection_f64_v(a, b, L1, C1, L0, C0);
+                                                    alwan_f64 L1, alwan_f64 C1, alwan_f64 L0) {
+    return gamut_find_intersection_f64_v(a, b, L1, C1, L0);
 }
 
 /* ----------------------------------------------------------------
@@ -908,12 +907,14 @@ static int gamut_working_xform_f64(alwan_mat3x3_f64 *to_srgb,
     int rc = alwan_rgb_derive_matrices_f64(&space_to_xyz, &xyz_to_space, space);
     if (rc != ALWAN_OK) return rc;
 
-    /* Reference linear sRGB: BT.709 primaries + D65 (published standard). */
+    /* Reference linear sRGB: BT.709 primaries + D65 (0.3127, 0.3290), as IEC 61966-2-1 and
+     * alwan's own ALWAN_RGB_SPACE_SRGB give it. It was (0.31271, 0.32902) until 2026-09-25,
+     * so a D65 space's white reached the sRGB working space as a colour, not a grey. */
     alwan_rgb_space_desc_f64 srgb;
     srgb.primaries_xy[0] = ALWAN_BT709_RED_x;   srgb.primaries_xy[1] = ALWAN_BT709_RED_y;
     srgb.primaries_xy[2] = ALWAN_BT709_GREEN_x; srgb.primaries_xy[3] = ALWAN_BT709_GREEN_y;
     srgb.primaries_xy[4] = ALWAN_BT709_BLUE_x;  srgb.primaries_xy[5] = ALWAN_BT709_BLUE_y;
-    srgb.white_xy[0] = ALWAN_LITERAL(0.31271);  srgb.white_xy[1] = ALWAN_LITERAL(0.32902);
+    srgb.white_xy[0] = ALWAN_LITERAL(0.3127);   srgb.white_xy[1] = ALWAN_LITERAL(0.3290);
     srgb.oetf = ALWAN_TF_LINEAR; srgb.eotf = ALWAN_TF_LINEAR; srgb.has_matrices = 0;
 
     alwan_mat3x3_f64 srgb_to_xyz, xyz_to_srgb;
@@ -1306,6 +1307,370 @@ static alwan_status gamut_map_oklch_f64(alwan_rgb_f64 *rgb_out, alwan_gamut_map_
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * Methods 2 to 7 of alwan_gamut_map_advanced
+ *
+ * ADAPTIVE_L0, ADAPTIVE_CUSP, CHROMA_COMPRESS and LIGHTNESS_PRESERVE are Bjorn Ottosson's
+ * "sRGB gamut clipping" (2021, https://bottosson.github.io/posts/gamutclipping/, MIT,
+ * Copyright (c) 2021 Bjorn Ottosson): gamut_clip_adaptive_L0_0_5 and
+ * gamut_clip_adaptive_L0_L_cusp at alpha 0.05, and gamut_clip_preserve_chroma, which
+ * CHROMA_COMPRESS and LIGHTNESS_PRESERVE both are. They work in Oklab on the linear sRGB
+ * gamut, so a `space` other than sRGB is mapped to sRGB's boundary and then clamped into its
+ * own cube (a wider target is over-compressed).
+ *
+ * SGCK and HPMINDE are the CIE 156:2004 methods, which are defined in CIELAB: here CIELAB
+ * against `space`'s white and `space`'s own cube, no Oklab and no sRGB boundary.
+ *   HPMINDE: the in-gamut colour of the same CIELAB hue angle nearest in dE*ab.
+ *   SGCK: its lightness step is the identity (a single colour carries no source gamut, and
+ *   both lightness ranges are L* 0 to 100), and its knee compresses between 90% of the
+ *   reproduction boundary and the source gamut's boundary, which a single colour does not
+ *   have: in that limit the knee takes the colour to the reproduction boundary along SGCK's
+ *   own mapping line, the line toward the point on the L* axis at the lightness of the
+ *   reproduction gamut's cusp for that hue.
+ * The boundary is exact (the crossings of each channel's piecewise cubic along a line), the
+ * minimum (HPMINDE) and the cusp (SGCK) are searches, a scan and a golden-section refinement.
+ * ---------------------------------------------------------------- */
+
+typedef struct {
+    alwan_mat3x3_f64 rgb_to_xyz, xyz_to_rgb;
+    alwan_f64 white[3];
+} alwan__cielab_frame;
+
+static alwan_f64 gamut_lab_f(alwan_f64 t) {
+    alwan_f64 const d = ALWAN_LITERAL(6.0) / ALWAN_LITERAL(29.0);
+    return (t > d * d * d) ? ALWAN_CBRT(t) : t / (ALWAN_LITERAL(3.0) * d * d) + ALWAN_LITERAL(4.0) / ALWAN_LITERAL(29.0);
+}
+
+static alwan_f64 gamut_lab_finv(alwan_f64 f) {
+    alwan_f64 const d = ALWAN_LITERAL(6.0) / ALWAN_LITERAL(29.0);
+    return (f > d) ? f * f * f : ALWAN_LITERAL(3.0) * d * d * (f - ALWAN_LITERAL(4.0) / ALWAN_LITERAL(29.0));
+}
+
+static void gamut_cielab_to_rgb(alwan__cielab_frame const *fr, alwan_f64 L, alwan_f64 C, alwan_f64 h, alwan_f64 rgb[3]) {
+    alwan_f64 const fy = (L + ALWAN_LITERAL(16.0)) / ALWAN_LITERAL(116.0);
+    alwan_vec3_f64 xyz, out;
+    xyz.v[0] = gamut_lab_finv(fy + C * ALWAN_COS(h) / ALWAN_LITERAL(500.0)) * fr->white[0];
+    xyz.v[1] = gamut_lab_finv(fy) * fr->white[1];
+    xyz.v[2] = gamut_lab_finv(fy - C * ALWAN_SIN(h) / ALWAN_LITERAL(200.0)) * fr->white[2];
+    alwan_mat3_mulv_f64(&out, &fr->xyz_to_rgb, &xyz);
+    rgb[0] = out.v[0]; rgb[1] = out.v[1]; rgb[2] = out.v[2];
+}
+
+/* How far outside the cube: <= 0 inside. */
+static alwan_f64 gamut_cielab_excess(alwan__cielab_frame const *fr, alwan_f64 L, alwan_f64 C, alwan_f64 h) {
+    alwan_f64 rgb[3], lo, hi;
+    gamut_cielab_to_rgb(fr, L, C, h, rgb);
+    lo = rgb[0] < rgb[1] ? rgb[0] : rgb[1]; lo = rgb[2] < lo ? rgb[2] : lo;
+    hi = rgb[0] > rgb[1] ? rgb[0] : rgb[1]; hi = rgb[2] > hi ? rgb[2] : hi;
+    return (-lo > hi - ALWAN_LITERAL(1.0)) ? -lo : hi - ALWAN_LITERAL(1.0);
+}
+
+/* The root of the cubic q (q[0] + q[1] t + q[2] t^2 + q[3] t^3) on [a, b], where it changes
+ * sign and is monotone, by bisection. */
+static alwan_f64 gamut_cubic_bisect(alwan_f64 const *q, alwan_f64 a, alwan_f64 b) {
+    alwan_f64 const qa = q[0] + a * (q[1] + a * (q[2] + a * q[3]));
+    int i;
+    for (i = 0; i < 200; i++) {
+        alwan_f64 const m = ALWAN_LITERAL(0.5) * (a + b);
+        alwan_f64 const qm = q[0] + m * (q[1] + m * (q[2] + m * q[3]));
+        if (!(m > a && m < b)) break;
+        if ((qm < ALWAN_LITERAL(0.0)) == (qa < ALWAN_LITERAL(0.0))) a = m; else b = m;
+    }
+    return ALWAN_LITERAL(0.5) * (a + b);
+}
+
+#define ALWAN__GM_MAX_ROOTS 64
+
+/* The last exit of the segment L = L0 + t dL, C = C0 + t dC (hue h), t in [0, T]: the
+ * largest t with the stretch just below it inside the cube. Along the segment every RGB
+ * channel is a piecewise cubic in t (CIELAB's f inverse is a cube or a line, of a quantity
+ * linear in t), so its crossings of 0 and 1 are found exactly: each piece split at the
+ * cubic's turning points, each monotone stretch bisected. Near the yellow cusp CIELAB folds
+ * the cube, so a chroma ray can leave it, come back in and leave again (sRGB at L* 92.376:
+ * out at C* 83.4, in at 87.0, out for good at 91.9); a march with any step misses the
+ * returns that are thinner than it next to the cusp. */
+static alwan_f64 gamut_cielab_last_exit(alwan__cielab_frame const *fr, alwan_f64 L0, alwan_f64 dL,
+                                        alwan_f64 C0, alwan_f64 dC, alwan_f64 h, alwan_f64 T) {
+    alwan_f64 const d = ALWAN_LITERAL(6.0) / ALWAN_LITERAL(29.0);
+    alwan_f64 const ca = ALWAN_COS(h) / ALWAN_LITERAL(500.0), sb = ALWAN_SIN(h) / ALWAN_LITERAL(200.0);
+    alwan_f64 const fy0 = (L0 + ALWAN_LITERAL(16.0)) / ALWAN_LITERAL(116.0), dfy = dL / ALWAN_LITERAL(116.0);
+    alwan_f64 al[3], be[3], cuts[5], pts[ALWAN__GM_MAX_ROOTS + 2];
+    int ncut = 2, npts = 0, i, j, k, p;
+    al[0] = fy0 + C0 * ca; be[0] = dfy + dC * ca;
+    al[1] = fy0;           be[1] = dfy;
+    al[2] = fy0 - C0 * sb; be[2] = dfy - dC * sb;
+    cuts[0] = ALWAN_LITERAL(0.0); cuts[1] = T;
+    for (j = 0; j < 3; j++) {
+        if (be[j] != ALWAN_LITERAL(0.0)) {
+            alwan_f64 const tc = (d - al[j]) / be[j];
+            if (tc > ALWAN_LITERAL(0.0) && tc < T) {
+                for (k = ncut; k > 0 && cuts[k - 1] > tc; k--) cuts[k] = cuts[k - 1];
+                cuts[k] = tc;
+                ncut++;
+            }
+        }
+    }
+    pts[npts++] = ALWAN_LITERAL(0.0);
+    for (p = 0; p + 1 < ncut; p++) {
+        alwan_f64 const lo = cuts[p], hi = cuts[p + 1], mid = ALWAN_LITERAL(0.5) * (lo + hi);
+        alwan_f64 poly[3][4];
+        for (j = 0; j < 3; j++) {
+            if (al[j] + be[j] * mid > d) {
+                poly[j][0] = al[j] * al[j] * al[j];
+                poly[j][1] = ALWAN_LITERAL(3.0) * al[j] * al[j] * be[j];
+                poly[j][2] = ALWAN_LITERAL(3.0) * al[j] * be[j] * be[j];
+                poly[j][3] = be[j] * be[j] * be[j];
+            } else {
+                poly[j][0] = ALWAN_LITERAL(3.0) * d * d * (al[j] - ALWAN_LITERAL(4.0) / ALWAN_LITERAL(29.0));
+                poly[j][1] = ALWAN_LITERAL(3.0) * d * d * be[j];
+                poly[j][2] = ALWAN_LITERAL(0.0);
+                poly[j][3] = ALWAN_LITERAL(0.0);
+            }
+        }
+        for (i = 0; i < 3; i++) {
+            alwan_f64 q[4], seg[4];
+            int nseg = 0, lv;
+            for (k = 0; k < 4; k++)
+                q[k] = fr->xyz_to_rgb.m[3 * i] * fr->white[0] * poly[0][k] +
+                       fr->xyz_to_rgb.m[3 * i + 1] * fr->white[1] * poly[1][k] +
+                       fr->xyz_to_rgb.m[3 * i + 2] * fr->white[2] * poly[2][k];
+            /* the turning points: q' = q1 + 2 q2 t + 3 q3 t^2 */
+            seg[nseg++] = lo;
+            {
+                alwan_f64 const A = ALWAN_LITERAL(3.0) * q[3], B = ALWAN_LITERAL(2.0) * q[2], Cq = q[1];
+                alwan_f64 r0 = -ALWAN_LITERAL(1.0), r1 = -ALWAN_LITERAL(1.0);
+                if (A != ALWAN_LITERAL(0.0)) {
+                    alwan_f64 const disc = B * B - ALWAN_LITERAL(4.0) * A * Cq;
+                    if (disc >= ALWAN_LITERAL(0.0)) {
+                        alwan_f64 const sq = ALWAN_SQRT(disc);
+                        alwan_f64 const qq = -ALWAN_LITERAL(0.5) * (B + (B < ALWAN_LITERAL(0.0) ? -sq : sq));
+                        if (qq != ALWAN_LITERAL(0.0)) { r0 = qq / A; r1 = Cq / qq; } else { r0 = r1 = ALWAN_LITERAL(0.0); }
+                        if (r0 > r1) { alwan_f64 const tt = r0; r0 = r1; r1 = tt; }
+                    }
+                } else if (B != ALWAN_LITERAL(0.0)) {
+                    r0 = -Cq / B;
+                }
+                if (r0 > lo && r0 < hi) seg[nseg++] = r0;
+                if (r1 > lo && r1 < hi && r1 > r0) seg[nseg++] = r1;
+            }
+            seg[nseg++] = hi;
+            for (lv = 0; lv < 2; lv++) {
+                alwan_f64 qs[4];
+                qs[0] = q[0] - (alwan_f64)lv; qs[1] = q[1]; qs[2] = q[2]; qs[3] = q[3];
+                for (k = 0; k + 1 < nseg; k++) {
+                    alwan_f64 const a = seg[k], b = seg[k + 1];
+                    alwan_f64 const ga = qs[0] + a * (qs[1] + a * (qs[2] + a * qs[3]));
+                    alwan_f64 const gb = qs[0] + b * (qs[1] + b * (qs[2] + b * qs[3]));
+                    if (((ga < ALWAN_LITERAL(0.0)) != (gb < ALWAN_LITERAL(0.0))) && npts < ALWAN__GM_MAX_ROOTS)
+                        pts[npts++] = gamut_cubic_bisect(qs, a, b);
+                }
+            }
+        }
+    }
+    pts[npts++] = T;
+    /* sort ascending (a few dozen values at most) */
+    for (i = 1; i < npts; i++) {
+        alwan_f64 const v = pts[i];
+        for (k = i; k > 0 && pts[k - 1] > v; k--) pts[k] = pts[k - 1];
+        pts[k] = v;
+    }
+    for (k = npts - 1; k > 0; k--) {
+        alwan_f64 const m = ALWAN_LITERAL(0.5) * (pts[k - 1] + pts[k]);
+        if (pts[k] > pts[k - 1] && gamut_cielab_excess(fr, L0 + m * dL, C0 + m * dC, h) <= ALWAN_LITERAL(0.0)) return pts[k];
+    }
+    return ALWAN_LITERAL(0.0);
+}
+
+/* The largest chroma inside the cube at lightness L and hue h: the leaf's OUTER boundary. */
+static alwan_f64 gamut_cielab_cmax(alwan__cielab_frame const *fr, alwan_f64 L, alwan_f64 h) {
+    if (!(L > ALWAN_LITERAL(0.0)) || !(L < ALWAN_LITERAL(100.0))) return ALWAN_LITERAL(0.0);
+    if (gamut_cielab_excess(fr, L, ALWAN_LITERAL(0.0), h) > ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
+    return gamut_cielab_last_exit(fr, L, ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0), h, ALWAN_LITERAL(1.0e4));
+}
+
+/* Golden-section search for the minimum of the scalar objective on [a, b]. */
+typedef alwan_f64 (*alwan__gm_objective)(alwan__cielab_frame const *fr, alwan_f64 x, alwan_f64 const *p);
+
+static alwan_f64 gamut_golden_min(alwan__gm_objective f, alwan__cielab_frame const *fr, alwan_f64 const *p,
+                                  alwan_f64 a, alwan_f64 b) {
+    alwan_f64 const g = ALWAN_LITERAL(0.6180339887498949);
+    alwan_f64 c = b - g * (b - a), d = a + g * (b - a);
+    alwan_f64 fc = f(fr, c, p), fd = f(fr, d, p);
+    int i;
+    for (i = 0; i < 100 && (b - a) > ALWAN_LITERAL(1e-12); i++) {
+        if (fc < fd) { b = d; d = c; fd = fc; c = b - g * (b - a); fc = f(fr, c, p); }
+        else         { a = c; c = d; fc = fd; d = a + g * (b - a); fd = f(fr, d, p); }
+    }
+    return ALWAN_LITERAL(0.5) * (a + b);
+}
+
+/* p = {L, C, h}: the squared dE*ab from the colour to the boundary point at lightness x. */
+static alwan_f64 gamut_hpminde_distance(alwan__cielab_frame const *fr, alwan_f64 x, alwan_f64 const *p) {
+    alwan_f64 const cm = gamut_cielab_cmax(fr, x, p[2]);
+    return (p[0] - x) * (p[0] - x) + (p[1] - cm) * (p[1] - cm);
+}
+
+/* p = {h}: minus the boundary chroma, so that the minimum is the cusp. */
+static alwan_f64 gamut_cusp_objective(alwan__cielab_frame const *fr, alwan_f64 x, alwan_f64 const *p) {
+    return -gamut_cielab_cmax(fr, x, p[0]);
+}
+
+static alwan_status gamut_map_cielab_f64(alwan_rgb_f64 *rgb_out, alwan_gamut_map_method method,
+                                         alwan_rgb_space_desc_f64 const *space, alwan_rgb_f64 const *rgb_linear) {
+    alwan__cielab_frame fr;
+    alwan_vec3_f64 in, xyz;
+    alwan_f64 L, C, h, Lp, Cp, rgb[3];
+    int st, i;
+    if (rgb_linear->r >= ALWAN_LITERAL(0.0) && rgb_linear->r <= ALWAN_LITERAL(1.0) &&
+        rgb_linear->g >= ALWAN_LITERAL(0.0) && rgb_linear->g <= ALWAN_LITERAL(1.0) &&
+        rgb_linear->b >= ALWAN_LITERAL(0.0) && rgb_linear->b <= ALWAN_LITERAL(1.0)) {
+        *rgb_out = *rgb_linear;
+        return ALWAN_OK;
+    }
+    st = alwan_rgb_derive_matrices_f64(&fr.rgb_to_xyz, &fr.xyz_to_rgb, space);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < 3; i++)
+        fr.white[i] = fr.rgb_to_xyz.m[3 * i] + fr.rgb_to_xyz.m[3 * i + 1] + fr.rgb_to_xyz.m[3 * i + 2];
+    in.v[0] = rgb_linear->r; in.v[1] = rgb_linear->g; in.v[2] = rgb_linear->b;
+    alwan_mat3_mulv_f64(&xyz, &fr.rgb_to_xyz, &in);
+    {
+        alwan_f64 const fx = gamut_lab_f(xyz.v[0] / fr.white[0]);
+        alwan_f64 const fy = gamut_lab_f(xyz.v[1] / fr.white[1]);
+        alwan_f64 const fz = gamut_lab_f(xyz.v[2] / fr.white[2]);
+        alwan_f64 const a = ALWAN_LITERAL(500.0) * (fx - fy), b = ALWAN_LITERAL(200.0) * (fy - fz);
+        L = ALWAN_LITERAL(116.0) * fy - ALWAN_LITERAL(16.0);
+        C = ALWAN_SQRT(a * a + b * b);
+        h = ALWAN_ATAN2(b, a);
+    }
+    if (method == ALWAN_GAMUT_MAP_HPMINDE) {
+        alwan_f64 const p[3] = { L, C, h };
+        alwan_f64 best = ALWAN_LITERAL(0.0), dbest = ALWAN_LITERAL(1e300);
+        alwan_f64 const step = ALWAN_LITERAL(100.0) / ALWAN_LITERAL(256.0);
+        for (i = 0; i <= 256; i++) {
+            alwan_f64 const x = (i == 0) ? ALWAN_LITERAL(1e-9) : (i == 256) ? ALWAN_LITERAL(100.0) - ALWAN_LITERAL(1e-9) : i * step;
+            alwan_f64 const dd = gamut_hpminde_distance(&fr, x, p);
+            if (dd < dbest) { dbest = dd; best = x; }
+        }
+        {
+            /* A second, fine scan of the bracket: next to the cusp the boundary chroma can fall
+             * off a cliff, and a golden section from the coarse bracket alone stops short. */
+            alwan_f64 const lo0 = best - step > ALWAN_LITERAL(1e-9) ? best - step : ALWAN_LITERAL(1e-9);
+            alwan_f64 const hi0 = best + step < ALWAN_LITERAL(100.0) - ALWAN_LITERAL(1e-9) ? best + step : ALWAN_LITERAL(100.0) - ALWAN_LITERAL(1e-9);
+            alwan_f64 const fstep = (hi0 - lo0) / ALWAN_LITERAL(128.0);
+            alwan_f64 fbest = best;
+            dbest = ALWAN_LITERAL(1e300);
+            for (i = 0; i <= 128; i++) {
+                alwan_f64 const x = lo0 + i * fstep;
+                alwan_f64 const dd = gamut_hpminde_distance(&fr, x, p);
+                if (dd < dbest) { dbest = dd; fbest = x; }
+            }
+            Lp = gamut_golden_min(gamut_hpminde_distance, &fr, p,
+                                  fbest - fstep > lo0 ? fbest - fstep : lo0, fbest + fstep < hi0 ? fbest + fstep : hi0);
+            if (gamut_hpminde_distance(&fr, Lp, p) > dbest) Lp = fbest;
+        }
+        Cp = gamut_cielab_cmax(&fr, Lp, h);
+    } else {
+        /* SGCK: along the line toward the reproduction cusp's lightness on the L* axis. */
+        alwan_f64 const p[1] = { h };
+        alwan_f64 E, best = ALWAN_LITERAL(50.0), cbest = -ALWAN_LITERAL(1.0), lo;
+        alwan_f64 const step = ALWAN_LITERAL(0.5);
+        for (i = 0; i < 199; i++) {
+            alwan_f64 const x = ALWAN_LITERAL(0.5) + i * step;
+            alwan_f64 const cm = gamut_cielab_cmax(&fr, x, h);
+            if (cm > cbest) { cbest = cm; best = x; }
+        }
+        {
+            alwan_f64 const fstep = ALWAN_LITERAL(2.0) * step / ALWAN_LITERAL(128.0);
+            alwan_f64 fbest = best;
+            for (i = 0; i <= 128; i++) {
+                alwan_f64 const x = best - step + i * fstep;
+                alwan_f64 const cm = gamut_cielab_cmax(&fr, x, h);
+                if (cm > cbest) { cbest = cm; fbest = x; }
+            }
+            E = gamut_golden_min(gamut_cusp_objective, &fr, p, fbest - fstep, fbest + fstep);
+            if (gamut_cielab_cmax(&fr, E, h) < cbest) E = fbest;
+        }
+        /* The line's outermost crossing. */
+        lo = gamut_cielab_last_exit(&fr, E, L - E, ALWAN_LITERAL(0.0), C, h, ALWAN_LITERAL(1.0));
+        Lp = E + lo * (L - E);
+        Cp = lo * C;
+    }
+    gamut_cielab_to_rgb(&fr, Lp, Cp, h, rgb);
+    rgb_out->r = rgb[0] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : rgb[0] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb[0];
+    rgb_out->g = rgb[1] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : rgb[1] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb[1];
+    rgb_out->b = rgb[2] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : rgb[2] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb[2];
+    return ALWAN_OK;
+}
+
+/* Methods 2, 3, 4 and 7: Ottosson's clipping in Oklab on the linear sRGB gamut. */
+static alwan_status gamut_map_ottosson_f64(alwan_rgb_f64 *rgb_out, alwan_gamut_map_method method,
+                                           alwan_rgb_space_desc_f64 const *space, alwan_rgb_f64 const *rgb_linear) {
+    alwan_mat3x3_f64 to_srgb, from_srgb;
+    alwan_vec3_f64 rgb_vec, rgb_work, oklab, oklab_clipped, rgb_srgb, rgb_result;
+    alwan_f64 L, C, a_, b_, L0, t, alpha = ALWAN_LITERAL(0.05);
+    int st;
+    if (rgb_linear->r >= ALWAN_LITERAL(0.0) && rgb_linear->r <= ALWAN_LITERAL(1.0) &&
+        rgb_linear->g >= ALWAN_LITERAL(0.0) && rgb_linear->g <= ALWAN_LITERAL(1.0) &&
+        rgb_linear->b >= ALWAN_LITERAL(0.0) && rgb_linear->b <= ALWAN_LITERAL(1.0)) {
+        *rgb_out = *rgb_linear;
+        return ALWAN_OK;
+    }
+    st = gamut_working_xform_f64(&to_srgb, &from_srgb, space);
+    if (st != ALWAN_OK) return st;
+    rgb_vec.v[0] = rgb_linear->r; rgb_vec.v[1] = rgb_linear->g; rgb_vec.v[2] = rgb_linear->b;
+    alwan_mat3_mulv_f64(&rgb_work, &to_srgb, &rgb_vec);
+    alwan_linear_srgb_to_oklab(&rgb_work, &oklab);
+    L = oklab.v[0];
+    C = ALWAN_SQRT(oklab.v[1] * oklab.v[1] + oklab.v[2] * oklab.v[2]);
+    if (C < ALWAN_LITERAL(1e-5)) C = ALWAN_LITERAL(1e-5);
+    a_ = oklab.v[1] / C;
+    b_ = oklab.v[2] / C;
+    if (method == ALWAN_GAMUT_MAP_ADAPTIVE_L0) {
+        alwan_f64 const Ld = L - ALWAN_LITERAL(0.5);
+        alwan_f64 const aLd = Ld < ALWAN_LITERAL(0.0) ? -Ld : Ld;
+        alwan_f64 const sg = (Ld > ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) : (Ld < ALWAN_LITERAL(0.0)) ? -ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
+        alwan_f64 const e1 = ALWAN_LITERAL(0.5) + aLd + alpha * C;
+        L0 = ALWAN_LITERAL(0.5) * (ALWAN_LITERAL(1.0) + sg * (e1 - ALWAN_SQRT(e1 * e1 - ALWAN_LITERAL(2.0) * aLd)));
+    } else if (method == ALWAN_GAMUT_MAP_ADAPTIVE_CUSP) {
+        alwan_f64 cL, cC;
+        alwan_find_cusp(a_, b_, &cL, &cC);
+        {
+            alwan_f64 const Ld = L - cL;
+            alwan_f64 const aLd = Ld < ALWAN_LITERAL(0.0) ? -Ld : Ld;
+            alwan_f64 const sg = (Ld > ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) : (Ld < ALWAN_LITERAL(0.0)) ? -ALWAN_LITERAL(1.0) : ALWAN_LITERAL(0.0);
+            alwan_f64 const k = ALWAN_LITERAL(2.0) * ((Ld > ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(1.0) - cL : cL);
+            alwan_f64 const e1 = ALWAN_LITERAL(0.5) * k + aLd + alpha * C / k;
+            L0 = cL + ALWAN_LITERAL(0.5) * (sg * (e1 - ALWAN_SQRT(e1 * e1 - ALWAN_LITERAL(2.0) * k * aLd)));
+        }
+    } else {
+        /* CHROMA_COMPRESS and LIGHTNESS_PRESERVE: gamut_clip_preserve_chroma. */
+        L0 = L < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : L > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : L;
+    }
+    t = alwan_find_gamut_intersection(a_, b_, L, C, L0);
+    oklab_clipped.v[0] = L0 * (ALWAN_LITERAL(1.0) - t) + t * L;
+    oklab_clipped.v[1] = t * C * a_;
+    oklab_clipped.v[2] = t * C * b_;
+    alwan_oklab_to_linear_srgb(&oklab_clipped, &rgb_srgb);
+    alwan_mat3_mulv_f64(&rgb_result, &from_srgb, &rgb_srgb);
+    /* A grey at a lightness of 0 or below takes Ottosson's lower branch into a division by
+     * zero (NaN); the nearest colour in the gamut is black. */
+    if (!(rgb_result.v[0] == rgb_result.v[0]) || !(rgb_result.v[1] == rgb_result.v[1]) || !(rgb_result.v[2] == rgb_result.v[2])) {
+        rgb_out->r = rgb_out->g = rgb_out->b = ALWAN_LITERAL(0.0);
+        return ALWAN_OK;
+    }
+    rgb_out->r = rgb_result.v[0] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : rgb_result.v[0] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb_result.v[0];
+    rgb_out->g = rgb_result.v[1] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : rgb_result.v[1] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb_result.v[1];
+    rgb_out->b = rgb_result.v[2] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : rgb_result.v[2] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb_result.v[2];
+    return ALWAN_OK;
+}
+
+static alwan_status gamut_map_methods_f64(alwan_rgb_f64 *rgb_out, alwan_gamut_map_method method,
+                                          alwan_rgb_space_desc_f64 const *space, alwan_rgb_f64 const *rgb_linear) {
+    if (method == ALWAN_GAMUT_MAP_SGCK || method == ALWAN_GAMUT_MAP_HPMINDE)
+        return gamut_map_cielab_f64(rgb_out, method, space, rgb_linear);
+    return gamut_map_ottosson_f64(rgb_out, method, space, rgb_linear);
+}
+
 /* Gamut mapping implementation */
 alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
                               alwan_gamut_map_method method,
@@ -1335,6 +1700,11 @@ alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
     /* Oklch chroma reduction after ColorAide: ray tracing, and CSS Color 4. */
     if (method == ALWAN_GAMUT_MAP_RAYTRACE || method == ALWAN_GAMUT_MAP_CSS4) {
         return gamut_map_oklch_f64(rgb_out, method, space, rgb_linear);
+    }
+
+    /* Methods 2 to 7: Ottosson's clipping (2, 3, 4, 7) and the CIE 156 methods (5, 6). */
+    if (method >= ALWAN_GAMUT_MAP_ADAPTIVE_L0 && method <= ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE) {
+        return gamut_map_methods_f64(rgb_out, method, space, rgb_linear);
     }
 
     /* Honour `space`: convert the input (expressed in `space`) into the
@@ -1373,114 +1743,7 @@ alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
         return ALWAN_OK;
     }
 
-    /* Convert to Oklab */
-    alwan_vec3_f64 oklab;
-    alwan_linear_srgb_to_oklab(&rgb_work, &oklab);
-
-    alwan_f64 L = oklab.v[0];
-    alwan_f64 a = oklab.v[1];
-    alwan_f64 b = oklab.v[2];
-    alwan_f64 C = ALWAN_SQRT(a * a + b * b);
-
-    /* If achromatic or already in gamut, check if simple clip works */
-    if (C < ALWAN_LITERAL(0.0001) ||
-        (rgb_linear->r >= ALWAN_LITERAL(0.0) && rgb_linear->r <= ALWAN_LITERAL(1.0) &&
-         rgb_linear->g >= ALWAN_LITERAL(0.0) && rgb_linear->g <= ALWAN_LITERAL(1.0) &&
-         rgb_linear->b >= ALWAN_LITERAL(0.0) && rgb_linear->b <= ALWAN_LITERAL(1.0))) {
-        *rgb_out = *rgb_linear;
-        return ALWAN_OK;
-    }
-
-    /* Normalize a, b */
-    alwan_f64 a_norm = a / C;
-    alwan_f64 b_norm = b / C;
-
-    alwan_f64 L0, C0;
-    alwan_f64 alpha = ALWAN_LITERAL(0.0);
-    (void)alpha;  /* Selected per-method below; reserved for a future blend, presently unused (mirrors the f32 path). */
-
-    /* Select projection point based on method */
-    if (method == ALWAN_GAMUT_MAP_ADAPTIVE_L0) {
-        /* Adaptive L0: project toward L=0.5, C=0 */
-        L0 = ALWAN_LITERAL(0.5);
-        C0 = ALWAN_LITERAL(0.0);
-        alpha = ALWAN_LITERAL(0.05);  /* Blend factor */
-    } else if (method == ALWAN_GAMUT_MAP_ADAPTIVE_CUSP) {
-        /* Adaptive toward cusp */
-        alwan_f64 L_cusp, C_cusp;
-        alwan_find_cusp(a_norm, b_norm, &L_cusp, &C_cusp);
-        L0 = L_cusp;
-        C0 = ALWAN_LITERAL(0.0);
-        alpha = ALWAN_LITERAL(0.05);
-    } else if (method == ALWAN_GAMUT_MAP_CHROMA_COMPRESS) {
-        /* Chroma compression: project toward L, C=0 */
-        L0 = L;
-        C0 = ALWAN_LITERAL(0.0);
-        alpha = ALWAN_LITERAL(0.1);
-    } else if (method == ALWAN_GAMUT_MAP_SGCK) {
-        /* SGCK 2004: Segment-Maximal Gamut Clipping with Knee adjustment
-         * Uses a soft knee to smoothly transition into gamut */
-        alwan_f64 L_cusp, C_cusp;
-        alwan_find_cusp(a_norm, b_norm, &L_cusp, &C_cusp);
-
-        /* Project toward cusp with soft knee */
-        L0 = L_cusp;
-        C0 = ALWAN_LITERAL(0.0);
-        alpha = ALWAN_LITERAL(0.15);  /* Larger blend for softer knee */
-    } else if (method == ALWAN_GAMUT_MAP_HPMINDE) {
-        /* HPMINDE: Hue-Preserving Minimum dE
-         * Minimizes perceptual color difference while preserving hue */
-        alwan_f64 L_cusp, C_cusp;
-        alwan_find_cusp(a_norm, b_norm, &L_cusp, &C_cusp);
-
-        /* Find optimal projection point that minimizes dE */
-        /* For simplicity, use cusp as projection point with adaptive blending */
-        L0 = L_cusp;
-        C0 = ALWAN_LITERAL(0.0);
-        alpha = ALWAN_LITERAL(0.02);  /* Minimal blending to preserve hue better */
-    } else if (method == ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE) {
-        /* Lightness Preserving: maintain lightness, reduce chroma only */
-        L0 = L;  /* Keep same lightness */
-        C0 = ALWAN_LITERAL(0.0);
-        alpha = ALWAN_LITERAL(0.0);  /* No lightness adjustment */
-    } else {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Find gamut intersection */
-    alwan_f64 t = alwan_find_gamut_intersection(a_norm, b_norm, L, C, L0, C0);
-
-    /* Clamp t to valid range */
-    if (t < ALWAN_LITERAL(0.0)) t = ALWAN_LITERAL(0.0);
-    if (t > ALWAN_LITERAL(1.0)) t = ALWAN_LITERAL(1.0);
-
-    /* Interpolate to boundary */
-    alwan_f64 L_clipped = L0 * (ALWAN_LITERAL(1.0) - t) + t * L;
-    alwan_f64 C_clipped = t * C;
-
-    /* Convert back to Oklab */
-    alwan_vec3_f64 oklab_clipped;
-    oklab_clipped.v[0] = L_clipped;
-    oklab_clipped.v[1] = C_clipped * a_norm;
-    oklab_clipped.v[2] = C_clipped * b_norm;
-
-    /* Convert clipped Oklab back to linear sRGB (the working space) ... */
-    alwan_vec3_f64 rgb_srgb;
-    alwan_oklab_to_linear_srgb(&oklab_clipped, &rgb_srgb);
-
-    /* ... then back into the caller's `space`. */
-    alwan_vec3_f64 rgb_result;
-    alwan_mat3_mulv_f64(&rgb_result, &from_srgb, &rgb_srgb);
-
-    /* Final safety clamp and convert to rgb */
-    rgb_out->r = (rgb_result.v[0] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                 (rgb_result.v[0] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[0];
-    rgb_out->g = (rgb_result.v[1] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                 (rgb_result.v[1] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[1];
-    rgb_out->b = (rgb_result.v[2] < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
-                 (rgb_result.v[2] > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_result.v[2];
-
-    return ALWAN_OK;
+    return ALWAN_E_INVALID;
 }
 
 alwan_status alwan_css_gamut_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count) {
@@ -2148,7 +2411,7 @@ static int gamut_working_xform_f32(alwan_mat3x3_f32 *to_srgb,
     srgb.primaries_xy[0] = (alwan_f32)ALWAN_BT709_RED_x;   srgb.primaries_xy[1] = (alwan_f32)ALWAN_BT709_RED_y;
     srgb.primaries_xy[2] = (alwan_f32)ALWAN_BT709_GREEN_x; srgb.primaries_xy[3] = (alwan_f32)ALWAN_BT709_GREEN_y;
     srgb.primaries_xy[4] = (alwan_f32)ALWAN_BT709_BLUE_x;  srgb.primaries_xy[5] = (alwan_f32)ALWAN_BT709_BLUE_y;
-    srgb.white_xy[0] = 0.31271f; srgb.white_xy[1] = 0.32902f;
+    srgb.white_xy[0] = 0.3127f; srgb.white_xy[1] = 0.3290f;
     srgb.oetf = ALWAN_TF_LINEAR; srgb.eotf = ALWAN_TF_LINEAR; srgb.has_matrices = 0;
 
     alwan_mat3x3_f32 srgb_to_xyz, xyz_to_srgb;
@@ -2195,8 +2458,8 @@ alwan_status alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
         return ALWAN_OK;
     }
 
-    /* RAYTRACE and CSS4 widen to the f64 worker (see gamut_map_oklch_f64). */
-    if (method == ALWAN_GAMUT_MAP_RAYTRACE || method == ALWAN_GAMUT_MAP_CSS4) {
+    /* Methods 2 to 9 widen to the f64 workers. */
+    if (method >= ALWAN_GAMUT_MAP_ADAPTIVE_L0 && method <= ALWAN_GAMUT_MAP_CSS4) {
         alwan_rgb_space_desc_f64 s64;
         alwan_rgb_f64 in64, out64;
         int k, st;
@@ -2204,7 +2467,8 @@ alwan_status alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
         s64.white_xy[0] = space->white_xy[0]; s64.white_xy[1] = space->white_xy[1];
         s64.oetf = space->oetf; s64.eotf = space->eotf; s64.has_matrices = 0;
         in64.r = rgb_linear->r; in64.g = rgb_linear->g; in64.b = rgb_linear->b;
-        st = gamut_map_oklch_f64(&out64, method, &s64, &in64);
+        st = (method >= ALWAN_GAMUT_MAP_RAYTRACE) ? gamut_map_oklch_f64(&out64, method, &s64, &in64)
+                                                  : gamut_map_methods_f64(&out64, method, &s64, &in64);
         if (st != ALWAN_OK) return st;
         rgb_out->r = (alwan_f32)out64.r; rgb_out->g = (alwan_f32)out64.g; rgb_out->b = (alwan_f32)out64.b;
         return ALWAN_OK;
@@ -2242,67 +2506,7 @@ alwan_status alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
         return ALWAN_OK;
     }
 
-    alwan_vec3_f32 oklab = gamut_linear_srgb_to_oklab_f32_v(rgb_work);
-    alwan_f32 L = oklab.v[0];
-    alwan_f32 a = oklab.v[1];
-    alwan_f32 b = oklab.v[2];
-    alwan_f32 C = ALWAN_SQRT_F32(a * a + b * b);
-
-    if (C < 0.0001f ||
-        (rgb_linear->r >= 0.0f && rgb_linear->r <= 1.0f &&
-         rgb_linear->g >= 0.0f && rgb_linear->g <= 1.0f &&
-         rgb_linear->b >= 0.0f && rgb_linear->b <= 1.0f)) {
-        *rgb_out = *rgb_linear;
-        return ALWAN_OK;
-    }
-
-    alwan_f32 a_norm = a / C;
-    alwan_f32 b_norm = b / C;
-
-    alwan_f32 L0, C0;
-    alwan_f32 alpha = 0.0f;
-    (void)alpha;  /* Mirrors f64: alpha selected per-method, presently unused. */
-
-    if (method == ALWAN_GAMUT_MAP_ADAPTIVE_L0) {
-        L0 = 0.5f; C0 = 0.0f; alpha = 0.05f;
-    } else if (method == ALWAN_GAMUT_MAP_ADAPTIVE_CUSP) {
-        alwan_vec2_f32 cusp = gamut_find_cusp_f32_v(a_norm, b_norm);
-        L0 = cusp.v[0]; C0 = 0.0f; alpha = 0.05f;
-    } else if (method == ALWAN_GAMUT_MAP_CHROMA_COMPRESS) {
-        L0 = L; C0 = 0.0f; alpha = 0.1f;
-    } else if (method == ALWAN_GAMUT_MAP_SGCK) {
-        alwan_vec2_f32 cusp = gamut_find_cusp_f32_v(a_norm, b_norm);
-        L0 = cusp.v[0]; C0 = 0.0f; alpha = 0.15f;
-    } else if (method == ALWAN_GAMUT_MAP_HPMINDE) {
-        alwan_vec2_f32 cusp = gamut_find_cusp_f32_v(a_norm, b_norm);
-        L0 = cusp.v[0]; C0 = 0.0f; alpha = 0.02f;
-    } else if (method == ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE) {
-        L0 = L; C0 = 0.0f; alpha = 0.0f;
-    } else {
-        return ALWAN_E_INVALID;
-    }
-
-    alwan_f32 t = gamut_find_intersection_f32_v(a_norm, b_norm, L, C, L0, C0);
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
-
-    alwan_f32 L_clipped = L0 * (1.0f - t) + t * L;
-    alwan_f32 C_clipped = t * C;
-
-    alwan_vec3_f32 oklab_clipped;
-    oklab_clipped.v[0] = L_clipped;
-    oklab_clipped.v[1] = C_clipped * a_norm;
-    oklab_clipped.v[2] = C_clipped * b_norm;
-
-    /* Back to linear sRGB (working space), then to the caller's `space`. */
-    alwan_vec3_f32 rgb_srgb = gamut_oklab_to_linear_srgb_f32_v(oklab_clipped);
-    alwan_vec3_f32 rgb_result;
-    alwan_mat3_mulv_f32(&rgb_result, &from_srgb, &rgb_srgb);
-
-    rgb_out->r = (rgb_result.v[0] < 0.0f) ? 0.0f : (rgb_result.v[0] > 1.0f) ? 1.0f : rgb_result.v[0];
-    rgb_out->g = (rgb_result.v[1] < 0.0f) ? 0.0f : (rgb_result.v[1] > 1.0f) ? 1.0f : rgb_result.v[1];
-    rgb_out->b = (rgb_result.v[2] < 0.0f) ? 0.0f : (rgb_result.v[2] > 1.0f) ? 1.0f : rgb_result.v[2];
-    return ALWAN_OK;
+    return ALWAN_E_INVALID;
 }
 
 #endif /* ALWAN_WITH_F32 */
