@@ -435,6 +435,20 @@
 
 ### Added
 
+- **Registration by phase cross-correlation: `alwan_register_{T}`.** The translation that
+  lines one image up with another, to 1/u of a pixel, as scikit-image's
+  `phase_cross_correlation` computes it: the cross-power spectrum's peak, then a
+  matrix-multiply DFT around it for u above 1. Phase or plain normalisation; f32, f64 and
+  u8. Every shift equal to scikit-image's over 70 cases, square, oblong, odd and
+  one-pixel-wide frames (suite 248).
+
+- **Photometer V(lambda) mismatch: `alwan_photometer_f1_prime_{T}` and
+  `alwan_photometer_mismatch_correction_{T}`.** ISO/CIE 19476:2014's general mismatch index f1'
+  of a detector's spectral responsivity, and the correction factor for a photometer
+  calibrated under one source and used on another; illuminant A by its defining formula
+  unless the caller gives a calibration source. Within 3.1e-16 and 2.2e-15 of luxpy's
+  `f1prime` and `get_spectral_mismatch_correction_factors` (suite 247).
+
 - **OCIO grading as one family: `alwan_grading_apply`, `alwan_grading_{T}_map_interleave`.**
   An operation enum (primary, tone, RGB curves, hue curves, exposure and contrast), one
   `alwan_grading_params` with a block per operation and `alwan_grading_params_init` for a

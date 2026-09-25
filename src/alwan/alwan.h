@@ -2589,6 +2589,49 @@ alwan_status alwan_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 c
 alwan_status alwan_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_filter_method method, alwan_filter_params const *params);
 alwan_status alwan_filter_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_filter_method method, alwan_filter_params const *params);
 
+/* Registration: the translation that lines the moving image up with the reference, to a
+ * fraction of a pixel. Both images are one channel, width x height, row strides in bytes;
+ * register colour through one channel or a luminance computed first.
+ *
+ * ALWAN_REGISTER_PHASE_CORRELATION is scikit-image's phase_cross_correlation (space 'real',
+ * no masks, disambiguate off; Guizar-Sicairos, Thurman and Fienup 2008): the peak of the
+ * inverse transform of the cross-power spectrum, each term divided by its modulus unless
+ * normalization is NONE, then with upsample_factor u above 1 a matrix-multiply DFT on a
+ * ceil(1.5 u) square of points 1/u apart around it. shift is (rows, columns), the shift to
+ * apply to the moving image, each in (-n/2, n/2] and to 1/u; 0 along an axis of length 1. The
+ * shift is modulo the image size: a translation of more than half the frame reads as its
+ * wrapped counterpart. error is sqrt(|1 - |CC_max|^2 / (A_ref A_mov)|) and phasediff the
+ * angle of CC_max, as scikit-image computes them. Transforms in double for every pixel type;
+ * u8 values are read as they are. Suite 248.
+ *
+ * ALWAN_E_INVALID for a NULL pointer, a zero size, a stride shorter than a row, or an
+ * unknown method or normalization; ALWAN_E_RANGE when either image has no energy or the
+ * input is not finite. */
+typedef enum {
+    ALWAN_REGISTER_PHASE_CORRELATION = 0
+} alwan_register_method;
+
+typedef enum {
+    ALWAN_REGISTER_NORMALIZE_PHASE = 0,  /* divide the cross-power spectrum by its modulus */
+    ALWAN_REGISTER_NORMALIZE_NONE = 1    /* plain cross-correlation */
+} alwan_register_normalization;
+
+/* A zero field is its default. */
+typedef struct {
+    size_t upsample_factor;              /* 1 / precision in pixels; 0 reads as 1, whole pixels */
+    alwan_register_normalization normalization;
+} alwan_register_params;
+
+typedef struct {
+    double shift[2];                     /* rows, columns */
+    double error;                        /* 0 for a perfect match */
+    double phasediff;                    /* global phase difference, radians */
+} alwan_register_result;
+
+alwan_status alwan_register_f32(alwan_register_result *out, alwan_f32 const *reference, size_t reference_row_stride, alwan_f32 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
+alwan_status alwan_register_f64(alwan_register_result *out, alwan_f64 const *reference, size_t reference_row_stride, alwan_f64 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
+alwan_status alwan_register_u8(alwan_register_result *out, unsigned char const *reference, size_t reference_row_stride, unsigned char const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
+
 /* Deconvolution: an image blurred by a known point-spread function, sharpened back. Each
  * of src's 1 to 4 channels is deconvolved on its own with the same psf, psf_width x
  * psf_height values row by row, at most the image's size.
@@ -7978,6 +8021,27 @@ alwan_status alwan_spd_luminous_efficiency_f64(alwan_f64 *efficiency_out, alwan_
 alwan_status alwan_spd_luminous_efficiency_f32(alwan_f32 *efficiency_out, alwan_spd_f32 const *spd, alwan_vision_type vision);
 alwan_status alwan_spd_luminous_efficacy_f64(alwan_f64 *efficacy_out, alwan_spd_f64 const *spd, alwan_vision_type vision, alwan_f64 K_m);
 alwan_status alwan_spd_luminous_efficacy_f32(alwan_f32 *efficacy_out, alwan_spd_f32 const *spd, alwan_vision_type vision, alwan_f32 K_m);
+
+/* A photometer head's V(lambda) mismatch, ISO/CIE 19476:2014 (formerly CIE S 023), as luxpy's
+ * f1prime and get_spectral_mismatch_correction_factors compute it (suite 247).
+ *
+ * f1' = sum |s*(l) - V(l)| / sum V(l), where s*(l) = s(l) sum C V / sum C s is the
+ * detector's relative responsivity s scaled to agree with V(lambda) under the calibration
+ * source C. Summed over the detector's own samples; 0 for a detector that is V(lambda).
+ *
+ * The correction factor F = (sum T V)(sum C s) / ((sum T s)(sum C V)), summed over the test
+ * source T's samples, multiplies the reading of a photometer calibrated under C to give the
+ * test source's photometric value; 1 when T is C, or the detector is V(lambda).
+ *
+ * V(lambda) is CIE 1924, 0 outside 360-830 nm. Every other curve is read by linear
+ * interpolation and is 0 outside its own range. calibration NULL is CIE illuminant A by its
+ * defining formula (CIE 15:2018, c2 = 1.435e7 nm K), not alwan_spd_illuminant's A, which is
+ * tabulated to 780 nm and held flat above. ALWAN_E_INVALID for a NULL output or an SPD with
+ * fewer than two samples; ALWAN_E_RANGE when a normalising sum is 0. */
+alwan_status alwan_photometer_f1_prime_f64(alwan_f64 *f1_prime, alwan_spd_f64 const *detector, alwan_spd_f64 const *calibration);
+alwan_status alwan_photometer_f1_prime_f32(alwan_f32 *f1_prime, alwan_spd_f32 const *detector, alwan_spd_f32 const *calibration);
+alwan_status alwan_photometer_mismatch_correction_f64(alwan_f64 *factor, alwan_spd_f64 const *detector, alwan_spd_f64 const *test_source, alwan_spd_f64 const *calibration);
+alwan_status alwan_photometer_mismatch_correction_f32(alwan_f32 *factor, alwan_spd_f32 const *detector, alwan_spd_f32 const *test_source, alwan_spd_f32 const *calibration);
 
 /* Contrast Sensitivity Function (CSF) */
 

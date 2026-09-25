@@ -11,6 +11,7 @@
 #include "../core/alwan_quality_core.h"
 #include "../core/alwan_table_core.h"
 #include "../data/alwan_data_tables.h"   /* the five registry LEFs behind alwan_spd_lef */
+#include <math.h>
 
 /* ================================================================
  * Luminous Efficiency Function tables (f64 storage)

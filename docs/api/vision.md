@@ -377,6 +377,41 @@ Matches `colour.luminous_flux(sd, lef=...)` to 8e-16 in f64 and 5e-8 in f32 over
 and a sodium lamp (suite 156); for the two canonical functions this and
 `alwan_spd_luminous_flux` give one number.
 
+### alwan_photometer_f1_prime_{T} / alwan_photometer_mismatch_correction_{T}
+
+```c
+alwan_status alwan_photometer_f1_prime_{T}(alwan_{T} *f1_prime, alwan_spd_{T} const *detector,
+                                           alwan_spd_{T} const *calibration);
+alwan_status alwan_photometer_mismatch_correction_{T}(alwan_{T} *factor, alwan_spd_{T} const *detector,
+                                                      alwan_spd_{T} const *test_source,
+                                                      alwan_spd_{T} const *calibration);
+```
+
+How well a photometer head's spectral responsivity follows V(lambda), and how to correct its
+reading for a given source, per ISO/CIE 19476:2014 (formerly CIE S 023).
+
+- `f1_prime` is the general V(lambda) mismatch index:
+  `f1' = sum |s*(l) - V(l)| / sum V(l)`, where `s*(l) = s(l) sum C V / sum C s` is the
+  detector's responsivity `s` scaled to agree with V(lambda) under the calibration source `C`.
+  It is summed over the detector's own samples. A detector that is V(lambda) gives 0 to
+  round-off.
+- `factor` is the spectral mismatch correction factor
+  `F = (sum T V)(sum C s) / ((sum T s)(sum C V))`, summed over the test source `T`'s samples.
+  Multiply the reading of a photometer calibrated under `C` by `F` to get the test source's
+  photometric value. It is 1 when `T` is `C`, or when the detector is V(lambda).
+
+V(lambda) is CIE 1924, 0 outside 360-830 nm. Every other curve is read by linear
+interpolation and is 0 outside its own range. `calibration` NULL is CIE illuminant A by its
+defining formula (CIE 15:2018, c2 = 1.435e7 nm K). That is not `alwan_spd_illuminant`'s A,
+which is tabulated to 780 nm and held flat above, where a detector still responds.
+
+Suite 247 holds both to luxpy's `f1prime` and `get_spectral_mismatch_correction_factors`
+(within 3.1e-16 and 2.2e-15) and to the definitions written out in numpy, over four detectors
+and five sources.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL output or an SPD of fewer than two
+samples; `ALWAN_E_RANGE` when a normalising sum is 0.
+
 ### alwan_mesopic_luminance
 
 ```c

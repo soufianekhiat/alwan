@@ -230,6 +230,54 @@ with a signed result; `ALWAN_E_RANGE` for a negative sigma or truncate, a kernel
 over 2^20 pixels, `DOG`'s high sigma under the low one on an axis, a cut-off outside
 [0, 0.5], a negative order or an `npad` over 65536; `ALWAN_E_NOMEM`.
 
+## Registration
+
+```c
+typedef enum { ALWAN_REGISTER_PHASE_CORRELATION = 0 } alwan_register_method;
+typedef enum { ALWAN_REGISTER_NORMALIZE_PHASE = 0, ALWAN_REGISTER_NORMALIZE_NONE = 1 } alwan_register_normalization;
+typedef struct { size_t upsample_factor; alwan_register_normalization normalization; } alwan_register_params;
+typedef struct { double shift[2]; double error; double phasediff; } alwan_register_result;
+
+alwan_status alwan_register_{T}(alwan_register_result *out, alwan_{T} const *reference, size_t reference_row_stride,
+                                alwan_{T} const *moving, size_t moving_row_stride, size_t width, size_t height,
+                                alwan_register_method method, alwan_register_params const *params);
+alwan_status alwan_register_u8(alwan_register_result *out, unsigned char const *reference, size_t reference_row_stride,
+                               unsigned char const *moving, size_t moving_row_stride, size_t width, size_t height,
+                               alwan_register_method method, alwan_register_params const *params);
+```
+
+The translation that lines the moving image up with the reference, to a fraction of a pixel:
+the step before merging a bracket or stacking frames that moved. Both images are one channel;
+register colour through one channel or a luminance computed first.
+
+`ALWAN_REGISTER_PHASE_CORRELATION` is scikit-image's `phase_cross_correlation` (space `real`,
+no masks, `disambiguate` off), after Guizar-Sicairos, Thurman and Fienup (2008). The cross-power
+spectrum, each term divided by its modulus unless `normalization` is `NONE`, is transformed back
+and its largest sample is the whole-pixel shift. With `upsample_factor` u above 1, the shift is
+rounded to 1/u and the cross-correlation is evaluated again on a `ceil(1.5 u)` square of points
+1/u apart about it, by a matrix-multiply DFT that costs about `1.5 u` passes over the image rather
+than an FFT u times larger.
+
+- `shift` is (rows, columns), the shift to apply to the moving image, each in (-n/2, n/2] and to
+  1/u; 0 along an axis of length 1. It is modulo the frame: a translation of more than half the
+  frame reads as its wrapped counterpart.
+- `error` and `phasediff` are computed as scikit-image computes them. With phase normalisation
+  `error` is near 1 whatever the match, because the normalised peak is at most 1 while the
+  amplitudes are the images' energies; it is meaningful with `NONE`.
+
+Transforms are alwan's own FFT in double for every pixel type; u8 values are read as they are.
+
+Suite 248 runs 70 cases against scikit-image: every shift is equal, error squared within
+2.1e-14. `phasediff` agrees to 4.2e-6, not closer. Phase normalisation divides every spectral
+term by its modulus, so terms that are only rounding noise become unit phasors of noise, and two
+FFTs make different noise. The same sensitivity decides how far rounding the input to float
+moves the answer: up to 27 steps of 1/u at u = 100 on a noisy smooth field, for scikit-image as
+for alwan.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL pointer, a zero size, a stride shorter than
+a row, or an unknown method or normalization; `ALWAN_E_RANGE` when either image has no energy or
+the input is not finite; `ALWAN_E_NOMEM`.
+
 ## Denoising
 
 ```c

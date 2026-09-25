@@ -601,3 +601,94 @@ ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_hke_luminous_nayatani1997)(
         uv->v[0], uv->v[1], uv_c->v[0], uv_c->v[1], L_a,
         ALWAN_CORE_FN(hke_method_coefficient)(method));
 }
+
+/* ================================================================
+ * Photometer V(lambda) mismatch: f1' and the spectral mismatch correction factor
+ *
+ * ISO/CIE 19476:2014 (formerly CIE S 023), as luxpy's f1prime and
+ * get_spectral_mismatch_correction_factors compute it: sums over one grid, V(lambda) the
+ * CIE 1924 table (0 outside it), every other curve read on that grid by linear
+ * interpolation and 0 outside its own range. The calibration source defaults to CIE
+ * illuminant A by its defining formula, which alwan evaluates rather than reads: the
+ * tabulated A is the formula to six figures, and alwan_spd_illuminant holds the 780 nm
+ * value flat above 780, where a detector's response still counts. Summed in double.
+ * ================================================================ */
+
+static double ALWAN_CORE_FNLIT(alwan__spd_at)(ALWAN_CORE_SPD const *s, double wl) {
+    double const lo = (double)s->wavelength_min, hi = (double)s->wavelength_max;
+    double t, step;
+    size_t i;
+    if (wl < lo || wl > hi) return 0.0;
+    step = (hi - lo) / (double)(s->count - 1);
+    t = (wl - lo) / step;
+    i = (size_t)t;
+    if (i >= s->count - 1) return (double)s->values[s->count - 1];
+    t -= (double)i;
+    return (double)s->values[i] + t * ((double)s->values[i + 1] - (double)s->values[i]);
+}
+
+/* CIE illuminant A, CIE 15:2018 equation 3.1, 100 at 560 nm, c2 = 1.435e7 nm K. */
+static double ALWAN_CORE_FNLIT(alwan__illuminant_a_formula)(double wl) {
+    double const c2 = 1.435e7;
+    return 100.0 * pow(560.0 / wl, 5.0) * (exp(c2 / (2848.0 * 560.0)) - 1.0) / (exp(c2 / (2848.0 * wl)) - 1.0);
+}
+
+static int ALWAN_CORE_FNLIT(alwan__spd_usable)(ALWAN_CORE_SPD const *s) {
+    return s && s->values && s->count >= 2 && s->wavelength_max > s->wavelength_min;
+}
+
+static double ALWAN_CORE_FNLIT(alwan__calibration_at)(ALWAN_CORE_SPD const *c, double wl) {
+    return c ? ALWAN_CORE_FNLIT(alwan__spd_at)(c, wl) : ALWAN_CORE_FNLIT(alwan__illuminant_a_formula)(wl);
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_photometer_f1_prime)(ALWAN_CORE_T *f1_prime, ALWAN_CORE_SPD const *detector,
+                                                         ALWAN_CORE_SPD const *calibration) {
+    double cv = 0.0, cs = 0.0, v_sum = 0.0, dev = 0.0, step, k;
+    size_t i;
+    if (!f1_prime || !ALWAN_CORE_FNLIT(alwan__spd_usable)(detector)) return ALWAN_E_INVALID;
+    if (calibration && !ALWAN_CORE_FNLIT(alwan__spd_usable)(calibration)) return ALWAN_E_INVALID;
+    step = ((double)detector->wavelength_max - (double)detector->wavelength_min) / (double)(detector->count - 1);
+    for (i = 0; i < detector->count; i++) {
+        double const wl = (double)detector->wavelength_min + (double)i * step;
+        double const c = ALWAN_CORE_FNLIT(alwan__calibration_at)(calibration, wl);
+        double const v = ALWAN_CORE_FNLIT(alwan__lef_or_zero)(wl, ALWAN_VISION_PHOTOPIC);
+        cv += c * v;
+        cs += c * (double)detector->values[i];
+        v_sum += v;
+    }
+    if (cs == 0.0 || v_sum == 0.0) return ALWAN_E_RANGE;
+    k = cv / cs;
+    for (i = 0; i < detector->count; i++) {
+        double const wl = (double)detector->wavelength_min + (double)i * step;
+        double const v = ALWAN_CORE_FNLIT(alwan__lef_or_zero)(wl, ALWAN_VISION_PHOTOPIC);
+        dev += fabs(k * (double)detector->values[i] - v);
+    }
+    *f1_prime = (ALWAN_CORE_T)(dev / v_sum);
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_photometer_mismatch_correction)(ALWAN_CORE_T *factor, ALWAN_CORE_SPD const *detector,
+                                                                    ALWAN_CORE_SPD const *test_source,
+                                                                    ALWAN_CORE_SPD const *calibration) {
+    double tv = 0.0, ts = 0.0, cv = 0.0, cs = 0.0, step;
+    size_t i;
+    if (!factor || !ALWAN_CORE_FNLIT(alwan__spd_usable)(detector) || !ALWAN_CORE_FNLIT(alwan__spd_usable)(test_source)) {
+        return ALWAN_E_INVALID;
+    }
+    if (calibration && !ALWAN_CORE_FNLIT(alwan__spd_usable)(calibration)) return ALWAN_E_INVALID;
+    step = ((double)test_source->wavelength_max - (double)test_source->wavelength_min) / (double)(test_source->count - 1);
+    for (i = 0; i < test_source->count; i++) {
+        double const wl = (double)test_source->wavelength_min + (double)i * step;
+        double const t = (double)test_source->values[i];
+        double const c = ALWAN_CORE_FNLIT(alwan__calibration_at)(calibration, wl);
+        double const v = ALWAN_CORE_FNLIT(alwan__lef_or_zero)(wl, ALWAN_VISION_PHOTOPIC);
+        double const s = ALWAN_CORE_FNLIT(alwan__spd_at)(detector, wl);
+        tv += t * v;
+        ts += t * s;
+        cv += c * v;
+        cs += c * s;
+    }
+    if (ts == 0.0 || cv == 0.0) return ALWAN_E_RANGE;
+    *factor = (ALWAN_CORE_T)((tv * cs) / (ts * cv));
+    return ALWAN_OK;
+}
