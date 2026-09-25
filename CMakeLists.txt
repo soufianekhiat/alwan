@@ -144,6 +144,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_segment.c
   src/alwan/api/alwan_distance.c
   src/alwan/api/alwan_vignette.c
+  src/alwan/api/alwan_light_probe.c
   src/alwan/api/alwan_spectrum_meng2015.c
   src/alwan/api/alwan_thin_film.c
   src/alwan/api/alwan_corresponding.c

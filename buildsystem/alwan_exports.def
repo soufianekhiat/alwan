@@ -5,6 +5,8 @@ EXPORTS
     alwan_3dl_export_f64
     alwan_3dl_import_f32
     alwan_3dl_import_f64
+    alwan_absolute_luminance_calibrate_f32
+    alwan_absolute_luminance_calibrate_f64
     alwan_aces1_output_transform_f32
     alwan_aces1_output_transform_f32_map_interleave
     alwan_aces1_output_transform_f32_map_planar
@@ -1172,6 +1174,9 @@ EXPORTS
     alwan_lgg_apply_f64_map_planar
     alwan_lgg_apply_map_interleave_ex
     alwan_lgg_apply_map_planar_ex
+    alwan_light_probe_sample_f32
+    alwan_light_probe_sample_f64
+    alwan_light_probe_sample_u8
     alwan_lightness_f32
     alwan_lightness_f64
     alwan_linear_srgb_to_hsl_f32
@@ -1933,6 +1938,10 @@ EXPORTS
     alwan_ucs_to_xyz_map_planar_ex
     alwan_uint_to_float_f32
     alwan_uint_to_float_f64
+    alwan_upper_hemisphere_illuminance_f32
+    alwan_upper_hemisphere_illuminance_f64
+    alwan_upper_hemisphere_illuminance_u8
+    alwan_upper_hemisphere_illuminance_weights
     alwan_uv_to_cct_krystek1985_f32
     alwan_uv_to_cct_krystek1985_f64
     alwan_uv_to_cct_ohno2013_f32

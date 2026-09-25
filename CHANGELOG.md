@@ -538,6 +538,14 @@
   planar and `_ex` maps, and a core header for the GPU backends. Within 4.6e-15 of ColorAide
   in every direction, out-of-gamut and negative inputs included (suite 242).
 
+- **Panoramic light probes: `alwan_upper_hemisphere_illuminance_{T}`,
+  `alwan_absolute_luminance_calibrate_{T}`, `alwan_light_probe_sample_{T}`.** The
+  illuminance of an equirectangular panorama and its calibration to a measured one
+  (Lagarde 2016): exactly, pi for a uniform sky, or as colour-hdri computes it, within
+  8.9e-16 of it and low by about pi / H. Lights by variance minimisation (Viriyothai 2009),
+  every region of colour-hdri's on panoramas without exact ties, in O(W H) a level (suite
+  244). colour-hdri's light count gives 2^int(sqrt(n)) lights, so alwan takes levels.
+
 - **Corresponding chromaticities and CMCCAT2000 as a model:
   `alwan_corresponding_chromaticities_breneman1987`, `alwan_cat_cmccat2000_{T}`.** Scores
   von Kries, CIE 1994, CMCCAT2000 and Zhai 2018 against Breneman's 1987 matching

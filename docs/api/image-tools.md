@@ -1607,6 +1607,99 @@ fraction from the row. alwan pairs them the right way round, and the suite's par
 those frames is colour-hdri's own function, bounds and `curve_fit` with the point paired
 that way.
 
+## Light probes
+
+```c
+typedef enum {
+    ALWAN_HEMISPHERE_ILLUMINANCE_EXACT = 0,
+    ALWAN_HEMISPHERE_ILLUMINANCE_LAGARDE2016 = 1
+} alwan_hemisphere_illuminance_method;
+
+alwan_status alwan_upper_hemisphere_illuminance_{T}(double *illuminance, alwan_{T} const *src, size_t row_stride,
+                                                    size_t channels, size_t width, size_t height,
+                                                    alwan_rgb_space_desc_{T} const *space,
+                                                    alwan_hemisphere_illuminance_method method);
+alwan_status alwan_upper_hemisphere_illuminance_u8(double *illuminance, unsigned char const *src, size_t row_stride,
+                                                   size_t channels, size_t width, size_t height,
+                                                   alwan_rgb_space_desc_f64 const *space,
+                                                   alwan_hemisphere_illuminance_method method);
+alwan_status alwan_upper_hemisphere_illuminance_weights(double *out, size_t out_row_stride, size_t width, size_t height,
+                                                        alwan_hemisphere_illuminance_method method);
+alwan_status alwan_absolute_luminance_calibrate_{T}(alwan_{T} *out, size_t out_row_stride, alwan_{T} const *src,
+                                                    size_t src_row_stride, size_t channels, size_t width, size_t height,
+                                                    double measured_illuminance, alwan_rgb_space_desc_{T} const *space,
+                                                    alwan_hemisphere_illuminance_method method);
+
+typedef enum { ALWAN_LIGHT_PROBE_VARIANCE_MINIMIZATION = 0 } alwan_light_probe_method;
+typedef struct { size_t levels; } alwan_light_probe_params;   /* 0 reads as 4: 16 lights */
+typedef struct {
+    size_t y0, y1, x0, x1;   /* rows [y0, y1), columns [x0, x1) */
+    double cy, cx;           /* luminance centroid, whole pixels; NaN when the region has none */
+    double u, v;             /* cx / width, cy / height */
+    double rgb[3];           /* the region's RGB summed */
+} alwan_light_probe_light;
+
+alwan_status alwan_light_probe_sample_{T}(alwan_light_probe_light *lights, size_t capacity, size_t *count,
+                                          alwan_{T} const *src, size_t row_stride, size_t channels,
+                                          size_t width, size_t height, alwan_rgb_space_desc_{T} const *space,
+                                          alwan_light_probe_method method, alwan_light_probe_params const *params,
+                                          alwan_ctx *ctx);
+alwan_status alwan_light_probe_sample_u8(alwan_light_probe_light *lights, size_t capacity, size_t *count,
+                                         unsigned char const *src, size_t row_stride, size_t channels,
+                                         size_t width, size_t height, alwan_rgb_space_desc_f64 const *space,
+                                         alwan_light_probe_method method, alwan_light_probe_params const *params,
+                                         alwan_ctx *ctx);
+```
+
+An equirectangular panorama: row 0 at the zenith, the last row at the nadir, the columns
+one full turn of azimuth. Luminance is the Y row of the space's RGB to XYZ matrix applied
+to the first three channels (`space` NULL is sRGB); a fourth channel is ignored, and u8
+samples read as value / 255. Strides are in bytes. After colour-hdri 0.2.6 (suite 244).
+
+**Illuminance and calibration** (Lagarde, Lachambre and Jover 2016). The illuminance E_v
+on an upward horizontal surface is the integral of L cos(theta) over the upper hemisphere.
+
+| Method | Each row weighted by | A uniform sky of 1 |
+|---|---|---|
+| `EXACT` | the exact integral of cos(theta) sin(theta) over the row's band of zenith angles, [i pi / H, (i + 1) pi / H] clipped at the horizon; exact for a panorama constant within each pixel | pi |
+| `LAGARDE2016` | colour-hdri's `upper_hemisphere_illuminance_Lagarde2016`: the row sampled at i pi / (H - 1), poles included, weighted 2 pi^2 cos sin / (W H) | 2.934 at H = 16, 3.1385 at 1024 |
+
+`LAGARDE2016` weights each row as though it were sampled at its centre while sampling its
+edge, so it reads low by about pi / H. It is kept to reproduce colour-hdri's numbers.
+`alwan_upper_hemisphere_illuminance_weights` writes each pixel's weight w, such that
+E_v = sum of L w over the image divided by W H: for `LAGARDE2016`, colour-hdri's
+`upper_hemisphere_illuminance_weights_Lagarde2016`, the image Lagarde gives for applying the
+calibration in Photoshop. `alwan_absolute_luminance_calibrate_{T}` scales the first three
+channels by `measured_illuminance / E_v` (colour-hdri's
+`absolute_luminance_calibration_Lagarde2016`), so the result's illuminance is the measured
+one. It copies a fourth channel, and `out` may be `src`. A panorama whose E_v is not above
+0 (at H = 2, `LAGARDE2016` samples only the two poles) returns `ALWAN_E_RANGE`.
+
+**Lights by variance minimisation** (Viriyothai and Debevec 2009), as colour-hdri's
+`light_probe_sampling_variance_minimization_Viriyothai2009`. `levels` times, every region
+is cut in two at the column, and then the row, that minimises the larger of the two parts'
+luminance spread sqrt(sum Y ((x - cx)^2 + (y - cy)^2)), each part about its own centroid
+floored to a whole pixel. Columns are tried before rows and only a strictly smaller spread
+replaces the best, so the first minimum wins. Each of the 2^levels lights is a region, its
+luminance centroid, that centroid as a fraction of the frame, and the sum of its RGB. The
+sum is not weighted by solid angle, as in colour-hdri. A region with no luminance has a
+NaN centroid (colour-hdri reports -2^63).
+
+colour-hdri takes a light count n and runs int(sqrt(n)) levels, so only n = 4 and n = 16
+give n lights: 64 gives 256. alwan takes the number of levels.
+
+Cuts are scored from per-row and per-column moment sums, so a level costs O(W H): 16 lights
+on a 1024 x 512 panorama take about 40 ms, where colour-hdri takes 0.4 s on a 128 x 64 one.
+Candidates near the best are scored again pixel by pixel, and on panoramas without exact
+ties the regions equal colour-hdri's. With an exact tie, such as one bright pixel on black
+or a uniform field, colour-hdri's cut follows the last bit of its luminance and numpy's
+summation order, and alwan's may differ.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL, a zero size, a channel count other
+than 3 or 4, a stride too small, a non-finite sample or an unknown method; `ALWAN_E_RANGE`
+as above, for `levels` over 20, for `capacity` under 2^levels, or for a region with no
+admissible cut (no pixels left, or every score NaN, which only negative luminance causes).
+
 ## Colour transfer
 
 ```c

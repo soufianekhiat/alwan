@@ -2713,6 +2713,88 @@ alwan_status alwan_vignette_evaluate(double *out, size_t out_row_stride, size_t 
 alwan_status alwan_vignette_principal_point(double *xy, alwan_vignette const *vignette);
 void alwan_vignette_destroy(alwan_vignette *vignette, alwan_ctx *ctx);
 
+/* Panoramic light probes, after colour-hdri (suite 244). The frame is an equirectangular
+ * panorama: row 0 the zenith, the last row the nadir, the columns a full turn of azimuth.
+ * Luminance is the Y row of the space's RGB to XYZ matrix on the first three channels
+ * (space NULL is sRGB); u8 samples read as value / 255.
+ *
+ * Upper-hemisphere illuminance E_v, the light falling on an upward horizontal surface
+ * (Lagarde, Lachambre and Jover 2016):
+ *
+ *   ALWAN_HEMISPHERE_ILLUMINANCE_EXACT        each row weighted by the exact integral of
+ *                                             cos(theta) sin(theta) over its band of zenith
+ *                                             angles, [i pi / H, (i + 1) pi / H] clipped at
+ *                                             the horizon: exact for a panorama constant
+ *                                             within each pixel, a uniform sky of L = 1 is pi
+ *   ALWAN_HEMISPHERE_ILLUMINANCE_LAGARDE2016  colour-hdri's upper_hemisphere_illuminance_
+ *                                             Lagarde2016: row i sampled at i pi / (H - 1),
+ *                                             weighted 2 pi^2 cos sin / (W H); low by about
+ *                                             pi / H (a uniform sky gives 2.934 at H = 16)
+ *
+ * alwan_upper_hemisphere_illuminance_weights fills a width x height image of doubles
+ * (out_row_stride in bytes) with each pixel's weight w, such that E_v = sum L w / (W H):
+ * for LAGARDE2016 colour-hdri's upper_hemisphere_illuminance_weights_Lagarde2016, the
+ * image Lagarde gives for Photoshop. alwan_absolute_luminance_calibrate scales the first
+ * three channels by measured_illuminance / E_v (colour-hdri's absolute_luminance_
+ * calibration_Lagarde2016); a fourth is copied; out may be src.
+ *
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count other than 3 or 4, a stride
+ * too small, a non-finite sample or an unknown method; ALWAN_E_RANGE when calibrating a
+ * panorama whose E_v is not above 0. */
+typedef enum {
+    ALWAN_HEMISPHERE_ILLUMINANCE_EXACT = 0,
+    ALWAN_HEMISPHERE_ILLUMINANCE_LAGARDE2016 = 1
+} alwan_hemisphere_illuminance_method;
+
+alwan_status alwan_upper_hemisphere_illuminance_f32(double *illuminance, alwan_f32 const *src, size_t row_stride, size_t channels, size_t width, size_t height, alwan_rgb_space_desc_f32 const *space, alwan_hemisphere_illuminance_method method);
+alwan_status alwan_upper_hemisphere_illuminance_f64(double *illuminance, alwan_f64 const *src, size_t row_stride, size_t channels, size_t width, size_t height, alwan_rgb_space_desc_f64 const *space, alwan_hemisphere_illuminance_method method);
+alwan_status alwan_upper_hemisphere_illuminance_u8(double *illuminance, unsigned char const *src, size_t row_stride, size_t channels, size_t width, size_t height, alwan_rgb_space_desc_f64 const *space, alwan_hemisphere_illuminance_method method);
+alwan_status alwan_upper_hemisphere_illuminance_weights(double *out, size_t out_row_stride, size_t width, size_t height, alwan_hemisphere_illuminance_method method);
+alwan_status alwan_absolute_luminance_calibrate_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, double measured_illuminance, alwan_rgb_space_desc_f32 const *space, alwan_hemisphere_illuminance_method method);
+alwan_status alwan_absolute_luminance_calibrate_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, double measured_illuminance, alwan_rgb_space_desc_f64 const *space, alwan_hemisphere_illuminance_method method);
+
+/* Lights from a light probe (Viriyothai and Debevec 2009), as colour-hdri's
+ * light_probe_sampling_variance_minimization_Viriyothai2009:
+ *
+ *   ALWAN_LIGHT_PROBE_VARIANCE_MINIMIZATION  `levels` times, every region is cut in two at
+ *                                            the column, then row, that minimises the larger
+ *                                            of the parts' luminance spread
+ *                                            sqrt(sum Y ((x - cx)^2 + (y - cy)^2)) about each
+ *                                            part's centroid floored to a whole pixel; the
+ *                                            first minimum wins
+ *
+ * 2^levels lights, in colour-hdri's order, each a region, its luminance centroid (whole
+ * pixels; NaN for a region with no luminance, which colour-hdri reports as -2^63), that
+ * centroid over the width and height, and the sum of its RGB (not weighted by solid
+ * angle, as colour-hdri). On a panorama with an exact tie (one bright pixel on black, a
+ * uniform field) colour-hdri's cut follows the last bit of its luminance; alwan's may
+ * differ there. colour-hdri takes a light count n and runs int(sqrt(n)) levels,
+ * so only n = 4 and 16 give n lights (64 gives 256); alwan takes the levels. A level
+ * costs O(W H): cuts are scored from moment sums, and near-ties again pixel by pixel.
+ *
+ * ALWAN_E_INVALID as above; ALWAN_E_RANGE for levels over 20, capacity under 2^levels,
+ * or a region colour-hdri finds no cut for (no pixels, or every cut's score NaN, which
+ * takes negative luminance). */
+typedef enum {
+    ALWAN_LIGHT_PROBE_VARIANCE_MINIMIZATION = 0
+} alwan_light_probe_method;
+
+/* A zero field is its default. */
+typedef struct {
+    size_t levels;              /* VARIANCE_MINIMIZATION: 2^levels lights; 0 reads as 4 */
+} alwan_light_probe_params;
+
+typedef struct {
+    size_t y0, y1, x0, x1;      /* the region: rows [y0, y1), columns [x0, x1) */
+    double cy, cx;              /* its luminance centroid, row and column; NaN when it has none */
+    double u, v;                /* cx / width, cy / height */
+    double rgb[3];              /* its RGB summed */
+} alwan_light_probe_light;
+
+alwan_status alwan_light_probe_sample_f32(alwan_light_probe_light *lights, size_t capacity, size_t *count, alwan_f32 const *src, size_t row_stride, size_t channels, size_t width, size_t height, alwan_rgb_space_desc_f32 const *space, alwan_light_probe_method method, alwan_light_probe_params const *params, alwan_ctx *ctx);
+alwan_status alwan_light_probe_sample_f64(alwan_light_probe_light *lights, size_t capacity, size_t *count, alwan_f64 const *src, size_t row_stride, size_t channels, size_t width, size_t height, alwan_rgb_space_desc_f64 const *space, alwan_light_probe_method method, alwan_light_probe_params const *params, alwan_ctx *ctx);
+alwan_status alwan_light_probe_sample_u8(alwan_light_probe_light *lights, size_t capacity, size_t *count, unsigned char const *src, size_t row_stride, size_t channels, size_t width, size_t height, alwan_rgb_space_desc_f64 const *space, alwan_light_probe_method method, alwan_light_probe_params const *params, alwan_ctx *ctx);
+
 /* Global thresholds: one level per channel that splits it into foreground and background,
  * for a mask from a luma, a matte or a scan. threshold_out receives `channels` values; a
  * pixel is foreground where it is above its channel's threshold.
