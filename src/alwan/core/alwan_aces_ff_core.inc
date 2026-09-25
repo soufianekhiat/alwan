@@ -752,6 +752,11 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(aces2_remap_m_inv)(ALWAN_CORE_T M, A
     ALWAN_CORE_T scale = reach_offset / ((reach_offset / gamut_offset) - ALWAN_CORE_LITERAL(1.0));
     ALWAN_CORE_T nd = m_offset / scale;
 
+    /* The forward's Reinhard never reaches nd = 1; at or past it OCIO returns the
+     * asymptote rather than the negative or infinite x / (1 - x). */
+    if (nd >= ALWAN_CORE_LITERAL(1.0)) {
+        return threshold + scale;
+    }
     return threshold + scale * ALWAN_CORE_FNVLIT(aces2_reinhard_inv)(nd);
 }
 
@@ -929,7 +934,13 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_inv)(ALWAN_C
     ALWAN_UNUSED(h);
 
     /* Mirror of fwd: compute all intermediates in f32 for consistency
-     * with OCIO's float32 pipeline.  See compress_gamut_fwd comment. */
+     * with OCIO's float32 pipeline.  See compress_gamut_fwd comment.
+     *
+     * The forward's slope gain depends on the uncompressed J, which the inverse does
+     * not have. Above the analytical threshold OCIO's gamut_compress_inv therefore
+     * runs the inverse once with the compressed J, takes the J it returns as Jx, and
+     * runs it again with the slope gain at Jx; below the threshold the gain does not
+     * depend on J and one pass is exact. */
     float fJ = (float)J, fM = (float)M;
     float fJ_max = (float)gcp->limit_J_max;
     float f_focus_dist = (float)gcp->focus_dist;
@@ -937,46 +948,52 @@ ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_CORE_FNVLIT(aces2_compress_gamut_inv)(ALWAN_C
     float f_focus_J = (float)hdp->focus_J;
     float f_at = (float)hdp->analytical_threshold;
 
-    float f_slope_gain = aces2_get_focus_gain_f32_v(fJ, f_at, fJ_max, f_focus_dist);
+    float f_Jx = fJ;
+    int step;
+    for (step = 0; step < 2; step++) {
+        float f_slope_gain = aces2_get_focus_gain_f32_v(f_Jx, f_at, fJ_max, f_focus_dist);
 
-    float f_J_intersect = aces2_solve_j_intersect_f32_v(fJ, fM, f_focus_J, fJ_max, f_slope_gain);
+        float f_J_intersect = aces2_solve_j_intersect_f32_v(fJ, fM, f_focus_J, fJ_max, f_slope_gain);
 
-    float f_gamut_slope = aces2_compression_vector_slope_f32_v(
-        f_J_intersect, f_focus_J, fJ_max, f_slope_gain);
+        float f_gamut_slope = aces2_compression_vector_slope_f32_v(
+            f_J_intersect, f_focus_J, fJ_max, f_slope_gain);
 
-    float f_J_intersect_cusp = aces2_solve_j_intersect_f32_v(
-        f_cusp_J, f_cusp_M, f_focus_J, fJ_max, f_slope_gain);
+        float f_J_intersect_cusp = aces2_solve_j_intersect_f32_v(
+            f_cusp_J, f_cusp_M, f_focus_J, fJ_max, f_slope_gain);
 
-    ALWAN_CORE_T gamut_boundary_M = ALWAN_CORE_FNVLIT(aces2_find_gamut_boundary)(
-        hdp->cusp_J, hdp->cusp_M, gcp->limit_J_max,
-        hdp->gamma_top_inv, hdp->gamma_bottom_inv,
-        (ALWAN_CORE_T)f_J_intersect, (ALWAN_CORE_T)f_gamut_slope,
-        (ALWAN_CORE_T)f_J_intersect_cusp);
+        ALWAN_CORE_T gamut_boundary_M = ALWAN_CORE_FNVLIT(aces2_find_gamut_boundary)(
+            hdp->cusp_J, hdp->cusp_M, gcp->limit_J_max,
+            hdp->gamma_top_inv, hdp->gamma_bottom_inv,
+            (ALWAN_CORE_T)f_J_intersect, (ALWAN_CORE_T)f_gamut_slope,
+            (ALWAN_CORE_T)f_J_intersect_cusp);
 
-    if (gamut_boundary_M <= ALWAN_CORE_LITERAL(0.0)) {
-        result.v[0] = J;
-        result.v[1] = ALWAN_CORE_LITERAL(0.0);
-        return result;
+        if (gamut_boundary_M <= ALWAN_CORE_LITERAL(0.0)) {
+            result.v[0] = J;
+            result.v[1] = ALWAN_CORE_LITERAL(0.0);
+            return result;
+        }
+
+        ALWAN_CORE_T reach_boundary_M = (ALWAN_CORE_T)aces2_estimate_line_boundary_m_f32_v(
+            f_J_intersect, f_gamut_slope, (float)gcp->model_gamma_inv,
+            fJ_max, (float)hdp->reach_m, fJ_max);
+
+        /* Degenerate guard (inverse): mirror of fwd guard. */
+        if (reach_boundary_M <= gamut_boundary_M) {
+            result.v[0] = J;
+            result.v[1] = M;
+            return result;
+        }
+
+        ALWAN_CORE_T remapped_M = (ALWAN_CORE_T)aces2_remap_m_inv_f32_v(
+            (float)M, (float)gamut_boundary_M, (float)reach_boundary_M);
+
+        ALWAN_CORE_T J_intersect = (ALWAN_CORE_T)f_J_intersect;
+        ALWAN_CORE_T gamut_slope = (ALWAN_CORE_T)f_gamut_slope;
+        result.v[0] = J_intersect + remapped_M * gamut_slope;
+        result.v[1] = remapped_M;
+        if (step == 1 || !(fJ > f_at)) return result;
+        f_Jx = (float)result.v[0];
     }
-
-    ALWAN_CORE_T reach_boundary_M = (ALWAN_CORE_T)aces2_estimate_line_boundary_m_f32_v(
-        f_J_intersect, f_gamut_slope, (float)gcp->model_gamma_inv,
-        fJ_max, (float)hdp->reach_m, fJ_max);
-
-    /* Degenerate guard (inverse): mirror of fwd guard. */
-    if (reach_boundary_M <= gamut_boundary_M) {
-        result.v[0] = J;
-        result.v[1] = M;
-        return result;
-    }
-
-    ALWAN_CORE_T remapped_M = (ALWAN_CORE_T)aces2_remap_m_inv_f32_v(
-        (float)M, (float)gamut_boundary_M, (float)reach_boundary_M);
-
-    ALWAN_CORE_T J_intersect = (ALWAN_CORE_T)f_J_intersect;
-    ALWAN_CORE_T gamut_slope = (ALWAN_CORE_T)f_gamut_slope;
-    result.v[0] = J_intersect + remapped_M * gamut_slope;
-    result.v[1] = remapped_M;
     return result;
 }
 

@@ -2605,6 +2605,67 @@ static alwan_f64 chroma_compress_fwd_f64(alwan_f64 J, alwan_f64 M, alwan_f64 h_d
 }
 
 /* ----------------------------------------------------------------
+ * ACES 2.0: inverses of the tonescale and the chroma compression.
+ * Reference: OCIO ops/fixedfunction/ACES2/Transform.cpp, aces_tonescale<true> and
+ * chroma_compress_inv, each the exact inverse of the forward above.
+ * ---------------------------------------------------------------- */
+
+/* Y_ts (nits, the tonescale's output) back to scene Y. The display value is limited to
+ * what the forward can reach, n / (u_2 n_r), as OCIO's inverse_limit. */
+static alwan_f64 tonescale_inv(alwan_f64 Y_ts, aces2_TSParams_f64 const *ts) {
+    alwan_f64 const inverse_limit = ts->n / (ts->u_2 * ts->n_r);
+    alwan_f64 Z = Y_ts / ts->n_r;
+    if (!(Z > ALWAN_LITERAL(0.0))) Z = ALWAN_LITERAL(0.0);
+    if (Z > inverse_limit) Z = inverse_limit;
+    alwan_f64 const f = (Z + ALWAN_SQRT(Z * (ALWAN_LITERAL(4.0) * ts->t_1 + Z))) * ALWAN_LITERAL(0.5);
+    return ts->s_2 / (ALWAN_POW(ts->m_2 / f, ALWAN_LITERAL(1.0) / ts->g) - ALWAN_LITERAL(1.0));
+}
+
+/* M after chroma compression (at the tonescaled J_ts) back to the scene M at J. */
+static alwan_f64 chroma_compress_inv_f64(alwan_f64 J, alwan_f64 J_ts, alwan_f64 M_cp, alwan_f64 h_deg,
+                                         ChromaCompressParams_f64 const *cp) {
+    if (J <= ALWAN_LITERAL(0.0) || M_cp <= ALWAN_LITERAL(0.0)) {
+        return ALWAN_LITERAL(0.0);
+    }
+    alwan_f64 const h_rad = h_deg * ALWAN_LITERAL(3.14159265358979323846) / ALWAN_LITERAL(180.0);
+    alwan_f64 const Mnorm = chroma_compress_norm(h_rad, cp->chroma_compress_scale);
+    alwan_f64 const nJ = J_ts / cp->limit_J_max;
+    alwan_f64 const snJ = (ALWAN_LITERAL(1.0) - nJ > ALWAN_LITERAL(0.0)) ? (ALWAN_LITERAL(1.0) - nJ) : ALWAN_LITERAL(0.0);
+    alwan_f64 const reachMaxM = lookup_reach_m_f64(h_deg, cp);
+    alwan_f64 const limit = ALWAN_POW(nJ, cp->model_gamma_inv) * reachMaxM / Mnorm;
+    alwan_f64 sat_limit = limit - ALWAN_LITERAL(0.001);
+    if (sat_limit < ALWAN_LITERAL(0.001)) sat_limit = ALWAN_LITERAL(0.001);
+
+    alwan_f64 M = M_cp / Mnorm;
+    M = aces_toe_inv_f64_v(M, limit, nJ * cp->compr, snJ);
+    M = limit - aces_toe_inv_f64_v(limit - M, sat_limit, snJ * cp->sat, ALWAN_SQRT(nJ * nJ + cp->sat_thr));
+    M = M * Mnorm;
+    return M * ALWAN_POW(J_ts / J, -cp->model_gamma_inv);
+}
+
+/* The inverse of alwan_aces_tonescale_compress20_f64 in JMh (AP1 parameters): the
+ * tonescaled, chroma-compressed JMh back to the scene JMh. */
+static void aces2_tonescale_compress_inv_jmh_f64(alwan_f64 jmh_out[3], alwan_f64 const jmh_ts[3],
+                                                 alwan_f64 peak_luminance) {
+    alwan_aces_primaries_f64 primaries;
+    alwan_aces_primaries_ap1_default_f64(&primaries);
+    aces2_JMhParams_f64 jmh_params;
+    init_JMhParams_f64(&primaries, &jmh_params);
+    aces2_TSParams_f64 ts;
+    init_TSParams_f64(peak_luminance, &ts);
+    ChromaCompressParams_f64 chroma_params;
+    init_ChromaCompressParams_f64(peak_luminance, &jmh_params, &chroma_params);
+
+    alwan_f64 const J_ts = jmh_ts[0];
+    alwan_f64 const Y_ts = J_to_Y_f64(J_ts < ALWAN_LITERAL(0.0) ? -J_ts : J_ts, &jmh_params);
+    alwan_f64 J = Y_to_J_f64(tonescale_inv(Y_ts, &ts), &jmh_params);
+    if (J_ts < ALWAN_LITERAL(0.0)) J = -J;
+    jmh_out[0] = J;
+    jmh_out[1] = chroma_compress_inv_f64(J, J_ts, jmh_ts[1], jmh_ts[2], &chroma_params);
+    jmh_out[2] = jmh_ts[2];
+}
+
+/* ----------------------------------------------------------------
  * ACES 2.0: f32-precision initialization helpers
  * Each function computes in f64, then downcasts to f32 structs.
  * This matches OCIO's float32 pipeline while maintaining numerical
@@ -3931,62 +3992,6 @@ static alwan_f64 const g_d60_to_d65_bradford[9] = {
     ALWAN_LITERAL( 0.00307257705853153), ALWAN_LITERAL(-0.00509596151113058), ALWAN_LITERAL( 1.08168060306579528)
 };
 
-/* D65 to D60 chromatic adaptation matrix (Bradford, inverse) */
-static alwan_f64 const g_d65_to_d60_bradford[9] = {
-    ALWAN_LITERAL( 1.01303000), ALWAN_LITERAL( 0.00610531), ALWAN_LITERAL(-0.01497100),
-    ALWAN_LITERAL( 0.00769823), ALWAN_LITERAL( 0.99816500), ALWAN_LITERAL(-0.00503203),
-    ALWAN_LITERAL(-0.00284131), ALWAN_LITERAL( 0.00468516), ALWAN_LITERAL( 0.92450700)
-};
-
-/* Apply 3x3 matrix to RGB */
-static void apply_matrix_rgb(alwan_f64 const m[9], alwan_rgb_f64 const *in, alwan_rgb_f64 *out) {
-    alwan_f64 r = in->r, g = in->g, b = in->b;
-    out->r = m[0] * r + m[1] * g + m[2] * b;
-    out->g = m[3] * r + m[4] * g + m[5] * b;
-    out->b = m[6] * r + m[7] * g + m[8] * b;
-}
-
-/* Compute AP1 to limiting primaries matrix */
-static void compute_ap1_to_limit_matrix_f64(alwan_aces_primaries_f64 const *limit,
-                                         alwan_f64 out[9]) {
-    /* AP1 (ACEScg) primaries - ACES white point D60 */
-    alwan_f64 ap1_to_xyz[9];
-    primaries_to_rgb_to_xyz_f64(
-        AP1_RED_x,   AP1_RED_y,
-        AP1_GREEN_x, AP1_GREEN_y,
-        AP1_BLUE_x,  AP1_BLUE_y,
-        AP1_WHITE_x, AP1_WHITE_y,
-        ALWAN_LITERAL(1.0),
-        ap1_to_xyz
-    );
-
-    /* Limit primaries to XYZ */
-    alwan_f64 limit_to_xyz[9];
-    primaries_to_rgb_to_xyz_f64(
-        limit->red_x, limit->red_y,
-        limit->green_x, limit->green_y,
-        limit->blue_x, limit->blue_y,
-        limit->white_x, limit->white_y,
-        ALWAN_LITERAL(1.0),
-        limit_to_xyz
-    );
-
-    /* XYZ to limit primaries */
-    alwan_f64 xyz_to_limit[9];
-    invert_mat3(limit_to_xyz, xyz_to_limit);
-
-    /* AP1 -> XYZ -> Limit = AP1 -> Limit */
-    mult_mat3(xyz_to_limit, ap1_to_xyz, out);
-}
-
-/* Compute limit primaries to AP1 matrix (inverse) */
-static void compute_limit_to_ap1_matrix(alwan_aces_primaries_f64 const *limit,
-                                         alwan_f64 out[9]) {
-    alwan_f64 ap1_to_limit[9];
-    compute_ap1_to_limit_matrix_f64(limit, ap1_to_limit);
-    invert_mat3(ap1_to_limit, out);
-}
-
 /* ----------------------------------------------------------------
  * ACES 2.0 Output Transform Implementation
  * ---------------------------------------------------------------- */
@@ -4400,16 +4405,12 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         xyz[2] *= D60_WHITE_Z;
 
         /* Step 3: Convert XYZ (D60) to AP1 */
-        static alwan_f64 const XYZ_D60_TO_AP1[9] = {
-            ALWAN_LITERAL( 1.6410233797), ALWAN_LITERAL(-0.3248032942), ALWAN_LITERAL(-0.2364246952),
-            ALWAN_LITERAL(-0.6636628587), ALWAN_LITERAL( 1.6153315917), ALWAN_LITERAL( 0.0167563477),
-            ALWAN_LITERAL( 0.0030476112), ALWAN_LITERAL(-0.0164295295), ALWAN_LITERAL( 0.9888322028)
-        };
-
+        /* ACES1_XYZ_D60_TO_AP1 is the gendata inverse of the forward's AP1 -> XYZ D60. The
+         * literal this replaced had a wrong third row (blue off by up to 4%). */
         alwan_rgb_f64 rgb_ap1;
-        rgb_ap1.r = XYZ_D60_TO_AP1[0] * xyz[0] + XYZ_D60_TO_AP1[1] * xyz[1] + XYZ_D60_TO_AP1[2] * xyz[2];
-        rgb_ap1.g = XYZ_D60_TO_AP1[3] * xyz[0] + XYZ_D60_TO_AP1[4] * xyz[1] + XYZ_D60_TO_AP1[5] * xyz[2];
-        rgb_ap1.b = XYZ_D60_TO_AP1[6] * xyz[0] + XYZ_D60_TO_AP1[7] * xyz[1] + XYZ_D60_TO_AP1[8] * xyz[2];
+        rgb_ap1.r = ACES1_XYZ_D60_TO_AP1[0] * xyz[0] + ACES1_XYZ_D60_TO_AP1[1] * xyz[1] + ACES1_XYZ_D60_TO_AP1[2] * xyz[2];
+        rgb_ap1.g = ACES1_XYZ_D60_TO_AP1[3] * xyz[0] + ACES1_XYZ_D60_TO_AP1[4] * xyz[1] + ACES1_XYZ_D60_TO_AP1[5] * xyz[2];
+        rgb_ap1.b = ACES1_XYZ_D60_TO_AP1[6] * xyz[0] + ACES1_XYZ_D60_TO_AP1[7] * xyz[1] + ACES1_XYZ_D60_TO_AP1[8] * xyz[2];
 
         /* Step 5: Convert to JMh for inverse gamut compression */
         alwan_aces_primaries_f64 ap1;
@@ -4421,12 +4422,14 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         alwan_vec3_f64 jmh;
         alwan_aces_rgb_to_jmh20_f64(&jmh, &rgb_ap1, &ap1);
 
-        /* Step 6: Inverse gamut compression using P3-D65 */
+        /* Step 6: Inverse gamut compression using P3-D65, as the forward compressed */
         alwan_vec3_f64 jmh_exp;
         alwan_aces_gamut_compress20_inv_f64(&jmh_exp, &jmh, config.peak_luminance, &p3_d65);
 
-        /* Step 7: Convert JMh back to AP1 RGB */
-        alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_exp, &ap1);
+        /* Step 7: Inverse chroma compression and tonescale, then back to AP1 RGB */
+        alwan_vec3_f64 jmh_scene;
+        aces2_tonescale_compress_inv_jmh_f64(jmh_scene.v, jmh_exp.v, config.peak_luminance);
+        alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_scene, &ap1);
 
         return ALWAN_OK;
     }
@@ -4459,16 +4462,12 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         xyz_d60[2] = ACES1_D65_TO_D60[6] * xyz_d65[0] + ACES1_D65_TO_D60[7] * xyz_d65[1] + ACES1_D65_TO_D60[8] * xyz_d65[2];
 
         /* Step 4: Convert XYZ (D60) to AP1 */
-        static alwan_f64 const XYZ_D60_TO_AP1[9] = {
-            ALWAN_LITERAL( 1.6410233797), ALWAN_LITERAL(-0.3248032942), ALWAN_LITERAL(-0.2364246952),
-            ALWAN_LITERAL(-0.6636628587), ALWAN_LITERAL( 1.6153315917), ALWAN_LITERAL( 0.0167563477),
-            ALWAN_LITERAL( 0.0030476112), ALWAN_LITERAL(-0.0164295295), ALWAN_LITERAL( 0.9888322028)
-        };
-
+        /* ACES1_XYZ_D60_TO_AP1 is the gendata inverse of the forward's AP1 -> XYZ D60. The
+         * literal this replaced had a wrong third row (blue off by up to 4%). */
         alwan_rgb_f64 rgb_ap1;
-        rgb_ap1.r = XYZ_D60_TO_AP1[0] * xyz_d60[0] + XYZ_D60_TO_AP1[1] * xyz_d60[1] + XYZ_D60_TO_AP1[2] * xyz_d60[2];
-        rgb_ap1.g = XYZ_D60_TO_AP1[3] * xyz_d60[0] + XYZ_D60_TO_AP1[4] * xyz_d60[1] + XYZ_D60_TO_AP1[5] * xyz_d60[2];
-        rgb_ap1.b = XYZ_D60_TO_AP1[6] * xyz_d60[0] + XYZ_D60_TO_AP1[7] * xyz_d60[1] + XYZ_D60_TO_AP1[8] * xyz_d60[2];
+        rgb_ap1.r = ACES1_XYZ_D60_TO_AP1[0] * xyz_d60[0] + ACES1_XYZ_D60_TO_AP1[1] * xyz_d60[1] + ACES1_XYZ_D60_TO_AP1[2] * xyz_d60[2];
+        rgb_ap1.g = ACES1_XYZ_D60_TO_AP1[3] * xyz_d60[0] + ACES1_XYZ_D60_TO_AP1[4] * xyz_d60[1] + ACES1_XYZ_D60_TO_AP1[5] * xyz_d60[2];
+        rgb_ap1.b = ACES1_XYZ_D60_TO_AP1[6] * xyz_d60[0] + ACES1_XYZ_D60_TO_AP1[7] * xyz_d60[1] + ACES1_XYZ_D60_TO_AP1[8] * xyz_d60[2];
 
         /* Step 5: Convert to JMh for inverse gamut compression */
         alwan_aces_primaries_f64 ap1;
@@ -4480,89 +4479,78 @@ alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         alwan_vec3_f64 jmh;
         alwan_aces_rgb_to_jmh20_f64(&jmh, &rgb_ap1, &ap1);
 
-        /* Step 6: Inverse gamut compression using P3-D65 */
+        /* Step 6: Inverse gamut compression using P3-D65, as the forward compressed */
         alwan_vec3_f64 jmh_exp;
         alwan_aces_gamut_compress20_inv_f64(&jmh_exp, &jmh, config.peak_luminance, &p3_d65);
 
-        /* Step 7: Convert JMh back to AP1 RGB */
-        alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_exp, &ap1);
+        /* Step 7: Inverse chroma compression and tonescale, then back to AP1 RGB */
+        alwan_vec3_f64 jmh_scene;
+        aces2_tonescale_compress_inv_jmh_f64(jmh_scene.v, jmh_exp.v, config.peak_luminance);
+        alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_scene, &ap1);
 
         return ALWAN_OK;
     }
 
-    /* Step 1: Decode display encoding (EOTF) */
+    /* The forward, for these presets, is: AP1 -> JMh (AP1) -> tonescale and chroma
+     * compression -> gamut compression to the limit gamut -> JMh -> RGB decoded with the
+     * LIMIT primaries' JMh parameters (which is where the D60 to D65 adaptation happens,
+     * inside the CAM) -> clamp -> encode. The inverse undoes each step in reverse order,
+     * as OCIO's ACES_OUTPUT_TRANSFORM_20 inverse does. */
+
+    /* Step 1: decode to display-linear, 1.0 = the 100-nit reference white */
     alwan_f64 encoded[3] = {rgb_in->r, rgb_in->g, rgb_in->b};
     alwan_f64 linear[3];
-
-    status = alwan_eotf_apply_f64(linear, sizeof(alwan_f64), encoded, sizeof(alwan_f64), 3, config.eotf);
-    if (status != ALWAN_OK) {
-        /* Input is display-encoded by construction; treating it as already linear
-         * silently skips a transfer function and inverts the wrong signal. */
-        return status;
-    }
-
-    alwan_rgb_f64 rgb_linear = {linear[0], linear[1], linear[2]};
-
-    /* Step 2: Apply D65 to D60 chromatic adaptation if needed */
-    int needs_cat = (ALWAN_ABS(config.primaries.white_x - ALWAN_D65_x) < ALWAN_LITERAL(0.01) &&
-                     ALWAN_ABS(config.primaries.white_y - ALWAN_D65_y) < ALWAN_LITERAL(0.01));
-
-    alwan_rgb_f64 rgb_d60;
-    if (needs_cat) {
-        /* Convert to XYZ */
-        alwan_f64 limit_to_xyz[9];
-        primaries_to_rgb_to_xyz_f64(
-            config.primaries.red_x, config.primaries.red_y,
-            config.primaries.green_x, config.primaries.green_y,
-            config.primaries.blue_x, config.primaries.blue_y,
-            config.primaries.white_x, config.primaries.white_y,
-            ALWAN_LITERAL(1.0),
-            limit_to_xyz
-        );
-
-        alwan_f64 xyz[3];
-        xyz[0] = limit_to_xyz[0] * rgb_linear.r + limit_to_xyz[1] * rgb_linear.g + limit_to_xyz[2] * rgb_linear.b;
-        xyz[1] = limit_to_xyz[3] * rgb_linear.r + limit_to_xyz[4] * rgb_linear.g + limit_to_xyz[5] * rgb_linear.b;
-        xyz[2] = limit_to_xyz[6] * rgb_linear.r + limit_to_xyz[7] * rgb_linear.g + limit_to_xyz[8] * rgb_linear.b;
-
-        /* Apply D65 to D60 CAT */
-        alwan_f64 xyz_d60[3];
-        xyz_d60[0] = g_d65_to_d60_bradford[0] * xyz[0] + g_d65_to_d60_bradford[1] * xyz[1] + g_d65_to_d60_bradford[2] * xyz[2];
-        xyz_d60[1] = g_d65_to_d60_bradford[3] * xyz[0] + g_d65_to_d60_bradford[4] * xyz[1] + g_d65_to_d60_bradford[5] * xyz[2];
-        xyz_d60[2] = g_d65_to_d60_bradford[6] * xyz[0] + g_d65_to_d60_bradford[7] * xyz[1] + g_d65_to_d60_bradford[8] * xyz[2];
-
-        /* Convert back to limit RGB */
-        alwan_f64 xyz_to_limit[9];
-        invert_mat3(limit_to_xyz, xyz_to_limit);
-
-        rgb_d60.r = xyz_to_limit[0] * xyz_d60[0] + xyz_to_limit[1] * xyz_d60[1] + xyz_to_limit[2] * xyz_d60[2];
-        rgb_d60.g = xyz_to_limit[3] * xyz_d60[0] + xyz_to_limit[4] * xyz_d60[1] + xyz_to_limit[5] * xyz_d60[2];
-        rgb_d60.b = xyz_to_limit[6] * xyz_d60[0] + xyz_to_limit[7] * xyz_d60[1] + xyz_to_limit[8] * xyz_d60[2];
+    if (config.eotf == ALWAN_TF_HLG) {
+        /* The forward normalised by the peak, applied the inverse OOTF E = Yd^((1-g)/g) Fd
+         * and the HLG OETF. Undo: the inverse OETF gives E, the OOTF Fd = Ys^(g-1) E with
+         * Ys the BT.2100 luminance of E, then rescale by peak / 100. */
+        alwan_f64 const a = ALWAN_LITERAL(0.17883277);
+        alwan_f64 const bb = ALWAN_LITERAL(1.0) - ALWAN_LITERAL(4.0) * a;
+        alwan_f64 const c = ALWAN_LITERAL(0.5) - a * ALWAN_LN(ALWAN_LITERAL(4.0) * a);
+        alwan_f64 const gamma = ALWAN_LITERAL(1.2)
+            + ALWAN_LITERAL(0.42) * (ALWAN_LN(config.peak_luminance / ALWAN_LITERAL(1000.0)) / ALWAN_LN(ALWAN_LITERAL(10.0)));
+        alwan_f64 E[3];
+        int i;
+        for (i = 0; i < 3; i++) {
+            alwan_f64 const e = encoded[i] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : encoded[i];
+            E[i] = e <= ALWAN_LITERAL(0.5) ? e * e / ALWAN_LITERAL(3.0)
+                                           : (ALWAN_EXP((e - c) / a) + bb) / ALWAN_LITERAL(12.0);
+        }
+        alwan_f64 const Ys = ALWAN_LITERAL(0.2627) * E[0] + ALWAN_LITERAL(0.6780) * E[1] + ALWAN_LITERAL(0.0593) * E[2];
+        alwan_f64 const factor = Ys > ALWAN_LITERAL(0.0) ? ALWAN_POW(Ys, gamma - ALWAN_LITERAL(1.0)) : ALWAN_LITERAL(0.0);
+        for (i = 0; i < 3; i++) linear[i] = factor * E[i] * config.peak_luminance / ALWAN_LITERAL(100.0);
     } else {
-        rgb_d60 = rgb_linear;
+        status = alwan_eotf_apply_f64(linear, sizeof(alwan_f64), encoded, sizeof(alwan_f64), 3, config.eotf);
+        if (status != ALWAN_OK) {
+            /* Input is display-encoded by construction; treating it as already linear
+             * silently skips a transfer function and inverts the wrong signal. */
+            return status;
+        }
+        if (config.eotf == ALWAN_TF_PQ) {
+            /* PQ decodes to nits; the forward scaled display-linear by 100 before it */
+            linear[0] /= ALWAN_LITERAL(100.0);
+            linear[1] /= ALWAN_LITERAL(100.0);
+            linear[2] /= ALWAN_LITERAL(100.0);
+        }
     }
+    alwan_rgb_f64 const rgb_linear = {linear[0], linear[1], linear[2]};
 
-    /* Step 3: Convert from limit primaries to AP1 */
-    alwan_f64 limit_to_ap1[9];
-    compute_limit_to_ap1_matrix(&config.primaries, limit_to_ap1);
-
-    alwan_rgb_f64 rgb_ap1;
-    apply_matrix_rgb(limit_to_ap1, &rgb_d60, &rgb_ap1);
-
-    /* Step 4: Convert to JMh */
-    alwan_aces_primaries_f64 ap1;
-    alwan_aces_primaries_ap1_default_f64(&ap1);
-
+    /* Step 2: display-linear RGB to JMh with the limit primaries' parameters */
     alwan_vec3_f64 jmh;
-    alwan_aces_rgb_to_jmh20_f64(&jmh, &rgb_ap1, &ap1);
+    alwan_aces_rgb_to_jmh20_f64(&jmh, &rgb_linear, &config.primaries);
 
-    /* Step 5: Inverse gamut compression */
+    /* Step 3: inverse gamut compression */
     alwan_vec3_f64 jmh_exp;
     alwan_aces_gamut_compress20_inv_f64(&jmh_exp, &jmh, config.peak_luminance, &config.primaries);
 
-    /* Step 6: Convert expanded JMh back to AP1 RGB.
-     * Inverse tonescale is not applied (gamut expansion only). */
-    alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_exp, &ap1);
+    /* Step 4: inverse chroma compression and tonescale */
+    alwan_vec3_f64 jmh_scene;
+    aces2_tonescale_compress_inv_jmh_f64(jmh_scene.v, jmh_exp.v, config.peak_luminance);
+
+    /* Step 5: JMh back to AP1 RGB */
+    alwan_aces_primaries_f64 ap1;
+    alwan_aces_primaries_ap1_default_f64(&ap1);
+    alwan_aces_jmh_to_rgb20_f64(rgb_out, &jmh_scene, &ap1);
 
     return ALWAN_OK;
 }

@@ -163,6 +163,33 @@ Complete ACES 2.0 rendering pipeline. Input: ACEScg (AP1 linear). Output: displa
 
 Pipeline stages: AP1 -> JMh -> Tonescale + Chroma compress -> Gamut compress -> RGB -> Chromatic adaptation -> Display EOTF.
 
+The inverse takes display-encoded RGB back to ACEScg by undoing each stage in reverse,
+as OCIO's `ACES_OUTPUT_TRANSFORM_20` inverse does:
+1. Decode, back to display-linear with 1.0 = 100 nits. For PQ this means nits divided
+   by 100. For HLG it means the inverse OETF, then the OOTF with BT.2100's system gamma
+   for the peak, rescaled by peak / 100.
+2. Convert to JMh with the limiting primaries' parameters, which is where the forward
+   did its D60 to D65 adaptation.
+3. Invert the gamut compression. Above the analytical threshold this is OCIO's own
+   one-step approximation (`Jx`).
+4. Invert the tonescale, then the chroma compression.
+5. Convert JMh back to AP1 RGB.
+
+The cinema presets (DCDM and P3-DCI) decode their XYZ or P3 signal to AP1 first, as
+their forward encodes from it.
+
+Suite 258 holds presets 0 to 8 to OCIO 2.5's inverse. The median error is at float32's
+floor, a few 1e-7 to 2e-6. The tails, up to 3e-4 at the 99th percentile in SDR, come
+from alwan's gamut-compression tables, which differ from OCIO 2.5's by a median 1e-5 in
+the forward. The inverse magnifies that difference near the gamut and peak boundaries.
+Forward then inverse returns the scene value to a few 1e-6 wherever the display did not
+clamp it. Clamped values cannot come back.
+
+Until 2026-09-25 the inverse skipped the tonescale and the chroma compression. It also
+converted through an adaptation matrix instead of the limiting primaries' JMh, and the
+cinema presets used a hand-typed XYZ to AP1 matrix with a wrong third row. SDR output
+was off by nearly the whole value, and PQ output by up to 661 times.
+
 ### alwan_aces2_output_transform_custom_{T}
 
 ```c

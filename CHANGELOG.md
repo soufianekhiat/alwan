@@ -2,6 +2,19 @@
 
 ### Fixed: output differs
 
+- **`alwan_aces2_output_transform_inv_{T}` did not invert the ACES 2.0 output transform.** It
+  skipped the inverse tonescale and chroma compression, converted to JMh through a D65 to D60
+  matrix instead of the limiting primaries' JMh parameters, and its cinema presets used a
+  hand-typed XYZ D60 to AP1 matrix with a wrong third row (blue up to 4% off). Against OCIO
+  2.5's inverse it was up to 0.996 off (relative) in SDR and 89 to 661 times off in PQ; its
+  test checked only for NaN. It now undoes every stage in reverse as OCIO does, and the
+  gamut compression's inverse gains OCIO's asymptote guard and its second pass above the
+  analytical threshold (`aces2_compress_gamut_inv`, which also moves
+  `alwan_aces_gamut_compress20_inv_{T}` near the Reinhard asymptote, where it returned
+  negative M). Presets 0 to 8 now match OCIO 2.5 at a median of a few 1e-7 to 2e-6, 99th
+  percentile at most 3e-4; forward then inverse closes to a few 1e-6 on unclamped samples
+  (suite 258).
+
 - **CQS and TM-30 now compute what colour-science computes.** Both ran pipelines of their
   own: the test SPD resampled to 360-830 nm at 5 nm and zero past its ends, trapezoid sums,
   a Robertson CCT, CIE daylight without CIE 15's rounded M1 and M2, and (TM-30) no
