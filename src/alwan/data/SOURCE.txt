@@ -11,6 +11,8 @@ script names the source it took the numbers from:
   igpgtg_*       Hellwig and Fairchild IgPgTg scale
   ihls_*         Hanbury (2003) improved HLS
   prolab_*       Konovalenko et al. (2021) ProLab projective matrices
+  xyb_*          XYB (JPEG XL): the opsin matrix and bias as ColorAide (MIT)
+                 carries them; the inverse and the XYZ matrices computed from it
   munsell_*      the Munsell renotation, via colour-science
   planckian_*    Krystek (1985) Planckian locus rational polynomial, via
                  colour.temperature.CCT_to_uv_Krystek1985

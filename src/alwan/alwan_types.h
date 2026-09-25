@@ -260,6 +260,7 @@ ALWAN_TYPE_DEF struct { alwan_scalar L99, a99, b99; } alwan_din99;
 ALWAN_TYPE_DEF struct { alwan_scalar L, a, b; }     alwan_hunter_lab;
 ALWAN_TYPE_DEF struct { alwan_scalar I, C, h; }     alwan_iptch;
 ALWAN_TYPE_DEF struct { alwan_scalar L, a, b; }     alwan_prolab;
+ALWAN_TYPE_DEF struct { alwan_scalar x, y, b; }     alwan_xyb;
 ALWAN_TYPE_DEF struct { alwan_scalar L, j, g; }     alwan_osa_ucs;
 ALWAN_TYPE_DEF struct { alwan_scalar U, V, W; }     alwan_ucs;
 ALWAN_TYPE_DEF struct { alwan_scalar L, s, h; }     alwan_prismatic;

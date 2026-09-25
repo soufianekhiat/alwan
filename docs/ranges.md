@@ -173,6 +173,7 @@ Notes:
 | `alwan_jzazbz_*` | `Jz` lightness-like (native ~`[0, 0.17]`), `Az` / `Bz` signed | unchanged; no normalization macro; `Jz` stays native |
 | `alwan_jzczhz_*` | `Jz` native ~`[0, 0.17]`, `Cz` unbounded, `hz` in radians `[-pi, pi]` | only `hz` changes, to `hz / pi` on `[-1, 1]`; `Jz` and `Cz` unchanged |
 | `alwan_ictcp_*` | intensity-like `I`, centered opponent `Ct` / `Cp` | unchanged; no normalization macro; all channels native |
+| `alwan_xyb_*` | over the sRGB cube `X` ~`[-0.05, 0.05]`, `Y` `[0, 0.845]`, `B` ~`[-0.45, 0.45]` | unchanged; no normalization macro; all channels native |
 | `alwan_ipt_*` | `I` native ~`[0, 1]`, `P` / `T` signed | unchanged; no normalization macro; `I` stays native |
 | `alwan_iptch_*` | `I` native ~`[0, 1]`, `C` unbounded, `h` in radians `[-pi, pi]` | only `h` changes, to `h / pi` on `[-1, 1]`; `I` and `C` unchanged |
 | `alwan_igpgtg_*` | intensity-like `Ig`, signed `Pg` / `Tg` | unchanged; no normalization macro; all channels native |

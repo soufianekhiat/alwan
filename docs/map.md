@@ -238,7 +238,7 @@ Representative map-covered areas in the current header:
 - JzAzBz / JzCzhz
 - IPT
 - extended spaces such as IgPgTg, ICaCb, hdr-CIELAB, hdr-IPT, UCS, OSA-UCS,
-  Hunter Lab, ProLab, UVW
+  Hunter Lab, ProLab, XYB, UVW
 - CIECAM02 / CAM16 batch entry points
 - gamut mapping
 - colour-correction helpers

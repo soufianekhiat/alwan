@@ -206,6 +206,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/map/alwan_oklab_map.c
   src/alwan/api/alwan_osa_ucs.c
   src/alwan/api/alwan_prolab.c
+  src/alwan/api/alwan_xyb.c
   src/alwan/api/alwan_quality.c
   src/alwan/api/alwan_rayleigh.c
   src/alwan/api/alwan_reference_data.c

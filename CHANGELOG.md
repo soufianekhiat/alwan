@@ -515,6 +515,12 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **XYB, JPEG XL's colour space: `alwan_linear_srgb_to_xyb_{T}`, `alwan_xyb_to_linear_srgb_{T}`,
+  `alwan_xyz_to_xyb_{T}`, `alwan_xyb_to_xyz_{T}`.** The opsin matrix, a biased cube root, and
+  X = (L' - M') / 2, Y = (L' + M') / 2, B = S' - Y, with a new `alwan_xyb_{T}` type. Interleave,
+  planar and `_ex` maps, and a core header for the GPU backends. Within 4.6e-15 of ColorAide
+  in every direction, out-of-gamut and negative inputs included (suite 242).
+
 - **Corresponding chromaticities and CMCCAT2000 as a model:
   `alwan_corresponding_chromaticities_breneman1987`, `alwan_cat_cmccat2000_{T}`.** Scores
   von Kries, CIE 1994, CMCCAT2000 and Zhai 2018 against Breneman's 1987 matching

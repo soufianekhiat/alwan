@@ -115,6 +115,7 @@
 #define ALWAN_CORE_HUNTER_LAB          alwan_hunter_lab
 #define ALWAN_CORE_IPTCH               alwan_iptch
 #define ALWAN_CORE_PROLAB              alwan_prolab
+#define ALWAN_CORE_XYB                 alwan_xyb
 #define ALWAN_CORE_OSA_UCS             alwan_osa_ucs
 #define ALWAN_CORE_UCS                 alwan_ucs
 #define ALWAN_CORE_PRISMATIC           alwan_prismatic

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Map Extended Color Space Conversions
- * IgPgTg, ICaCb, hdr-CIELAB, hdr-IPT, UCS, UVW, Hunter Lab, ProLab,
+ * IgPgTg, ICaCb, hdr-CIELAB, hdr-IPT, UCS, UVW, Hunter Lab, ProLab, XYB,
  * OSA-UCS, Prismatic, HCL, IHLS, DIN99
  */
 
@@ -16,6 +16,7 @@
 #include "../core/alwan_din99_core.h"
 #include "../core/alwan_hunter_lab_core.h"
 #include "../core/alwan_prolab_core.h"
+#include "../core/alwan_xyb_core.h"
 #include "../core/alwan_osa_ucs_core.h"
 
 #if ALWAN_WITH_F32

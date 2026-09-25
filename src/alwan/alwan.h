@@ -1640,6 +1640,46 @@ void alwan_xyz_to_prolab_custom_f64(alwan_prolab_f64 *prolab, alwan_xyz_f64 cons
 void alwan_prolab_to_xyz_custom_f32(alwan_xyz_f32 *xyz, alwan_prolab_f32 const *prolab, alwan_xyz_f32 const *xyz_n);
 void alwan_prolab_to_xyz_custom_f64(alwan_xyz_f64 *xyz, alwan_prolab_f64 const *prolab, alwan_xyz_f64 const *xyz_n);
 
+/* XYB <-> linear sRGB and XYZ (JPEG XL). Linear sRGB goes to an LMS by the opsin
+ * matrix, takes a biased cube root, and becomes X = (L' - M') / 2, Y = (L' + M') / 2,
+ * B = S' - Y, so that X = B = 0 on the grey axis. XYZ is D65 on the Y = 1 scale and
+ * enters through ColorAide's linear sRGB matrix, folded into the opsin matrix. Native
+ * ranges, unaffected by ALWAN_NORMALIZE_RANGES: X about +-0.05, Y 0 to 0.845 over
+ * the sRGB cube, B about +-0.45. As ColorAide's xyb space (suite 242). ALWAN_E_INVALID
+ * on a NULL argument; the maps as every other map. */
+alwan_status alwan_linear_srgb_to_xyb_f32(alwan_xyb_f32 *xyb_out, alwan_rgb_f32 const *rgb);
+alwan_status alwan_xyb_to_linear_srgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyb_f32 const *xyb);
+alwan_status alwan_xyz_to_xyb_f32(alwan_xyb_f32 *xyb_out, alwan_xyz_f32 const *xyz);
+alwan_status alwan_xyb_to_xyz_f32(alwan_xyz_f32 *xyz_out, alwan_xyb_f32 const *xyb);
+alwan_status alwan_linear_srgb_to_xyb_f64(alwan_xyb_f64 *xyb_out, alwan_rgb_f64 const *rgb);
+alwan_status alwan_xyb_to_linear_srgb_f64(alwan_rgb_f64 *rgb_out, alwan_xyb_f64 const *xyb);
+alwan_status alwan_xyz_to_xyb_f64(alwan_xyb_f64 *xyb_out, alwan_xyz_f64 const *xyz);
+alwan_status alwan_xyb_to_xyz_f64(alwan_xyz_f64 *xyz_out, alwan_xyb_f64 const *xyb);
+alwan_status alwan_linear_srgb_to_xyb_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count);
+alwan_status alwan_linear_srgb_to_xyb_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
+alwan_status alwan_xyb_to_linear_srgb_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count);
+alwan_status alwan_xyb_to_linear_srgb_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
+alwan_status alwan_xyz_to_xyb_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count);
+alwan_status alwan_xyz_to_xyb_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
+alwan_status alwan_xyb_to_xyz_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count);
+alwan_status alwan_xyb_to_xyz_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count);
+alwan_status alwan_linear_srgb_to_xyb_f32_map_planar(alwan_f32 *o0, size_t out_stride, alwan_f32 *o1, alwan_f32 *o2, alwan_f32 const *i0, size_t in_stride, alwan_f32 const *i1, alwan_f32 const *i2, size_t count);
+alwan_status alwan_linear_srgb_to_xyb_f64_map_planar(alwan_f64 *o0, size_t out_stride, alwan_f64 *o1, alwan_f64 *o2, alwan_f64 const *i0, size_t in_stride, alwan_f64 const *i1, alwan_f64 const *i2, size_t count);
+alwan_status alwan_xyb_to_linear_srgb_f32_map_planar(alwan_f32 *o0, size_t out_stride, alwan_f32 *o1, alwan_f32 *o2, alwan_f32 const *i0, size_t in_stride, alwan_f32 const *i1, alwan_f32 const *i2, size_t count);
+alwan_status alwan_xyb_to_linear_srgb_f64_map_planar(alwan_f64 *o0, size_t out_stride, alwan_f64 *o1, alwan_f64 *o2, alwan_f64 const *i0, size_t in_stride, alwan_f64 const *i1, alwan_f64 const *i2, size_t count);
+alwan_status alwan_xyz_to_xyb_f32_map_planar(alwan_f32 *o0, size_t out_stride, alwan_f32 *o1, alwan_f32 *o2, alwan_f32 const *i0, size_t in_stride, alwan_f32 const *i1, alwan_f32 const *i2, size_t count);
+alwan_status alwan_xyz_to_xyb_f64_map_planar(alwan_f64 *o0, size_t out_stride, alwan_f64 *o1, alwan_f64 *o2, alwan_f64 const *i0, size_t in_stride, alwan_f64 const *i1, alwan_f64 const *i2, size_t count);
+alwan_status alwan_xyb_to_xyz_f32_map_planar(alwan_f32 *o0, size_t out_stride, alwan_f32 *o1, alwan_f32 *o2, alwan_f32 const *i0, size_t in_stride, alwan_f32 const *i1, alwan_f32 const *i2, size_t count);
+alwan_status alwan_xyb_to_xyz_f64_map_planar(alwan_f64 *o0, size_t out_stride, alwan_f64 *o1, alwan_f64 *o2, alwan_f64 const *i0, size_t in_stride, alwan_f64 const *i1, alwan_f64 const *i2, size_t count);
+alwan_status alwan_linear_srgb_to_xyb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_xyb_to_linear_srgb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_xyz_to_xyb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_xyb_to_xyz_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_linear_srgb_to_xyb_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_xyb_to_linear_srgb_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_xyz_to_xyb_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+alwan_status alwan_xyb_to_xyz_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+
 /* OSA-UCS <-> XYZ conversions (Optical Society of America Uniform Color Scales)
  * MacAdam (1978), as colour-science's XYZ_to_OSA_UCS and OSA_UCS_to_XYZ.
  * - XYZ input/output is D65 adapted, Y = 100 scale

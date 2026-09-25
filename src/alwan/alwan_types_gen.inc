@@ -60,6 +60,7 @@ typedef struct { ALWAN_T L99, a99, b99; } ALWAN_TN(alwan_din99);
 typedef struct { ALWAN_T L, a, b; }     ALWAN_TN(alwan_hunter_lab);
 typedef struct { ALWAN_T I, C, h; }     ALWAN_TN(alwan_iptch);
 typedef struct { ALWAN_T L, a, b; }     ALWAN_TN(alwan_prolab);
+typedef struct { ALWAN_T x, y, b; }     ALWAN_TN(alwan_xyb);
 typedef struct { ALWAN_T L, j, g; }     ALWAN_TN(alwan_osa_ucs);
 typedef struct { ALWAN_T U, V, W; }     ALWAN_TN(alwan_ucs);
 typedef struct { ALWAN_T L, s, h; }     ALWAN_TN(alwan_prismatic);

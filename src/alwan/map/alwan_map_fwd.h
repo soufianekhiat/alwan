@@ -144,6 +144,10 @@ ALWAN_PFWD_IFWD(alwan_xyz_to_hunter_lab);
 ALWAN_PFWD_IFWD(alwan_hunter_lab_to_xyz);
 ALWAN_PFWD_IFWD(alwan_xyz_to_prolab);
 ALWAN_PFWD_IFWD(alwan_prolab_to_xyz);
+ALWAN_PFWD_IFWD(alwan_linear_srgb_to_xyb);
+ALWAN_PFWD_IFWD(alwan_xyb_to_linear_srgb);
+ALWAN_PFWD_IFWD(alwan_xyz_to_xyb);
+ALWAN_PFWD_IFWD(alwan_xyb_to_xyz);
 
 /* With custom white point */
 ALWAN_PFWD_IFWD_W(alwan_xyz_to_uvw);

@@ -79,7 +79,7 @@ def classify_param(p: str) -> dict:
         "alwan_oklab", "alwan_oklch", "alwan_jzazbz", "alwan_jzczhz",
         "alwan_ictcp", "alwan_ipt", "alwan_igpgtg", "alwan_icacb",
         "alwan_ycbcr", "alwan_ycocg", "alwan_yccbccrc", "alwan_uvw",
-        "alwan_din99", "alwan_hunter_lab", "alwan_iptch", "alwan_prolab",
+        "alwan_din99", "alwan_hunter_lab", "alwan_iptch", "alwan_prolab", "alwan_xyb", "alwan_xyb",
         "alwan_osa_ucs", "alwan_ucs", "alwan_prismatic", "alwan_hcl",
         "alwan_ihls", "alwan_cam_jab", "alwan_hsluv", "alwan_hpluv",
         "alwan_okhsl", "alwan_okhsv", "alwan_cubehelix", "alwan_hlc",

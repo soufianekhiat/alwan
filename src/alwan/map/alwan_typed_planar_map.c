@@ -18,6 +18,7 @@
 #include "../core/alwan_din99_core.h"
 #include "../core/alwan_hunter_lab_core.h"
 #include "../core/alwan_prolab_core.h"
+#include "../core/alwan_xyb_core.h"
 #include "../core/alwan_osa_ucs_core.h"
 #include "../core/alwan_colorspace_core.h"
 #include "../core/alwan_color_correction_core.h"
@@ -162,6 +163,10 @@ ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_xyz_to_hunter_lab_map_planar_ex,  alwan_xyz_
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_hunter_lab_to_xyz_map_planar_ex,  alwan_hunter_lab_to_xyz_f32_map_planar,  alwan_hunter_lab_to_xyz_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_xyz_to_prolab_map_planar_ex,      alwan_xyz_to_prolab_f32_map_planar,      alwan_xyz_to_prolab_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_prolab_to_xyz_map_planar_ex,      alwan_prolab_to_xyz_f32_map_planar,      alwan_prolab_to_xyz_f64_map_planar)
+ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_linear_srgb_to_xyb_map_planar_ex, alwan_linear_srgb_to_xyb_f32_map_planar, alwan_linear_srgb_to_xyb_f64_map_planar)
+ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_xyb_to_linear_srgb_map_planar_ex, alwan_xyb_to_linear_srgb_f32_map_planar, alwan_xyb_to_linear_srgb_f64_map_planar)
+ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_xyz_to_xyb_map_planar_ex, alwan_xyz_to_xyb_f32_map_planar, alwan_xyz_to_xyb_f64_map_planar)
+ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_xyb_to_xyz_map_planar_ex, alwan_xyb_to_xyz_f32_map_planar, alwan_xyb_to_xyz_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_rgb_to_prismatic_map_planar_ex,   alwan_rgb_to_prismatic_f32_map_planar,   alwan_rgb_to_prismatic_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_prismatic_to_rgb_map_planar_ex,   alwan_prismatic_to_rgb_f32_map_planar,   alwan_prismatic_to_rgb_f64_map_planar)
 ALWAN_PLANAR_EX_DELEGATE_DUAL(alwan_rgb_to_hcl_map_planar_ex,         alwan_rgb_to_hcl_f32_map_planar,         alwan_rgb_to_hcl_f64_map_planar)

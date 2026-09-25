@@ -12,7 +12,7 @@ Functions for converting between different color spaces and models.
 
 Alwan supports conversions between:
 - **CIE spaces:** XYZ, xyY, Lab, Luv, LCh(ab), LCh(uv), UVW
-- **Perceptual models:** IPT, ICtCp, JzAzBz, Oklab, Oklch, Hunter Lab, ProLab, OSA-UCS, DIN99, hdr-CIELAB, hdr-IPT, IgPgTg, ICaCb
+- **Perceptual models:** IPT, ICtCp, JzAzBz, Oklab, Oklch, Hunter Lab, ProLab, OSA-UCS, DIN99, hdr-CIELAB, hdr-IPT, IgPgTg, ICaCb, XYB
 - **RGB families:** sRGB, Adobe RGB, BT.709, BT.2020, Display P3, ACES, and 100+ more
 - **Encoding spaces:** HSV, HSL, HSP, HSPLog, HSY, HWB, YCbCr, YCoCg, YcCbcCrc, CMY, CMYK, HCL, HLC, IHLS, Prismatic, CubeHelix, HSLuv, HPLuv, OkHSL, OkHSV
 - **Relative luminance:** Multi-standard Y calculation from linear RGB
@@ -216,6 +216,43 @@ with its signed power `sign(a) |a|^p`, and matches it to 1.1e-13 (suite 135).
   K_ab, (172.3, 67.2). With an `xyz_n` and `k_ab` NULL, K_a and K_b come from Hunter
   1966, as `alwan_hunter_coefficients`. A white with a component <= 0 is
   `ALWAN_E_INVALID`, and so is K_a or K_b = 0 in the inverse.
+
+---
+
+### alwan_linear_srgb_to_xyb_{T} / alwan_xyb_to_linear_srgb_{T} / alwan_xyz_to_xyb_{T} / alwan_xyb_to_xyz_{T}
+
+```c
+alwan_status alwan_linear_srgb_to_xyb_{T}(alwan_xyb_{T} *xyb_out, alwan_rgb_{T} const *rgb);
+alwan_status alwan_xyb_to_linear_srgb_{T}(alwan_rgb_{T} *rgb_out, alwan_xyb_{T} const *xyb);
+alwan_status alwan_xyz_to_xyb_{T}(alwan_xyb_{T} *xyb_out, alwan_xyz_{T} const *xyz);
+alwan_status alwan_xyb_to_xyz_{T}(alwan_xyz_{T} *xyz_out, alwan_xyb_{T} const *xyb);
+```
+
+XYB, the space JPEG XL codes in. Linear sRGB goes to an LMS by the opsin matrix, a bias
+of 0.0037930732552754493 is added, the cube root taken, and the cube root of the bias
+subtracted, so that black stays at 0. Then
+
+```
+X = (L' - M') / 2,   Y = (L' + M') / 2,   B = S' - Y
+```
+
+which puts the whole grey axis at X = B = 0. `alwan_xyb_{T}` holds `x`, `y`, `b`. The XYZ
+entry points take D65 on the Y = 1 scale through the linear sRGB matrices, folded into the
+opsin matrix. Cube roots are signed, so colours outside sRGB, negative ones included,
+convert and come back.
+
+Over the sRGB cube X stays within about +-0.05, Y within 0 to 0.845 and B within about
++-0.45. XYB has no normalization macro and every channel stays native, whatever
+`ALWAN_NORMALIZE_RANGES` says. `_map_interleave`, `_map_planar` and both `_ex` forms are
+available.
+
+Constants and oracle: ColorAide's `xyb` space (MIT). The inverse matrix is computed from
+the opsin matrix and differs from the one ColorAide prints by 3.6e-15. Every direction
+matches ColorAide within 4.6e-15 relative in f64 (suite 242). The stored cube root of the
+bias is ColorAide's `pow(bias, 1/3)`, so black comes out 2.8e-17 from 0 rather than
+exactly 0.
+
+**Returns:** `ALWAN_OK`, or `ALWAN_E_INVALID` on a NULL argument.
 
 ---
 

@@ -832,7 +832,7 @@ own. Those jobs verify a clean compile; the test suite runs from
   Hellwig 2022, Kim 2009, Hunt, LLAB, ATD95, RLAB, Nayatani 95,
   CAM18sl, CAM20u
 - [x] Modern colour spaces: Oklab/Oklch, JzAzBz/JzCzHz, ICtCp,
-  IPT, IgPgTg, ICaCb, ProLab, OSA-UCS, Hunter Lab, DIN99
+  IPT, IgPgTg, ICaCb, ProLab, OSA-UCS, Hunter Lab, DIN99, XYB
 - [x] DeltaE metrics: DeltaE76 / DeltaE94 / DeltaE00 / CMC / hyAB / OK / DIN99 /
   ITP / CAM02-LCD/SCD/UCS / CAM16-LCD/SCD/UCS / ZCAM
 - [x] Light-quality metrics: CRI, CQS, SSI, TM-30 Rf

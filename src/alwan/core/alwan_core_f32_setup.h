@@ -180,6 +180,7 @@
 #define ALWAN_CORE_HUNTER_LAB         alwan_hunter_lab_f32
 #define ALWAN_CORE_IPTCH              alwan_iptch_f32
 #define ALWAN_CORE_PROLAB             alwan_prolab_f32
+#define ALWAN_CORE_XYB                alwan_xyb_f32
 #define ALWAN_CORE_OSA_UCS            alwan_osa_ucs_f32
 #define ALWAN_CORE_UCS                alwan_ucs_f32
 #define ALWAN_CORE_PRISMATIC          alwan_prismatic_f32

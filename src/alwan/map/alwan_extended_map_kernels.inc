@@ -2288,6 +2288,140 @@ alwan_status ALWAN_MAP_LITCAT(alwan_din99_to_lab, _map_interleave)(alwan_map_lan
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * Linear sRGB / XYZ <-> XYB (JPEG XL)
+ *
+ * One kernel per direction, the 3x3 matrix its argument: linear sRGB
+ * and XYZ differ only in the matrix to or from LMS. Each product is
+ * multiplied and added in the scalar core's order, without FMA.
+ * ---------------------------------------------------------------- */
+
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__to_xyb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
+                                         size_t n, ALWAN_MAP_LIT(alwan_mat3x3) const *mat) {
+    alwan_map_lane const *M = mat->m;
+    alwan_map_lane const bias = ALWAN_MAP_LIT(XYB_BIAS)[0];
+    alwan_map_lane const bias_cbrt = ALWAN_MAP_LIT(XYB_BIAS)[1];
+    size_t i = 0;
+#if ALWAN_MAP_SIMD_WIDTH > 1
+    {
+        size_t const W = ALWAN_MAP_SIMD_WIDTH;
+        alwan_map_simd m0 = alwan_map_simd_set1(M[0]), m1 = alwan_map_simd_set1(M[1]), m2 = alwan_map_simd_set1(M[2]);
+        alwan_map_simd m3 = alwan_map_simd_set1(M[3]), m4 = alwan_map_simd_set1(M[4]), m5 = alwan_map_simd_set1(M[5]);
+        alwan_map_simd m6 = alwan_map_simd_set1(M[6]), m7 = alwan_map_simd_set1(M[7]), m8 = alwan_map_simd_set1(M[8]);
+        alwan_map_simd vbias = alwan_map_simd_set1(bias);
+        alwan_map_simd vbias_cbrt = alwan_map_simd_set1(bias_cbrt);
+        alwan_map_simd half = alwan_map_simd_set1((alwan_map_lane)0.5);
+        for (; i + W <= n; i += W) {
+            alwan_map_simd a = alwan_map_simd_load(&c0[i]);
+            alwan_map_simd b = alwan_map_simd_load(&c1[i]);
+            alwan_map_simd c = alwan_map_simd_load(&c2[i]);
+            alwan_map_simd l = alwan_map_simd_add(alwan_map_simd_add(alwan_map_simd_mul(m0, a), alwan_map_simd_mul(m1, b)), alwan_map_simd_mul(m2, c));
+            alwan_map_simd m = alwan_map_simd_add(alwan_map_simd_add(alwan_map_simd_mul(m3, a), alwan_map_simd_mul(m4, b)), alwan_map_simd_mul(m5, c));
+            alwan_map_simd s = alwan_map_simd_add(alwan_map_simd_add(alwan_map_simd_mul(m6, a), alwan_map_simd_mul(m7, b)), alwan_map_simd_mul(m8, c));
+            alwan_map_simd l_ = alwan_map_simd_sub(alwan_map_simd_cbrt(alwan_map_simd_add(l, vbias)), vbias_cbrt);
+            alwan_map_simd m_ = alwan_map_simd_sub(alwan_map_simd_cbrt(alwan_map_simd_add(m, vbias)), vbias_cbrt);
+            alwan_map_simd s_ = alwan_map_simd_sub(alwan_map_simd_cbrt(alwan_map_simd_add(s, vbias)), vbias_cbrt);
+            alwan_map_simd y = alwan_map_simd_add(alwan_map_simd_mul(half, l_), alwan_map_simd_mul(half, m_));
+            alwan_map_simd_store(&d0[i], alwan_map_simd_sub(alwan_map_simd_mul(half, l_), alwan_map_simd_mul(half, m_)));
+            alwan_map_simd_store(&d1[i], y);
+            alwan_map_simd_store(&d2[i], alwan_map_simd_sub(s_, y));
+        }
+    }
+#endif
+    for (; i < n; i++) {
+        ALWAN_MAP_LIT(alwan_vec3) v = {{c0[i], c1[i], c2[i]}};
+        ALWAN_MAP_LIT(alwan_xyb) r = ALWAN_MAP_LITV(alwan_xyb_from_lms)(ALWAN_MAP_LITV(alwan_mat3_mulv)(*mat, v));
+        d0[i] = r.x; d1[i] = r.y; d2[i] = r.b;
+    }
+}
+
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__from_xyb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2,
+                                         size_t n, ALWAN_MAP_LIT(alwan_mat3x3) const *mat) {
+    alwan_map_lane const *M = mat->m;
+    alwan_map_lane const bias = ALWAN_MAP_LIT(XYB_BIAS)[0];
+    alwan_map_lane const bias_cbrt = ALWAN_MAP_LIT(XYB_BIAS)[1];
+    size_t i = 0;
+#if ALWAN_MAP_SIMD_WIDTH > 1
+    {
+        size_t const W = ALWAN_MAP_SIMD_WIDTH;
+        alwan_map_simd m0 = alwan_map_simd_set1(M[0]), m1 = alwan_map_simd_set1(M[1]), m2 = alwan_map_simd_set1(M[2]);
+        alwan_map_simd m3 = alwan_map_simd_set1(M[3]), m4 = alwan_map_simd_set1(M[4]), m5 = alwan_map_simd_set1(M[5]);
+        alwan_map_simd m6 = alwan_map_simd_set1(M[6]), m7 = alwan_map_simd_set1(M[7]), m8 = alwan_map_simd_set1(M[8]);
+        alwan_map_simd vbias = alwan_map_simd_set1(bias);
+        alwan_map_simd vbias_cbrt = alwan_map_simd_set1(bias_cbrt);
+        for (; i + W <= n; i += W) {
+            alwan_map_simd x = alwan_map_simd_load(&c0[i]);
+            alwan_map_simd y = alwan_map_simd_load(&c1[i]);
+            alwan_map_simd b = alwan_map_simd_load(&c2[i]);
+            alwan_map_simd l_ = alwan_map_simd_add(alwan_map_simd_add(x, y), vbias_cbrt);
+            alwan_map_simd m_ = alwan_map_simd_add(alwan_map_simd_sub(y, x), vbias_cbrt);
+            alwan_map_simd s_ = alwan_map_simd_add(alwan_map_simd_add(b, y), vbias_cbrt);
+            alwan_map_simd l = alwan_map_simd_sub(alwan_map_simd_mul(alwan_map_simd_mul(l_, l_), l_), vbias);
+            alwan_map_simd m = alwan_map_simd_sub(alwan_map_simd_mul(alwan_map_simd_mul(m_, m_), m_), vbias);
+            alwan_map_simd s = alwan_map_simd_sub(alwan_map_simd_mul(alwan_map_simd_mul(s_, s_), s_), vbias);
+            alwan_map_simd_store(&d0[i], alwan_map_simd_add(alwan_map_simd_add(alwan_map_simd_mul(m0, l), alwan_map_simd_mul(m1, m)), alwan_map_simd_mul(m2, s)));
+            alwan_map_simd_store(&d1[i], alwan_map_simd_add(alwan_map_simd_add(alwan_map_simd_mul(m3, l), alwan_map_simd_mul(m4, m)), alwan_map_simd_mul(m5, s)));
+            alwan_map_simd_store(&d2[i], alwan_map_simd_add(alwan_map_simd_add(alwan_map_simd_mul(m6, l), alwan_map_simd_mul(m7, m)), alwan_map_simd_mul(m8, s)));
+        }
+    }
+#endif
+    for (; i < n; i++) {
+        ALWAN_MAP_LIT(alwan_xyb) xyb;
+        ALWAN_MAP_LIT(alwan_vec3) r;
+        xyb.x = c0[i]; xyb.y = c1[i]; xyb.b = c2[i];
+        r = ALWAN_MAP_LITV(alwan_mat3_mulv)(*mat, ALWAN_MAP_LITV(alwan_xyb_to_lms)(xyb));
+        d0[i] = r.v[0]; d1[i] = r.v[1]; d2[i] = r.v[2];
+    }
+}
+
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__linear_srgb_to_xyb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
+    ALWAN_MAP_LIT(alwan__to_xyb_kernel)(d0, d1, d2, c0, c1, c2, n, &ALWAN_MAP_LIT(XYB_LRGB_TO_LMS));
+}
+
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyb_to_linear_srgb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
+    ALWAN_MAP_LIT(alwan__from_xyb_kernel)(d0, d1, d2, c0, c1, c2, n, &ALWAN_MAP_LIT(XYB_LMS_TO_LRGB));
+}
+
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyz_to_xyb_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
+    ALWAN_MAP_LIT(alwan__to_xyb_kernel)(d0, d1, d2, c0, c1, c2, n, &ALWAN_MAP_LIT(XYB_XYZ_TO_LMS));
+}
+
+ALWAN_FORCE_INLINE void ALWAN_MAP_LIT(alwan__xyb_to_xyz_kernel)(alwan_map_lane *d0, alwan_map_lane *d1, alwan_map_lane *d2,
+                                         alwan_map_lane const *c0, alwan_map_lane const *c1, alwan_map_lane const *c2, size_t n) {
+    ALWAN_MAP_LIT(alwan__from_xyb_kernel)(d0, d1, d2, c0, c1, c2, n, &ALWAN_MAP_LIT(XYB_LMS_TO_XYZ));
+}
+
+#define ALWAN_MAP_XYB_INTERLEAVE(name, kernel) \
+alwan_status name(alwan_map_lane *out, size_t out_stride, alwan_map_lane const *in, size_t in_stride, size_t count) { \
+    size_t processed = 0; \
+    if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    while (processed < count) { \
+        size_t tile = count - processed; \
+        if (tile > ALWAN_MAP_TILE_PIXELS) tile = ALWAN_MAP_TILE_PIXELS; \
+        { \
+            ALWAN_ALIGN(32) alwan_map_lane c0[ALWAN_MAP_TILE_PIXELS], c1[ALWAN_MAP_TILE_PIXELS], c2[ALWAN_MAP_TILE_PIXELS]; \
+            ALWAN_ALIGN(32) alwan_map_lane d0[ALWAN_MAP_TILE_PIXELS], d1[ALWAN_MAP_TILE_PIXELS], d2[ALWAN_MAP_TILE_PIXELS]; \
+            ALWAN_MAP_NAME(alwan__load_tile_aos3)(c0, c1, c2, in, processed, in_stride, tile); \
+            kernel(d0, d1, d2, c0, c1, c2, tile); \
+            ALWAN_MAP_NAME(alwan__store_tile_aos3)(out, processed, out_stride, d0, d1, d2, tile); \
+        } \
+        processed += tile; \
+    } \
+    return ALWAN_OK; \
+}
+
+ALWAN_MAP_XYB_INTERLEAVE(ALWAN_MAP_LITCAT(alwan_linear_srgb_to_xyb, _map_interleave), ALWAN_MAP_LIT(alwan__linear_srgb_to_xyb_kernel))
+ALWAN_MAP_XYB_INTERLEAVE(ALWAN_MAP_LITCAT(alwan_xyb_to_linear_srgb, _map_interleave), ALWAN_MAP_LIT(alwan__xyb_to_linear_srgb_kernel))
+ALWAN_MAP_XYB_INTERLEAVE(ALWAN_MAP_LITCAT(alwan_xyz_to_xyb, _map_interleave), ALWAN_MAP_LIT(alwan__xyz_to_xyb_kernel))
+ALWAN_MAP_XYB_INTERLEAVE(ALWAN_MAP_LITCAT(alwan_xyb_to_xyz, _map_interleave), ALWAN_MAP_LIT(alwan__xyb_to_xyz_kernel))
+
+#undef ALWAN_MAP_XYB_INTERLEAVE
+
 /* ================================================================
  * Planar Map Variants (tiled, reusing SIMD kernels)
  * ================================================================ */
@@ -2381,6 +2515,12 @@ ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_hunter_lab_to_xyz, _map_
 /* XYZ <-> ProLab (L is bounded) */
 ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_xyz_to_prolab, _map_planar),  ALWAN_MAP_LIT(alwan__xyz_to_prolab_kernel), ALWAN_MAP_P_N_KEEP, ALWAN_MAP_P_N_L_UNIT)
 ALWAN_MAP_P_PLANAR_FROM_KERNEL_N(ALWAN_MAP_LITCAT(alwan_prolab_to_xyz, _map_planar),  ALWAN_MAP_LIT(alwan__prolab_to_xyz_kernel), ALWAN_MAP_P_N_L_NATIVE, ALWAN_MAP_P_N_KEEP)
+
+/* Linear sRGB / XYZ <-> XYB */
+ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_linear_srgb_to_xyb, _map_planar), ALWAN_MAP_LIT(alwan__linear_srgb_to_xyb_kernel))
+ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_xyb_to_linear_srgb, _map_planar), ALWAN_MAP_LIT(alwan__xyb_to_linear_srgb_kernel))
+ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_xyz_to_xyb, _map_planar),         ALWAN_MAP_LIT(alwan__xyz_to_xyb_kernel))
+ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_xyb_to_xyz, _map_planar),         ALWAN_MAP_LIT(alwan__xyb_to_xyz_kernel))
 
 /* RGB <-> Prismatic */
 ALWAN_MAP_P_PLANAR_FROM_KERNEL(ALWAN_MAP_LITCAT(alwan_rgb_to_prismatic, _map_planar),  ALWAN_MAP_LIT(alwan__rgb_to_prismatic_kernel))

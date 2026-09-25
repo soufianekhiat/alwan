@@ -255,6 +255,10 @@ No extra parameters:
 | `alwan_hunter_lab_to_xyz_{T}_map_interleave` | Hunter Lab -> XYZ (D65) |
 | `alwan_xyz_to_prolab_{T}_map_interleave` | XYZ -> ProLab (D65) |
 | `alwan_prolab_to_xyz_{T}_map_interleave` | ProLab -> XYZ (D65) |
+| `alwan_xyz_to_xyb_{T}_map_interleave` | XYZ (D65) -> XYB |
+| `alwan_xyb_to_xyz_{T}_map_interleave` | XYB -> XYZ (D65) |
+| `alwan_linear_srgb_to_xyb_{T}_map_interleave` | linear sRGB -> XYB |
+| `alwan_xyb_to_linear_srgb_{T}_map_interleave` | XYB -> linear sRGB |
 
 With custom white point (`alwan_xyz_{T} const *white_xyz` trailing):
 
