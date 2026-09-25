@@ -1749,6 +1749,14 @@ region's mean, minimum and maximum are taken in each of its `channels`.
 | `eccentricity` | 0 for a circle, towards 1 for a line |
 | `perimeter` | along the 4-connected border, diagonal steps counted sqrt(2) |
 | `equivalent_diameter` | of the circle with the region's area |
+| `moments`, `moments_central` | the region's box as a 0/1 image, raw and about its centroid, [p][q] row power p, column power q, orders 0 to 3 |
+| `moments_normalized` | NaN where p + q < 2 |
+| `moments_hu` | Hu's seven invariants |
+| `inertia_tensor`, `inertia_tensor_eigvals` | eigenvalues largest first, clipped at 0 |
+| `area_convex`, `solidity` | pixels of the box inside the convex hull or on its edges; area / area_convex |
+| `euler_number` | 8-connected objects less 4-connected holes |
+| `perimeter_crofton` | Crofton's formula over four directions |
+| `feret_diameter_max` | the longest distance across the convex hull's outline |
 
 These are scikit-image's `measure.regionprops` (`label`, `area`, `bbox`, `centroid`,
 `intensity_mean`, `intensity_min`, `intensity_max`, `orientation`, `axis_major_length`,
@@ -1760,6 +1768,98 @@ for one channel, a running sum per channel for several). The shape measures come
 the central moments with the inertia tensor's eigenvalues in closed form, where
 scikit-image uses einsum and LAPACK, and agree to 6e-15; the perimeter, a weighted
 histogram scikit-image sums by BLAS, to the same.
+
+The fields from `moments` on are scikit-image's properties of the same names, and suite 252
+holds them to it on shapes with holes, an island in a hole, a single pixel, a diagonal line,
+a thin bar, slanted polygons, random blobs and a one-row image. `area_convex`, `solidity`,
+`euler_number` and `feret_diameter_max` are equal: scikit-image's convex hull is the hull of
+the four edge midpoints of the row and column extremes, and the pixel centres inside it or
+on it, which alwan builds in doubled integer coordinates, so no rounding enters; its largest
+Feret diameter is the longest distance between the points where the hull mask's outline
+crosses between pixels, which are half-integer midpoints. The moments agree to rounding
+(scikit-image sums them in einsum), Crofton's perimeter to 2e-16 of itself.
+
+## Moments
+
+```c
+alwan_status alwan_moments_{T}(double *mu, size_t order, alwan_{T} const *src, size_t row_stride,
+                               size_t width, size_t height, alwan_moments_method method,
+                               alwan_moments_params const *params);
+alwan_status alwan_moments_u8(double *mu, size_t order, unsigned char const *src, ...);
+alwan_status alwan_moments_normalized(double *nu, double const *mu, size_t order, double const *spacing);
+alwan_status alwan_moments_hu(double *hu, double const *nu, size_t order);
+alwan_status alwan_inertia_tensor(double *tensor, double *eigvals, double const *mu, size_t order);
+```
+
+The moments of a one-channel image, as scikit-image's `measure.moments`, `moments_central`,
+`moments_normalized`, `moments_hu`, `inertia_tensor` and `inertia_tensor_eigvals`. `mu`
+receives (order + 1)^2 values, `mu[p * (order + 1) + q]` the sum over pixels of the value
+times dr^p dc^q, with dr = row * spacing[0] - center[0] and dc = column * spacing[1] -
+center[1]; order is at most 16.
+
+| `method` | Centre | Formed |
+|---|---|---|
+| `RAW` | 0 | summed directly, every p and q |
+| `CENTRAL` | the centroid | from the raw moments as scikit-image forms them: its closed forms to order 3, the binomial expansion above; 0 where p + q > order |
+| `CENTRAL`, `center_given` | `center` | summed directly about it, every p and q |
+
+`alwan_moments_params` is `center_given`, `center[2]` (row, column) and `spacing[2]` (0 reads
+as 1). u8 takes raw values 0 to 255, as scikit-image does; f32 computes in double.
+`alwan_moments_normalized` divides by mu00^((p + q) / 2 + 1) and min(spacing)^(p + q), NaN
+where p + q < 2; `alwan_moments_hu` evaluates scikit-image's expressions in its order; the
+inertia tensor is [[mu02, -mu11], [-mu11, mu20]] / mu00, its eigenvalues in closed form where
+scikit-image calls LAPACK.
+
+Suite 252 holds them to scikit-image at orders 0 to 6 on float and u8 images, with and
+without spacing, about the centroid and about a given centre: summed moments within 1e-13 of
+the matrix's largest entry, central moments from raw ones within 64 epsilon of the size of
+what they cancel (the raw terms of that expansion, which is large far from the origin), and
+the normalised moments, Hu's invariants, the tensor and its eigenvalues within 1e-12. On
+float32-exact values the f32 entry point gives the f64 moments exactly.
+
+## Template matching
+
+```c
+alwan_status alwan_match_template_{T}(alwan_{T} *out, size_t out_row_stride,
+                                      alwan_{T} const *image, size_t image_row_stride,
+                                      size_t width, size_t height,
+                                      alwan_{T} const *templ, size_t templ_row_stride,
+                                      size_t templ_width, size_t templ_height,
+                                      alwan_template_params const *params);
+alwan_status alwan_match_template_u8(alwan_f64 *out, ...);   /* unsigned char image and template, double out */
+```
+
+The normalised cross-correlation of a template at every placement over an image, the
+correlation coefficient in [-1, 1], as scikit-image's `feature.match_template` (Lewis, "Fast
+Normalized Cross-Correlation"). With `pad_input` 0, `out` is (width - templ_width + 1) x
+(height - templ_height + 1) and each value belongs to the template's top-left corner at that
+pixel; with `pad_input` set, `out` is width x height and each value belongs to the template's
+centre ((size - 1) / 2). The best match is the largest value: `alwan_peak_local_max` finds it,
+and the next ones.
+
+| `alwan_template_params` | Default | Meaning |
+|---|---|---|
+| `pad_input` | 0 | as above |
+| `mode` | `CONSTANT` | how the image is padded: `CONSTANT`, `EDGE`, `SYMMETRIC`, `REFLECT`, `WRAP`, numpy.pad's |
+| `constant_value` | 0 | `CONSTANT`'s value |
+
+As scikit-image, the image is padded by the template's size on every side whatever
+`pad_input` says, so the mode matters at the edges in both. The window sums and sums of
+squares are running sums down the columns and then along the rows, exactly as scikit-image
+forms them; the cross-correlation comes from alwan's FFT on power-of-two sizes, or directly
+when the template is small enough for that to cost less. A window whose variance term is
+at most the precision's epsilon answers 0, so a flat template gives 0 everywhere. One
+channel: for colour, match on luminance, or per channel and combine. u8 takes raw values and
+writes doubles; f32 computes in double and rounds.
+
+Suite 251 holds it to scikit-image on random images of odd and even sizes, with small
+templates (direct) and large ones (FFT), `pad_input` off and on, every mode, templates as
+large as the image, a template cut from the image (1 at its place, to 4e-16), a flat
+template, a flat block in the image and u8 camera crops: within 6.4e-15 in f64 and 3.3e-13
+in u8 (values to 255). The exception is a window lying on a flat patch: there the response
+is rounding divided by a denominator of the same size, scikit-image's and alwan's both
+within 1e-7 of 0 and not comparable closer. On float32-exact values the f32 entry point
+gives the f64 response rounded.
 
 ## Contours
 

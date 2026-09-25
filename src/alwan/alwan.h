@@ -2632,6 +2632,45 @@ alwan_status alwan_register_f32(alwan_register_result *out, alwan_f32 const *ref
 alwan_status alwan_register_f64(alwan_register_result *out, alwan_f64 const *reference, size_t reference_row_stride, alwan_f64 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
 alwan_status alwan_register_u8(alwan_register_result *out, unsigned char const *reference, size_t reference_row_stride, unsigned char const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
 
+/* Template matching by normalised cross-correlation, as scikit-image's match_template
+ * (suite 251): at every placement, the correlation coefficient between the template and the
+ * image window under it, in [-1, 1].
+ *
+ * The image is first padded on every side by the template's own size (mode and
+ * constant_value as numpy.pad), exactly as scikit-image does whatever pad_input says. The
+ * window sums and sums of squares come from running sums down the columns then along the
+ * rows, as scikit-image forms them, and the cross-correlation from alwan's FFT, or directly
+ * when that is cheaper. A window whose (sum of squares - sum^2 / n) times the template's sum
+ * of squared deviations is at most the precision's epsilon answers 0, as scikit-image does,
+ * so a flat template or a flat window gives 0.
+ *
+ * pad_input 0: out is (width - template_width + 1) x (height - template_height + 1), each
+ * value for the template's top-left corner at that pixel. pad_input non-zero: out is width x
+ * height, each value for the template's centre ((size - 1) / 2) at that pixel.
+ *
+ * One channel, like scikit-image's 2-D images: for colour, match on luminance or run each
+ * channel and combine. f32 computes in double and rounds the result; u8 takes raw values 0 to
+ * 255 as scikit-image does and writes doubles. ALWAN_E_INVALID for a NULL, a zero size, a
+ * stride too small or an unknown mode; ALWAN_E_RANGE for a template larger than the image. */
+typedef enum {
+    ALWAN_TEMPLATE_PAD_CONSTANT = 0,   /* numpy 'constant': k k k | a b c d | k k k, k = constant_value */
+    ALWAN_TEMPLATE_PAD_EDGE = 1,       /* numpy 'edge':      a a a | a b c d | d d d */
+    ALWAN_TEMPLATE_PAD_SYMMETRIC = 2,  /* numpy 'symmetric': c b a | a b c d | d c b */
+    ALWAN_TEMPLATE_PAD_REFLECT = 3,    /* numpy 'reflect':   d c b | a b c d | c b a */
+    ALWAN_TEMPLATE_PAD_WRAP = 4        /* numpy 'wrap':      b c d | a b c d | a b c */
+} alwan_template_pad;
+
+/* A zero field is scikit-image's default. */
+typedef struct {
+    int pad_input;                     /* non-zero: out the image's size, values at the template's centre */
+    alwan_template_pad mode;           /* how the image is padded; 0 is CONSTANT */
+    double constant_value;             /* CONSTANT: the value past the edge; 0 as scikit-image's */
+} alwan_template_params;
+
+alwan_status alwan_match_template_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *image, size_t image_row_stride, size_t width, size_t height, alwan_f32 const *templ, size_t templ_row_stride, size_t templ_width, size_t templ_height, alwan_template_params const *params);
+alwan_status alwan_match_template_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *image, size_t image_row_stride, size_t width, size_t height, alwan_f64 const *templ, size_t templ_row_stride, size_t templ_width, size_t templ_height, alwan_template_params const *params);
+alwan_status alwan_match_template_u8(alwan_f64 *out, size_t out_row_stride, unsigned char const *image, size_t image_row_stride, size_t width, size_t height, unsigned char const *templ, size_t templ_row_stride, size_t templ_width, size_t templ_height, alwan_template_params const *params);
+
 /* Iso-contours by marching squares, as scikit-image's find_contours (suite 249). A 2 x 2
  * square walks the image; each corner above the level sets a bit (a corner equal to the
  * level counts as below), the square's case gives the segment or segments crossing it, the
@@ -3687,11 +3726,68 @@ typedef struct {
     double eccentricity;         /* 0 for a circle, towards 1 for a line */
     double perimeter;            /* the 4-connected border, diagonal steps sqrt(2) */
     double equivalent_diameter;  /* of the circle with the region's area */
+    /* The rest as scikit-image's regionprops of the same names, taken on the region's own
+     * box (row, column order; spacing 1). moments is raw, moments_central about the centroid
+     * in the box, moments_normalized NaN where p + q < 2; [p][q] is row power p, column
+     * power q. */
+    double moments[4][4];
+    double moments_central[4][4];
+    double moments_normalized[4][4];
+    double moments_hu[7];
+    double inertia_tensor[2][2];
+    double inertia_tensor_eigvals[2];  /* largest first, clipped at 0 */
+    size_t area_convex;          /* pixels of the box inside the convex hull, its edges included */
+    double solidity;             /* area / area_convex */
+    long euler_number;           /* 8-connected objects less 4-connected holes */
+    double perimeter_crofton;    /* Crofton's formula, four directions */
+    double feret_diameter_max;   /* the longest distance across the convex hull's outline */
 } alwan_region_props;
 
 alwan_status alwan_region_props_f32(alwan_region_props *props, size_t capacity, size_t *count_out, uint32_t const *labels, size_t labels_row_stride, alwan_f32 const *intensity, size_t intensity_row_stride, size_t channels, size_t width, size_t height);
 alwan_status alwan_region_props_f64(alwan_region_props *props, size_t capacity, size_t *count_out, uint32_t const *labels, size_t labels_row_stride, alwan_f64 const *intensity, size_t intensity_row_stride, size_t channels, size_t width, size_t height);
 alwan_status alwan_region_props_u8(alwan_region_props *props, size_t capacity, size_t *count_out, uint32_t const *labels, size_t labels_row_stride, unsigned char const *intensity, size_t intensity_row_stride, size_t channels, size_t width, size_t height);
+
+/* Image moments, as scikit-image's measure.moments and moments_central (suite 252): for
+ * p, q in 0..order, mu[p * (order + 1) + q] = sum over pixels of value * dr^p * dc^q, with
+ * dr = row * spacing[0] - center[0] and dc = column * spacing[1] - center[1]. RAW takes the
+ * centre at 0. CENTRAL takes it at the image's centroid unless center_given: then it is
+ * formed from the raw moments as scikit-image does (closed forms up to order 3, the binomial
+ * expansion above), leaving 0 where p + q > order; with center_given every entry is summed
+ * directly about the given centre. One channel; u8 takes raw values, as scikit-image does.
+ * ALWAN_E_INVALID for a NULL, a zero size, a stride too small, an order over 16 or a
+ * negative spacing. */
+typedef enum {
+    ALWAN_MOMENTS_RAW = 0,
+    ALWAN_MOMENTS_CENTRAL = 1
+} alwan_moments_method;
+
+/* A zero field is its default. */
+typedef struct {
+    int center_given;            /* CENTRAL: non-zero uses center; 0 the centroid */
+    double center[2];            /* row, column */
+    double spacing[2];           /* per axis; 0 reads as 1 */
+} alwan_moments_params;
+
+alwan_status alwan_moments_f32(double *mu, size_t order, alwan_f32 const *src, size_t row_stride, size_t width, size_t height, alwan_moments_method method, alwan_moments_params const *params);
+alwan_status alwan_moments_f64(double *mu, size_t order, alwan_f64 const *src, size_t row_stride, size_t width, size_t height, alwan_moments_method method, alwan_moments_params const *params);
+alwan_status alwan_moments_u8(double *mu, size_t order, unsigned char const *src, size_t row_stride, size_t width, size_t height, alwan_moments_method method, alwan_moments_params const *params);
+
+/* Normalised central moments, as scikit-image's moments_normalized: nu[p][q] =
+ * mu[p][q] / min(spacing)^(p + q) / mu[0][0]^((p + q) / 2 + 1), NaN where p + q < 2. mu and
+ * nu are (order + 1)^2 values as alwan_moments writes them; spacing NULL reads as 1. nu may
+ * be mu. ALWAN_E_INVALID for a NULL or an order over 16. */
+alwan_status alwan_moments_normalized(double *nu, double const *mu, size_t order, double const *spacing);
+
+/* Hu's seven moment invariants from normalised central moments of order 3 or more
+ * ((order + 1)^2 values), as scikit-image's moments_hu. ALWAN_E_INVALID for a NULL or an
+ * order under 3 or over 16. */
+alwan_status alwan_moments_hu(double *hu, double const *nu, size_t order);
+
+/* The inertia tensor [[mu02, -mu11], [-mu11, mu20]] / mu00 from central moments of order 2
+ * or more, as scikit-image's inertia_tensor, and its eigenvalues largest first, clipped at 0
+ * (inertia_tensor_eigvals). Either output may be NULL, not both. ALWAN_E_INVALID for a NULL
+ * mu, both outputs NULL, or an order under 2 or over 16. */
+alwan_status alwan_inertia_tensor(double *tensor, double *eigvals, double const *mu, size_t order);
 
 /* Colour transfer: the look of a reference image carried onto a source. The two need not
  * be the same size; pixels are `channels` values at the given byte strides (a count, not a

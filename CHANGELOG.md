@@ -441,6 +441,15 @@
 
 ### Added
 
+- **Template matching and image moments: `alwan_match_template_{T}`, `alwan_moments_{T}`,
+  `alwan_moments_normalized`, `alwan_moments_hu`, `alwan_inertia_tensor`; region shape in
+  `alwan_region_props`.** Normalised cross-correlation as scikit-image's match_template, every
+  numpy.pad mode and pad_input, within 6.4e-15 (suite 251). Raw, central, normalised and Hu
+  moments and the inertia tensor as scikit-image's, and each region's moments, convex area,
+  solidity, Euler number, Crofton perimeter and largest Feret diameter, the hull built in
+  exact integer arithmetic so the convex area, solidity, Euler number and Feret diameter are
+  scikit-image's exactly (suite 252).
+
 - **Peaks, reconstruction, h- and local extrema: `alwan_peak_local_max_{T}`,
   `alwan_reconstruct_{T}`, `ALWAN_MORPHOLOGY_H_MAXIMA`, `H_MINIMA`, `LOCAL_MAXIMA`,
   `LOCAL_MINIMA`.** The local maxima of an image as coordinates, highest first, with

@@ -1031,6 +1031,7 @@ EXPORTS
     alwan_image_convert_rgba_f64
     alwan_index_stress_f32
     alwan_index_stress_f64
+    alwan_inertia_tensor
     alwan_inpaint_f32
     alwan_inpaint_f64
     alwan_interop_count
@@ -1271,6 +1272,9 @@ EXPORTS
     alwan_mat3_transform_f64_map_interleave
     alwan_mat3_transform_f64_map_planar
     alwan_mat3_transform_map_interleave_ex
+    alwan_match_template_f32
+    alwan_match_template_f64
+    alwan_match_template_u8
     alwan_maxcll_f32
     alwan_maxcll_f64
     alwan_maxfall_f32
@@ -1293,6 +1297,11 @@ EXPORTS
     alwan_michelson_contrast_f64
     alwan_mired_to_cct_f32
     alwan_mired_to_cct_f64
+    alwan_moments_f32
+    alwan_moments_f64
+    alwan_moments_hu
+    alwan_moments_normalized
+    alwan_moments_u8
     alwan_morphology_f32
     alwan_morphology_f64
     alwan_morphology_u8
