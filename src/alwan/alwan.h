@@ -629,11 +629,11 @@ typedef enum {
     ALWAN_ILLUMINANT_LED_V2 = 32, /* LED V2 */
 
     /* High Pressure illuminants */
-    ALWAN_ILLUMINANT_HP1 = 33, /* High Pressure 1 (mercury) */
-    ALWAN_ILLUMINANT_HP2 = 34, /* High Pressure 2 */
-    ALWAN_ILLUMINANT_HP3 = 35, /* High Pressure 3 */
-    ALWAN_ILLUMINANT_HP4 = 36, /* High Pressure 4 */
-    ALWAN_ILLUMINANT_HP5 = 37, /* High Pressure 5 */
+    ALWAN_ILLUMINANT_HP1 = 33, /* CIE 15 HP1: standard high-pressure sodium */
+    ALWAN_ILLUMINANT_HP2 = 34, /* CIE 15 HP2: colour-enhanced high-pressure sodium */
+    ALWAN_ILLUMINANT_HP3 = 35, /* CIE 15 HP3: metal halide */
+    ALWAN_ILLUMINANT_HP4 = 36, /* CIE 15 HP4: metal halide */
+    ALWAN_ILLUMINANT_HP5 = 37, /* CIE 15 HP5: metal halide */
 
     /* CIE FL3.x fluorescents. colour-science spells these FL3.1 to FL3.15; alwan spells
      * its fluorescents F1 to F12, so they are F3_1 to F3_15 here. F3_1 is not a variant
