@@ -188,6 +188,8 @@ EXPORTS
     alwan_camera_sensitivities_from_chart_f64
     alwan_cat_cie1994_f32
     alwan_cat_cie1994_f64
+    alwan_cat_cmccat2000_f32
+    alwan_cat_cmccat2000_f64
     alwan_cat_li2025_f32
     alwan_cat_li2025_f64
     alwan_cat_matrix_f32
@@ -408,6 +410,7 @@ EXPORTS
     alwan_content_light_level_compute_f64
     alwan_corner_response_f32
     alwan_corner_response_f64
+    alwan_corresponding_chromaticities_breneman1987
     alwan_cqs_calculate_f32
     alwan_cqs_calculate_f64
     alwan_create

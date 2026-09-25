@@ -1559,6 +1559,13 @@ alwan_status alwan_vignette_characterise_{T}(alwan_vignette **out, alwan_{T} con
 alwan_status alwan_vignette_correct_{T}(alwan_{T} *out, size_t out_row_stride,
                                         alwan_{T} const *src, size_t src_row_stride, size_t channels,
                                         size_t width, size_t height, alwan_vignette const *vignette);
+alwan_status alwan_vignette_characterise_u8(alwan_vignette **out, unsigned char const *flat, size_t row_stride,
+                                            size_t channels, size_t width, size_t height,
+                                            alwan_vignette_method method, alwan_vignette_params const *params,
+                                            alwan_ctx *ctx);
+alwan_status alwan_vignette_correct_u8(unsigned char *out, size_t out_row_stride,
+                                       unsigned char const *src, size_t src_row_stride, size_t channels,
+                                       size_t width, size_t height, alwan_vignette const *vignette);
 alwan_status alwan_vignette_evaluate(double *out, size_t out_row_stride, size_t width, size_t height,
                                      size_t channel, alwan_vignette const *vignette);
 alwan_status alwan_vignette_principal_point(double *xy, alwan_vignette const *vignette);

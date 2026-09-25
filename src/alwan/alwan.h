@@ -3962,6 +3962,45 @@ alwan_status alwan_cat_zhai2018_f32(alwan_xyz_f32 *xyz_out,
                            alwan_f32 D_dst,
                            alwan_xyz_f32 const *xyz_baseline,
                            alwan_cat_method transform);
+
+/* CMCCAT2000 as a model (Li, Luo, Rigg and Hunt 2002), not the matrix alone: the degree of
+ * adaptation D = F (0.08 log10((L_A1 + L_A2) / 2) + 0.76 - 0.45 (L_A1 - L_A2) / (L_A1 + L_A2)),
+ * clipped to [0, 1], from the adapting luminances L_A1 (test) and L_A2 (reference), cd / m^2,
+ * and the surround F (1 average, 0.8 dim or dark); then
+ * RGB_c = RGB (D (Y_w / Y_wr) (RGB_wr / RGB_w) + 1 - D) in CMCCAT2000's cone space. xyz_w is the
+ * test white, xyz_wr the reference; inverse non-zero runs it backwards. As colour's
+ * chromatic_adaptation_CMCCAT2000 (suite 241). ALWAN_E_RANGE for a luminance not positive, a
+ * negative F or a white with Y = 0. */
+alwan_status alwan_cat_cmccat2000_f64(alwan_xyz_f64 *xyz_out, alwan_xyz_f64 const *xyz_in, alwan_xyz_f64 const *xyz_w, alwan_xyz_f64 const *xyz_wr, alwan_f64 L_A1, alwan_f64 L_A2, alwan_f64 F, int inverse);
+alwan_status alwan_cat_cmccat2000_f32(alwan_xyz_f32 *xyz_out, alwan_xyz_f32 const *xyz_in, alwan_xyz_f32 const *xyz_w, alwan_xyz_f32 const *xyz_wr, alwan_f32 L_A1, alwan_f32 L_A2, alwan_f32 F, int inverse);
+
+/* Corresponding chromaticities: a chromatic adaptation model scored against Breneman's 1987
+ * experiments, in which observers matched a colour under one adapting field to one
+ * remembered under another. For each sample of the experiment, out receives the u'v' under
+ * the test field (uv_t), the u'v' the observers chose under the reference field (uv_m) and
+ * the u'v' the model predicts (uv_p); the gap between the last two is the model's error.
+ * As colour's corresponding_chromaticities_prediction_* at their defaults, including their
+ * scales (suite 241): von Kries with transform, CIE 1994 (Y_o = 30, both illuminances the
+ * primaries' luminance), CMCCAT2000 (both adapting luminances that, average surround),
+ * Zhai 2018 (full adaptation, equal-energy baseline, transform CAT02 or CAT16).
+ * Experiments 1, 2, 3, 4, 6, 8, 11 and 12, twelve samples each. ALWAN_E_NODATA for 5, 7 and
+ * 10, which carry no adapting luminance, and 9, whose 19 samples outnumber the 12 luminance
+ * factors (colour raises an IndexError there); ALWAN_E_RANGE for capacity under 12. */
+typedef enum {
+    ALWAN_CORRESPONDING_VON_KRIES = 0,
+    ALWAN_CORRESPONDING_CIE1994 = 1,
+    ALWAN_CORRESPONDING_CMCCAT2000 = 2,
+    ALWAN_CORRESPONDING_ZHAI2018 = 3
+} alwan_corresponding_model;
+
+typedef struct {
+    char const *name;   /* the sample: Gray, Red, Skin, ... */
+    double uv_t[2];     /* u'v' under the test field */
+    double uv_m[2];     /* u'v' the observers matched under the reference field */
+    double uv_p[2];     /* u'v' the model predicts */
+} alwan_corresponding_prediction;
+
+alwan_status alwan_corresponding_chromaticities_breneman1987(alwan_corresponding_prediction *out, size_t capacity, size_t *count, int experiment, alwan_corresponding_model model, alwan_cat_method transform);
 alwan_status alwan_cat_zhai2018_f64(alwan_xyz_f64 *xyz_out,
                            alwan_xyz_f64 const *xyz_in,
                            alwan_xyz_f64 const *xyz_src,

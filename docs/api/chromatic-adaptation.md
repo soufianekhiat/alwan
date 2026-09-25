@@ -202,6 +202,77 @@ carries both whites' luminances through, so a change in adapting luminance is no
 
 ---
 
+### alwan_cat_cmccat2000_{T}
+
+```c
+alwan_status alwan_cat_cmccat2000_{T}(alwan_xyz_{T} *xyz_out, alwan_xyz_{T} const *xyz_in,
+                                      alwan_xyz_{T} const *xyz_w, alwan_xyz_{T} const *xyz_wr,
+                                      alwan_{T} L_A1, alwan_{T} L_A2, alwan_{T} F, int inverse);
+```
+
+CMCCAT2000 as Li, Luo, Rigg and Hunt (2002) published it, the model and not only its matrix
+(the matrix alone is `ALWAN_CAT_CMCCAT2000`). The degree of adaptation depends on both
+adapting luminances:
+
+```
+D = F (0.08 log10((L_A1 + L_A2) / 2) + 0.76 - 0.45 (L_A1 - L_A2) / (L_A1 + L_A2)),  clipped to [0, 1]
+RGB_c = RGB (D (Y_w / Y_wr) (RGB_wr / RGB_w) + 1 - D)
+```
+
+- `xyz_w`, `xyz_wr` -- test and reference whites, same scale as the stimulus.
+- `L_A1`, `L_A2` -- adapting luminance of the test and reference fields, cd/m2.
+- `F` -- surround, `1.0` average, `0.8` dim or dark.
+- `inverse` -- non-zero maps a reference-field colour back to the test field.
+
+Suite 241 holds it to colour's `chromatic_adaptation_CMCCAT2000` forward and inverse.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_RANGE` for a luminance not positive, a negative `F` or a
+white with `Y = 0`; `ALWAN_E_INVALID` on a NULL argument.
+
+---
+
+### alwan_corresponding_chromaticities_breneman1987
+
+```c
+alwan_status alwan_corresponding_chromaticities_breneman1987(alwan_corresponding_prediction *out,
+                                                             size_t capacity, size_t *count,
+                                                             int experiment,
+                                                             alwan_corresponding_model model,
+                                                             alwan_cat_method transform);
+```
+
+Scores an adaptation model against Breneman's 1987 experiments. In each one, observers
+adjusted a colour seen under a test field until it matched one remembered under a
+reference field. For each sample, `out` receives:
+
+- `uv_t` -- the sample's u'v' under the test field;
+- `uv_m` -- the u'v' the observers chose under the reference field;
+- `uv_p` -- the u'v' the model predicts.
+
+The distance from `uv_p` to `uv_m` is the model's error.
+
+| `model` | Runs | `transform` |
+|---|---|---|
+| `ALWAN_CORRESPONDING_VON_KRIES` | `alwan_cat_matrix` between the two illuminants | any matrix method |
+| `ALWAN_CORRESPONDING_CIE1994` | `alwan_cat_cie1994`, `Y_o = 30`, both illuminances the primaries' luminance | ignored |
+| `ALWAN_CORRESPONDING_CMCCAT2000` | `alwan_cat_cmccat2000`, both adapting luminances that, `F = 1` | ignored |
+| `ALWAN_CORRESPONDING_ZHAI2018` | `alwan_cat_zhai2018`, `D = 1`, equal-energy baseline | CAT02 or CAT16 |
+
+The scales follow colour's `corresponding_chromaticities_prediction_*` so the two agree to
+the last bit: whites at `Y = 1`, each sample at its luminance factor times the primaries'
+`Y`. Suite 241 checks all six model and transform pairs on the eight usable experiments,
+and prints each one's mean error against the observers.
+
+Experiments 1, 2, 3, 4, 6, 8, 11 and 12 have twelve samples each. Experiments 5, 7 and 10
+carry no adapting luminance. Experiment 9 has 19 samples but only twelve luminance factors
+(colour raises an `IndexError` there).
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_NODATA` for experiments 5, 7, 9 and 10; `ALWAN_E_RANGE`
+for `capacity` under 12; `ALWAN_E_INVALID` for an experiment outside 1..12, an unknown
+model, or a Zhai transform other than CAT02 or CAT16.
+
+---
+
 ### Fairchild 1990, and why it is not here
 
 `ALWAN_CAT_FAIRCHILD` is the linear Fairchild matrix and is unaffected by any of this. The

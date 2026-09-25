@@ -515,6 +515,14 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Corresponding chromaticities and CMCCAT2000 as a model:
+  `alwan_corresponding_chromaticities_breneman1987`, `alwan_cat_cmccat2000_{T}`.** Scores
+  von Kries, CIE 1994, CMCCAT2000 and Zhai 2018 against Breneman's 1987 matching
+  experiments: per sample, the test u'v', the observers' match and the model's prediction.
+  CMCCAT2000 now has its full model, with the degree of adaptation taken from both adapting
+  luminances and the surround. Within 1e-15 of colour's predictions on every usable
+  experiment, and CMCCAT2000 within 6e-14 forward and inverse (suite 241).
+
 - **Thin films and multilayers: `alwan_multilayer_tmm`, `alwan_fresnel`,
   `alwan_water_refractive_index`.** Interference colour by the transfer-matrix method with
   complex angles per wavelength (absorbing layers at an angle, total internal reflection,
