@@ -7911,21 +7911,81 @@ typedef struct {
 alwan_status alwan_cri_specification_f64(alwan_cri_f64 *spec_out, alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_status alwan_cri_specification_f32(alwan_cri_f32 *spec_out, alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 
-/* CQS (Color Quality Scale) - NIST metric using 15 saturated samples */
-/* Returns CQS value [0, 100], or negative on error */
-/* Note: Full implementation requires CMCCAT2000 CAT and VS sample data */
+/* CQS, the NIST Colour Quality Scale (Davis and Ohno), as colour-science's
+ * colour_quality_scale computes it, step for step (suite 257):
+ *   - the test SPD read on 360-780 nm at 1 nm, linearly between its samples and held at its
+ *     end values beyond them (colour's LinearInterpolator and constant extrapolation);
+ *   - CCT by Ohno 2013 on a Planckian table from the CIE 1931 2 deg CMFs over 360-780 nm;
+ *   - the reference a Planckian radiator below 5000 K, else CIE daylight from the daylight
+ *     locus with M1 and M2 rounded to three decimals, as CIE 15 and colour do;
+ *   - the 15 VS samples (9.0's set or 7.4's), each test sample adapted to the reference by
+ *     the von Kries CMCCAT2000 matrix, CIELAB against the reference white;
+ *   - per sample dE*ab, chroma difference and the saturation-corrected dE'; the RMS of those;
+ *     Qa = 10 ln(1 + exp((100 - s dE'_rms) / 10)) x CCT factor, s 3.2 (9.0) or 3.104 (7.4);
+ *     Qf likewise from dE_rms with 2.93 x 1.0343 (9.0) or 2.928 (7.4);
+ *     Qg = the test samples' gamut area in a*b* / 8210 x 100.
+ * 7.4 also has a CCT factor (the reference samples' gamut area at D65 / 8210, at most 1),
+ * Qp and Qd; 9.0 defines neither and leaves them NaN. */
+typedef enum {
+    ALWAN_CQS_9_0 = 0,   /* NIST CQS 9.0 (colour's default) */
+    ALWAN_CQS_7_4 = 1    /* NIST CQS 7.4 */
+} alwan_cqs_version;
+
+#define ALWAN_CQS_SAMPLES 15
+
+typedef struct {
+    alwan_f64 qa, qf, qp, qg, qd;                    /* qp, qd NaN under 9.0 */
+    alwan_f64 cct, duv;                              /* Ohno 2013 */
+    alwan_f64 cct_factor;                            /* 1 under 9.0 */
+    alwan_f64 qas[ALWAN_CQS_SAMPLES];                /* each sample's Qa */
+    alwan_f64 delta_c[ALWAN_CQS_SAMPLES];            /* C*ab test - reference */
+    alwan_f64 delta_e[ALWAN_CQS_SAMPLES];            /* dE*ab */
+    alwan_f64 delta_ep[ALWAN_CQS_SAMPLES];           /* dE*ab with a chroma gain removed */
+    alwan_f64 lab_test[ALWAN_CQS_SAMPLES][3];        /* adapted, against the reference white */
+    alwan_f64 lab_reference[ALWAN_CQS_SAMPLES][3];
+    alwan_f64 gamut_test, gamut_reference;           /* a*b* polygon areas */
+} alwan_cqs_f64;
+
+typedef struct {
+    alwan_f32 qa, qf, qp, qg, qd;
+    alwan_f32 cct, duv;
+    alwan_f32 cct_factor;
+    alwan_f32 qas[ALWAN_CQS_SAMPLES];
+    alwan_f32 delta_c[ALWAN_CQS_SAMPLES];
+    alwan_f32 delta_e[ALWAN_CQS_SAMPLES];
+    alwan_f32 delta_ep[ALWAN_CQS_SAMPLES];
+    alwan_f32 lab_test[ALWAN_CQS_SAMPLES][3];
+    alwan_f32 lab_reference[ALWAN_CQS_SAMPLES][3];
+    alwan_f32 gamut_test, gamut_reference;
+} alwan_cqs_f32;
+
+/* ALWAN_E_INVALID for a NULL, an unknown version or an SPD with fewer than two samples or a
+ * non-finite value; ALWAN_E_RANGE when the SPD has no luminance or its chromaticity falls
+ * off the Planckian table; ALWAN_E_NODATA when the VS reflectances were compiled out. */
+alwan_status alwan_cqs_specification_f64(alwan_cqs_f64 *spec_out, alwan_spd_f64 const *test_spd,
+                                         alwan_cqs_version version, alwan_ctx *ctx);
+alwan_status alwan_cqs_specification_f32(alwan_cqs_f32 *spec_out, alwan_spd_f32 const *test_spd,
+                                         alwan_cqs_version version, alwan_ctx *ctx);
+
+/* Qa of NIST CQS 9.0, as alwan_cqs_specification; -1 on any failure (the 2.0.0 contract).
+ * Until 2026-09-25 this was an approximation, up to 0.24 from colour-science. */
 alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_f32 alwan_cqs_calculate_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 
-/* TM-30 (IES Method) - Fidelity (Rf) using 99 CES samples */
-/* Returns Rf value [0, 100], or negative on error */
-/* Note: Full implementation requires CIECAM02 and 99 CES sample data */
+/* ANSI/IES TM-30-18 / CIE 224:2017 colour fidelity Rf, as colour-science's
+ * colour_fidelity_index_CIE2017 computes it (suite 257): the test SPD on 380-780 nm at its
+ * own interval when that is 1 or 5 nm (read linearly, zero outside its range), else at 1 nm;
+ * CCT by Ohno 2013 on a CIE 1931 table from 1000 to 25000 K; the reference a Planckian
+ * radiator below 4000 K, CIE daylight above 5000 K, and between them the two blended by
+ * luminance; the 99 CIE 2017 test colour samples under the CIE 1964 10 deg observer,
+ * CIECAM02 (L_A 100, Y_b 20, average surround, illuminant discounted), CAM02-UCS; Rf from the
+ * mean difference, 10 ln(1 + exp((100 - 6.73 dE) / 10)). Returns -1 on error.
+ * Until 2026-09-25 this resampled at 5 nm and chose its reference differently: up to
+ * 4e-3 from colour-science. */
 alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_f32 alwan_tm30_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 
-/* CIE 224:2017 Color Fidelity Index (Rf) using 99 CES samples */
-/* Returns Rf value [0, 100], or negative on error */
-/* Note: Uses same algorithm as TM-30 but per CIE 224:2017 standard */
+/* CIE 224:2017 Rf: the same computation as alwan_tm30_rf, which it calls. */
 alwan_f64 alwan_cie224_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 alwan_f32 alwan_cie224_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 
@@ -7938,8 +7998,10 @@ alwan_f32 alwan_cie224_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
  * the colour vector graphic, and rg is 100 times the ratio of the areas those two polygons
  * enclose: above 100 the source saturates on average, below 100 it dulls.
  *
- * A hue bin with no samples in it leaves its averages, rfs, rcs and rhs at zero. No real
- * source empties a bin; the 99 samples were chosen so that none can. */
+ * A hue bin with no samples in it leaves its averages, rfs, rcs and rhs at zero, where
+ * colour-science has NaN. No real source empties a bin; the 99 samples were chosen so that
+ * none can. The per-sample fields (rs, delta_e, jab_test, jab_reference) and cct, duv are
+ * colour-science's R_s, delta_E_s, the two Jpapbp sets, CCT and D_uv. */
 #define ALWAN_TM30_HUE_BINS 16
 #define ALWAN_TM30_SAMPLES 99
 
@@ -7953,6 +8015,11 @@ typedef struct {
     alwan_f64 averages_test[ALWAN_TM30_HUE_BINS][2];       /* (a', b') under the test source */
     alwan_f64 averages_reference[ALWAN_TM30_HUE_BINS][2];  /* (a', b') under the reference */
     int bins[ALWAN_TM30_SAMPLES];                          /* the bin each sample fell in */
+    alwan_f64 cct, duv;                                    /* Ohno 2013, the table to 25000 K */
+    alwan_f64 rs[ALWAN_TM30_SAMPLES];                      /* each sample's fidelity, R_s */
+    alwan_f64 delta_e[ALWAN_TM30_SAMPLES];                 /* each sample's CAM02-UCS difference */
+    alwan_f64 jab_test[ALWAN_TM30_SAMPLES][3];             /* J', a', b' under the test source */
+    alwan_f64 jab_reference[ALWAN_TM30_SAMPLES][3];        /* and under the reference */
 } alwan_tm30_f64;
 
 typedef struct {
@@ -7965,6 +8032,11 @@ typedef struct {
     alwan_f32 averages_test[ALWAN_TM30_HUE_BINS][2];
     alwan_f32 averages_reference[ALWAN_TM30_HUE_BINS][2];
     int bins[ALWAN_TM30_SAMPLES];
+    alwan_f32 cct, duv;
+    alwan_f32 rs[ALWAN_TM30_SAMPLES];
+    alwan_f32 delta_e[ALWAN_TM30_SAMPLES];
+    alwan_f32 jab_test[ALWAN_TM30_SAMPLES][3];
+    alwan_f32 jab_reference[ALWAN_TM30_SAMPLES][3];
 } alwan_tm30_f32;
 
 alwan_status alwan_tm30_specification_f64(alwan_tm30_f64 *spec_out, alwan_spd_f64 const *test_spd, alwan_ctx *ctx);

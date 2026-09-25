@@ -1,0 +1,16 @@
+Tables for CQS and CIE 2017 / TM-30 that follow colour-science step for step, written by
+alwan_dev/gendata/data/quality_exact.py from colour-science 0.4.7 (BSD-3-Clause, Colour
+Developers):
+
+  cqs_vs_9_0_360_780_1nm.csv, cqs_vs_7_4_360_780_1nm.csv
+      colour.quality.datasets.vs SDS_VS (NIST CQS 9.0 and 7.4, Davis and Ohno), reshaped to
+      360-780 nm at 1 nm as colour_quality_scale reshapes them (Sprague, constant
+      extrapolation), VS1 to VS15, row by row.
+  tcs_cfi2017_380_780_1nm.csv, tcs_cfi2017_380_780_5nm.csv
+      colour's colour/quality/datasets/tcs_cfi2017_{1,5}_nm.csv.gz, the 99 CIE 224:2017 test
+      colour samples as colour ships them, row by row.
+  daylight_basis_300_830_5nm.csv
+      colour's SDS_BASIS_FUNCTIONS_CIE_ILLUMINANT_D_SERIES S0, S1, S2 (CIE 15).
+  daylight_basis_380_780_1nm.csv
+      the same reshaped to 380-780 nm at 1 nm with colour's Sprague interpolator, which is
+      how sd_CIE_illuminant_D_series(xy, shape) builds a 1 nm CIE 2017 reference.

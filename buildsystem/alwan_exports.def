@@ -419,6 +419,8 @@ EXPORTS
     alwan_corresponding_chromaticities_breneman1987
     alwan_cqs_calculate_f32
     alwan_cqs_calculate_f64
+    alwan_cqs_specification_f32
+    alwan_cqs_specification_f64
     alwan_create
     alwan_crf_samples_grossberg2003_f32
     alwan_crf_samples_grossberg2003_f64

@@ -221,6 +221,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_image_metrics.c
   src/alwan/api/alwan_macadam.c
   src/alwan/api/alwan_quality.c
+  src/alwan/api/alwan_quality_colour.c
   src/alwan/api/alwan_rayleigh.c
   src/alwan/api/alwan_reference_data.c
   src/alwan/api/alwan_normalize.c

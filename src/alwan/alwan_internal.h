@@ -29,6 +29,15 @@ struct alwan_ctx {
     /* Future: data cache, registry, etc. */
 };
 
+/* api/alwan_planckian_table.c: a Planckian table whose CMF sums stop at wl_max nm (0: all).
+ * colour-science builds its tables from CMFs reshaped to 360-780 nm; CQS and CIE 2017 follow it. */
+alwan_status alwan__planckian_table_create_range(alwan_planckian_table **out, alwan_observer_type observer,
+                                                 double start, double end, double spacing, double wl_max,
+                                                 alwan_ctx *ctx);
+/* api/alwan_quality_colour.c: CQS and CIE 2017 / TM-30 as colour-science computes them. */
+alwan_status alwan__cqs_compute(alwan_cqs_f64 *spec, alwan_spd_f64 const *test_spd, alwan_cqs_version version, alwan_ctx *ctx);
+alwan_status alwan__cie2017_compute(alwan_tm30_f64 *spec, alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
+
 /* Edge-aware filter workers (api/alwan_guided_filter.c, alwan_bilateral.c,
  * alwan_domain_transform.c, alwan_fast_global_smoother.c), behind alwan_edge_filter_{T}.
  * Pixels are f32 when is_f32 is non-zero, f64 otherwise; strides in bytes. */

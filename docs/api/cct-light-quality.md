@@ -222,6 +222,55 @@ stops at the eight samples it needs.
 
 ## Color Quality Scale (CQS)
 
+### alwan_cqs_specification
+
+```c
+typedef enum { ALWAN_CQS_9_0 = 0, ALWAN_CQS_7_4 = 1 } alwan_cqs_version;
+#define ALWAN_CQS_SAMPLES 15
+
+typedef struct {
+    alwan_f64 qa, qf, qp, qg, qd;                    /* qp, qd NaN under 9.0 */
+    alwan_f64 cct, duv;                              /* Ohno 2013 */
+    alwan_f64 cct_factor;                            /* 1 under 9.0 */
+    alwan_f64 qas[ALWAN_CQS_SAMPLES];                /* each sample's Qa */
+    alwan_f64 delta_c[ALWAN_CQS_SAMPLES];            /* C*ab test - reference */
+    alwan_f64 delta_e[ALWAN_CQS_SAMPLES];            /* dE*ab */
+    alwan_f64 delta_ep[ALWAN_CQS_SAMPLES];           /* dE*ab with a chroma gain removed */
+    alwan_f64 lab_test[ALWAN_CQS_SAMPLES][3];        /* adapted, against the reference white */
+    alwan_f64 lab_reference[ALWAN_CQS_SAMPLES][3];
+    alwan_f64 gamut_test, gamut_reference;           /* a*b* polygon areas */
+} alwan_cqs_f64;                                     /* alwan_cqs_f32 is the f32 twin */
+
+alwan_status alwan_cqs_specification_f32(alwan_cqs_f32 *spec_out, alwan_spd_f32 const *test_spd,
+                                         alwan_cqs_version version, alwan_ctx *ctx);
+alwan_status alwan_cqs_specification_f64(alwan_cqs_f64 *spec_out, alwan_spd_f64 const *test_spd,
+                                         alwan_cqs_version version, alwan_ctx *ctx);
+```
+
+The NIST Colour Quality Scale (Davis and Ohno), versions 9.0 and 7.4, as colour-science's
+`colour_quality_scale` computes them, step for step: suite 257 holds every field to it
+within 4e-11 on 54 sources.
+
+- The test SPD is read on 360-780 nm at 1 nm, linearly between its samples and held at its
+  end values beyond them. That is colour's reading of its own illuminant datasets; a
+  spectrum given to colour with its default Sprague interpolator reads slightly differently.
+- CCT by Ohno 2013, on a Planckian table from the CIE 1931 CMFs over 360-780 nm.
+- The reference is a Planckian radiator below 5000 K, else CIE daylight with M1 and M2
+  rounded to three decimals.
+- Each of the 15 VS samples under the test source is adapted to the reference by the von
+  Kries CMCCAT2000 matrix and taken to CIELAB against the reference white.
+- `delta_ep` removes a chroma gain: the square root of dE^2 - dC^2 where dC > 0, else dE.
+  `qa` is `10 ln(1 + exp((100 - s rms(delta_ep)) / 10))` times the CCT factor, with `s` 3.2
+  (9.0) or 3.104 (7.4); `qf` is the same from `delta_e` with 2.93 x 1.0343 or 2.928; `qg` is
+  the test samples' a*b* gamut area over 8210, times 100.
+- Only 7.4 has a CCT factor: the reference samples' gamut area at D65 over 8210, at most 1.
+  It also has `qp` and `qd`. 9.0 defines neither, and leaves them NaN.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL, an unknown version or an SPD with
+fewer than two samples or a non-finite value; `ALWAN_E_RANGE` when the SPD has no
+luminance or its chromaticity falls off the Planckian table; `ALWAN_E_NODATA` when the VS
+reflectances were compiled out.
+
 ### alwan_cqs_calculate
 
 ```c
@@ -229,8 +278,9 @@ alwan_f32 alwan_cqs_calculate_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx)
 alwan_f64 alwan_cqs_calculate_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 ```
 
-NIST Color Quality Scale using 15 saturated samples. Returns [0, 100], or negative on
-error.
+`qa` of NIST CQS 9.0, as `alwan_cqs_specification`, or -1 on any failure (the 2.0.0
+contract). Until 2026-09-25 this ran an approximation of its own, up to 0.24 below
+colour-science (HP1: 33.466 against 33.702).
 
 ---
 
@@ -243,8 +293,28 @@ alwan_f32 alwan_tm30_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 alwan_f64 alwan_tm30_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 ```
 
-IES TM-30 Fidelity Index (Rf) using 99 CES samples. Returns [0, 100], or negative on
-error.
+ANSI/IES TM-30-18 and CIE 224:2017 colour fidelity Rf, as colour-science's
+`colour_fidelity_index_CIE2017`, step for step (suite 257, within 3e-11 of it):
+
+- The test SPD is taken on 380-780 nm at its own interval when that is 1 or 5 nm, linearly
+  between its samples and zero beyond them. Any other interval is read at 1 nm; colour
+  refuses intervals over 5 nm.
+- CCT by Ohno 2013 on a CIE 1931 table from 1000 to 25000 K.
+- The reference is Planckian below 4000 K and CIE daylight above 5000 K (M1 and M2 rounded,
+  the basis Sprague-interpolated at 1 nm). Between those two temperatures it is the two
+  blended by luminance.
+- The 99 CIE 2017 test colour samples, for that interval, go through the CIE 1964 10 deg
+  observer, CIECAM02 (L_A 100, Y_b 20, average surround, illuminant discounted) and
+  CAM02-UCS. Rf is `10 ln(1 + exp((100 - 6.73 mean dE) / 10))`.
+
+The interval matters. CIE 2017 publishes its samples at 1 nm and at 5 nm, and the same lamp
+scores differently on each: colour's HP1 at 5 nm is Rf 34.19, and the same spectrum read at
+1 nm is 34.49. `alwan_spd_illuminant` returns 1 nm spectra, so a comparison against colour
+has to be made on those.
+
+Returns [0, 100], or -1 on error. Until 2026-09-25 this resampled every source to 360-830
+nm at 5 nm, used trapezoid sums and a Robertson CCT, and blended no references: Rf up to
+4e-3 and Rg up to 6e-4 from colour-science on the same input.
 
 ### alwan_tm30_specification
 
@@ -262,6 +332,11 @@ typedef struct {
     alwan_f64 averages_test[ALWAN_TM30_HUE_BINS][2];       /* (a', b') under the test source */
     alwan_f64 averages_reference[ALWAN_TM30_HUE_BINS][2];  /* (a', b') under the reference */
     int bins[ALWAN_TM30_SAMPLES];                          /* the bin each sample fell in */
+    alwan_f64 cct, duv;                                    /* Ohno 2013, the table to 25000 K */
+    alwan_f64 rs[ALWAN_TM30_SAMPLES];                      /* each sample's fidelity, R_s */
+    alwan_f64 delta_e[ALWAN_TM30_SAMPLES];                 /* each sample's CAM02-UCS difference */
+    alwan_f64 jab_test[ALWAN_TM30_SAMPLES][3];             /* J', a', b' under the test source */
+    alwan_f64 jab_reference[ALWAN_TM30_SAMPLES][3];        /* and under the reference */
 } alwan_tm30_f64;                                          /* alwan_tm30_f32 is the f32 twin */
 
 alwan_status alwan_tm30_specification_f32(alwan_tm30_f32 *spec_out,
@@ -282,8 +357,12 @@ which is what a colour vector graphic draws; `average_norms` is the length of ea
 reference vertex, so a caller plotting the graphic can normalise the test vertex against
 the circle without recomputing it.
 
-A bin with no samples in it leaves its entries at zero. No real source empties one; the 99
-samples were chosen so that none can.
+A bin with no samples in it leaves its entries at zero, where colour-science has NaN. No
+real source empties one; the 99 samples were chosen so that none can.
+
+`rs`, `delta_e`, `jab_test`, `jab_reference`, `cct` and `duv` are colour-science's `R_s`,
+`delta_E_s`, the two `Jpapbp` sets, `CCT` and `D_uv`: each sample's own fidelity and where it
+lands in CAM02-UCS under the two sources.
 
 Both entry points cost the same as `alwan_tm30_rf`, which runs the same pipeline and
 discards everything but `rf`.
@@ -295,8 +374,8 @@ alwan_f32 alwan_cie224_rf_f32(alwan_spd_f32 const *test_spd, alwan_ctx *ctx);
 alwan_f64 alwan_cie224_rf_f64(alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 ```
 
-CIE 224:2017 Color Fidelity Index. Same algorithm as TM-30, per the CIE 224:2017
-standard. Returns [0, 100], or negative on error.
+CIE 224:2017 Colour Fidelity Index: the same computation as `alwan_tm30_rf`, which it
+calls. Returns [0, 100], or -1 on error.
 
 ---
 

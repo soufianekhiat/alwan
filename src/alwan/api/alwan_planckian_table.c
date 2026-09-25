@@ -61,10 +61,10 @@ static size_t alwan__ohno_temperatures(double *t, double start, double end, doub
 /* Planck's law summed against the CMFs already loaded, then CIE 1960 uv. c1, pi and the
  * step multiply X, Y and Z alike and cancel, exactly as alwan_cct_to_uv_planck1900. */
 static void alwan__planck_uv(double *u_out, double *v_out, double cct, alwan_spd_f64 const *xb,
-                             alwan_spd_f64 const *yb, alwan_spd_f64 const *zb) {
+                             alwan_spd_f64 const *yb, alwan_spd_f64 const *zb, size_t n) {
     double X = 0.0, Y = 0.0, Z = 0.0, U, V, W, s;
     size_t i;
-    for (i = 0; i < xb->count; i++) {
+    for (i = 0; i < n; i++) {
         double const l = ((double)xb->wavelength_min + (double)i) * 1e-9;
         double const p = (1.0 / (l * l * l * l * l)) / (ALWAN_EXP_F64(1.4388e-2 / (l * cct)) - 1.0);
         X += p * xb->values[i];
@@ -79,8 +79,11 @@ static void alwan__planck_uv(double *u_out, double *v_out, double cct, alwan_spd
     *v_out = V / s;
 }
 
-static alwan_status alwan__planckian_table_create(alwan_planckian_table **out, alwan_observer_type observer,
-                                                  double start, double end, double spacing, alwan_ctx *ctx) {
+/* wl_max above 0 sums the CMFs only up to that wavelength: colour-science reshapes them to
+ * 360-780 nm before building its table, and quality metrics that follow it need the same. */
+alwan_status alwan__planckian_table_create_range(alwan_planckian_table **out, alwan_observer_type observer,
+                                                 double start, double end, double spacing, double wl_max,
+                                                 alwan_ctx *ctx) {
     alwan_spd_f64 xb, yb, zb;
     alwan_planckian_table *table;
     size_t n, i;
@@ -113,8 +116,23 @@ static alwan_status alwan__planckian_table_create(alwan_planckian_table **out, a
         alwan_planckian_table_destroy(table, ctx);
         return st;
     }
-    for (i = 0; i < n; i++) {
-        alwan__planck_uv(&table->u[i], &table->v[i], table->t[i], &xb, &yb, &zb);
+    {
+        size_t used = xb.count;
+        if (wl_max > 0.0) {
+            size_t j = 0;
+            while (j < xb.count && (double)xb.wavelength_min + (double)j <= wl_max) j++;
+            used = j;
+        }
+        if (used < 2) {
+            alwan_spd_destroy_f64(&xb, ctx);
+            alwan_spd_destroy_f64(&yb, ctx);
+            alwan_spd_destroy_f64(&zb, ctx);
+            alwan_planckian_table_destroy(table, ctx);
+            return ALWAN_E_RANGE;
+        }
+        for (i = 0; i < n; i++) {
+            alwan__planck_uv(&table->u[i], &table->v[i], table->t[i], &xb, &yb, &zb, used);
+        }
     }
     alwan_spd_destroy_f64(&xb, ctx);
     alwan_spd_destroy_f64(&yb, ctx);
@@ -125,12 +143,12 @@ static alwan_status alwan__planckian_table_create(alwan_planckian_table **out, a
 
 alwan_status alwan_planckian_table_create_f64(alwan_planckian_table **out, alwan_observer_type observer,
                                               alwan_f64 start, alwan_f64 end, alwan_f64 spacing, alwan_ctx *ctx) {
-    return alwan__planckian_table_create(out, observer, (double)start, (double)end, (double)spacing, ctx);
+    return alwan__planckian_table_create_range(out, observer, (double)start, (double)end, (double)spacing, 0.0, ctx);
 }
 
 alwan_status alwan_planckian_table_create_f32(alwan_planckian_table **out, alwan_observer_type observer,
                                               alwan_f32 start, alwan_f32 end, alwan_f32 spacing, alwan_ctx *ctx) {
-    return alwan__planckian_table_create(out, observer, (double)start, (double)end, (double)spacing, ctx);
+    return alwan__planckian_table_create_range(out, observer, (double)start, (double)end, (double)spacing, 0.0, ctx);
 }
 
 void alwan_planckian_table_destroy(alwan_planckian_table *table, alwan_ctx *ctx) {

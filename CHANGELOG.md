@@ -2,6 +2,20 @@
 
 ### Fixed: output differs
 
+- **CQS and TM-30 now compute what colour-science computes.** Both ran pipelines of their
+  own: the test SPD resampled to 360-830 nm at 5 nm and zero past its ends, trapezoid sums,
+  a Robertson CCT, CIE daylight without CIE 15's rounded M1 and M2, and (TM-30) no
+  blending of the two references between 4000 and 5000 K. They now follow
+  `colour_quality_scale` and `colour_fidelity_index_CIE2017` step by step: CQS on 360-780 nm
+  at 1 nm, CIE 2017 at the SPD's own 1 or 5 nm interval, Ohno 2013 CCTs on 360-780 nm
+  tables, colour's sample tables on those grids. On alwan's own illuminants
+  `alwan_cqs_calculate` moved by up to 0.235 (HP1, 33.466 to 33.702; mean 0.055) and
+  `alwan_tm30_rf`, `alwan_cie224_rf` and the TM-30 specification by up to 0.298 (HP1, 34.193
+  to 34.491; mean 0.062). Every field is now within 4e-11 of colour-science on the same
+  SPD (suite 257). Suite 32's TM-30 reference had been taken on colour's 5 nm originals of
+  illuminants alwan carries at 1 nm, which CIE 2017 scores differently; it is now taken on
+  the 1 nm spectra, and its bars are rounding.
+
 - **`ALWAN_MORPHOLOGY_AREA_OPEN`, `AREA_CLOSE`, `DIAMETER_OPEN` and `DIAMETER_CLOSE` ran
   the skeleton.** Adding `SKELETONIZE` and `THIN` put their cases between the four
   connected operators and the block that runs them, so from that commit the four fell
@@ -440,6 +454,12 @@
   along, and compared six of them. Both now compare the seventh.
 
 ### Added
+
+- **`alwan_cqs_specification_{T}`: NIST CQS 9.0 and 7.4 in full.** Qa, Qf, Qg, and for 7.4 the
+  CCT factor, Qp and Qd; the CCT, each sample's Qa, dC, dE, dE' and CIELAB under both
+  sources, and the gamut areas, as colour-science's `ColourRendering_Specification_CQS`.
+  `alwan_tm30_f64` gains colour's per-sample values: R_s, the CAM02-UCS differences, both
+  J'a'b' sets, the CCT and Duv (suite 257).
 
 - **Label overlays: `alwan_label2rgb_{T}`, `alwan_find_boundaries`,
   `alwan_mark_boundaries_{T}`.** scikit-image's label2rgb (overlay and average, its colour
