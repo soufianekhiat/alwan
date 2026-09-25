@@ -11,7 +11,7 @@ color vision deficiencies. Alwan implements two complementary models, selectable
 
 | Model | Enum | Method | Best for |
 |-------|------|--------|----------|
-| **Brettel, Vienot & Mollon (1997)** | `ALWAN_CVD_MODEL_BRETTEL` | Confusion lines (projection onto the dichromat plane in LMS) | Full dichromacy |
+| **Brettel, Vienot & Mollon (1997)** | `ALWAN_CVD_MODEL_BRETTEL` | Projection along the missing cone's axis onto one of two half-planes in LMS | Full dichromacy, tritanopia included |
 | **Machado, Oliveira & Fernandes (2009)** | `ALWAN_CVD_MODEL_MACHADO` | Cone spectral-sensitivity shift, applied as a per-severity sRGB->sRGB 3x3 matrix | Anomalous (partial) trichromacy |
 
 The Machado model uses precomputed matrices at **11 discrete severity levels**
@@ -82,8 +82,21 @@ alwan_status alwan_simulate_cvd_f64(alwan_rgb_f64 *rgb_out,
                                     alwan_f64 severity);
 ```
 
-Simulate color vision deficiency for a single linear-RGB color using the Brettel/Vienot/Mollon
-confusion-line model.
+Simulate color vision deficiency for a single linear-sRGB color by Brettel, Vienot and
+Mollon (1997), as DaltonLens-Python's `Simulator_Brettel1997` does at its defaults, which
+suite 261 holds it to within 2e-15:
+
+- linear sRGB to LMS by the Smith and Pokorny (1975) cone fundamentals;
+- the missing cone's coordinate replaced by the colour's projection onto one of two
+  half-planes through the neutral axis (RGB white), each through one anchor wavelength:
+  475 and 575 nm for protanopia and deuteranopia, 485 and 660 nm for tritanopia;
+- the half-plane chosen by the side of a separation plane the colour falls on;
+- back to linear sRGB, then mixed with the input by `severity`, linearly in linear sRGB.
+
+Until 2026-09-25 this was one projection per deficiency, the widely copied "daltonize"
+coefficients on a Hunt-Pointer-Estevez matrix: Vienot 1999's single-plane shortcut, which
+does not hold for tritanopia. Outputs moved by up to about 1.0 (a component of a saturated
+colour), a mean of about 0.2 in sRGB code values.
 
 **Parameters:**
 - `rgb_out`: Output simulated RGB color as seen by a person with CVD

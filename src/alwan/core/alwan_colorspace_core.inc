@@ -507,29 +507,15 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_delta_e_2000)(ALWAN_CORE_LAB l
     return ALWAN_CORE_SQRT(t1 * t1 + t2 * t2 + t3 * t3 + RT * t2 * t3);
 }
 
-/* dE HyAB: Hybrid Delta E */
+/* dE HyAB: Abasi, Amani Tehran and Fairchild (2020), the city-block distance in
+ * lightness plus the Euclidean distance across a*b*, as colour-science's delta_E_HyAB.
+ * Until 2026-09-25 this carried CIEDE2000's a' rescaling and a Euclidean sum, which is
+ * not HyAB (up to 67 units off on random Lab pairs). */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_delta_e_hyab)(ALWAN_CORE_LAB lab1, ALWAN_CORE_LAB lab2) {
     ALWAN_CORE_T dL = lab1.L - lab2.L;
+    ALWAN_CORE_T da = lab1.a - lab2.a;
     ALWAN_CORE_T db = lab1.b - lab2.b;
-
-    ALWAN_CORE_T C1 = ALWAN_CORE_SQRT(lab1.a * lab1.a + lab1.b * lab1.b);
-    ALWAN_CORE_T C2 = ALWAN_CORE_SQRT(lab2.a * lab2.a + lab2.b * lab2.b);
-    ALWAN_CORE_T Cab = (C1 + C2) / ALWAN_CORE_LITERAL(2.0);
-    ALWAN_CORE_T Cab7 = Cab * Cab * Cab * Cab * Cab * Cab * Cab;
-    ALWAN_CORE_T G = ALWAN_CORE_LITERAL(0.5) * (ALWAN_CORE_LITERAL(1.0) - ALWAN_CORE_SQRT(Cab7 / (Cab7 + ALWAN_CORE_LITERAL(6103515625.0))));
-
-    ALWAN_CORE_T a1p = (ALWAN_CORE_LITERAL(1.0) + G) * lab1.a;
-    ALWAN_CORE_T a2p = (ALWAN_CORE_LITERAL(1.0) + G) * lab2.a;
-
-    ALWAN_CORE_T C1p = ALWAN_CORE_SQRT(a1p * a1p + lab1.b * lab1.b);
-    ALWAN_CORE_T C2p = ALWAN_CORE_SQRT(a2p * a2p + lab2.b * lab2.b);
-    ALWAN_CORE_T dCp = C1p - C2p;
-
-    ALWAN_CORE_T dap = a1p - a2p;
-    ALWAN_CORE_T dHp_sq = dap * dap + db * db - dCp * dCp;
-    dHp_sq = ALWAN_CORE_SELECT(dHp_sq > ALWAN_CORE_LITERAL(0.0), dHp_sq, ALWAN_CORE_LITERAL(0.0));
-
-    return ALWAN_CORE_SQRT(dL * dL + dCp * dCp + dHp_sq);
+    return ALWAN_CORE_ABS(dL) + ALWAN_CORE_SQRT(da * da + db * db);
 }
 
 /* dE HyCH: the CIEDE2000 terms, city block in lightness and Euclidean across

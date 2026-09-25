@@ -2,6 +2,31 @@
 
 ### Fixed: output differs
 
+- **`alwan_simulate_cvd_{T}` was not Brettel 1997.** It applied one projection per
+  deficiency, the widely copied "daltonize" coefficients on a Hunt-Pointer-Estevez matrix,
+  which is Vienot 1999's single-plane shortcut and wrong for tritanopia; on 8-bit sRGB it sat
+  a mean of 0.21 and up to 0.996 off DaltonLens-Python's `Simulator_Brettel1997`. It is now
+  the two half-plane model at DaltonLens's defaults (Smith-Pokorny LMS, anchors 475/575 nm
+  and 485/660 nm, RGB white as the neutral axis), with the anomalous types mixed linearly by
+  severity, and equals DaltonLens to 1.8e-15 (suite 261). The interleave and planar maps
+  equal the scalar bit for bit. The matrices are regenerated from daltonlens by
+  gendata/data/cvd_matrices.py.
+
+- **`alwan_delta_e_hyab_{T}` was not HyAB.** It rescaled a* as CIEDE2000 does and summed L,
+  C' and H' in quadrature, up to 67 units off. It is now Abasi, Amani Tehran and Fairchild's
+  `|dL*| + sqrt(da*^2 + db*^2)` and equals colour's `delta_E_HyAB` exactly (suite 261).
+
+- **`alwan_llab_forward_{T}` returned NaN for very dark samples.** Lightness and the blue
+  response go below zero there and took a plain power; both are now signed powers, as
+  colour's `spow`. Saturation `s` was forced to 0 below `L = 0`; it is now `Ch / L`, as
+  colour. Lightness, chroma, hue and saturation equal `XYZ_to_LLAB` to 1e-12 (suites 47 and
+  261); samples with positive lightness did not move.
+
+- **`alwan_srgb_to_okhsl_{T}` and `alwan_srgb_to_okhsv_{T}` gave greys a saturation.** White's Oklab chroma is rounding (3.7e-8),
+  which passed the 1e-10 achromatic test and came out as `s = 0.825`. The threshold is 1e-6
+  and greys return `h = 0`, `s = 0`. Chromatic colours equal Ottosson's `colorconversion.js`
+  to 4.2e-9 and did not move (suite 261).
+
 - **`alwan_apca_contrast_{T}` returned NaN or a number where APCA-W3 returns 0.** A
   negative channel went through `pow` and came out NaN (3011 of 27 000 random pairs), and a
   luminance above 1.1 was scored (164 pairs); APCA-W3 0.1.9 returns 0 for both. Its input

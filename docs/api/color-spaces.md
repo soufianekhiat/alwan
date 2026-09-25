@@ -298,6 +298,11 @@ Oklab equivalents and are the better default for a picker UI. Cubehelix is a
 visualization ramp with monotonically increasing luminance: it survives being
 printed in greyscale, which is what it was designed for.
 
+Okhsl and Okhsv follow Ottosson's own `colorconversion.js`, within 1e-8 (suite 261);
+ColorAide's okhsl refits the approximations to its own matrices and sits up to 1e-3 away.
+A grey is returned as `h = 0`, `s = 0`: its Oklab chroma is rounding (3.7e-8 for white),
+which the reference turns into a saturation near `L = 1` (0.56 for white).
+
 > **Read [ranges.md](../ranges.md) before passing literals.** The three
 > conventions disagree, and the default build normalizes two of them. HSLuv and
 > HPLuv are `h` `[0, 360)` and `s`, `l` `[0, 100]` in the model, but with

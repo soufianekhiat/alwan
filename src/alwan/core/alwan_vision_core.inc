@@ -11,7 +11,12 @@
  */
 
 /* ================================================================
- * CVD Transformation Matrices
+ * Brettel, Vienot & Mollon (1997), as DaltonLens-Python's Simulator_Brettel1997 at its
+ * defaults (gendata/data/cvd_matrices.py): linear sRGB to LMS by Smith and Pokorny 1975,
+ * then the missing cone's coordinate replaced by its projection onto one of two
+ * half-planes through the neutral axis (RGB white), H2 where the LMS falls on the negative
+ * side of the separation plane (normal n), H1 elsewhere; back to linear sRGB. The anchors
+ * are 475 / 575 nm for protanopia and deuteranopia, 485 / 660 nm for tritanopia.
  * ================================================================ */
 
 ALWAN_DIAG_PUSH
@@ -25,46 +30,58 @@ ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_LMS_TO_RGB) = {{
 #include "../data/matrices/cvd_lms_to_rgb.csv"
 }};
 
-ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_PROTANOPIA) = {{
-#include "../data/matrices/cvd_protanopia.csv"
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_BRETTEL_PROTAN_H1) = {{
+#include "../data/matrices/cvd_brettel_protan_h1.csv"
 }};
-
-ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_DEUTERANOPIA) = {{
-#include "../data/matrices/cvd_deuteranopia.csv"
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_BRETTEL_PROTAN_H2) = {{
+#include "../data/matrices/cvd_brettel_protan_h2.csv"
 }};
-
-ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_TRITANOPIA) = {{
-#include "../data/matrices/cvd_tritanopia.csv"
+ALWAN_CONSTEXPR ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(CVD_BRETTEL_PROTAN_N) = {{
+#include "../data/matrices/cvd_brettel_protan_n.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_BRETTEL_DEUTAN_H1) = {{
+#include "../data/matrices/cvd_brettel_deutan_h1.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_BRETTEL_DEUTAN_H2) = {{
+#include "../data/matrices/cvd_brettel_deutan_h2.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(CVD_BRETTEL_DEUTAN_N) = {{
+#include "../data/matrices/cvd_brettel_deutan_n.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_H1) = {{
+#include "../data/matrices/cvd_brettel_tritan_h1.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_H2) = {{
+#include "../data/matrices/cvd_brettel_tritan_h2.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_N) = {{
+#include "../data/matrices/cvd_brettel_tritan_n.csv"
 }};
 
 ALWAN_DIAG_POP
 
-/* ================================================================
- * Generic CVD Simulation (takes CVD matrix as parameter)
- * ================================================================ */
-
-ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_matrix)(ALWAN_CORE_RGB rgb,
-                                                    ALWAN_CORE_MAT3X3 cvd_matrix,
-                                                    ALWAN_CORE_T severity) {
+/* Brettel's two-plane dichromat simulation of linear sRGB, then mixed back with the input
+ * by severity (DaltonLens's anomalous-trichromacy rule, linear in linear sRGB). Raw: a
+ * saturated input can land outside [0, 1]; alwan_simulate_cvd_gamut_safe clamps. */
+ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_brettel)(ALWAN_CORE_RGB rgb,
+                                                    ALWAN_CORE_MAT3X3 H1, ALWAN_CORE_MAT3X3 H2,
+                                                    ALWAN_CORE_VEC3 n, ALWAN_CORE_T severity) {
     ALWAN_CORE_RGB result;
-
-    severity = ALWAN_CORE_CLAMP(severity, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
-
     ALWAN_CORE_VEC3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
     ALWAN_CORE_VEC3 lms = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CVD_RGB_TO_LMS), rgb_v);
-    ALWAN_CORE_VEC3 lms_cvd = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(cvd_matrix, lms);
-    ALWAN_CORE_VEC3 cvd_rgb = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CVD_LMS_TO_RGB), lms_cvd);
-    /* Raw Brettel/Vienot simulation -- no gamut clamp. The LMS round-trip can
-     * legitimately land outside [0,1] for saturated inputs; use
-     * alwan_simulate_cvd_gamut_safe for a guaranteed in-gamut result. */
-    ALWAN_CORE_T cr = cvd_rgb.v[0];
-    ALWAN_CORE_T cg = cvd_rgb.v[1];
-    ALWAN_CORE_T cb = cvd_rgb.v[2];
+    ALWAN_CORE_VEC3 p1 = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(H1, lms);
+    ALWAN_CORE_VEC3 p2 = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(H2, lms);
+    ALWAN_CORE_T side = lms.v[0] * n.v[0] + lms.v[1] * n.v[1] + lms.v[2] * n.v[2];
+    ALWAN_CORE_VEC3 p;
+    p.v[0] = ALWAN_CORE_SELECT(side < ALWAN_CORE_ZERO, p2.v[0], p1.v[0]);
+    p.v[1] = ALWAN_CORE_SELECT(side < ALWAN_CORE_ZERO, p2.v[1], p1.v[1]);
+    p.v[2] = ALWAN_CORE_SELECT(side < ALWAN_CORE_ZERO, p2.v[2], p1.v[2]);
+    ALWAN_CORE_VEC3 cvd = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(CVD_LMS_TO_RGB), p);
 
-    result.r = ALWAN_CORE_LERP(rgb.r, cr, severity);
-    result.g = ALWAN_CORE_LERP(rgb.g, cg, severity);
-    result.b = ALWAN_CORE_LERP(rgb.b, cb, severity);
-
+    severity = ALWAN_CORE_CLAMP(severity, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
+    result.r = cvd.v[0] * severity + rgb.r * (ALWAN_CORE_ONE - severity);
+    result.g = cvd.v[1] * severity + rgb.g * (ALWAN_CORE_ONE - severity);
+    result.b = cvd.v[2] * severity + rgb.b * (ALWAN_CORE_ONE - severity);
     return result;
 }
 
@@ -73,15 +90,21 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_matrix)(ALWAN_C
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_protanopia)(ALWAN_CORE_RGB rgb, ALWAN_CORE_T severity) {
-    return ALWAN_CORE_FNVLIT(alwan_simulate_cvd_matrix)(rgb, ALWAN_CORE_FNLIT(CVD_PROTANOPIA), severity);
+    return ALWAN_CORE_FNVLIT(alwan_simulate_cvd_brettel)(rgb, ALWAN_CORE_FNLIT(CVD_BRETTEL_PROTAN_H1),
+                                                         ALWAN_CORE_FNLIT(CVD_BRETTEL_PROTAN_H2),
+                                                         ALWAN_CORE_FNLIT(CVD_BRETTEL_PROTAN_N), severity);
 }
 
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_deuteranopia)(ALWAN_CORE_RGB rgb, ALWAN_CORE_T severity) {
-    return ALWAN_CORE_FNVLIT(alwan_simulate_cvd_matrix)(rgb, ALWAN_CORE_FNLIT(CVD_DEUTERANOPIA), severity);
+    return ALWAN_CORE_FNVLIT(alwan_simulate_cvd_brettel)(rgb, ALWAN_CORE_FNLIT(CVD_BRETTEL_DEUTAN_H1),
+                                                         ALWAN_CORE_FNLIT(CVD_BRETTEL_DEUTAN_H2),
+                                                         ALWAN_CORE_FNLIT(CVD_BRETTEL_DEUTAN_N), severity);
 }
 
 ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_tritanopia)(ALWAN_CORE_RGB rgb, ALWAN_CORE_T severity) {
-    return ALWAN_CORE_FNVLIT(alwan_simulate_cvd_matrix)(rgb, ALWAN_CORE_FNLIT(CVD_TRITANOPIA), severity);
+    return ALWAN_CORE_FNVLIT(alwan_simulate_cvd_brettel)(rgb, ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_H1),
+                                                         ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_H2),
+                                                         ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_N), severity);
 }
 
 /* ================================================================

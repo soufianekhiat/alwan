@@ -61,6 +61,13 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(llab_f)(ALWAN_CORE_T t, ALWAN_CORE_T
     return ALWAN_CORE_SELECT(t > LLAB_V_EPSILON, power_result, linear_result);
 }
 
+/* colour-science's spow: the power of |x| carrying x's sign. A very dark sample puts the
+ * f(Y) of lightness and the blue cone response below zero, where a plain power is NaN. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(llab_spow)(ALWAN_CORE_T x, ALWAN_CORE_T p) {
+    ALWAN_CORE_T m = ALWAN_CORE_POW(ALWAN_CORE_ABS(x), p);
+    return ALWAN_CORE_SELECT(x < ALWAN_CORE_ZERO, -m, m);
+}
+
 /* ----------------------------------------------------------------
  * LLAB Forward Transform (value-returning)
  * ---------------------------------------------------------------- */
@@ -104,9 +111,9 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_llab_v_correlates) ALWAN_CORE_FNVLIT(alwan_l
     ALWAN_CORE_T R_adapted = (D * (R_r / R_0) + (ALWAN_CORE_LITERAL(1.0) - D)) * R;
     ALWAN_CORE_T G_adapted = (D * (G_r / G_0) + (ALWAN_CORE_LITERAL(1.0) - D)) * G;
 
-    ALWAN_CORE_T beta = ALWAN_CORE_POW(B_0 / B_r, LLAB_V_BETA_EXP);
-    ALWAN_CORE_T B_adapted = (D * B_r / ALWAN_CORE_POW(B_0, beta) + (ALWAN_CORE_LITERAL(1.0) - D))
-                             * ALWAN_CORE_POW(B, beta);
+    ALWAN_CORE_T beta = ALWAN_CORE_FNVLIT(llab_spow)(B_0 / B_r, LLAB_V_BETA_EXP);
+    ALWAN_CORE_T B_adapted = (D * B_r / ALWAN_CORE_FNVLIT(llab_spow)(B_0, beta) + (ALWAN_CORE_LITERAL(1.0) - D))
+                             * ALWAN_CORE_FNVLIT(llab_spow)(B, beta);
 
     /* Step 3: Re-scale adapted RGB by sample Y, then convert back to XYZ */
     ALWAN_CORE_VEC3 adapted_v = {{R_adapted * Y_sample, G_adapted * Y_sample, B_adapted * Y_sample}};
@@ -124,7 +131,7 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_llab_v_correlates) ALWAN_CORE_FNVLIT(alwan_l
     ALWAN_CORE_T z = ALWAN_CORE_LITERAL(1.0) + F_L * ALWAN_CORE_SQRT(Y_b / ALWAN_CORE_LITERAL(100.0));
 
     /* LLAB lightness with z modulation */
-    ALWAN_CORE_T L_L = LLAB_V_COEF_116 * ALWAN_CORE_POW(f_Y, z) - LLAB_V_COEF_16;
+    ALWAN_CORE_T L_L = LLAB_V_COEF_116 * ALWAN_CORE_FNVLIT(llab_spow)(f_Y, z) - LLAB_V_COEF_16;
 
     /* LLAB opponent dimensions */
     ALWAN_CORE_T a_L = LLAB_V_COEF_500 * (f_X - f_Y);
@@ -139,7 +146,8 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_llab_v_correlates) ALWAN_CORE_FNVLIT(alwan_l
     ALWAN_CORE_T h_deg = h_rad * ALWAN_CORE_LITERAL(180.0) / ALWAN_CORE_PI;
     ALWAN_CORE_T h_L = ALWAN_CORE_SELECT(h_deg < ALWAN_CORE_LITERAL(0.0), h_deg + ALWAN_CORE_LITERAL(360.0), h_deg);
 
-    ALWAN_CORE_T s_L = ALWAN_CORE_SELECT(L_L > ALWAN_CORE_LITERAL(0.0), Ch_L / L_L, ALWAN_CORE_LITERAL(0.0));
+    /* colour's saturation_correlate: Ch_L / L_L as it stands, negative below L_L = 0. */
+    ALWAN_CORE_T s_L = Ch_L / L_L;
 
     result.L = L_L;
     result.Ch = Ch_L;

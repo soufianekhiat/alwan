@@ -1254,7 +1254,11 @@ ALWAN_INLINE ALWAN_CORE_OKHSL ALWAN_CORE_FNVLIT(alwan_srgb_to_okhsl)(ALWAN_CORE_
     ALWAN_CORE_FNLIT(alwan_ok_srgb_to_lab)(ALWAN_CORE_ADDR(Lab_L), ALWAN_CORE_ADDR(Lab_a), ALWAN_CORE_ADDR(Lab_b), r_lin, g_lin, b_lin);
     C = ALWAN_CORE_SQRT(Lab_a * Lab_a + Lab_b * Lab_b);
 
-    if (C < ALWAN_CORE_LITERAL(1e-10)) {
+    /* Achromatic: h = 0 and s = 0. The Oklab of an sRGB grey is not exactly on the axis
+     * (white's chroma is 3.7e-8 in double), and Ottosson's reference, which has no such
+     * test, turns that rounding into a saturation near L = 1 (0.56 for white; 0.83 here
+     * with the old 1e-10 threshold). */
+    if (C < ALWAN_CORE_LITERAL(1e-6)) {
         result.h = ALWAN_CORE_ZERO;
         result.s = ALWAN_CORE_ZERO;
         result.l = ALWAN_CORE_FNLIT(alwan_ok_toe)(Lab_L);
@@ -1358,7 +1362,11 @@ ALWAN_INLINE ALWAN_CORE_OKHSV ALWAN_CORE_FNVLIT(alwan_srgb_to_okhsv)(ALWAN_CORE_
     ALWAN_CORE_FNLIT(alwan_ok_srgb_to_lab)(ALWAN_CORE_ADDR(Lab_L), ALWAN_CORE_ADDR(Lab_a), ALWAN_CORE_ADDR(Lab_b), r_lin, g_lin, b_lin);
     C = ALWAN_CORE_SQRT(Lab_a * Lab_a + Lab_b * Lab_b);
 
-    if (C < ALWAN_CORE_LITERAL(1e-10)) {
+    /* Achromatic: h = 0 and s = 0. The Oklab of an sRGB grey is not exactly on the axis
+     * (white's chroma is 3.7e-8 in double), and Ottosson's reference, which has no such
+     * test, turns that rounding into a saturation near L = 1 (0.56 for white; 0.83 here
+     * with the old 1e-10 threshold). */
+    if (C < ALWAN_CORE_LITERAL(1e-6)) {
         result.h = ALWAN_CORE_ZERO;
         result.s = ALWAN_CORE_ZERO;
         result.v = ALWAN_CORE_FNLIT(alwan_ok_toe)(Lab_L);

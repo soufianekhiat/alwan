@@ -55,45 +55,65 @@ ALWAN_CONSTEXPR alwan_mat3x3 CVD_RGB_TO_LMS = {{
 ALWAN_CONSTEXPR alwan_mat3x3 CVD_LMS_TO_RGB = {{
 #include "../data/matrices/cvd_lms_to_rgb.csv"
 }};
-ALWAN_CONSTEXPR alwan_mat3x3 CVD_PROTANOPIA = {{
-#include "../data/matrices/cvd_protanopia.csv"
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_BRETTEL_PROTAN_H1 = {{
+#include "../data/matrices/cvd_brettel_protan_h1.csv"
 }};
-ALWAN_CONSTEXPR alwan_mat3x3 CVD_DEUTERANOPIA = {{
-#include "../data/matrices/cvd_deuteranopia.csv"
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_BRETTEL_PROTAN_H2 = {{
+#include "../data/matrices/cvd_brettel_protan_h2.csv"
 }};
-ALWAN_CONSTEXPR alwan_mat3x3 CVD_TRITANOPIA = {{
-#include "../data/matrices/cvd_tritanopia.csv"
+ALWAN_CONSTEXPR alwan_vec3 CVD_BRETTEL_PROTAN_N = {{
+#include "../data/matrices/cvd_brettel_protan_n.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_BRETTEL_DEUTAN_H1 = {{
+#include "../data/matrices/cvd_brettel_deutan_h1.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_BRETTEL_DEUTAN_H2 = {{
+#include "../data/matrices/cvd_brettel_deutan_h2.csv"
+}};
+ALWAN_CONSTEXPR alwan_vec3 CVD_BRETTEL_DEUTAN_N = {{
+#include "../data/matrices/cvd_brettel_deutan_n.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_BRETTEL_TRITAN_H1 = {{
+#include "../data/matrices/cvd_brettel_tritan_h1.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_BRETTEL_TRITAN_H2 = {{
+#include "../data/matrices/cvd_brettel_tritan_h2.csv"
+}};
+ALWAN_CONSTEXPR alwan_vec3 CVD_BRETTEL_TRITAN_N = {{
+#include "../data/matrices/cvd_brettel_tritan_n.csv"
 }};
 
 ALWAN_DIAG_POP
 
-ALWAN_INLINE alwan_rgb alwan_simulate_cvd_matrix_v(alwan_rgb rgb,
-                                                    alwan_mat3x3 cvd_matrix,
-                                                    alwan_scalar severity) {
+/* Brettel 1997, two half-planes; see the .inc. */
+ALWAN_INLINE alwan_rgb alwan_simulate_cvd_brettel_v(alwan_rgb rgb, alwan_mat3x3 H1, alwan_mat3x3 H2,
+                                                    alwan_vec3 n, alwan_scalar severity) {
     alwan_rgb result;
-    severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
     alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
     alwan_vec3 lms = alwan_mat3_mulv_v(CVD_RGB_TO_LMS, rgb_v);
-    alwan_vec3 lms_cvd = alwan_mat3_mulv_v(cvd_matrix, lms);
-    alwan_vec3 cvd_rgb = alwan_mat3_mulv_v(CVD_LMS_TO_RGB, lms_cvd);
-    /* Raw Brettel/Vienot simulation -- no gamut clamp (matches the dual-precision core). */
-    alwan_scalar cr = cvd_rgb.v[0];
-    alwan_scalar cg = cvd_rgb.v[1];
-    alwan_scalar cb = cvd_rgb.v[2];
-    result.r = alwan_lerp(rgb.r, cr, severity);
-    result.g = alwan_lerp(rgb.g, cg, severity);
-    result.b = alwan_lerp(rgb.b, cb, severity);
+    alwan_vec3 p1 = alwan_mat3_mulv_v(H1, lms);
+    alwan_vec3 p2 = alwan_mat3_mulv_v(H2, lms);
+    alwan_scalar side = lms.v[0] * n.v[0] + lms.v[1] * n.v[1] + lms.v[2] * n.v[2];
+    alwan_vec3 p;
+    p.v[0] = ALWAN_SELECT(side < ALWAN_ZERO, p2.v[0], p1.v[0]);
+    p.v[1] = ALWAN_SELECT(side < ALWAN_ZERO, p2.v[1], p1.v[1]);
+    p.v[2] = ALWAN_SELECT(side < ALWAN_ZERO, p2.v[2], p1.v[2]);
+    alwan_vec3 cvd = alwan_mat3_mulv_v(CVD_LMS_TO_RGB, p);
+    severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    result.r = cvd.v[0] * severity + rgb.r * (ALWAN_ONE - severity);
+    result.g = cvd.v[1] * severity + rgb.g * (ALWAN_ONE - severity);
+    result.b = cvd.v[2] * severity + rgb.b * (ALWAN_ONE - severity);
     return result;
 }
 
 ALWAN_INLINE alwan_rgb alwan_simulate_protanopia_v(alwan_rgb rgb, alwan_scalar severity) {
-    return alwan_simulate_cvd_matrix_v(rgb, CVD_PROTANOPIA, severity);
+    return alwan_simulate_cvd_brettel_v(rgb, CVD_BRETTEL_PROTAN_H1, CVD_BRETTEL_PROTAN_H2, CVD_BRETTEL_PROTAN_N, severity);
 }
 ALWAN_INLINE alwan_rgb alwan_simulate_deuteranopia_v(alwan_rgb rgb, alwan_scalar severity) {
-    return alwan_simulate_cvd_matrix_v(rgb, CVD_DEUTERANOPIA, severity);
+    return alwan_simulate_cvd_brettel_v(rgb, CVD_BRETTEL_DEUTAN_H1, CVD_BRETTEL_DEUTAN_H2, CVD_BRETTEL_DEUTAN_N, severity);
 }
 ALWAN_INLINE alwan_rgb alwan_simulate_tritanopia_v(alwan_rgb rgb, alwan_scalar severity) {
-    return alwan_simulate_cvd_matrix_v(rgb, CVD_TRITANOPIA, severity);
+    return alwan_simulate_cvd_brettel_v(rgb, CVD_BRETTEL_TRITAN_H1, CVD_BRETTEL_TRITAN_H2, CVD_BRETTEL_TRITAN_N, severity);
 }
 
 ALWAN_DIAG_PUSH

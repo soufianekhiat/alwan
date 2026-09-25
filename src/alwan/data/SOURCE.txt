@@ -11,6 +11,11 @@ script names the source it took the numbers from:
   igpgtg_*       Hellwig and Fairchild IgPgTg scale
   ihls_*         Hanbury (2003) improved HLS
   prolab_*       Konovalenko et al. (2021) ProLab projective matrices
+  matrices/cvd_* Brettel, Vienot and Mollon (1997) dichromat simulation: the
+                 Smith-Pokorny LMS pair and each type's two half-plane
+                 projections and separating normal, at DaltonLens's defaults
+                 (anchors 475/575 and 485/660 nm), generated from
+                 daltonlens-python (MIT, Nicolas Burrus) by gendata/data/cvd_matrices.py
   xyb_*          XYB (JPEG XL): the opsin matrix and bias as ColorAide (MIT)
                  carries them; the inverse and the XYZ matrices computed from it
   planckian_*    Krystek (1985) Planckian locus rational polynomial, via

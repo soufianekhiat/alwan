@@ -69,6 +69,11 @@ ALWAN_CONSTEXPR alwan_scalar LLAB_V_CHROMA_SCALE = ALWAN_LITERAL(25.0);
 ALWAN_CONSTEXPR alwan_scalar LLAB_V_CHROMA_CONST = ALWAN_LITERAL(0.05);
 ALWAN_CONSTEXPR alwan_scalar LLAB_V_BETA_EXP = ALWAN_LITERAL(0.0834);
 
+ALWAN_INLINE alwan_scalar llab_spow_v(alwan_scalar x, alwan_scalar p) {
+    alwan_scalar m = ALWAN_POW(ALWAN_ABS(x), p);
+    return ALWAN_SELECT(x < ALWAN_ZERO, -m, m);
+}
+
 ALWAN_INLINE alwan_scalar llab_f_v(alwan_scalar t, alwan_scalar F_S) {
     alwan_scalar power_result = ALWAN_POW(t, ALWAN_LITERAL(1.0) / F_S);
     alwan_scalar slope = (ALWAN_POW(LLAB_V_EPSILON, ALWAN_LITERAL(1.0) / F_S) -
@@ -96,8 +101,8 @@ ALWAN_INLINE alwan_llab_v_correlates alwan_llab_forward_v(
     alwan_scalar R_r = rgb_r_v.v[0]; alwan_scalar G_r = rgb_r_v.v[1]; alwan_scalar B_r = rgb_r_v.v[2];
     alwan_scalar R_adapted = (D * (R_r / R_0) + (ALWAN_LITERAL(1.0) - D)) * R;
     alwan_scalar G_adapted = (D * (G_r / G_0) + (ALWAN_LITERAL(1.0) - D)) * G;
-    alwan_scalar beta = ALWAN_POW(B_0 / B_r, LLAB_V_BETA_EXP);
-    alwan_scalar B_adapted = (D * B_r / ALWAN_POW(B_0, beta) + (ALWAN_LITERAL(1.0) - D)) * ALWAN_POW(B, beta);
+    alwan_scalar beta = llab_spow_v(B_0 / B_r, LLAB_V_BETA_EXP);
+    alwan_scalar B_adapted = (D * B_r / llab_spow_v(B_0, beta) + (ALWAN_LITERAL(1.0) - D)) * llab_spow_v(B, beta);
     alwan_vec3 adapted_v = {{R_adapted * Y_sample, G_adapted * Y_sample, B_adapted * Y_sample}};
     alwan_vec3 xyz_adapted_v = alwan_mat3_mulv_v(LLAB_RGB_TO_XYZ, adapted_v);
     alwan_scalar X_adapted = xyz_adapted_v.v[0]; alwan_scalar Y_adapted = xyz_adapted_v.v[1]; alwan_scalar Z_adapted = xyz_adapted_v.v[2];
@@ -105,7 +110,7 @@ ALWAN_INLINE alwan_llab_v_correlates alwan_llab_forward_v(
     alwan_scalar f_Y = llab_f_v(Y_adapted / ALWAN_LITERAL(100.0), F_S);
     alwan_scalar f_Z = llab_f_v(Z_adapted / ALWAN_LITERAL(108.88), F_S);
     alwan_scalar z = ALWAN_LITERAL(1.0) + F_L * ALWAN_SQRT(Y_b / ALWAN_LITERAL(100.0));
-    alwan_scalar L_L = LLAB_V_COEF_116 * ALWAN_POW(f_Y, z) - LLAB_V_COEF_16;
+    alwan_scalar L_L = LLAB_V_COEF_116 * llab_spow_v(f_Y, z) - LLAB_V_COEF_16;
     alwan_scalar a_L = LLAB_V_COEF_500 * (f_X - f_Y);
     alwan_scalar b_L = LLAB_V_COEF_200 * (f_Y - f_Z);
     alwan_scalar c = ALWAN_SQRT(a_L * a_L + b_L * b_L);
@@ -113,7 +118,7 @@ ALWAN_INLINE alwan_llab_v_correlates alwan_llab_forward_v(
     alwan_scalar h_rad = ALWAN_ATAN2(b_L, a_L);
     alwan_scalar h_deg = h_rad * ALWAN_LITERAL(180.0) / ALWAN_PI;
     alwan_scalar h_L = ALWAN_SELECT(h_deg < ALWAN_LITERAL(0.0), h_deg + ALWAN_LITERAL(360.0), h_deg);
-    alwan_scalar s_L = ALWAN_SELECT(L_L > ALWAN_LITERAL(0.0), Ch_L / L_L, ALWAN_LITERAL(0.0));
+    alwan_scalar s_L = Ch_L / L_L;
     result.L = L_L; result.Ch = Ch_L; result.h = h_L; result.s = s_L;
     return result;
 }

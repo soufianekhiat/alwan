@@ -4209,7 +4209,7 @@ alwan_f64 alwan_delta_e_2000_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const 
 alwan_f32  alwan_delta_e_itp_f32(alwan_ictcp_f32 const *ictcp1, alwan_ictcp_f32 const *ictcp2, alwan_delta_e_itp_params_f32 const *params);
 alwan_f64 alwan_delta_e_itp_f64(alwan_ictcp_f64 const *ictcp1, alwan_ictcp_f64 const *ictcp2, alwan_delta_e_itp_params_f64 const *params);
 
-/* dE HyAB - Hybrid Delta E, improved perceptual metric */
+/* dE HyAB (Abasi, Amani Tehran and Fairchild 2020): |dL*| + sqrt(da*^2 + db*^2), as colour-science's delta_E_HyAB */
 alwan_f32  alwan_delta_e_hyab_f32(alwan_lab_f32 const *lab1, alwan_lab_f32 const *lab2);
 alwan_f64 alwan_delta_e_hyab_f64(alwan_lab_f64 const *lab1, alwan_lab_f64 const *lab2);
 
@@ -8089,7 +8089,7 @@ typedef enum {
 
 /* CVD simulation model selection */
 typedef enum {
-    ALWAN_CVD_MODEL_BRETTEL = 0,    /* Brettel, Vienot & Mollon 1997 (confusion lines) */
+    ALWAN_CVD_MODEL_BRETTEL = 0,    /* Brettel, Vienot & Mollon 1997 (two half-planes, DaltonLens defaults) */
     ALWAN_CVD_MODEL_MACHADO = 1     /* Machado, Oliveira & Fernandes 2009 (cone shift) */
 } alwan_cvd_model;
 
@@ -8104,7 +8104,8 @@ typedef enum {
  *          _ex twins) for guaranteed [0,1] output; ALWAN_GAMUT_MAP_CLIP
  *          reproduces the pre-2.0 implicit clamping.
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error
- * Algorithm: Brettel, Vienot & Mollon (1997) simulation using confusion lines */
+ * Algorithm: Brettel, Vienot & Mollon (1997), two half-plane projections in Smith-Pokorny LMS,
+ * as DaltonLens-Python's Simulator_Brettel1997 at its defaults; severity mixes linearly */
 alwan_status alwan_simulate_cvd_f32(alwan_rgb_f32 *rgb_out,
                            alwan_rgb_f32 const *rgb_in,
                            alwan_cvd_type cvd_type,

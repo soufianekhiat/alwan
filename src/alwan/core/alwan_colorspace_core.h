@@ -395,21 +395,9 @@ ALWAN_INLINE alwan_scalar alwan_delta_e_2000_v(alwan_lab lab1, alwan_lab lab2) {
 
 ALWAN_INLINE alwan_scalar alwan_delta_e_hyab_v(alwan_lab lab1, alwan_lab lab2) {
     alwan_scalar dL = lab1.L - lab2.L;
+    alwan_scalar da = lab1.a - lab2.a;
     alwan_scalar db = lab1.b - lab2.b;
-    alwan_scalar C1 = ALWAN_SQRT(lab1.a * lab1.a + lab1.b * lab1.b);
-    alwan_scalar C2 = ALWAN_SQRT(lab2.a * lab2.a + lab2.b * lab2.b);
-    alwan_scalar Cab = (C1 + C2) / ALWAN_LITERAL(2.0);
-    alwan_scalar Cab7 = Cab * Cab * Cab * Cab * Cab * Cab * Cab;
-    alwan_scalar G = ALWAN_LITERAL(0.5) * (ALWAN_LITERAL(1.0) - ALWAN_SQRT(Cab7 / (Cab7 + ALWAN_LITERAL(6103515625.0))));
-    alwan_scalar a1p = (ALWAN_LITERAL(1.0) + G) * lab1.a;
-    alwan_scalar a2p = (ALWAN_LITERAL(1.0) + G) * lab2.a;
-    alwan_scalar C1p = ALWAN_SQRT(a1p * a1p + lab1.b * lab1.b);
-    alwan_scalar C2p = ALWAN_SQRT(a2p * a2p + lab2.b * lab2.b);
-    alwan_scalar dCp = C1p - C2p;
-    alwan_scalar dap = a1p - a2p;
-    alwan_scalar dHp_sq = dap * dap + db * db - dCp * dCp;
-    dHp_sq = ALWAN_SELECT(dHp_sq > ALWAN_LITERAL(0.0), dHp_sq, ALWAN_LITERAL(0.0));
-    return ALWAN_SQRT(dL * dL + dCp * dCp + dHp_sq);
+    return ALWAN_ABS(dL) + ALWAN_SQRT(da * da + db * db);
 }
 
 ALWAN_INLINE alwan_scalar alwan_delta_e_hych_v(alwan_lab lab1, alwan_lab lab2, alwan_scalar kL) {

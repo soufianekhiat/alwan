@@ -122,8 +122,11 @@ metric with good perceptual uniformity.
 alwan_{T} alwan_delta_e_hyab_{T}(alwan_lab_{T} const *lab1, alwan_lab_{T} const *lab2);
 ```
 
-HyAB (Hybrid Absolute) color difference. Uses an L1 norm for lightness and an L2 norm for
-chroma/hue. Better correlation with perceived difference for large color differences.
+HyAB (Abasi, Amani Tehran and Fairchild 2020): the absolute lightness difference plus the
+Euclidean distance across a* and b*, `|dL*| + sqrt(da*^2 + db*^2)`, as colour-science's
+`delta_E_HyAB`, which suite 261 holds it to. It correlates better with perceived difference
+than dE*ab for large differences. Until 2026-09-25 it carried CIEDE2000's a' rescaling and a
+Euclidean sum over L, C' and H', which is not HyAB: up to 67 units off on random Lab pairs.
 
 ---
 

@@ -493,7 +493,15 @@ zero-initialised struct gets, is the high-luminance LCD.
 
 Takes two illuminants, `xyz_0` for the test condition and `xyz_r` for the
 reference, alongside the white, the background factor `Y_b`, a surround and
-`D_factor`. Forward only.
+`D_factor`. Forward only. It returns lightness `L`, chroma `Ch`, hue `h` and saturation
+`s`, which suite 261 holds to colour-science's `XYZ_to_LLAB` within 1e-12. It has no
+colourfulness `C_L` or final signals `A_L`, `B_L`: those need the absolute luminance `L`
+of colour's signature, which these viewing conditions do not carry.
+
+A very dark sample takes the lightness and the blue response below zero, and both powers
+there are signed, as colour's `spow`; `s` is `Ch / L` as it stands, so it is negative when
+`L` is. Until 2026-09-25 the powers were plain, which returned NaN for such samples, and
+`s` was forced to 0 below `L = 0`.
 
 ### ATD95
 
