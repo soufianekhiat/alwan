@@ -538,6 +538,14 @@
   planar and `_ex` maps, and a core header for the GPU backends. Within 4.6e-15 of ColorAide
   in every direction, out-of-gamut and negative inputs included (suite 242).
 
+- **Linear filters: `alwan_filter_{T}`.** Gaussian blur, difference of Gaussians, Laplacian
+  of Gaussian, the discrete Laplacian and the Butterworth filter as one family, with
+  scipy.ndimage's five border modes. The spatial methods are scipy's separable passes step
+  for step and equal scipy's gaussian_filter, gaussian_laplace and laplace and
+  scikit-image's gaussian and difference_of_gaussians to the last bit in f64 and f32;
+  Butterworth is within 1.4e-15 of scikit-image's (suite 246). u8 runs the blur and the
+  low-pass Butterworth.
+
 - **Stain separation by colour deconvolution: `alwan_rgb_to_stains_{T}`,
   `alwan_stains_to_rgb_{T}`, `alwan_stain_matrix_{T}`.** The amount of each histology stain in
   a pixel from its optical density (Ruifrok and Johnston 2001), and back, over scikit-image's

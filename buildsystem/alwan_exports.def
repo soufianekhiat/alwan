@@ -717,6 +717,9 @@ EXPORTS
     alwan_film_stock_info
     alwan_film_transmittance_f32
     alwan_film_transmittance_f64
+    alwan_filter_f32
+    alwan_filter_f64
+    alwan_filter_u8
     alwan_float_to_half
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64

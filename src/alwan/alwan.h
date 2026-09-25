@@ -2512,6 +2512,83 @@ alwan_status alwan_sharpen_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 
 alwan_status alwan_sharpen_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
 alwan_status alwan_sharpen_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);
 
+/* Linear filters, each channel of an image on its own.
+ *
+ *   ALWAN_FILTER_GAUSSIAN     a Gaussian blur: scipy.ndimage.gaussian_filter, as scikit-image's
+ *                             filters.gaussian calls it
+ *   ALWAN_FILTER_DOG          difference of Gaussians, the sigma blur minus the high_sigma one:
+ *                             scikit-image's filters.difference_of_gaussians, a band-pass
+ *   ALWAN_FILTER_LOG          Laplacian of Gaussian, the Gaussian's second derivative along each
+ *                             axis summed: scipy.ndimage.gaussian_laplace, a blob and edge
+ *                             response (negative on bright blobs)
+ *   ALWAN_FILTER_LAPLACE      the discrete Laplacian, [1, -2, 1] along each axis summed:
+ *                             scipy.ndimage.laplace. scikit-image's filters.laplace is its
+ *                             negative, with the REFLECT border
+ *   ALWAN_FILTER_BUTTERWORTH  a Butterworth filter in the frequency domain, high-pass unless
+ *                             low_pass: scikit-image's filters.butterworth, the image taken as
+ *                             periodic after npad pixels of edge padding
+ *
+ * The spatial filters reproduce scipy's separable passes step for step (rows' axis first,
+ * kernel radius int(truncate sigma + 0.5)) and agree with scipy and scikit-image to the
+ * last bit in f64; f32 data is rounded to float after every pass, as scipy does for a
+ * float32 image. BUTTERWORTH transforms in double where scikit-image runs a real FFT, so it
+ * agrees to rounding (suite 246). The border is the family's for every spatial method, and
+ * its default, NEAREST, is scikit-image's gaussian and difference_of_gaussians default;
+ * scipy's gaussian_laplace and laplace default to REFLECT.
+ *
+ * src has 1 to 4 channels, rows at the given byte strides; out may be src. alwan_filter_u8
+ * runs GAUSSIAN (the values read as v / 255, as scikit-image's img_as_float reads them,
+ * rounded back) and a low-pass BUTTERWORTH (on the raw values, as scikit-image transforms
+ * them); the signed results of the others do not fit in 8 bits and are ALWAN_E_INVALID
+ * there. params NULL is every default.
+ *
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too small,
+ * a non-finite value, an unknown method or border, or a u8 method with a signed result;
+ * ALWAN_E_RANGE for a negative sigma or truncate, a kernel radius over 2^20, DOG's high sigma
+ * under its low one on an axis, a cutoff outside [0, 0.5], a negative order, or npad over
+ * 65536. */
+typedef enum {
+    ALWAN_FILTER_GAUSSIAN = 0,
+    ALWAN_FILTER_DOG = 1,
+    ALWAN_FILTER_LOG = 2,
+    ALWAN_FILTER_LAPLACE = 3,
+    ALWAN_FILTER_BUTTERWORTH = 4
+} alwan_filter_method;
+
+/* How a line is extended past the image, scipy.ndimage's modes (d c b a | a b c d | ...) */
+typedef enum {
+    ALWAN_FILTER_BORDER_NEAREST = 0,   /* a a a | a b c d | d d d */
+    ALWAN_FILTER_BORDER_REFLECT = 1,   /* d c b a | a b c d | d c b a */
+    ALWAN_FILTER_BORDER_MIRROR = 2,    /* d c b | a b c d | c b a */
+    ALWAN_FILTER_BORDER_CONSTANT = 3,  /* k k k | a b c d | k k k, k = cval */
+    ALWAN_FILTER_BORDER_WRAP = 4       /* a b c d | a b c d | a b c d */
+} alwan_filter_border;
+
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    double sigma;           /* GAUSSIAN, LOG: the standard deviation in pixels on both axes;
+                             * DOG: the lower one. 0 reads as 1 */
+    double sigma_row, sigma_col; /* when either is above 0 they replace sigma, per axis
+                             * (down the columns, along the rows); 0 on one leaves that axis alone */
+    double high_sigma;      /* DOG: the higher standard deviation; 0 reads as 1.6 sigma */
+    double high_sigma_row, high_sigma_col; /* DOG: per axis, as sigma_row and sigma_col */
+    double truncate;        /* the kernel's radius in standard deviations; 0 reads as scipy's 4 */
+    alwan_filter_border border; /* spatial methods; 0 is NEAREST */
+    double cval;            /* BORDER_CONSTANT: the value past the edge */
+    double cutoff_frequency_ratio; /* BUTTERWORTH: the cut-off as a fraction of the sampling
+                             * frequency, (0, 0.5]; 0 reads as scikit-image's 0.005 */
+    double order;           /* BUTTERWORTH: the slope at the cut-off; 0 reads as 2 */
+    int low_pass;           /* BUTTERWORTH: non-zero keeps the low frequencies; 0 is high-pass */
+    int unsquared;          /* BUTTERWORTH: non-zero takes the square root of the squared
+                             * Butterworth scikit-image uses by default (gain 1/sqrt(2) at the
+                             * cut-off instead of 1/2) */
+    size_t npad;            /* BUTTERWORTH: pixels of edge padding each side, scikit-image's npad */
+} alwan_filter_params;
+
+alwan_status alwan_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_filter_method method, alwan_filter_params const *params);
+alwan_status alwan_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_filter_method method, alwan_filter_params const *params);
+alwan_status alwan_filter_u8(unsigned char *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_filter_method method, alwan_filter_params const *params);
+
 /* Deconvolution: an image blurred by a known point-spread function, sharpened back. Each
  * of src's 1 to 4 channels is deconvolved on its own with the same psf, psf_width x
  * psf_height values row by row, at most the image's size.

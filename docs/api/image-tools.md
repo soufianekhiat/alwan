@@ -1,6 +1,6 @@
 # Image tools
 
-Whole-image operations for photographs and frames: edge-aware smoothing, denoising, local
+Whole-image operations for photographs and frames: linear filters, edge-aware smoothing, denoising, local
 contrast, colour transfer and haze removal. Each family is one function with a method
 enum and a parameter struct, so a new method joins its family without a new entry point.
 The parameter structs follow one rule: a zero field reads as that method's default, and a
@@ -156,6 +156,79 @@ values past 1, and agrees to 3.3e-12. OpenCV's `ximgproc::l0Smooth` solves the s
 system but takes the gradients with replicated and reflected borders that do not match it,
 and works in float32, where a hard threshold can decide a region differently; it is not the
 reference here.
+
+## Linear filters
+
+```c
+typedef enum {
+    ALWAN_FILTER_GAUSSIAN = 0,
+    ALWAN_FILTER_DOG = 1,
+    ALWAN_FILTER_LOG = 2,
+    ALWAN_FILTER_LAPLACE = 3,
+    ALWAN_FILTER_BUTTERWORTH = 4
+} alwan_filter_method;
+
+typedef enum {
+    ALWAN_FILTER_BORDER_NEAREST = 0,   /* a a a | a b c d | d d d */
+    ALWAN_FILTER_BORDER_REFLECT = 1,   /* d c b a | a b c d | d c b a */
+    ALWAN_FILTER_BORDER_MIRROR = 2,    /* d c b | a b c d | c b a */
+    ALWAN_FILTER_BORDER_CONSTANT = 3,  /* k k k | a b c d | k k k */
+    ALWAN_FILTER_BORDER_WRAP = 4       /* a b c d | a b c d | a b c d */
+} alwan_filter_border;
+
+alwan_status alwan_filter_{T}(alwan_{T} *out, size_t out_row_stride,
+                              alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                              size_t width, size_t height,
+                              alwan_filter_method method, alwan_filter_params const *params);
+alwan_status alwan_filter_u8(unsigned char *out, size_t out_row_stride,
+                             unsigned char const *src, size_t src_row_stride, size_t channels,
+                             size_t width, size_t height,
+                             alwan_filter_method method, alwan_filter_params const *params);
+```
+
+The linear filters, each channel on its own. 1 to 4 channels; `out` may alias `src`.
+
+| Method | What it is | Reference |
+|---|---|---|
+| `GAUSSIAN` | a Gaussian blur | `skimage.filters.gaussian`, i.e. `scipy.ndimage.gaussian_filter` |
+| `DOG` | difference of Gaussians, the `sigma` blur minus the `high_sigma` one: a band-pass | `skimage.filters.difference_of_gaussians` |
+| `LOG` | Laplacian of Gaussian, the Gaussian's second derivative along each axis, summed; negative on bright blobs | `scipy.ndimage.gaussian_laplace` |
+| `LAPLACE` | the discrete Laplacian, `[1, -2, 1]` along each axis, summed | `scipy.ndimage.laplace`; `skimage.filters.laplace` is its negative, with `REFLECT` |
+| `BUTTERWORTH` | a Butterworth filter in the frequency domain, high-pass unless `low_pass` | `skimage.filters.butterworth` |
+
+The spatial filters are scipy's separable passes step for step: the kernel of
+`_gaussian_kernel1d` over `int(truncate sigma + 0.5)` pixels each side, normalised by
+numpy's pairwise sum, correlated along the rows' axis and then the columns', each line
+extended by the border mode, a symmetric kernel summed in scipy's pairs. An f32 image is
+rounded to float after every pass, as scipy does for float32 data. The result is the
+same to the last bit in f64 and f32, every border mode included (suite 246).
+`BUTTERWORTH` builds scikit-image's mask in the data's precision and transforms in double
+with alwan's own DFT where scikit-image runs a real FFT: 1.4e-15 of the image's range
+from it in f64, and 3.2e-7 in f32, where scikit-image's FFT runs in single precision.
+
+`alwan_filter_u8` runs `GAUSSIAN`, on the values read as v / 255 (scikit-image's
+`img_as_float`) and rounded back to levels, and a low-pass `BUTTERWORTH`, on the raw values
+as scikit-image transforms them. The other results are signed and are `ALWAN_E_INVALID`
+on 8-bit data; filter a float copy.
+
+| Field of `alwan_filter_params` | Method | 0 reads as |
+|---|---|---|
+| `sigma` | `GAUSSIAN`, `LOG`; `DOG`'s lower one | 1 pixel on both axes |
+| `sigma_row`, `sigma_col` | the same, per axis | unused: either above 0 replaces `sigma`, and a 0 beside it leaves that axis unsmoothed |
+| `high_sigma`, `high_sigma_row`, `high_sigma_col` | `DOG` | 1.6 times the lower sigma, per axis |
+| `truncate` | the spatial methods | scipy's 4 standard deviations |
+| `border`, `cval` | the spatial methods | `NEAREST`, scikit-image's default for `gaussian` and `difference_of_gaussians` (scipy's `gaussian_laplace` and `laplace` default to `REFLECT`); `cval` is the value past the edge for `CONSTANT` |
+| `cutoff_frequency_ratio` | `BUTTERWORTH` | 0.005 of the sampling frequency, in (0, 0.5] |
+| `order` | `BUTTERWORTH` | 2 |
+| `low_pass` | `BUTTERWORTH` | high-pass, scikit-image's default |
+| `unsquared` | `BUTTERWORTH` | the squared Butterworth scikit-image uses (gain 1/2 at the cut-off; non-zero gives 1/sqrt(2)) |
+| `npad` | `BUTTERWORTH` | no padding; otherwise that many pixels of edge padding each side before the transform |
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL, a zero size, a channel count out of
+range, a stride too small, a non-finite value, an unknown method or border, or a u8 call
+with a signed result; `ALWAN_E_RANGE` for a negative sigma or truncate, a kernel radius
+over 2^20 pixels, `DOG`'s high sigma under the low one on an axis, a cut-off outside
+[0, 0.5], a negative order or an `npad` over 65536; `ALWAN_E_NOMEM`.
 
 ## Denoising
 
