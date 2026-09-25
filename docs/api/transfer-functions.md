@@ -135,6 +135,8 @@ typedef enum {
 
     ALWAN_TF_DICOM_GSDF,           /* DICOM PS3.14 Grayscale Standard Display Function */
 
+    ALWAN_TF_ARIB_STD_B67,         /* ARIB STD-B67: HLG on scene light [0, 12] */
+
     ALWAN_TF_COUNT                 /* sentinel: the number of curves */
 } alwan_transfer_function;
 ```
@@ -142,6 +144,16 @@ typedef enum {
 `ALWAN_TF_PQ` takes and returns cd/m2: linear 100.0 encodes to the PQ code for
 100 nits. `ALWAN_TF_HLG` takes scene light normalised so that 1.0 is the
 nominal peak, with the 12x of the standard applied inside.
+
+`ALWAN_TF_ARIB_STD_B67` is the same curve as ARIB publishes it, and as
+colour-science's `oetf_ARIBSTDB67` computes it: scene light normalised to the
+reference white, so it runs over [0, 12], with r = 0.5 and ARIB's literal constants.
+ARIB(E) = HLG(E / 12) above the knee to within 4.7e-10, ARIB's rounding of c. Two things
+differ from `ALWAN_TF_HLG`. Negative light mirrors the square-root segment, as
+colour-science does, where HLG clamps to 0. And its EOTF is the inverse of the
+OETF, with no system gamma, where `ALWAN_TF_HLG`'s EOTF applies 1.2. Suite 103 holds
+it to colour-science over [-1, 12]. `alwan_h273_transfer_from_tf` gives it code 18,
+which H.273 assigns to both names.
 
 `ALWAN_TF_DICOM_GSDF` is the medical display curve, and it keeps absolute
 luminance the way PQ does. The signal times 1023 is the standard's JND index, and

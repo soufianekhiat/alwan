@@ -1407,3 +1407,33 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_dicom_gsdf_eotf)(ALWAN_CORE_T e
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_dicom_gsdf_oetf)(ALWAN_CORE_T lin) {
     return ALWAN_CORE_FNVLIT(alwan_dicom_gsdf_oetf)(lin) / ALWAN_CORE_LITERAL(1023.0);
 }
+
+/* ARIB STD-B67, colour-science's oetf_ARIBSTDB67 and its inverse: Hybrid Log-Gamma with
+ * scene light E normalised to the reference white, [0, 12], and r = 0.5, so that
+ * ARIB(E) = HLG(E / 12). The constants are ARIB's published literals (c is 0.55991073,
+ * where ALWAN_TF_HLG computes 0.5 - a ln(4a)), and the square-root segment mirrors
+ * about 0 as colour-science's does. The inverse is the OETF's own: unlike ALWAN_TF_HLG's
+ * EOTF, it applies no system gamma. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_arib_std_b67_oetf)(ALWAN_CORE_T lin) {
+    ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.17883277);
+    ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.28466892);
+    ALWAN_CORE_T c = ALWAN_CORE_LITERAL(0.55991073);
+    ALWAN_CORE_T r = ALWAN_CORE_LITERAL(0.5);
+    ALWAN_CORE_T root = r * ALWAN_CORE_SQRT(ALWAN_CORE_ABS(lin));
+    ALWAN_CORE_T lo = ALWAN_CORE_SELECT(lin < ALWAN_CORE_ZERO, -root, root);
+    ALWAN_CORE_T arg = ALWAN_CORE_SELECT(lin > ALWAN_CORE_ONE, lin - b, ALWAN_CORE_ONE - b);
+    ALWAN_CORE_T hi = a * ALWAN_CORE_LN(arg) + c;
+    return ALWAN_CORE_SELECT(lin <= ALWAN_CORE_ONE, lo, hi);
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_arib_std_b67_eotf)(ALWAN_CORE_T encoded) {
+    ALWAN_CORE_T a = ALWAN_CORE_LITERAL(0.17883277);
+    ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.28466892);
+    ALWAN_CORE_T c = ALWAN_CORE_LITERAL(0.55991073);
+    ALWAN_CORE_T r = ALWAN_CORE_LITERAL(0.5);
+    ALWAN_CORE_T q = encoded / r;
+    ALWAN_CORE_T sq = q * q;
+    ALWAN_CORE_T lo = ALWAN_CORE_SELECT(encoded < ALWAN_CORE_ZERO, -sq, sq);
+    ALWAN_CORE_T hi = ALWAN_CORE_EXP((encoded - c) / a) + b;
+    return ALWAN_CORE_SELECT(encoded <= r, lo, hi);
+}

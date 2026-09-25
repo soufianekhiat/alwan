@@ -161,6 +161,9 @@ alwan_status alwan_h273_transfer_from_tf(int *transfer_characteristics_out, alwa
      * segment where sYCC mirrors. ST2084 is the PQ alias. */
     if (tf == ALWAN_TF_SRGB) tf = ALWAN_TF_SYCC;
     if (tf == ALWAN_TF_ST2084) tf = ALWAN_TF_PQ;
+    /* H.273 transfer 18 names BT.2100 HLG and ARIB STD-B67 alike; the two curves
+     * differ only in how scene light is normalised (1 against 12). */
+    if (tf == ALWAN_TF_ARIB_STD_B67) tf = ALWAN_TF_HLG;
     for (i = 0; i < sizeof(g_h273_transfer) / sizeof(g_h273_transfer[0]); i++) {
         if (g_h273_transfer[i].tf == tf) {
             *transfer_characteristics_out = g_h273_transfer[i].code;

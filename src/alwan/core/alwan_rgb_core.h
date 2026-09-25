@@ -1233,6 +1233,31 @@ ALWAN_INLINE alwan_scalar alwan_dicom_gsdf_oetf(alwan_scalar lin) {
     return alwan_dicom_gsdf_oetf_v(lin) / ALWAN_LITERAL(1023.0);
 }
 
+/* ARIB STD-B67: HLG on scene light [0, 12] with r = 0.5, mirrored about 0; see the .inc. */
+ALWAN_INLINE alwan_scalar alwan_arib_std_b67_oetf(alwan_scalar lin) {
+    alwan_scalar a = ALWAN_LITERAL(0.17883277);
+    alwan_scalar b = ALWAN_LITERAL(0.28466892);
+    alwan_scalar c = ALWAN_LITERAL(0.55991073);
+    alwan_scalar r = ALWAN_LITERAL(0.5);
+    alwan_scalar root = r * ALWAN_SQRT(ALWAN_ABS(lin));
+    alwan_scalar lo = ALWAN_SELECT(lin < ALWAN_ZERO, -root, root);
+    alwan_scalar arg = ALWAN_SELECT(lin > ALWAN_ONE, lin - b, ALWAN_ONE - b);
+    alwan_scalar hi = a * ALWAN_LN(arg) + c;
+    return ALWAN_SELECT(lin <= ALWAN_ONE, lo, hi);
+}
+
+ALWAN_INLINE alwan_scalar alwan_arib_std_b67_eotf(alwan_scalar encoded) {
+    alwan_scalar a = ALWAN_LITERAL(0.17883277);
+    alwan_scalar b = ALWAN_LITERAL(0.28466892);
+    alwan_scalar c = ALWAN_LITERAL(0.55991073);
+    alwan_scalar r = ALWAN_LITERAL(0.5);
+    alwan_scalar q = encoded / r;
+    alwan_scalar sq = q * q;
+    alwan_scalar lo = ALWAN_SELECT(encoded < ALWAN_ZERO, -sq, sq);
+    alwan_scalar hi = ALWAN_EXP((encoded - c) / a) + b;
+    return ALWAN_SELECT(encoded <= r, lo, hi);
+}
+
 #endif /* ALWAN_BACKEND */
 
 #endif /* ALWAN_RGB_CORE_H */

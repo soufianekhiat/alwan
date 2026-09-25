@@ -538,6 +538,11 @@
   planar and `_ex` maps, and a core header for the GPU backends. Within 4.6e-15 of ColorAide
   in every direction, out-of-gamut and negative inputs included (suite 242).
 
+- **`ALWAN_TF_ARIB_STD_B67`.** Hybrid Log-Gamma as ARIB publishes it: scene light on
+  [0, 12], r = 0.5, ARIB's literal constants, the square-root segment mirrored about 0,
+  and an EOTF that is the OETF's inverse with no system gamma. Pinned to colour-science's
+  `oetf_ARIBSTDB67` and its inverse over [-1, 12] (suite 103); H.273 code 18.
+
 - **Panoramic light probes: `alwan_upper_hemisphere_illuminance_{T}`,
   `alwan_absolute_luminance_calibrate_{T}`, `alwan_light_probe_sample_{T}`.** The
   illuminance of an equirectangular panorama and its calibration to a measured one

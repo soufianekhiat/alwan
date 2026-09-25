@@ -581,7 +581,10 @@ typedef enum {
     /* Medical display */
     ALWAN_TF_DICOM_GSDF = 63,    /* DICOM PS3.14 Grayscale Standard Display Function: signal x 1023 is the JND index, luminance is ABSOLUTE cd/m2 (0.05 to about 3993), as PQ's is nits */
 
-    ALWAN_TF_COUNT = 64,         /* Sentinel: number of curves */
+    /* Broadcast */
+    ALWAN_TF_ARIB_STD_B67 = 64,  /* ARIB STD-B67: HLG on scene light [0, 12], r = 0.5, mirrored about 0; its inverse has no system gamma */
+
+    ALWAN_TF_COUNT = 65,         /* Sentinel: number of curves */
 
     /* Game Engine Interop */
     ALWAN_TF_UNITY_LINEAR = ALWAN_TF_LINEAR  /* Unity linear (alias for ALWAN_TF_LINEAR) */
