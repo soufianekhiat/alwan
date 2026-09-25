@@ -218,10 +218,40 @@ across all `count` pixels, so this is much faster than calling the per-pixel
 byte strides between consecutive RGB triplets (typically `3 * sizeof(alwan_{T})`
 for tightly packed data).
 
-The unified ACES 2.0 output transform therefore covers four entry shapes:
+### alwan_aces2_output_transform_inv_{T}_map_interleave / _map_planar
+
+```c
+alwan_status alwan_aces2_output_transform_inv_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                                 alwan_{T} const *in, size_t in_stride,
+                                                                 size_t count,
+                                                                 alwan_aces2_output output);
+alwan_status alwan_aces2_output_transform_inv_{T}_map_planar(alwan_{T} *out_ch0, size_t out_stride,
+                                                             alwan_{T} *out_ch1, alwan_{T} *out_ch2,
+                                                             alwan_{T} const *in_ch0, size_t in_stride,
+                                                             alwan_{T} const *in_ch1, alwan_{T} const *in_ch2,
+                                                             size_t count, alwan_aces2_output output);
+```
+
+The inverse over a buffer: display code values in, ACEScg (AP1 linear) out, strides in
+bytes. The scalar inverse builds the preset's tables on every call: the JMh parameters,
+the tonescale, the chroma compression and the gamut-compression tables. That costs
+about 1.1 ms a pixel on an x64 desktop, and the forward scalar costs the same. These
+forms build the tables once and send every pixel through the scalar's own per-pixel
+code, so the two return the same bits. Measured through the Release DLL, they are about
+900 to 1,000 times faster: 0.8 to 1.7 us a pixel. The f32 forms widen each pixel to the
+f64 path and narrow the result, as the f32 scalar does. The planar form runs the
+interleave form on a packed tile.
+
+`ALWAN_E_INVALID` for a NULL buffer, `count` 0 or an unknown preset. A pixel whose decode
+fails stops the loop with its status, and the pixels before it are written. Suite 258
+holds both forms equal to the scalar on every preset, in both precisions.
+
+The unified ACES 2.0 output transform therefore covers five entry shapes:
 **presets** (`_output_transform`), **inverse** (`_output_transform_inv`),
-**custom** (`_output_transform_custom`), and **batch-initialized**
-(`_output_transform_{T}_map_interleave`).
+**custom** (`_output_transform_custom`), and the **batch-initialized** forward and
+inverse (`_output_transform_{T}_map_interleave`, `_output_transform_inv_{T}_map_interleave`).
+For more than a few pixels, use the map forms: the scalar forms rebuild their tables on
+every call.
 
 ---
 

@@ -10546,6 +10546,9 @@ alwan_status alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
  *
  * Inverse of the output transform for round-trip workflows.
  * Converts display-encoded RGB back to ACEScg (AP1 linear).
+ * Each call builds the preset's tables (about 1.1 ms on an x64 desktop, as the forward
+ * scalar also does); for more than a few pixels use the _map_interleave / _map_planar
+ * forms below, which build them once and return the same bits.
  *
  * @param rgb_out  Output RGB in ACEScg (AP1 linear), scene-referred
  * @param rgb_in   Input RGB, display-encoded [0,1]
@@ -10614,6 +10617,19 @@ alwan_status alwan_aces2_output_transform_f32_map_interleave(alwan_f32 *out, siz
 /* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
 alwan_status alwan_aces2_output_transform_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_aces2_output output);
 alwan_status alwan_aces2_output_transform_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_aces2_output output);
+
+/* The inverse over a buffer: display code values to ACEScg (AP1 linear), strides in bytes.
+ * The preset's tables are built once per call, then every pixel goes through the same
+ * per-pixel code as alwan_aces2_output_transform_inv_{T}, so the two agree bit for bit
+ * (suite 258). The scalar inverse rebuilds those tables on every call, about 1.1 ms a pixel
+ * on an x64 desktop; for an image, use these. The f32 forms widen each pixel to the f64
+ * path and narrow the result, as the f32 scalar does. ALWAN_E_INVALID for a NULL buffer,
+ * count 0 or an unknown preset; a pixel whose decode fails stops the loop with its status. */
+alwan_status alwan_aces2_output_transform_inv_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_aces2_output output);
+alwan_status alwan_aces2_output_transform_inv_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_aces2_output output);
+/* Planar twins: the interleave form run on a packed tile, so identical to it. */
+alwan_status alwan_aces2_output_transform_inv_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_aces2_output output);
+alwan_status alwan_aces2_output_transform_inv_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_aces2_output output);
 
 /* ----------------------------------------------------------------
  * HDR Pipeline Utilities

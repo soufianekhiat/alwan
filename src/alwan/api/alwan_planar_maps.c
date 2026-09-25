@@ -96,6 +96,26 @@ alwan_status alwan_aces2_output_transform_f32_map_planar(alwan_f32 *out_ch0, siz
     return ALWAN_OK;
 }
 
+alwan_status alwan_aces2_output_transform_inv_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
+        alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
+        alwan_aces2_output output) {
+    alwan_f32 tin[ALWAN_PLANAR_TILE * 3], tout[ALWAN_PLANAR_TILE * 3];
+    size_t done = 0;
+    alwan_status st;
+    if (!out_ch0 || !out_ch1 || !out_ch2 || !in_ch0 || !in_ch1 || !in_ch2) return ALWAN_E_INVALID;
+    if (count == 0) return alwan_aces2_output_transform_inv_f32_map_interleave(tout, 3 * sizeof(alwan_f32), tin, 3 * sizeof(alwan_f32), 0, output);
+    while (done < count) {
+        size_t n = count - done;
+        if (n > ALWAN_PLANAR_TILE) n = ALWAN_PLANAR_TILE;
+        ALWAN_PLANAR_GATHER(alwan_f32, tin, in_ch0, in_ch1, in_ch2, in_stride, done, n);
+        st = alwan_aces2_output_transform_inv_f32_map_interleave(tout, 3 * sizeof(alwan_f32), tin, 3 * sizeof(alwan_f32), n, output);
+        if (st != ALWAN_OK) return st;
+        ALWAN_PLANAR_SCATTER(alwan_f32, tout, out_ch0, out_ch1, out_ch2, out_stride, done, n);
+        done += n;
+    }
+    return ALWAN_OK;
+}
+
 alwan_status alwan_camera_rgb_to_aces2065_1_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
         alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
         alwan_mat3x3_f32 const *idt, alwan_rgb_f32 const *white_balance, alwan_f32 exposure, int clip) {
@@ -513,6 +533,26 @@ alwan_status alwan_aces2_output_transform_f64_map_planar(alwan_f64 *out_ch0, siz
         if (n > ALWAN_PLANAR_TILE) n = ALWAN_PLANAR_TILE;
         ALWAN_PLANAR_GATHER(alwan_f64, tin, in_ch0, in_ch1, in_ch2, in_stride, done, n);
         st = alwan_aces2_output_transform_f64_map_interleave(tout, 3 * sizeof(alwan_f64), tin, 3 * sizeof(alwan_f64), n, output);
+        if (st != ALWAN_OK) return st;
+        ALWAN_PLANAR_SCATTER(alwan_f64, tout, out_ch0, out_ch1, out_ch2, out_stride, done, n);
+        done += n;
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_aces2_output_transform_inv_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2,
+        alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,
+        alwan_aces2_output output) {
+    alwan_f64 tin[ALWAN_PLANAR_TILE * 3], tout[ALWAN_PLANAR_TILE * 3];
+    size_t done = 0;
+    alwan_status st;
+    if (!out_ch0 || !out_ch1 || !out_ch2 || !in_ch0 || !in_ch1 || !in_ch2) return ALWAN_E_INVALID;
+    if (count == 0) return alwan_aces2_output_transform_inv_f64_map_interleave(tout, 3 * sizeof(alwan_f64), tin, 3 * sizeof(alwan_f64), 0, output);
+    while (done < count) {
+        size_t n = count - done;
+        if (n > ALWAN_PLANAR_TILE) n = ALWAN_PLANAR_TILE;
+        ALWAN_PLANAR_GATHER(alwan_f64, tin, in_ch0, in_ch1, in_ch2, in_stride, done, n);
+        st = alwan_aces2_output_transform_inv_f64_map_interleave(tout, 3 * sizeof(alwan_f64), tin, 3 * sizeof(alwan_f64), n, output);
         if (st != ALWAN_OK) return st;
         ALWAN_PLANAR_SCATTER(alwan_f64, tout, out_ch0, out_ch1, out_ch2, out_stride, done, n);
         done += n;

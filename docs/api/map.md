@@ -417,6 +417,7 @@ alwan_status alwan_ciecam02_inverse_{T}_map_interleave(
 | CAM16 | `alwan_cam16_forward_{T}_map_interleave` | `alwan_cam16_inverse_{T}_map_interleave` |
 | ZCAM | `alwan_zcam_forward_{T}_map_interleave` | `alwan_zcam_inverse_{T}_map_interleave` |
 | ACES 1.x output | `alwan_aces1_output_transform_{T}_map_interleave` | see [aces](aces.md) |
+| ACES 2.0 output | `alwan_aces2_output_transform_{T}_map_interleave` | `alwan_aces2_output_transform_inv_{T}_map_interleave` |
 | Hellwig 2022 | `alwan_hellwig2022_forward_{T}_map_interleave` | `alwan_hellwig2022_inverse_{T}_map_interleave` |
 | Kim 2009 | `alwan_kim2009_forward_{T}_map_interleave` | `alwan_kim2009_inverse_{T}_map_interleave` |
 | Hunt | `alwan_hunt_forward_{T}_map_interleave` | `alwan_hunt_inverse_{T}_map_interleave` |

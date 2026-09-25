@@ -26,7 +26,11 @@ EXPORTS
     alwan_aces2_output_transform_f64_map_interleave
     alwan_aces2_output_transform_f64_map_planar
     alwan_aces2_output_transform_inv_f32
+    alwan_aces2_output_transform_inv_f32_map_interleave
+    alwan_aces2_output_transform_inv_f32_map_planar
     alwan_aces2_output_transform_inv_f64
+    alwan_aces2_output_transform_inv_f64_map_interleave
+    alwan_aces2_output_transform_inv_f64_map_planar
     alwan_aces_blue_light_fix_f32
     alwan_aces_blue_light_fix_f64
     alwan_aces_blue_light_fix_inv_f32

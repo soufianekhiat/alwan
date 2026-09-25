@@ -468,6 +468,13 @@
 
 ### Added
 
+- **ACES 2.0 inverse output transform over a buffer:
+  `alwan_aces2_output_transform_inv_{T}_map_interleave` and `_map_planar`.** The preset's
+  tables are built once per call instead of once per pixel, and every pixel goes through
+  the scalar inverse's own code, so the results are the scalar's bit for bit (suite 258).
+  About 1,000 times faster than calling the scalar in a loop, which rebuilds the tables
+  each time (about 1.1 ms a pixel).
+
 - **`alwan_cqs_specification_{T}`: NIST CQS 9.0 and 7.4 in full.** Qa, Qf, Qg, and for 7.4 the
   CCT factor, Qp and Qd; the CCT, each sample's Qa, dC, dE, dE' and CIELAB under both
   sources, and the gamut areas, as colour-science's `ColourRendering_Specification_CQS`.
