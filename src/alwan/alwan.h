@@ -1685,6 +1685,52 @@ alwan_status alwan_xyb_to_linear_srgb_map_planar_ex(void *out0, size_t out_strid
 alwan_status alwan_xyz_to_xyb_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 alwan_status alwan_xyb_to_xyz_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 
+/* Stain separation by colour deconvolution (Ruifrok and Johnston 2001), as scikit-image's
+ * separate_stains and combine_stains (suite 245). A stain set is three optical-density
+ * vectors, the rows of rgb_from; the amount of each stain in a pixel is its optical density
+ * times the inverse, from_rgb. Optical density is measured in units of -ln(1e-6), the floor
+ * put under every channel: a white pixel is 0 of every stain, a channel at 1e-6 reads 1.
+ *   rgb -> stains:  s = (ln(max(rgb, 1e-6)) / ln(1e-6)) from_rgb, then s = max(s, 0)
+ *   stains -> rgb:  rgb = exp(-(s * -ln(1e-6)) rgb_from), clipped to [0, 1]
+ * with rgb a row vector and RGB linear in [0, 1] as the scanner delivered it (skimage applies
+ * no transfer curve). The presets are skimage's matrices, H&E-DAB from the paper and the
+ * rest from G. Landini's colour deconvolution plugin; a two-stain set's third vector is the
+ * cross product of the first two, not normalised. ALWAN_STAIN_CUSTOM takes the caller's
+ * rgb_from, rows = stains; a third row of zeros is replaced by that cross product, as the
+ * presets are built. ALWAN_E_INVALID for an unknown set, CUSTOM without a matrix, a NULL
+ * buffer or count 0; ALWAN_E_RANGE for a singular custom matrix. */
+typedef enum {
+    ALWAN_STAIN_HED = 0,    /* haematoxylin, eosin, DAB (Ruifrok and Johnston 2001) */
+    ALWAN_STAIN_HDX = 1,    /* haematoxylin, DAB, their cross product */
+    ALWAN_STAIN_FGX = 2,    /* Feulgen, light green */
+    ALWAN_STAIN_BEX = 3,    /* Giemsa: methyl blue, eosin */
+    ALWAN_STAIN_RBD = 4,    /* FastRed, FastBlue, DAB */
+    ALWAN_STAIN_GDX = 5,    /* methyl green, DAB */
+    ALWAN_STAIN_HAX = 6,    /* haematoxylin, AEC */
+    ALWAN_STAIN_BRO = 7,    /* aniline blue, azocarmine, orange G */
+    ALWAN_STAIN_BPX = 8,    /* methyl blue, ponceau fuchsin */
+    ALWAN_STAIN_AHX = 9,    /* alcian blue, haematoxylin */
+    ALWAN_STAIN_HPX = 10,   /* haematoxylin, PAS */
+    ALWAN_STAIN_CUSTOM = 11 /* the caller's rgb_from */
+} alwan_stain_set;
+
+/* The set's rgb_from (rows = stain vectors) and from_rgb; either output may be NULL, not both. */
+alwan_status alwan_stain_matrix_f32(alwan_mat3x3_f32 *rgb_from, alwan_mat3x3_f32 *from_rgb, alwan_stain_set set, alwan_mat3x3_f32 const *custom);
+alwan_status alwan_stain_matrix_f64(alwan_mat3x3_f64 *rgb_from, alwan_mat3x3_f64 *from_rgb, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+alwan_status alwan_rgb_to_stains_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_stain_set set, alwan_mat3x3_f32 const *custom);
+alwan_status alwan_rgb_to_stains_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+alwan_status alwan_stains_to_rgb_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_stain_set set, alwan_mat3x3_f32 const *custom);
+alwan_status alwan_stains_to_rgb_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+alwan_status alwan_rgb_to_stains_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_stain_set set, alwan_mat3x3_f32 const *custom);
+alwan_status alwan_rgb_to_stains_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+alwan_status alwan_stains_to_rgb_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_stain_set set, alwan_mat3x3_f32 const *custom);
+alwan_status alwan_stains_to_rgb_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+/* Typed I/O, converted in double: a u8 slide scan reads as value / 255, as skimage's img_as_float. */
+alwan_status alwan_rgb_to_stains_map_interleave_ex(void *out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+alwan_status alwan_stains_to_rgb_map_interleave_ex(void *rgb_out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+alwan_status alwan_rgb_to_stains_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+alwan_status alwan_stains_to_rgb_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_stain_set set, alwan_mat3x3_f64 const *custom);
+
 /* OSA-UCS <-> XYZ conversions (Optical Society of America Uniform Color Scales)
  * MacAdam (1978), as colour-science's XYZ_to_OSA_UCS and OSA_UCS_to_XYZ.
  * - XYZ input/output is D65 adapted, Y = 100 scale

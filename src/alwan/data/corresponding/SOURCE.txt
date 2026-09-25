@@ -1,0 +1,7 @@
+breneman1987.csv: Breneman (1987), "Corresponding chromaticities for different
+states of adaptation to complex visual fields", JOSA A 4(6). Twelve experiments of
+corresponding u'v' as colour-science carries them
+(colour.corresponding.datasets.breneman1987, BSD-3-Clause, Colour Developers),
+with the sample luminance factors of colour's
+convert_experiment_results_Breneman1987. Written by
+alwan_dev/gendata/data/breneman1987.py.

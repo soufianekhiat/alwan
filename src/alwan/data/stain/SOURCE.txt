@@ -1,0 +1,8 @@
+stain_matrices.csv: the eleven stain vector sets of scikit-image's
+skimage/color/colorconv.py (rgb_from_hed, _hdx, _fgx, _bex, _rbd, _gdx, _hax,
+_bro, _bpx, _ahx, _hpx) and the inverses it computes, BSD-3-Clause, the
+scikit-image team. The H&E-DAB set is Ruifrok and Johnston (2001), "Quantification
+of histochemical staining by color deconvolution", Anal. Quant. Cytol. Histol.
+23(4); the others follow G. Landini's ImageJ colour deconvolution plugin, as
+scikit-image cites. Read from the installed module, not retyped, by
+alwan_dev/gendata/data/stain_matrices.py.

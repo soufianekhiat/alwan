@@ -1229,3 +1229,4 @@ white points without adapting first.
 - [Transfer Functions](transfer-functions.md): OETF/EOTF/view transforms
 - [Chromatic Adaptation](chromatic-adaptation.md): White point transforms
 - [Color Difference](color-difference.md): dE metrics
+- [Stain Separation](stain-separation.md): histology stains by colour deconvolution

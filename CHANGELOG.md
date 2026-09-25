@@ -538,6 +538,13 @@
   planar and `_ex` maps, and a core header for the GPU backends. Within 4.6e-15 of ColorAide
   in every direction, out-of-gamut and negative inputs included (suite 242).
 
+- **Stain separation by colour deconvolution: `alwan_rgb_to_stains_{T}`,
+  `alwan_stains_to_rgb_{T}`, `alwan_stain_matrix_{T}`.** The amount of each histology stain in
+  a pixel from its optical density (Ruifrok and Johnston 2001), and back, over scikit-image's
+  eleven stain sets (H&E-DAB and ten from Landini's plugin) or a caller's vectors. Interleave,
+  planar and typed maps; within 3.3e-16 of scikit-image's `separate_stains`, `combine_stains`
+  and `rgb2hed`, u8 scans included (suite 245).
+
 - **`ALWAN_TF_ARIB_STD_B67`.** Hybrid Log-Gamma as ARIB publishes it: scene light on
   [0, 12], r = 0.5, ARIB's literal constants, the square-root segment mirrored about 0,
   and an EOTF that is the OETF's inverse with no system gamma. Pinned to colour-science's

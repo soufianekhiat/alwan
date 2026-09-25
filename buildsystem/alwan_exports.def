@@ -1663,6 +1663,12 @@ EXPORTS
     alwan_rgb_to_spectrum_smits1999_f64
     alwan_rgb_to_spectrum_smits1999_f64_map_interleave
     alwan_rgb_to_spectrum_smits1999_map_interleave_ex
+    alwan_rgb_to_stains_f32_map_interleave
+    alwan_rgb_to_stains_f32_map_planar
+    alwan_rgb_to_stains_f64_map_interleave
+    alwan_rgb_to_stains_f64_map_planar
+    alwan_rgb_to_stains_map_interleave_ex
+    alwan_rgb_to_stains_map_planar_ex
     alwan_rgb_to_xyz_f32
     alwan_rgb_to_xyz_f64
     alwan_rgb_to_ycbcr_f32
@@ -1877,6 +1883,14 @@ EXPORTS
     alwan_ssim_f64
     alwan_st2086_init_f32
     alwan_st2086_init_f64
+    alwan_stain_matrix_f32
+    alwan_stain_matrix_f64
+    alwan_stains_to_rgb_f32_map_interleave
+    alwan_stains_to_rgb_f32_map_planar
+    alwan_stains_to_rgb_f64_map_interleave
+    alwan_stains_to_rgb_f64_map_planar
+    alwan_stains_to_rgb_map_interleave_ex
+    alwan_stains_to_rgb_map_planar_ex
     alwan_sucs_to_xyz_f32
     alwan_sucs_to_xyz_f64
     alwan_table1d_mat3_sample_f32
