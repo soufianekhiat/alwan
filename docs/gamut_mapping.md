@@ -45,11 +45,13 @@ legal-range scaling, numerical guards.
 | `SGCK` | knee-compressed segment map | gradient smoothness | wide->narrow images with smooth ramps | medium |
 | `HPMINDE` | min DeltaE on hue leaf | colorimetric closeness | proofing / soft-proof (smallest visible error) | medium |
 | `LIGHTNESS_PRESERVE` | hold L, sacrifice C | lightness contrast | text overlays, skin tones | medium |
+| `RAYTRACE` | Oklch chroma reduction, rays cast to the target's linear cube | Oklch lightness + hue | any target, wide gamuts included; ColorAide's default | medium |
+| `CSS4` | CSS Color 4 binary search on Oklch chroma, JND 0.02 | Oklch lightness + hue, within a JND | matching browsers' CSS gamut mapping | medium-high |
 
 Honesty notes:
 1. The perceptual (Oklab) boundary model is **sRGB-anchored**
    (`core/alwan_gamut_core.inc`): for targets wider than sRGB the six Oklab
-   methods over-compress. Use `alwan_css_gamut_space` for wide-gamut targets.
+   methods over-compress. `RAYTRACE` and `CSS4` work in the target's own cube.
 2. The methods are SDR-oriented. For HDR (absolute nits) use
    `alwan_hdr_gamut_map_ictcp`.
 
@@ -57,7 +59,7 @@ Honesty notes:
 
 | API | space / domain | algorithm |
 |---|---|---|
-| `alwan_gamut_map_advanced_{f32,f64}` | any RGB space desc, SDR | 8 methods above (Oklab model) |
+| `alwan_gamut_map_advanced_{f32,f64}` | any RGB space desc, SDR | 10 methods above (Oklab model; RAYTRACE and CSS4 in the target's cube) |
 | `alwan_gamut_{f32,f64}_map_interleave/_planar/_ex` | sRGB, SDR, bulk | same 8 methods |
 | `alwan_css_gamut_*` (bulk) | sRGB target | CSS Color 4: Oklch chroma reduction, deltaEOK JND |
 | `alwan_css_gamut_space_{f32,f64}` | **any D65 RGB target** (P3, Rec.2020...) | CSS Color 4 algorithm against the target cube |

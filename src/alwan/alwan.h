@@ -1042,7 +1042,9 @@ typedef enum {
     ALWAN_GAMUT_MAP_CHROMA_COMPRESS = 4, /* Chroma compression - P9.5 */
     ALWAN_GAMUT_MAP_SGCK = 5, /* SGCK 2004 (Segment-Maximal Gamut Clipping with Knee) - P9.5 */
     ALWAN_GAMUT_MAP_HPMINDE = 6, /* HPMINDE (Hue-Preserving Minimum dE) - P9.5 */
-    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE = 7 /* Lightness Preserving - P9.5 */
+    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE = 7, /* Lightness Preserving - P9.5 */
+    ALWAN_GAMUT_MAP_RAYTRACE = 8,     /* Oklch chroma reduction by ray tracing the linear RGB cube (ColorAide 'raytrace') */
+    ALWAN_GAMUT_MAP_CSS4 = 9          /* CSS Color 4 Oklch binary search with the deltaE OK JND (ColorAide 'oklch-chroma') */
 } alwan_gamut_map_method;
 
 /* Method selection guide (see docs/gamut_mapping.md for the full discussion):
@@ -5022,6 +5024,13 @@ alwan_status alwan_gamut_coverage_f32(alwan_f32 *coverage_out,
  * method: any alwan_gamut_map_method. CLIP clamps in `space`'s own cube;
  *         HUE_PRESERVING is the projection the plain alwan_gamut_{T} maps run,
  *         applied in the working space; 2 to 7 are the Oklab projections.
+ *         RAYTRACE and CSS4 reduce Oklch chroma at constant lightness and
+ *         hue in `space`'s own linear cube, as ColorAide 8.13's 'raytrace' and
+ *         'oklch-chroma' fits do (suite 243): RAYTRACE casts rays from the
+ *         achromatic anchor to the cube's surface, up to four, correcting
+ *         lightness and hue between them; CSS4 is CSS Color 4's binary search
+ *         (JND 0.02 in deltaE OK). A space whose white is not D65 is Bradford-
+ *         adapted to Oklab's D65. Both run in f64; the f32 form widens.
  *         HUE_PRESERVING was ALWAN_E_INVALID here until 2026-09-22, and only
  *         for a colour outside the gamut, which is when a caller asks.
  * space: RGB color space descriptor (primaries and white point)

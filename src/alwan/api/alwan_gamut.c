@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <float.h>
 
 /* ----------------------------------------------------------------
  * M11: Gamut Volume Estimation (exact |det(M)| of the RGB->XYZ matrix)
@@ -938,6 +939,373 @@ static int gamut_working_xform_f64(alwan_mat3x3_f64 *to_srgb,
     return ALWAN_OK;
 }
 
+/* ----------------------------------------------------------------
+ * ALWAN_GAMUT_MAP_RAYTRACE and ALWAN_GAMUT_MAP_CSS4
+ *
+ * Both work in Oklch and reduce chroma at constant lightness and hue, as
+ * ColorAide 8.13 does in its 'raytrace' and 'oklch-chroma' fits (the latter
+ * is CSS Color 4's binary search). They are written after ColorAide's code
+ * step for step, so that it serves as their reference (suite 243).
+ *
+ * Oklab comes from the CSS tables of alwan_gamut_core: XYZ D65 to LMS is
+ * CSS_SRGB_TO_LMS times XYZ to linear sRGB, then the cube root and
+ * CSS_LMS_TO_LAB; back through the inverse of CSS_LMS_TO_LAB, the cube, and
+ * the inverse of that XYZ matrix. Every return trip uses the computed inverse:
+ * the published CSS_LAB_TO_LMS is 5.5e-8 from it, so a round trip through
+ * Oklch moves a colour by about 1e-7, and the ray tracer, which converts back
+ * and forth between rays, drifts a surface point into the cube and casts a
+ * ray from it to itself. ColorAide builds its pair the same way, inverting
+ * one matrix to get the other. A space whose white is not D65 is Bradford-adapted
+ * from D65. Angles are in degrees, as ColorAide keeps them.
+ *
+ * Both run in f64; the f32 entry point widens to them, as
+ * alwan_css_gamut_space_f32 does. So the ray tracer's parallel-ray and
+ * surface thresholds are ColorAide's 64-bit 1e-12 in either precision.
+ * ---------------------------------------------------------------- */
+
+#define ALWAN__OKLCH_ATOL 1e-12
+
+typedef struct {
+    alwan_mat3x3_f64 rgb_to_xyz;   /* the space's RGB to XYZ D65, adapted when needed */
+    alwan_mat3x3_f64 xyz_to_rgb;
+    alwan_mat3x3_f64 xyz_to_lms;
+    alwan_mat3x3_f64 lms_to_xyz;
+    alwan_mat3x3_f64 lms_to_rgb;   /* ColorAide's get_conversion_matrices: m */
+    alwan_mat3x3_f64 rgb_to_lms;   /* and its inverse */
+    alwan_mat3x3_f64 lab_to_lms;   /* the inverse of CSS_LMS_TO_LAB */
+    alwan_vec3_f64 white;          /* XYZ of D65 at Y = 1 */
+} alwan__oklch_frame;
+
+static int gamut_oklch_frame_f64(alwan__oklch_frame *f, alwan_rgb_space_desc_f64 const *space) {
+    alwan_rgb_space_desc_f64 srgb;
+    alwan_mat3x3_f64 s_to_xyz, xyz_to_s, t_to_xyz, xyz_to_t;
+    int st = alwan_rgb_get_space_descriptor_f64(&srgb, ALWAN_RGB_SPACE_SRGB, NULL);
+    if (st != ALWAN_OK) return st;
+    st = alwan_rgb_derive_matrices_f64(&s_to_xyz, &xyz_to_s, &srgb);
+    if (st != ALWAN_OK) return st;
+    st = alwan_rgb_derive_matrices_f64(&t_to_xyz, &xyz_to_t, space);
+    if (st != ALWAN_OK) return st;
+
+    alwan_mat3_mul_f64(&f->xyz_to_lms, &CSS_SRGB_TO_LMS_f64, &xyz_to_s);
+    st = alwan_mat3_inv_f64(&f->lab_to_lms, &CSS_LMS_TO_LAB_f64);
+    if (st != ALWAN_OK) return st;
+    st = alwan_mat3_inv_f64(&f->lms_to_xyz, &f->xyz_to_lms);
+    if (st != ALWAN_OK) return st;
+
+    f->white.v[0] = srgb.white_xy[0] / srgb.white_xy[1];
+    f->white.v[1] = ALWAN_LITERAL(1.0);
+    f->white.v[2] = (ALWAN_LITERAL(1.0) - srgb.white_xy[0] - srgb.white_xy[1]) / srgb.white_xy[1];
+
+    /* A white within 1e-6 of D65 is D65: the f32 entry point widens its
+     * descriptor, and 0.3127f is not 0.3127. The nearest white that differs,
+     * ASTM E308's D65, is 2.7e-5 away. */
+    if (fabs(space->white_xy[0] - srgb.white_xy[0]) > ALWAN_LITERAL(1e-6) ||
+        fabs(space->white_xy[1] - srgb.white_xy[1]) > ALWAN_LITERAL(1e-6)) {
+        alwan_xyz_f64 d65, w;
+        alwan_mat3x3_f64 to_d65, from_d65;
+        d65.x = f->white.v[0]; d65.y = f->white.v[1]; d65.z = f->white.v[2];
+        w.x = space->white_xy[0] / space->white_xy[1];
+        w.y = ALWAN_LITERAL(1.0);
+        w.z = (ALWAN_LITERAL(1.0) - space->white_xy[0] - space->white_xy[1]) / space->white_xy[1];
+        st = alwan_cat_matrix_f64(&to_d65, &w, &d65, ALWAN_CAT_BRADFORD);
+        if (st != ALWAN_OK) return st;
+        st = alwan_cat_matrix_f64(&from_d65, &d65, &w, ALWAN_CAT_BRADFORD);
+        if (st != ALWAN_OK) return st;
+        alwan_mat3_mul_f64(&f->rgb_to_xyz, &to_d65, &t_to_xyz);
+        alwan_mat3_mul_f64(&f->xyz_to_rgb, &xyz_to_t, &from_d65);
+    } else {
+        f->rgb_to_xyz = t_to_xyz;
+        f->xyz_to_rgb = xyz_to_t;
+    }
+    alwan_mat3_mul_f64(&f->lms_to_rgb, &f->xyz_to_rgb, &f->lms_to_xyz);
+    return alwan_mat3_inv_f64(&f->rgb_to_lms, &f->lms_to_rgb);
+}
+
+/* Python's x % 360 for a float: the result takes the divisor's sign. */
+static alwan_f64 gamut_hue_mod360(alwan_f64 h) {
+    alwan_f64 m = fmod(h, ALWAN_LITERAL(360.0));
+    if (m != ALWAN_LITERAL(0.0) && m < ALWAN_LITERAL(0.0)) m += ALWAN_LITERAL(360.0);
+    return m;
+}
+
+/* ColorAide's nth_root(n, 3): pow of |n| to 3 ** -1, sign restored. */
+static alwan_f64 gamut_signed_cbrt(alwan_f64 n) {
+    if (n == ALWAN_LITERAL(0.0)) return ALWAN_LITERAL(0.0);
+    return copysign(pow(fabs(n), ALWAN_LITERAL(1.0) / ALWAN_LITERAL(3.0)), n);
+}
+
+/* LMS to Oklch, and Oklch to LMS (L, C, h in degrees). */
+static alwan_vec3_f64 gamut_lms_to_oklch(alwan_vec3_f64 lms) {
+    alwan_vec3_f64 lp, lab, lch;
+    lp.v[0] = gamut_signed_cbrt(lms.v[0]);
+    lp.v[1] = gamut_signed_cbrt(lms.v[1]);
+    lp.v[2] = gamut_signed_cbrt(lms.v[2]);
+    alwan_mat3_mulv_f64(&lab, &CSS_LMS_TO_LAB_f64, &lp);
+    lch.v[0] = lab.v[0];
+    lch.v[1] = sqrt(lab.v[1] * lab.v[1] + lab.v[2] * lab.v[2]);
+    lch.v[2] = gamut_hue_mod360((ALWAN_LITERAL(180.0) / ALWAN_PI) * atan2(lab.v[2], lab.v[1]));
+    return lch;
+}
+
+static alwan_vec3_f64 gamut_oklch_to_oklab(alwan_vec3_f64 lch) {
+    alwan_vec3_f64 lab;
+    alwan_f64 const r = (ALWAN_PI / ALWAN_LITERAL(180.0)) * lch.v[2];
+    lab.v[0] = lch.v[0];
+    lab.v[1] = lch.v[1] * cos(r);
+    lab.v[2] = lch.v[1] * sin(r);
+    return lab;
+}
+
+static alwan_vec3_f64 gamut_oklab_to_lms(alwan__oklch_frame const *f, alwan_vec3_f64 lab) {
+    alwan_vec3_f64 lp, lms;
+    alwan_mat3_mulv_f64(&lp, &f->lab_to_lms, &lab);
+    lms.v[0] = pow(lp.v[0], ALWAN_LITERAL(3.0));
+    lms.v[1] = pow(lp.v[1], ALWAN_LITERAL(3.0));
+    lms.v[2] = pow(lp.v[2], ALWAN_LITERAL(3.0));
+    return lms;
+}
+
+/* The conversion chain Color.convert runs: RGB, XYZ D65, LMS, Oklab, Oklch. */
+static alwan_vec3_f64 gamut_rgb_to_oklch_chain(alwan__oklch_frame const *f, alwan_vec3_f64 rgb) {
+    alwan_vec3_f64 xyz, lms;
+    alwan_mat3_mulv_f64(&xyz, &f->rgb_to_xyz, &rgb);
+    alwan_mat3_mulv_f64(&lms, &f->xyz_to_lms, &xyz);
+    return gamut_lms_to_oklch(lms);
+}
+
+static alwan_vec3_f64 gamut_rgb_to_oklab_chain(alwan__oklch_frame const *f, alwan_vec3_f64 rgb) {
+    alwan_vec3_f64 xyz, lms, lp, lab;
+    alwan_mat3_mulv_f64(&xyz, &f->rgb_to_xyz, &rgb);
+    alwan_mat3_mulv_f64(&lms, &f->xyz_to_lms, &xyz);
+    lp.v[0] = gamut_signed_cbrt(lms.v[0]);
+    lp.v[1] = gamut_signed_cbrt(lms.v[1]);
+    lp.v[2] = gamut_signed_cbrt(lms.v[2]);
+    alwan_mat3_mulv_f64(&lab, &CSS_LMS_TO_LAB_f64, &lp);
+    return lab;
+}
+
+static alwan_vec3_f64 gamut_oklch_to_rgb_chain(alwan__oklch_frame const *f, alwan_vec3_f64 lch) {
+    alwan_vec3_f64 lms = gamut_oklab_to_lms(f, gamut_oklch_to_oklab(lch)), xyz, rgb;
+    alwan_mat3_mulv_f64(&xyz, &f->lms_to_xyz, &lms);
+    alwan_mat3_mulv_f64(&rgb, &f->xyz_to_rgb, &xyz);
+    return rgb;
+}
+
+/* ColorAide's fast-path from_oklch and to_oklch, through m and its inverse. */
+static alwan_vec3_f64 gamut_oklch_to_rgb_fast(alwan__oklch_frame const *f, alwan_vec3_f64 lch) {
+    alwan_vec3_f64 lms = gamut_oklab_to_lms(f, gamut_oklch_to_oklab(lch)), rgb;
+    alwan_mat3_mulv_f64(&rgb, &f->lms_to_rgb, &lms);
+    return rgb;
+}
+
+static alwan_vec3_f64 gamut_rgb_to_oklch_fast(alwan__oklch_frame const *f, alwan_vec3_f64 rgb) {
+    alwan_vec3_f64 lms;
+    alwan_mat3_mulv_f64(&lms, &f->rgb_to_lms, &rgb);
+    return gamut_lms_to_oklch(lms);
+}
+
+/* project_onto(a, b, o): a projected onto the segment from o to b. */
+static alwan_vec3_f64 gamut_project_onto(alwan_vec3_f64 a, alwan_vec3_f64 b, alwan_vec3_f64 o) {
+    alwan_f64 const va1 = a.v[0] - o.v[0], va2 = a.v[1] - o.v[1], va3 = a.v[2] - o.v[2];
+    alwan_f64 const vb1 = b.v[0] - o.v[0], vb2 = b.v[1] - o.v[1], vb3 = b.v[2] - o.v[2];
+    alwan_f64 const n = va1 * vb1 + va2 * vb2 + va3 * vb3;
+    alwan_f64 d = vb1 * vb1 + vb2 * vb2 + vb3 * vb3;
+    alwan_f64 r;
+    alwan_vec3_f64 p;
+    if (d == ALWAN_LITERAL(0.0)) d = DBL_EPSILON;
+    r = n / d;
+    if (r > ALWAN_LITERAL(1.0)) r = ALWAN_LITERAL(1.0);
+    else if (r < ALWAN_LITERAL(0.0)) r = ALWAN_LITERAL(0.0);
+    p.v[0] = vb1 * r + o.v[0];
+    p.v[1] = vb2 * r + o.v[1];
+    p.v[2] = vb3 * r + o.v[2];
+    return p;
+}
+
+/* raytrace_box: the slab method, from start towards end, against [lo, hi]^3.
+ * Returns 0 for no hit, the case ColorAide returns an empty list for. */
+static int gamut_raytrace_box(alwan_vec3_f64 *hit, alwan_vec3_f64 start, alwan_vec3_f64 end, alwan_f64 lo, alwan_f64 hi) {
+    alwan_f64 tfar = HUGE_VAL, tnear = -HUGE_VAL;
+    alwan_f64 dir[3];
+    int i;
+    for (i = 0; i < 3; i++) {
+        alwan_f64 const a = start.v[i];
+        alwan_f64 const d = end.v[i] - a;
+        dir[i] = d;
+        if (fabs(d) > ALWAN__OKLCH_ATOL) {
+            alwan_f64 const inv_d = ALWAN_LITERAL(1.0) / d;
+            alwan_f64 const t1 = (lo - a) * inv_d;
+            alwan_f64 const t2 = (hi - a) * inv_d;
+            /* Python's min and max keep the first argument on a tie. */
+            alwan_f64 const mn = (t2 < t1) ? t2 : t1;
+            alwan_f64 const mx = (t2 > t1) ? t2 : t1;
+            tnear = (tnear > mn) ? tnear : mn;
+            tfar = (tfar < mx) ? tfar : mx;
+        } else if (a < lo || a > hi) {
+            return 0;
+        }
+    }
+    if (tnear > tfar || tfar < ALWAN_LITERAL(0.0)) return 0;
+    if (tnear < ALWAN_LITERAL(0.0)) tnear = tfar;
+    if (!isfinite(tnear)) return 0;
+    hit->v[0] = start.v[0] + dir[0] * tnear;
+    hit->v[1] = start.v[1] + dir[1] * tnear;
+    hit->v[2] = start.v[2] + dir[2] * tnear;
+    return 1;
+}
+
+static alwan_f64 gamut_clamp01(alwan_f64 x) {
+    return (x < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) : (x > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : x;
+}
+
+static int gamut_in_cube(alwan_vec3_f64 v) {
+    return v.v[0] >= ALWAN_LITERAL(0.0) && v.v[0] <= ALWAN_LITERAL(1.0) &&
+           v.v[1] >= ALWAN_LITERAL(0.0) && v.v[1] <= ALWAN_LITERAL(1.0) &&
+           v.v[2] >= ALWAN_LITERAL(0.0) && v.v[2] <= ALWAN_LITERAL(1.0);
+}
+
+/* ColorAide's css_fast_path with adaptive = 0 and the cube [0, 1]. */
+static alwan_vec3_f64 gamut_raytrace_f64(alwan__oklch_frame const *f, alwan_vec3_f64 rgb) {
+    alwan_vec3_f64 const bmin = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
+    alwan_vec3_f64 const bmax = {{ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0), ALWAN_LITERAL(1.0)}};
+    alwan_vec3_f64 start = gamut_rgb_to_oklch_chain(f, rgb);
+    alwan_vec3_f64 achroma = start, anchor, cur, last;
+    alwan_f64 const low = ALWAN_LITERAL(0.0) + ALWAN__OKLCH_ATOL;
+    alwan_f64 const high = ALWAN_LITERAL(1.0) + ALWAN__OKLCH_ATOL;   /* as ColorAide writes it */
+    int i;
+
+    achroma.v[1] = ALWAN_LITERAL(0.0);
+    anchor = gamut_project_onto(gamut_oklch_to_rgb_fast(f, achroma), bmax, bmin);
+    if (anchor.v[0] == ALWAN_LITERAL(1.0) && anchor.v[1] == ALWAN_LITERAL(1.0) && anchor.v[2] == ALWAN_LITERAL(1.0)) return bmax;
+    if (anchor.v[0] == ALWAN_LITERAL(0.0) && anchor.v[1] == ALWAN_LITERAL(0.0) && anchor.v[2] == ALWAN_LITERAL(0.0)) return bmin;
+
+    cur = gamut_oklch_to_rgb_fast(f, start);
+    last = cur;
+    if (!gamut_in_cube(cur)) {
+        for (i = 0; i < 4; i++) {
+            alwan_vec3_f64 coords, hit;
+            if (i) {
+                coords = gamut_rgb_to_oklch_fast(f, cur);
+                coords.v[0] = start.v[0];
+                coords.v[2] = start.v[2];
+                cur = gamut_oklch_to_rgb_fast(f, coords);
+            }
+            coords = cur;
+            if (!gamut_raytrace_box(&hit, anchor, coords, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0))) {
+                cur = last;
+                break;
+            }
+            if (i && low < coords.v[0] && coords.v[0] < high && low < coords.v[1] && coords.v[1] < high &&
+                low < coords.v[2] && coords.v[2] < high) {
+                anchor = coords;
+            }
+            last = hit;
+            cur = last;
+        }
+    }
+    cur.v[0] = gamut_clamp01(cur.v[0]);
+    cur.v[1] = gamut_clamp01(cur.v[1]);
+    cur.v[2] = gamut_clamp01(cur.v[2]);
+    return cur;
+}
+
+static alwan_f64 gamut_delta_e_ok_lch_rgb(alwan__oklch_frame const *f, alwan_vec3_f64 lch, alwan_vec3_f64 rgb) {
+    alwan_vec3_f64 const a = gamut_oklch_to_oklab(lch);
+    alwan_vec3_f64 const b = gamut_rgb_to_oklab_chain(f, rgb);
+    alwan_f64 const d0 = a.v[0] - b.v[0], d1 = a.v[1] - b.v[1], d2 = a.v[2] - b.v[2];
+    return sqrt(d0 * d0 + d1 * d1 + d2 * d2);
+}
+
+/* ColorAide's MINDEChroma on Oklch (its 'oklch-chroma'): CSS Color 4's
+ * binary search, JND 0.02 in deltaE OK, epsilon 1e-4, convergence 1e-4. */
+static alwan_vec3_f64 gamut_css4_f64(alwan__oklch_frame const *f, alwan_vec3_f64 rgb) {
+    alwan_f64 const jnd = ALWAN_LITERAL(0.02);
+    alwan_f64 const epsilon = ALWAN_LITERAL(1e-4);
+    alwan_f64 const min_convergence = ALWAN_LITERAL(0.0001);
+    alwan_vec3_f64 map = gamut_rgb_to_oklch_chain(f, rgb);
+    alwan_vec3_f64 gam = gamut_oklch_to_rgb_chain(f, map);
+    alwan_f64 const lightness = map.v[0];
+    alwan_vec3_f64 lwhite;
+    alwan_f64 low, high;
+    int c;
+
+    {
+        alwan_vec3_f64 lms;
+        alwan_mat3_mulv_f64(&lms, &f->xyz_to_lms, &f->white);
+        lwhite = gamut_lms_to_oklch(lms);
+    }
+    {
+        /* math.isclose(lightness, max_light, abs_tol=1e-6) */
+        alwan_f64 const diff = fabs(lightness - lwhite.v[0]);
+        alwan_f64 const big = fabs(lightness) > fabs(lwhite.v[0]) ? fabs(lightness) : fabs(lwhite.v[0]);
+        alwan_f64 const tol = (ALWAN_LITERAL(1e-9) * big > ALWAN_LITERAL(1e-6)) ? ALWAN_LITERAL(1e-9) * big : ALWAN_LITERAL(1e-6);
+        if (lightness >= lwhite.v[0] || diff <= tol) {
+            alwan_vec3_f64 w;
+            /* ColorAide reaches the white through Color.convert, which marks a
+             * chroma under 1e-6 achromatic: its hue becomes undefined and reads
+             * as 0 on the way back. The CSS tables leave D65 a chroma of 3.7e-8. */
+            if (lwhite.v[1] < ALWAN_LITERAL(1e-6)) lwhite.v[2] = ALWAN_LITERAL(0.0);
+            w = gamut_oklch_to_rgb_chain(f, lwhite);
+            for (c = 0; c < 3; c++) w.v[c] = gamut_clamp01(w.v[c]);
+            return w;
+        }
+    }
+    /* Black: XYZ 0 is Oklch L = 0 exactly. */
+    if (lightness <= ALWAN_LITERAL(0.0)) {
+        alwan_vec3_f64 const z = {{ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0), ALWAN_LITERAL(0.0)}};
+        return z;
+    }
+
+    low = ALWAN_LITERAL(0.0);
+    high = map.v[1];
+    for (c = 0; c < 3; c++) gam.v[c] = gamut_clamp01(gam.v[c]);
+
+    if (gamut_delta_e_ok_lch_rgb(f, map, gam) > jnd) {
+        int lower_in_gamut = 1;
+        while ((high - low) > min_convergence) {
+            alwan_f64 const value = (high + low) * ALWAN_LITERAL(0.5);
+            alwan_vec3_f64 temp;
+            map.v[1] = value;
+            temp = gamut_oklch_to_rgb_chain(f, map);
+            if (lower_in_gamut && gamut_in_cube(temp)) {
+                low = value;
+            } else {
+                alwan_f64 de;
+                gam = temp;
+                for (c = 0; c < 3; c++) gam.v[c] = gamut_clamp01(gam.v[c]);
+                de = gamut_delta_e_ok_lch_rgb(f, map, gam);
+                if (de < jnd) {
+                    if ((jnd - de) < epsilon) break;
+                    lower_in_gamut = 0;
+                    low = value;
+                } else {
+                    high = value;
+                }
+            }
+        }
+    }
+    return gam;
+}
+
+static alwan_status gamut_map_oklch_f64(alwan_rgb_f64 *rgb_out, alwan_gamut_map_method method,
+                                        alwan_rgb_space_desc_f64 const *space, alwan_rgb_f64 const *rgb_linear) {
+    alwan__oklch_frame f;
+    alwan_vec3_f64 in, out;
+    in.v[0] = rgb_linear->r; in.v[1] = rgb_linear->g; in.v[2] = rgb_linear->b;
+    /* Color.fit: a colour already in the cube is returned as it is. */
+    if (gamut_in_cube(in)) {
+        *rgb_out = *rgb_linear;
+        return ALWAN_OK;
+    }
+    {
+        int const st = gamut_oklch_frame_f64(&f, space);
+        if (st != ALWAN_OK) return st;
+    }
+    out = (method == ALWAN_GAMUT_MAP_RAYTRACE) ? gamut_raytrace_f64(&f, in) : gamut_css4_f64(&f, in);
+    rgb_out->r = out.v[0]; rgb_out->g = out.v[1]; rgb_out->b = out.v[2];
+    return ALWAN_OK;
+}
+
 /* Gamut mapping implementation */
 alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
                               alwan_gamut_map_method method,
@@ -962,6 +1330,11 @@ alwan_status alwan_gamut_map_advanced_f64(alwan_rgb_f64 *rgb_out,
         rgb_out->b = (rgb_linear->b < ALWAN_LITERAL(0.0)) ? ALWAN_LITERAL(0.0) :
                      (rgb_linear->b > ALWAN_LITERAL(1.0)) ? ALWAN_LITERAL(1.0) : rgb_linear->b;
         return ALWAN_OK;
+    }
+
+    /* Oklch chroma reduction after ColorAide: ray tracing, and CSS Color 4. */
+    if (method == ALWAN_GAMUT_MAP_RAYTRACE || method == ALWAN_GAMUT_MAP_CSS4) {
+        return gamut_map_oklch_f64(rgb_out, method, space, rgb_linear);
     }
 
     /* Honour `space`: convert the input (expressed in `space`) into the
@@ -1819,6 +2192,21 @@ alwan_status alwan_gamut_map_advanced_f32(alwan_rgb_f32 *rgb_out,
         rgb_out->r = (rgb_linear->r < 0.0f) ? 0.0f : (rgb_linear->r > 1.0f) ? 1.0f : rgb_linear->r;
         rgb_out->g = (rgb_linear->g < 0.0f) ? 0.0f : (rgb_linear->g > 1.0f) ? 1.0f : rgb_linear->g;
         rgb_out->b = (rgb_linear->b < 0.0f) ? 0.0f : (rgb_linear->b > 1.0f) ? 1.0f : rgb_linear->b;
+        return ALWAN_OK;
+    }
+
+    /* RAYTRACE and CSS4 widen to the f64 worker (see gamut_map_oklch_f64). */
+    if (method == ALWAN_GAMUT_MAP_RAYTRACE || method == ALWAN_GAMUT_MAP_CSS4) {
+        alwan_rgb_space_desc_f64 s64;
+        alwan_rgb_f64 in64, out64;
+        int k, st;
+        for (k = 0; k < 6; k++) s64.primaries_xy[k] = space->primaries_xy[k];
+        s64.white_xy[0] = space->white_xy[0]; s64.white_xy[1] = space->white_xy[1];
+        s64.oetf = space->oetf; s64.eotf = space->eotf; s64.has_matrices = 0;
+        in64.r = rgb_linear->r; in64.g = rgb_linear->g; in64.b = rgb_linear->b;
+        st = gamut_map_oklch_f64(&out64, method, &s64, &in64);
+        if (st != ALWAN_OK) return st;
+        rgb_out->r = (alwan_f32)out64.r; rgb_out->g = (alwan_f32)out64.g; rgb_out->b = (alwan_f32)out64.b;
         return ALWAN_OK;
     }
 

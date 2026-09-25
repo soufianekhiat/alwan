@@ -41,7 +41,9 @@ typedef enum {
     ALWAN_GAMUT_MAP_CHROMA_COMPRESS,     /* Chroma compression */
     ALWAN_GAMUT_MAP_SGCK,                /* SGCK 2004 (Segment-Maximal Gamut Clipping w/ Knee) */
     ALWAN_GAMUT_MAP_HPMINDE,             /* Hue-Preserving Minimum dE */
-    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE   /* Lightness Preserving */
+    ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE,  /* Lightness Preserving */
+    ALWAN_GAMUT_MAP_RAYTRACE = 8,        /* Oklch chroma reduction by ray tracing the linear RGB cube */
+    ALWAN_GAMUT_MAP_CSS4 = 9             /* CSS Color 4 Oklch binary search, JND 0.02 in deltaE OK */
 } alwan_gamut_map_method;
 ```
 
@@ -128,6 +130,33 @@ alwan_status alwan_gamut_map_advanced_{T}(alwan_rgb_{T} *rgb_out,
 
 Single-color advanced gamut mapping with awareness of the target RGB space's gamut boundary.
 `rgb_linear` is linear (not gamma-corrected); output is guaranteed in `[0,1]`.
+
+`ALWAN_GAMUT_MAP_RAYTRACE` and `ALWAN_GAMUT_MAP_CSS4` hold Oklch lightness and hue and
+reduce chroma until the colour fits `space`'s own linear cube, which makes them the
+methods to use for wide-gamut targets. They follow ColorAide 8.13's `raytrace` and
+`oklch-chroma` fits step for step:
+
+- **RAYTRACE** takes the colour's achromatic twin (same L, C = 0) as an anchor, projected
+  onto the cube's grey axis, and casts a ray from it through the colour to the cube's
+  surface. It then restores the colour's L and h at the hit and casts again from the
+  anchor, up to four rays in all, moving the anchor to a corrected point that lies
+  inside the cube. A grey above white returns white, one below black returns black.
+- **CSS4** is CSS Color 4's binary search on Oklch chroma. It stops when the clipped
+  candidate is within the JND of 0.02 (deltaE OK) of the unclipped one, to within 1e-4,
+  or when the chroma interval shrinks below 1e-4. Lightness at or above D65 white returns
+  white, at or below 0 returns black.
+
+A colour already inside the cube comes back unchanged. Oklab uses the CSS tables
+(`CSS_SRGB_TO_LMS`, `CSS_LMS_TO_LAB`) with the computed inverse of `CSS_LMS_TO_LAB` on
+the way back, so an Oklch round trip returns the colour to 1e-16. The published inverse
+is 5.5e-8 away, and with it the ray tracer can drift a surface point into the cube and
+cast a ray from the point to itself. A space whose white is not D65 is Bradford-adapted
+to Oklab's D65. Both methods run in f64; the f32 form widens its arguments and rounds the
+result.
+
+Suite 243 holds them, on linear sRGB, Display P3 and Rec.2020, to ColorAide with alwan's
+Oklab matrices swapped in (within 1.4e-14) and to ColorAide as shipped (within 3.3e-7;
+ColorAide's Oklab pair is 5.4e-8 from the CSS tables).
 
 ---
 
@@ -625,6 +654,8 @@ referenced below.
 | `ALWAN_GAMUT_MAP_SGCK` | 5 | supported | `ALWAN_E_INVALID` |
 | `ALWAN_GAMUT_MAP_HPMINDE` | 6 | supported | `ALWAN_E_INVALID` |
 | `ALWAN_GAMUT_MAP_LIGHTNESS_PRESERVE` | 7 | supported | `ALWAN_E_INVALID` |
+| `ALWAN_GAMUT_MAP_RAYTRACE` | 8 | supported | `ALWAN_E_INVALID` |
+| `ALWAN_GAMUT_MAP_CSS4` | 9 | supported | `ALWAN_E_INVALID` |
 
 ---
 

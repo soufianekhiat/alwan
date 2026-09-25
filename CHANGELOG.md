@@ -515,6 +515,15 @@
   Shi-Tomasi, Kitchen-Rosenfeld and Foerstner, value for value with scikit-image's corner
   functions (suite 229).
 
+- **Gamut mapping by ray tracing and by CSS Color 4: `ALWAN_GAMUT_MAP_RAYTRACE` and
+  `ALWAN_GAMUT_MAP_CSS4` in `alwan_gamut_map_advanced_{T}`.** Both hold Oklch lightness and
+  hue and reduce chroma into the target's own linear cube, Display P3 and Rec.2020 as well
+  as sRGB, after ColorAide 8.13's `raytrace` and `oklch-chroma` fits. Within 1.4e-14 of
+  ColorAide run on alwan's Oklab matrices, and 3.3e-7 of ColorAide as shipped, whose Oklab
+  pair is 5.4e-8 from the CSS tables (suite 243). The return trip through Oklab uses the
+  computed inverse of `CSS_LMS_TO_LAB`: with the published inverse, 5.5e-8 away, the ray
+  tracer drifted surface points into the cube and a violet at L 0.95 mapped to a green.
+
 - **XYB, JPEG XL's colour space: `alwan_linear_srgb_to_xyb_{T}`, `alwan_xyb_to_linear_srgb_{T}`,
   `alwan_xyz_to_xyb_{T}`, `alwan_xyb_to_xyz_{T}`.** The opsin matrix, a biased cube root, and
   X = (L' - M') / 2, Y = (L' + M') / 2, B = S' - Y, with a new `alwan_xyb_{T}` type. Interleave,
