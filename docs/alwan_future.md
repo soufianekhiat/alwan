@@ -1081,6 +1081,10 @@ Everything in alwan that reads a file the program did not write:
   `alwan_csp_import_{T}`, `alwan_spimtx_import_{T}`
 - `alwan_clf_import` and `alwan_clf_import_buffer`. **CLF is no longer export
   only**, which it was when this section was first written.
+- `alwan_luminaire_load` and `alwan_luminaire_load_buffer` (2026-09-25), IES LM-63 and
+  EULUMDAT luminaire files. Built on the same guards from the start, and suite 253 damages
+  every file it reads: every truncation, bad counts and numbers, random bytes, also under an
+  AddressSanitizer build.
 
 The ACES dump path writes rather than reads and is behind
 `ALWAN_GENDATA_DUMP_ACES2` in any case. This list has grown twice since it was

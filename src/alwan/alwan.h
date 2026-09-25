@@ -8274,6 +8274,104 @@ alwan_status alwan_photometer_f1_prime_f32(alwan_f32 *f1_prime, alwan_spd_f32 co
 alwan_status alwan_photometer_mismatch_correction_f64(alwan_f64 *factor, alwan_spd_f64 const *detector, alwan_spd_f64 const *test_source, alwan_spd_f64 const *calibration);
 alwan_status alwan_photometer_mismatch_correction_f32(alwan_f32 *factor, alwan_spd_f32 const *detector, alwan_spd_f32 const *test_source, alwan_spd_f32 const *calibration);
 
+/* Luminaire photometric files: IES LM-63 (1986 without a version line, 1991, 1995, 2002,
+ * 2019) and EULUMDAT (.ldt), one object for both. The format is found by the IES TILT line
+ * (or an IESNA / IES: first line); anything else is read as EULUMDAT.
+ *
+ * Both store intensities over C-planes (the horizontal angle round the luminaire's axis)
+ * and gamma angles (from the nadir), only as much as the luminaire's symmetry needs. The
+ * stored grid is kept as written (alwan_luminaire_angles, alwan_luminaire_values), and for
+ * photometric type C a completed map runs from C0 to C360 (alwan_luminaire_map), each of
+ * its planes the stored plane its symmetry maps it onto: quadrant (IES 0 to 90, EULUMDAT
+ * Isym 4) by C -> -C, 180 - C, C + 180; about C0-C180 (IES 0 to 180, Isym 2) by C -> -C;
+ * about C90-C270 (IES 90 to 270, Isym 3, which EULUMDAT stores from C270 through C0 to C90)
+ * by C -> 180 - C; rotational (one IES angle, Isym 1); none (IES 0 to past 180, Isym 0),
+ * where C360 is C0. The map is in the file's units scaled by its multiplier: an IES file's
+ * candela multiplier (its ballast factor is reported, not applied), so candela; an
+ * EULUMDAT file's conversion factor, so candela per 1000 lumens of lamp flux.
+ *
+ * These read files the program did not write. Numbers are parsed without the locale or
+ * sscanf and refused past 1e308; counts are bounded (100,000 angles, 1,000,000 values, 20
+ * EULUMDAT lamp sets, 4096 IES keywords, 64 MB) before anything is allocated; the data a
+ * count promises must be there, angle lists must rise strictly, intensities must be finite
+ * and not negative, and nothing but blanks may follow the last value. Any failure returns
+ * ALWAN_E_INVALID (malformed or truncated) or ALWAN_E_RANGE (a value out of what the format
+ * allows) and no object. LF, CR and CRLF line ends and a UTF-8 byte order mark are read. As
+ * with the chart readers, the path form reads the whole file once into memory and parses
+ * that; the buffer form does no file I/O and takes no ownership (suite 253). */
+typedef struct alwan_luminaire alwan_luminaire;
+
+typedef enum {
+    ALWAN_LUMINAIRE_IES = 0,
+    ALWAN_LUMINAIRE_EULUMDAT = 1
+} alwan_luminaire_format;
+
+/* The values are EULUMDAT's Isym. */
+typedef enum {
+    ALWAN_LUMINAIRE_SYMMETRY_NONE = 0,        /* every plane stored */
+    ALWAN_LUMINAIRE_SYMMETRY_ROTATIONAL = 1,  /* one plane */
+    ALWAN_LUMINAIRE_SYMMETRY_C0_C180 = 2,     /* mirror about the C0-C180 plane */
+    ALWAN_LUMINAIRE_SYMMETRY_C90_C270 = 3,    /* mirror about the C90-C270 plane */
+    ALWAN_LUMINAIRE_SYMMETRY_QUADRANT = 4     /* mirror about both */
+} alwan_luminaire_symmetry;
+
+typedef enum {
+    ALWAN_LUMINAIRE_TILT_NONE = 0,     /* IES TILT=NONE, and every EULUMDAT file */
+    ALWAN_LUMINAIRE_TILT_INCLUDE = 1,  /* IES TILT=INCLUDE: the tilt table is read and skipped */
+    ALWAN_LUMINAIRE_TILT_FILE = 2      /* IES TILT=<file>: its name is the keyword TILT; not followed */
+} alwan_luminaire_tilt;
+
+typedef struct {
+    alwan_luminaire_format format;
+    int version;                   /* IES: 1986 (no version line), 1991, 1995, 2002 or 2019, 0 for a version
+                                    * line alwan does not know; EULUMDAT: 0 */
+    int photometric_type;          /* 1 type C, 2 type B, 3 type A; EULUMDAT 1. Only type C has a map */
+    int luminaire_type;            /* EULUMDAT Ityp, 0 to 3; IES 0 */
+    alwan_luminaire_symmetry symmetry;
+    alwan_luminaire_tilt tilt;
+    int lamps;                     /* IES: lamps; EULUMDAT: the first set's (negative: absolute photometry) */
+    size_t lamp_sets;              /* EULUMDAT n; IES 1 */
+    double lumens_per_lamp;        /* IES, -1 for absolute photometry; EULUMDAT 0 */
+    double lamp_flux;              /* EULUMDAT: every set's flux summed; IES: lamps x lumens_per_lamp, or -1 */
+    double multiplier;             /* IES candela multiplier; EULUMDAT conversion factor */
+    double ballast_factor;         /* IES; EULUMDAT 1 */
+    double input_watts;            /* IES; EULUMDAT every set's wattage summed */
+    int units;                     /* IES 1 feet, 2 metres; EULUMDAT 0, millimetres */
+    double width, length, height;  /* IES: the luminous opening; EULUMDAT: the luminaire (length or diameter) */
+    double light_output_ratio;     /* EULUMDAT LORL, percent; IES 0 */
+    double downward_flux_fraction; /* EULUMDAT DFF, percent; IES 0 */
+    double tilt_angle;             /* EULUMDAT: the tilt during measurement, degrees; IES 0 */
+} alwan_luminaire_info;
+
+typedef enum {
+    ALWAN_LUMINAIRE_FLUX_LINEAR = 0,     /* the exact integral of the bilinear map alwan_luminaire_intensity reads */
+    ALWAN_LUMINAIRE_FLUX_TRAPEZOID = 1   /* the trapezoid rule on I sin(gamma) at the samples, then over C */
+} alwan_luminaire_flux_method;
+
+alwan_status alwan_luminaire_load(alwan_luminaire **out, char const *path, alwan_ctx *ctx);
+alwan_status alwan_luminaire_load_buffer(alwan_luminaire **out, char const *buf, size_t len, alwan_ctx *ctx);
+void alwan_luminaire_destroy(alwan_luminaire *lum, alwan_ctx *ctx);
+alwan_status alwan_luminaire_get_info(alwan_luminaire_info *info, alwan_luminaire const *lum);
+/* The stored angles, as written: nv gamma angles and nh C-planes. Either output may be NULL. */
+alwan_status alwan_luminaire_angles(double const **vertical, size_t *nv, double const **horizontal, size_t *nh, alwan_luminaire const *lum);
+/* The stored intensities as written, before the multiplier: nh x nv, plane by plane. */
+alwan_status alwan_luminaire_values(double const **values, size_t *count, alwan_luminaire const *lum);
+/* The completed map: nc C-planes from 0 to 360 and ngamma gamma angles, nc x ngamma values
+ * scaled by the multiplier. ALWAN_E_NODATA for photometric types A and B. */
+alwan_status alwan_luminaire_map(double const **c_angles, size_t *nc, double const **gamma, size_t *ngamma, double const **values, alwan_luminaire const *lum);
+/* An IES keyword's value without its brackets ([MORE] lines joined to the one before by a
+ * space), or for EULUMDAT one of COMPANY, REPORT, LUMINAIRE, NUMBER, FILENAME, DATE,
+ * LAMP_TYPE, CCT, CRI (the first lamp set's); case-insensitive; NULL when absent. */
+char const *alwan_luminaire_keyword(alwan_luminaire const *lum, char const *key);
+/* The intensity at a C-plane angle (any value, wrapped) and gamma angle in degrees, bilinear
+ * in the completed map, in its units; 0 outside the gamma range the file measured.
+ * ALWAN_E_NODATA for types A and B. */
+alwan_status alwan_luminaire_intensity(double *out, alwan_luminaire const *lum, double c_deg, double gamma_deg);
+/* The flux of the completed map over the gamma range it covers, in its units times
+ * steradians: lumens for an IES file, lumens per 1000 lamp lumens for EULUMDAT. TRAPEZOID is
+ * luxpy's luminous_intensity_to_luminous_flux on the same grid. */
+alwan_status alwan_luminaire_flux(double *flux, alwan_luminaire const *lum, alwan_luminaire_flux_method method);
+
 /* Contrast Sensitivity Function (CSF) */
 
 /* Calculate contrast sensitivity for spatial frequency (simplified model)

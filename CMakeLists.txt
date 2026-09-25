@@ -140,6 +140,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_peaks.c
   src/alwan/api/alwan_match_template.c
   src/alwan/api/alwan_moments.c
+  src/alwan/api/alwan_luminaire.c
   src/alwan/api/alwan_l0_smooth.c
   src/alwan/api/alwan_deconvolve.c
   src/alwan/api/alwan_inpaint.c

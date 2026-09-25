@@ -412,6 +412,131 @@ and five sources.
 **Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL output or an SPD of fewer than two
 samples; `ALWAN_E_RANGE` when a normalising sum is 0.
 
+### Luminaire photometric files: alwan_luminaire_load / alwan_luminaire_load_buffer
+
+```c
+alwan_status alwan_luminaire_load(alwan_luminaire **out, char const *path, alwan_ctx *ctx);
+alwan_status alwan_luminaire_load_buffer(alwan_luminaire **out, char const *buf, size_t len, alwan_ctx *ctx);
+void alwan_luminaire_destroy(alwan_luminaire *lum, alwan_ctx *ctx);
+```
+
+Reads a luminaire's intensity distribution from an IES LM-63 file (the 1986 form without a
+version line, 1991, 1995, 2002, 2019) or a EULUMDAT file (`.ldt`). The format is found by
+the IES `TILT=` line, or an `IESNA` / `IES:` first line; anything else is read as
+EULUMDAT. `TILT=INCLUDE` tables are read and skipped; `TILT=<file>` is recorded (keyword
+`TILT`) and not followed. The object is allocated; free it with `alwan_luminaire_destroy`.
+The buffer form does no file I/O and takes no ownership; the path form reads the file once
+into memory and parses that.
+
+Both formats store intensities over C-planes (the horizontal angle round the luminaire's
+axis) and gamma angles (from the nadir), and store only what the luminaire's symmetry
+needs. For photometric type C, alwan completes the map from C0 to C360: each plane is the
+stored plane its symmetry maps it onto.
+
+| Symmetry (`alwan_luminaire_symmetry`, EULUMDAT Isym) | IES horizontal angles | Map |
+|---|---|---|
+| `NONE` (0) | 0 to 360, or 0 to past 180 | as stored; C360 is C0 |
+| `ROTATIONAL` (1) | one angle | every plane the stored one |
+| `C0_C180` (2) | 0 to 180 | C -> -C |
+| `C90_C270` (3) | 90 to 270 | C -> 180 - C (EULUMDAT stores C270 through C0 to C90) |
+| `QUADRANT` (4) | 0 to 90 | C -> -C, 180 - C, C + 180 |
+
+The map is in the file's units, scaled by its multiplier: an IES file's candela multiplier,
+so candela (the ballast factor is reported in the info, not applied), or a EULUMDAT file's
+conversion factor, so candela per 1000 lumens of lamp flux.
+
+These read files the program did not write, and are built on the guards of the chart and
+`.cube` readers (see the untrusted-input section of `docs/alwan_future.md`):
+
+- Numbers are parsed without the locale or `sscanf`, the whole token must be a number, and
+  a magnitude past 1e308 (a long digit string, an exponent, `inf`, `nan`) is refused.
+- Counts are bounded before anything is allocated: 100,000 angles, 1,000,000 stored values,
+  20 EULUMDAT lamp sets, 4096 IES keywords, a 64 MB file. Products go through
+  `alwan_safe_array_size`.
+- The data a count promises must be there, angle lists must rise strictly, the stored
+  planes must match the symmetry, intensities must be finite and not negative, and nothing
+  but blanks may follow the last value.
+- LF, CR and CRLF line ends and a UTF-8 byte order mark all read, and give the same object.
+
+Suite 253 reads 22 files written from six analytic luminaires, covering every symmetry.
+The stored grids equal what was written. The intensity equals luxpy's `read_lamp_data` at
+8000 of its grid points (a fixed sample of up to 400 a file), and every completed plane
+matches the analytic luminaire. It
+then damages every file: every truncation, oversized and overflowing counts and numbers,
+NaN and infinity, negative intensities, angles out of order, a missing TILT, trailing
+garbage and seeded random bytes. Each comes back as an error and no object. The same
+battery also runs clean under an AddressSanitizer build.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL argument or a malformed, truncated or
+unreadable file; `ALWAN_E_RANGE` for a value outside what the format allows (a count past
+its bound, a zero multiplier, angles out of order, a negative intensity, an IES horizontal
+range that is none of the five, EULUMDAT Mc that its symmetry cannot divide);
+`ALWAN_E_NOMEM`.
+
+### alwan_luminaire_get_info / alwan_luminaire_angles / alwan_luminaire_values / alwan_luminaire_map / alwan_luminaire_keyword
+
+```c
+alwan_status alwan_luminaire_get_info(alwan_luminaire_info *info, alwan_luminaire const *lum);
+alwan_status alwan_luminaire_angles(double const **vertical, size_t *nv,
+                                    double const **horizontal, size_t *nh, alwan_luminaire const *lum);
+alwan_status alwan_luminaire_values(double const **values, size_t *count, alwan_luminaire const *lum);
+alwan_status alwan_luminaire_map(double const **c_angles, size_t *nc, double const **gamma,
+                                 size_t *ngamma, double const **values, alwan_luminaire const *lum);
+char const *alwan_luminaire_keyword(alwan_luminaire const *lum, char const *key);
+```
+
+`alwan_luminaire_info` carries the header: format, IES version (1986 when there is no
+version line, 0 for a version line alwan does not know), photometric type (1 C, 2 B, 3 A),
+EULUMDAT luminaire type, symmetry, tilt, lamps and lamp sets, lumens per lamp (IES, -1 for
+absolute photometry), the lamp flux, multiplier, ballast factor, input watts, units (IES 1
+feet or 2 metres, EULUMDAT millimetres), dimensions, and EULUMDAT's light output ratio,
+downward flux fraction and tilt angle.
+
+`alwan_luminaire_angles` and `alwan_luminaire_values` return the stored grid exactly as
+written: `nv` gamma angles, `nh` C-planes, and `nh x nv` intensities before the multiplier,
+plane by plane. EULUMDAT Isym 3's planes come in the file's order, C270 through C0 to C90.
+`alwan_luminaire_map` returns the completed map: `nc` planes from 0 to 360 and `nc x ngamma`
+values scaled by the multiplier; `ALWAN_E_NODATA` for types A and B, which are read but not
+completed. `alwan_luminaire_keyword` returns an IES keyword's value (brackets removed,
+`[MORE]` lines joined to the one before by a space) or, for EULUMDAT, one of `COMPANY`,
+`REPORT`, `LUMINAIRE`, `NUMBER`, `FILENAME`, `DATE`, `LAMP_TYPE`, `CCT`, `CRI` (the first
+lamp set's). Keys are case-insensitive; NULL when absent. Every pointer is owned by the
+object.
+
+### alwan_luminaire_intensity / alwan_luminaire_flux
+
+```c
+alwan_status alwan_luminaire_intensity(double *out, alwan_luminaire const *lum,
+                                       double c_deg, double gamma_deg);
+alwan_status alwan_luminaire_flux(double *flux, alwan_luminaire const *lum,
+                                  alwan_luminaire_flux_method method);
+```
+
+`alwan_luminaire_intensity` reads the completed map bilinearly at any C angle (wrapped
+into [0, 360)) and gamma angle, in the map's units. Outside the gamma range the file
+measured it is 0. Off the grid it is within 1.9e-15 of scipy's `RegularGridInterpolator`
+on the same map.
+
+`alwan_luminaire_flux` integrates the map over the gamma range it covers, in the map's
+units times steradians: lumens for an IES file, lumens per 1000 lamp lumens for EULUMDAT.
+
+- `ALWAN_LUMINAIRE_FLUX_LINEAR` integrates the bilinear map `alwan_luminaire_intensity` reads
+  exactly: each plane's straight lines times sin(gamma) in closed form, then the trapezoid
+  rule over C, which is exact for a map linear in C. Within 2.9e-16 of `scipy.integrate.quad`
+  on the same map. A uniform sphere of 500 cd gives 4 pi 500 to the last digit; a Lambertian
+  downlight sampled every 5 degrees is 6.3e-4 under pi I0.
+- `ALWAN_LUMINAIRE_FLUX_TRAPEZOID` applies the trapezoid rule to I sin(gamma) at the samples
+  and then over C, as luxpy's `luminous_intensity_to_luminous_flux` does: within 1.8e-16 of
+  it on the 20 files luxpy reads.
+
+luxpy's completion for the C90-C270 symmetry labels its last plane 0 where it means 360, so
+its own flux for those files runs backwards over the last interval (194.6 lm for a luminaire
+of 2507). Suite 253 relabels that plane before comparing; luxpy's intensities there equal
+alwan's.
+
+**Returns:** `ALWAN_OK`; `ALWAN_E_INVALID` for a NULL, a NaN angle or an unknown method;
+`ALWAN_E_NODATA` for types A and B.
+
 ### alwan_mesopic_luminance
 
 ```c

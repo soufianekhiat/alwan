@@ -441,6 +441,14 @@
 
 ### Added
 
+- **Luminaire photometric files: `alwan_luminaire_load`, `alwan_luminaire_intensity`,
+  `alwan_luminaire_flux`.** IES LM-63 (1986 to 2019) and EULUMDAT read into one object: the
+  stored grid as written, a map from C0 to C360 completed by the file's symmetry, the
+  intensity at any angle, and the flux, exactly for the bilinear map or by the trapezoid rule
+  as luxpy computes it. Equal to luxpy's reader at every grid point, within 1.8e-16 of its
+  flux, within 2.9e-16 of scipy's quadrature. Built for untrusted input: every truncation and
+  damaged count or number in suite 253 is refused, also under AddressSanitizer.
+
 - **Template matching and image moments: `alwan_match_template_{T}`, `alwan_moments_{T}`,
   `alwan_moments_normalized`, `alwan_moments_hu`, `alwan_inertia_tensor`; region shape in
   `alwan_region_props`.** Normalised cross-correlation as scikit-image's match_template, every

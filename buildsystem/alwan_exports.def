@@ -1222,6 +1222,16 @@ EXPORTS
     alwan_local_contrast_f64
     alwan_local_contrast_u16
     alwan_local_contrast_u8
+    alwan_luminaire_angles
+    alwan_luminaire_destroy
+    alwan_luminaire_flux
+    alwan_luminaire_get_info
+    alwan_luminaire_intensity
+    alwan_luminaire_keyword
+    alwan_luminaire_load
+    alwan_luminaire_load_buffer
+    alwan_luminaire_map
+    alwan_luminaire_values
     alwan_luminance_from_lightness_f32
     alwan_luminance_from_lightness_f64
     alwan_luminance_from_munsell_value_f32
