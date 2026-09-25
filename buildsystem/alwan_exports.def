@@ -652,6 +652,8 @@ EXPORTS
     alwan_ellipse_fit_halir1998_f64
     alwan_ellipse_general_f32
     alwan_ellipse_general_f64
+    alwan_ellipse_points_f32
+    alwan_ellipse_points_f64
     alwan_eotf_apply_f32
     alwan_eotf_apply_f64
     alwan_excitation_purity_f32
@@ -724,6 +726,7 @@ EXPORTS
     alwan_filter_f32
     alwan_filter_f64
     alwan_filter_u8
+    alwan_find_boundaries
     alwan_find_contours_f32
     alwan_find_contours_f64
     alwan_find_contours_u8
@@ -1155,6 +1158,9 @@ EXPORTS
     alwan_lab_to_xyz_f64_map_planar
     alwan_lab_to_xyz_map_interleave_ex
     alwan_lab_to_xyz_map_planar_ex
+    alwan_label2rgb_f32
+    alwan_label2rgb_f64
+    alwan_label2rgb_u8
     alwan_lch_to_hlc_f32
     alwan_lch_to_hlc_f64
     alwan_lch_to_lab_f32
@@ -1265,8 +1271,12 @@ EXPORTS
     alwan_luv_to_xyz_f64_map_planar
     alwan_luv_to_xyz_map_interleave_ex
     alwan_luv_to_xyz_map_planar_ex
+    alwan_macadam1942_ellipses
     alwan_machado_matrix_sample_f32
     alwan_machado_matrix_sample_f64
+    alwan_mark_boundaries_f32
+    alwan_mark_boundaries_f64
+    alwan_mark_boundaries_u8
     alwan_mat3_det_f32
     alwan_mat3_det_f64
     alwan_mat3_identity_f32
@@ -1291,6 +1301,9 @@ EXPORTS
     alwan_maxfall_f64
     alwan_maximum_angular_size_barten1999_f32
     alwan_maximum_angular_size_barten1999_f64
+    alwan_mean_squared_error_f32
+    alwan_mean_squared_error_f64
+    alwan_mean_squared_error_u8
     alwan_mesopic_luminance_f32
     alwan_mesopic_luminance_f64
     alwan_metamerism_index_f32
@@ -1345,6 +1358,12 @@ EXPORTS
     alwan_nn_softmax_f64
     alwan_nn_upsample2d_f32
     alwan_nn_upsample2d_f64
+    alwan_normalized_mutual_information_f32
+    alwan_normalized_mutual_information_f64
+    alwan_normalized_mutual_information_u8
+    alwan_normalized_root_mse_f32
+    alwan_normalized_root_mse_f64
+    alwan_normalized_root_mse_u8
     alwan_oetf_apply_f32
     alwan_oetf_apply_f64
     alwan_okhsl_to_srgb_f32
@@ -1711,6 +1730,12 @@ EXPORTS
     alwan_rgb_to_stains_f64_map_planar
     alwan_rgb_to_stains_map_interleave_ex
     alwan_rgb_to_stains_map_planar_ex
+    alwan_rgb_to_video_f32_map_interleave
+    alwan_rgb_to_video_f32_map_planar
+    alwan_rgb_to_video_f64_map_interleave
+    alwan_rgb_to_video_f64_map_planar
+    alwan_rgb_to_video_map_interleave_ex
+    alwan_rgb_to_video_map_planar_ex
     alwan_rgb_to_xyz_f32
     alwan_rgb_to_xyz_f64
     alwan_rgb_to_ycbcr_f32
@@ -1737,6 +1762,9 @@ EXPORTS
     alwan_rgb_to_ycocg_f64_map_planar
     alwan_rgb_to_ycocg_map_interleave_ex
     alwan_rgb_to_ycocg_map_planar_ex
+    alwan_rgba_to_rgb_f32_map_interleave
+    alwan_rgba_to_rgb_f64_map_interleave
+    alwan_rgba_to_rgb_u8_map_interleave
     alwan_ridge_f32
     alwan_ridge_f64
     alwan_rlab_forward_f32
@@ -1933,6 +1961,9 @@ EXPORTS
     alwan_stains_to_rgb_f64_map_planar
     alwan_stains_to_rgb_map_interleave_ex
     alwan_stains_to_rgb_map_planar_ex
+    alwan_structural_similarity_f32
+    alwan_structural_similarity_f64
+    alwan_structural_similarity_u8
     alwan_sucs_to_xyz_f32
     alwan_sucs_to_xyz_f64
     alwan_table1d_mat3_sample_f32
@@ -2015,6 +2046,14 @@ EXPORTS
     alwan_video_decode_f64
     alwan_video_encode_f32
     alwan_video_encode_f64
+    alwan_video_matrix_f32
+    alwan_video_matrix_f64
+    alwan_video_to_rgb_f32_map_interleave
+    alwan_video_to_rgb_f32_map_planar
+    alwan_video_to_rgb_f64_map_interleave
+    alwan_video_to_rgb_f64_map_planar
+    alwan_video_to_rgb_map_interleave_ex
+    alwan_video_to_rgb_map_planar_ex
     alwan_view_transform_apply_f32
     alwan_view_transform_apply_f64
     alwan_view_transform_apply_unclamped_f32

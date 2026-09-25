@@ -441,6 +441,28 @@
 
 ### Added
 
+- **Label overlays: `alwan_label2rgb_{T}`, `alwan_find_boundaries`,
+  `alwan_mark_boundaries_{T}`.** scikit-image's label2rgb (overlay and average, its colour
+  cycle, saturation through its own rgb2hsv and hsv2rgb, image_alpha, the background moved,
+  absent or showing the image), find_boundaries (thick, inner, outer, subpixel) and
+  mark_boundaries on alwan_segment's labels; every value equal to scikit-image's (suite 254).
+
+- **Analogue video spaces and alpha flattening: `alwan_rgb_to_video_{T}`,
+  `alwan_video_to_rgb_{T}`, `alwan_rgba_to_rgb_{T}`.** YIQ, YUV, YDbDr, YPbPr and 8-bit YCbCr
+  with scikit-image's matrices and inverses, interleave, planar and typed maps, the products
+  accumulated with fused multiply-adds as numpy's matmul does; rgba2rgb over a background.
+  Bit-equal to scikit-image in f64 and f32 (suite 255).
+
+- **Image metrics: `alwan_mean_squared_error_{T}`, `alwan_normalized_root_mse_{T}`,
+  `alwan_normalized_mutual_information_{T}`, `alwan_structural_similarity_{T}`.**
+  scikit-image's skimage.metrics with numpy's summation orders: MSE, NRMSE and NMI bit-equal
+  in f64, f32 and u8; SSIM over any channels with the Gaussian or the box window and either
+  covariance, within 1.1e-16 in f64 (suite 256). Zero parameters are alwan_ssim's settings.
+
+- **MacAdam 1942 ellipses and points on an ellipse: `alwan_macadam1942_ellipses`,
+  `alwan_ellipse_points_{T}`.** The 25 ellipses for observer PGN as colour-science carries
+  them, and its point_at_angle_on_ellipse (suite 255).
+
 - **Luminaire photometric files: `alwan_luminaire_load`, `alwan_luminaire_intensity`,
   `alwan_luminaire_flux`.** IES LM-63 (1986 to 2019) and EULUMDAT read into one object: the
   stored grid as written, a map from C0 to C360 completed by the file's symmetry, the

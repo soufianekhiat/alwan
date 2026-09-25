@@ -1,0 +1,6 @@
+video_matrices.csv: the analogue video colour spaces of scikit-image's
+skimage/color/colorconv.py (yiq_from_rgb, yuv_from_rgb, ydbdr_from_rgb,
+ypbpr_from_rgb, ycbcr_from_rgb and the inverses it computes with
+scipy.linalg.inv), BSD-3-Clause, the scikit-image team. YCbCr carries
+scikit-image's 8-bit offsets (16, 128, 128). Read from the installed module,
+not retyped, by alwan_dev/gendata/data/video_matrices.py.

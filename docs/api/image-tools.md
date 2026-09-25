@@ -1722,6 +1722,67 @@ the merging off, and a short run, 11 cases. It follows scikit-image's Cython: th
 its `regular_grid`, the grid step held as a C `float` in the spatial weight, the distances
 in the data's precision, and the merging's capped breadth-first fill.
 
+## Label overlays
+
+```c
+alwan_status alwan_label2rgb_{T}(double *out, size_t out_row_stride,
+                                 uint32_t const *labels, size_t labels_row_stride,
+                                 alwan_{T} const *image, size_t image_row_stride, size_t channels,
+                                 size_t width, size_t height, alwan_label2rgb_params const *params);
+alwan_status alwan_label2rgb_u8(...);          /* the same with an 8-bit image */
+alwan_status alwan_find_boundaries(unsigned char *out, size_t out_row_stride,
+                                   uint32_t const *labels, size_t labels_row_stride,
+                                   size_t width, size_t height, alwan_boundary_params const *params);
+alwan_status alwan_mark_boundaries_{T}(double *out, size_t out_row_stride,
+                                       alwan_{T} const *image, size_t image_row_stride, size_t channels,
+                                       uint32_t const *labels, size_t labels_row_stride,
+                                       size_t width, size_t height,
+                                       alwan_mark_boundaries_params const *params);
+alwan_status alwan_mark_boundaries_u8(...);    /* the same with an 8-bit image */
+```
+
+Ways to look at the label images `alwan_segment` writes, as scikit-image's `label2rgb`,
+`find_boundaries` and `mark_boundaries` produce them. Suite 254 holds every value to
+scikit-image's.
+
+**`alwan_label2rgb_{T}`** writes RGB doubles.
+- `OVERLAY` colours each region by its rank among the distinct labels that are not the
+  background, smallest first. The colours cycle through `params->colors` (`color_count` RGB
+  triples) or scikit-image's ten: red, blue, yellow, magenta, green, indigo, darkorange, cyan,
+  pink, yellowgreen. The background takes `bg_color`, or keeps the image when `bg_color_none`
+  is set.
+- With an image (1 or 3 channels), its saturation is scaled by `saturation` through
+  scikit-image's `rgb2hsv` and `hsv2rgb`, which are transcribed; the default of 0 turns it
+  grey. It is then brightened to `image * image_alpha + (1 - image_alpha)`, and the colours
+  are blended over it at `alpha`.
+- Without an image, the colours are written as they are.
+- `AVG` paints each region with the image's mean over it, summed in numpy's order, and the
+  background with `bg_color`. An 8-bit mean is truncated, as scikit-image stores it back into
+  a `uint8` array.
+- Zero fields are scikit-image's defaults: `alpha` 0.3, background label 0 with colour
+  black, `image_alpha` 1. The `*_given` flags let 0 be passed as a value.
+
+8-bit images are read as `v * (1 / 255)`, as `img_as_float` does; `v / 255` differs from it
+in the last bit for some values. A float32 image is processed in float32, as scikit-image
+does.
+
+**`alwan_find_boundaries`** writes a byte mask, 1 where a pixel's neighbourhood holds more
+than one label: a grey dilation of the labels differs from a grey erosion, over the cross
+(`connectivity` 1) or the full 3 x 3 square (2), edges repeated.
+- `INNER` keeps the boundary pixels that are not background.
+- `OUTER` keeps those that are background or that touch another object.
+- `SUBPIXEL` writes a `(2 width - 1) x (2 height - 1)` mask whose in-between cells mark where
+  labels meet.
+
+**`alwan_mark_boundaries_{T}`** returns the image as RGB doubles with the boundary pixels
+(`OUTER` by default) painted `color`, yellow by default. With `outline_given`, the 3 x 3
+neighbourhood of each boundary pixel is first painted `outline_color`. `SUBPIXEL` is refused:
+scikit-image resamples the image with a cubic zoom there.
+
+**Returns:** `ALWAN_E_INVALID` for a NULL output or labels, a zero size, channels other than
+1 or 3, an unknown kind or mode, a connectivity other than 0, 1 or 2, a saturation outside
+`[0, 1]`, or `AVG` without an image.
+
 ## Region properties
 
 ```c

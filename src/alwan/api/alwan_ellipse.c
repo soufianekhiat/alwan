@@ -408,3 +408,43 @@ alwan_status alwan_ellipse_general_f32(alwan_f32 *coefficients_out, alwan_f32 co
     for (i = 0; i < 6; i++) coefficients_out[i] = (alwan_f32)out[i];
     return ALWAN_OK;
 }
+
+/* Points on a canonical ellipse at angles in degrees, as colour-science's
+ * point_at_angle_on_ellipse: x = xc + a cos(t) cos(p) - b sin(t) sin(p),
+ * y = yc + a sin(t) cos(p) + b cos(t) sin(p), with t the rotation. */
+static void alwan__ellipse_point(double xy[2], double const c[5], double phi_deg) {
+    double const phi = phi_deg * (3.14159265358979323846 / 180.0);
+    double const theta = c[4] * (3.14159265358979323846 / 180.0);
+    double const cp = cos(phi), sp = sin(phi), ct = cos(theta), st = sin(theta);
+    xy[0] = c[0] + c[2] * ct * cp - c[3] * st * sp;
+    xy[1] = c[1] + c[2] * st * cp + c[3] * ct * sp;
+}
+
+alwan_status alwan_ellipse_points_f64(alwan_vec2_f64 *points_out, alwan_f64 const *canonical,
+                                      alwan_f64 const *angles_deg, size_t count) {
+    size_t i;
+    if (!points_out || !canonical || !angles_deg || count == 0) return ALWAN_E_INVALID;
+    for (i = 0; i < count; i++) {
+        double xy[2];
+        alwan__ellipse_point(xy, canonical, angles_deg[i]);
+        points_out[i].v[0] = xy[0];
+        points_out[i].v[1] = xy[1];
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_ellipse_points_f32(alwan_vec2_f32 *points_out, alwan_f32 const *canonical,
+                                      alwan_f32 const *angles_deg, size_t count) {
+    double c[5];
+    size_t i;
+    int k;
+    if (!points_out || !canonical || !angles_deg || count == 0) return ALWAN_E_INVALID;
+    for (k = 0; k < 5; k++) c[k] = (double)canonical[k];
+    for (i = 0; i < count; i++) {
+        double xy[2];
+        alwan__ellipse_point(xy, c, (double)angles_deg[i]);
+        points_out[i].v[0] = (alwan_f32)xy[0];
+        points_out[i].v[1] = (alwan_f32)xy[1];
+    }
+    return ALWAN_OK;
+}

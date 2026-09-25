@@ -420,6 +420,33 @@ that returned -9.43 degrees for a circle before the guard went in.
 
 ---
 
+### Points on an ellipse, and MacAdam's 1942 ellipses
+
+```c
+alwan_status alwan_ellipse_points_{T}(alwan_vec2_{T} *points_out, alwan_{T} const *canonical,
+                                      alwan_{T} const *angles_deg, size_t count);
+
+typedef struct {
+    double x, y;                                  /* the centre, CIE 1931 xy */
+    double a_observed, b_observed, theta_observed; /* semi-axes in 10^-3 of xy, rotation in degrees */
+    double a, b, theta;                           /* the same, calculated */
+} alwan_macadam_ellipse;
+
+alwan_status alwan_macadam1942_ellipses(alwan_macadam_ellipse *out, size_t capacity, size_t *count);
+```
+
+`alwan_ellipse_points_{T}` places `count` points on a canonical ellipse at angles in degrees,
+as colour-science's `point_at_angle_on_ellipse`:
+`x = xc + a cos(t) cos(p) - b sin(t) sin(p)` and `y = yc + a sin(t) cos(p) + b cos(t) sin(p)`,
+where `t` is the ellipse's rotation.
+
+`alwan_macadam1942_ellipses` returns MacAdam's 25 colour discrimination ellipses for observer
+PGN, as colour-science carries them from Wyszecki and Stiles, Table 2(5.4.1). Each has its
+centre, then the observed and the calculated semi-axes and rotation. colour's plotting draws
+the calculated ellipses with `a` and `b` divided by 60. `count` receives 25; a `capacity`
+under 25 is `ALWAN_E_RANGE`, so a call with `out` NULL and `capacity` 0 asks for the count.
+Suite 255 holds both to colour.
+
 ### The optimal colour solid
 
 ```c

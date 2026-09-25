@@ -3698,6 +3698,91 @@ alwan_status alwan_segment_f32(uint32_t *labels, size_t labels_row_stride, size_
 alwan_status alwan_segment_f64(uint32_t *labels, size_t labels_row_stride, size_t *count_out, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_segment_method method, alwan_segment_params const *params);
 alwan_status alwan_segment_u8(uint32_t *labels, size_t labels_row_stride, size_t *count_out, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_segment_method method, alwan_segment_params const *params);
 
+/* ----------------------------------------------------------------
+ * Label overlays, as scikit-image: label2rgb, find_boundaries, mark_boundaries
+ *
+ * On the uint32 label images alwan_segment writes (labels_row_stride in bytes).
+ *
+ * alwan_label2rgb_{T} writes width x height RGB doubles (out_row_stride in bytes).
+ * OVERLAY colours each region by its rank among the distinct labels that are not the
+ * background, smallest first, cycling through params->colors (color_count RGB triples in
+ * [0, 1]) or scikit-image's ten (red, blue, yellow, magenta, green, indigo, darkorange,
+ * cyan, pink, yellowgreen); the background takes bg_color. With an image (1 or 3
+ * channels; NULL for none, then alpha is 1) its saturation is scaled by saturation
+ * through scikit-image's rgb2hsv and hsv2rgb, it is brightened to
+ * image * image_alpha + (1 - image_alpha), and the colours are blended over it at alpha.
+ * AVG paints each region with the image's mean over it (8-bit means truncated, as
+ * scikit-image stores them back into uint8) and the background with bg_color. 8-bit
+ * images read as value * (1 / 255) for OVERLAY, as img_as_float does; f32 images are
+ * processed in float as scikit-image does. ALWAN_E_INVALID for a NULL output or labels,
+ * a zero size, channels other than 1 or 3, an unknown kind, a saturation outside
+ * [0, 1], or AVG without an image or with bg_color_none. Suite 254. */
+typedef enum {
+    ALWAN_LABEL2RGB_OVERLAY = 0,
+    ALWAN_LABEL2RGB_AVG = 1
+} alwan_label2rgb_kind;
+
+/* A zero field is scikit-image's default. */
+typedef struct {
+    alwan_label2rgb_kind kind;
+    double const *colors;        /* color_count RGB triples; NULL for scikit-image's ten */
+    size_t color_count;
+    int alpha_given;             /* 0: alpha 0.3 */
+    double alpha;
+    int no_background;           /* non-zero: no label is the background (bg_label=-1) */
+    uint32_t bg_label;           /* the background label; 0 as scikit-image's */
+    int bg_color_given;          /* 0: bg_color (0, 0, 0) */
+    double bg_color[3];
+    int bg_color_none;           /* OVERLAY: non-zero leaves the background showing the image (bg_color=None) */
+    int image_alpha_given;       /* 0: image_alpha 1 */
+    double image_alpha;
+    double saturation;           /* the image's saturation kept, [0, 1]; 0 as scikit-image's, grey */
+} alwan_label2rgb_params;
+
+alwan_status alwan_label2rgb_f64(double *out, size_t out_row_stride, uint32_t const *labels, size_t labels_row_stride, alwan_f64 const *image, size_t image_row_stride, size_t channels, size_t width, size_t height, alwan_label2rgb_params const *params);
+alwan_status alwan_label2rgb_f32(double *out, size_t out_row_stride, uint32_t const *labels, size_t labels_row_stride, alwan_f32 const *image, size_t image_row_stride, size_t channels, size_t width, size_t height, alwan_label2rgb_params const *params);
+alwan_status alwan_label2rgb_u8(double *out, size_t out_row_stride, uint32_t const *labels, size_t labels_row_stride, unsigned char const *image, size_t image_row_stride, size_t channels, size_t width, size_t height, alwan_label2rgb_params const *params);
+
+/* find_boundaries: 1 where a pixel's neighbourhood (the cross for connectivity 1, the
+ * 3 x 3 square for 2) holds more than one label, as a grey dilation differing from a grey
+ * erosion, edges repeated. INNER keeps the boundary pixels that are not background, OUTER
+ * those that are background or touch another object; SUBPIXEL writes a
+ * (2 width - 1) x (2 height - 1) mask whose in-between cells mark where labels meet.
+ * out is bytes, 0 or 1, out_row_stride in bytes. */
+typedef enum {
+    ALWAN_BOUNDARY_THICK = 0,
+    ALWAN_BOUNDARY_INNER = 1,
+    ALWAN_BOUNDARY_OUTER = 2,
+    ALWAN_BOUNDARY_SUBPIXEL = 3
+} alwan_boundary_mode;
+
+/* A zero field is scikit-image's default. */
+typedef struct {
+    alwan_boundary_mode mode;    /* 0 is THICK */
+    unsigned connectivity;       /* 1 or 2; 0 reads as 1 */
+    uint32_t background;         /* INNER and OUTER: the background label; 0 */
+} alwan_boundary_params;
+
+alwan_status alwan_find_boundaries(unsigned char *out, size_t out_row_stride, uint32_t const *labels, size_t labels_row_stride, size_t width, size_t height, alwan_boundary_params const *params);
+
+/* mark_boundaries: the image (1 or 3 channels, 8-bit read as value * (1 / 255)) as RGB
+ * doubles with the boundary pixels painted color and, when outline_given, the 3 x 3
+ * neighbourhood of every boundary pixel painted outline_color first. SUBPIXEL is refused
+ * (ALWAN_E_INVALID): scikit-image resamples the image by cubic zoom there. */
+typedef struct {
+    int color_given;             /* 0: color (1, 1, 0) */
+    double color[3];
+    int outline_given;           /* 0: no outline (outline_color=None) */
+    double outline_color[3];
+    int mode_given;              /* 0: OUTER, scikit-image's default here */
+    alwan_boundary_mode mode;
+    uint32_t background;         /* background_label; 0 */
+} alwan_mark_boundaries_params;
+
+alwan_status alwan_mark_boundaries_f64(double *out, size_t out_row_stride, alwan_f64 const *image, size_t image_row_stride, size_t channels, uint32_t const *labels, size_t labels_row_stride, size_t width, size_t height, alwan_mark_boundaries_params const *params);
+alwan_status alwan_mark_boundaries_f32(double *out, size_t out_row_stride, alwan_f32 const *image, size_t image_row_stride, size_t channels, uint32_t const *labels, size_t labels_row_stride, size_t width, size_t height, alwan_mark_boundaries_params const *params);
+alwan_status alwan_mark_boundaries_u8(double *out, size_t out_row_stride, unsigned char const *image, size_t image_row_stride, size_t channels, uint32_t const *labels, size_t labels_row_stride, size_t width, size_t height, alwan_mark_boundaries_params const *params);
+
 /* Region properties: measurements of every region of a label image (alwan_segment's
  * output), one entry per label present, in increasing label order.
  *
@@ -5307,6 +5392,24 @@ alwan_status alwan_ellipse_canonical_f64(alwan_f64 *canonical_out, alwan_f64 con
 alwan_status alwan_ellipse_canonical_f32(alwan_f32 *canonical_out, alwan_f32 const *coefficients);
 alwan_status alwan_ellipse_general_f64(alwan_f64 *coefficients_out, alwan_f64 const *canonical);
 alwan_status alwan_ellipse_general_f32(alwan_f32 *coefficients_out, alwan_f32 const *canonical);
+
+/* Points on a canonical ellipse (centre x, y, semi-axes a, b, rotation in degrees) at
+ * count angles in degrees, as colour-science's point_at_angle_on_ellipse. */
+alwan_status alwan_ellipse_points_f64(alwan_vec2_f64 *points_out, alwan_f64 const *canonical, alwan_f64 const *angles_deg, size_t count);
+alwan_status alwan_ellipse_points_f32(alwan_vec2_f32 *points_out, alwan_f32 const *canonical, alwan_f32 const *angles_deg, size_t count);
+
+/* MacAdam's (1942) 25 colour discrimination ellipses for observer PGN, as colour-science
+ * carries them (Wyszecki and Stiles, Table 2(5.4.1)): the centre in CIE 1931 xy, then the
+ * observed and the calculated semi-axes (in 10^-3 of xy) and rotation (degrees). colour's
+ * plotting draws the calculated ones with a and b divided by 60. count receives 25;
+ * ALWAN_E_RANGE when capacity is smaller (out may be NULL with capacity 0 to ask). */
+typedef struct {
+    double x, y;
+    double a_observed, b_observed, theta_observed;
+    double a, b, theta;
+} alwan_macadam_ellipse;
+
+alwan_status alwan_macadam1942_ellipses(alwan_macadam_ellipse *out, size_t capacity, size_t *count);
 
 /* ----------------------------------------------------------------
  * Optimal colour solid (Rosch-MacAdam)
@@ -7575,6 +7678,50 @@ alwan_status alwan_ycocg_to_rgb_f32_map_interleave(alwan_f32 *rgb_out, size_t ou
 alwan_status alwan_ycocg_to_rgb_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *ycocg_in, size_t in_stride, size_t count);
 alwan_status alwan_rgb_to_ycocg_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
 alwan_status alwan_ycocg_to_rgb_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt);
+
+/* ----------------------------------------------------------------
+ * Analogue video colour spaces, as scikit-image: YIQ (NTSC), YUV (PAL), YDbDr
+ * (SECAM), YPbPr and its 8-bit YCbCr
+ *
+ * out = from_rgb . rgb + offset on the way in, rgb = rgb_from . (in - offset) on the
+ * way out, with scikit-image's matrices and its inverses as it computed them. The offset
+ * is 0 except for YCBCR, (16, 128, 128): luma 16 to 235 and chroma centred on 128 for RGB
+ * in [0, 1], as rgb2ycbcr. alwan_rgb_to_ycbcr_{T} with ALWAN_YCBCR_BT601 is the same
+ * transform full range; through alwan_ycbcr_full_to_legal_{T} at 8 bits and times 255 it
+ * lands within 1.3e-4 of YCBCR, scikit-image rounding its coefficients to three decimals.
+ * Maps as the other colour spaces: strides in bytes, typed _ex forms computing in
+ * double. ALWAN_E_INVALID for a NULL, count 0, an unknown space or format. Suite 255. */
+typedef enum {
+    ALWAN_VIDEO_YIQ = 0,
+    ALWAN_VIDEO_YUV = 1,
+    ALWAN_VIDEO_YDBDR = 2,
+    ALWAN_VIDEO_YPBPR = 3,
+    ALWAN_VIDEO_YCBCR = 4
+} alwan_video_space;
+
+/* The space's from_rgb and rgb_from matrices and its offset (3 values); any may be NULL, not all. */
+alwan_status alwan_video_matrix_f64(alwan_mat3x3_f64 *from_rgb, alwan_mat3x3_f64 *rgb_from, alwan_f64 *offset, alwan_video_space space);
+alwan_status alwan_video_matrix_f32(alwan_mat3x3_f32 *from_rgb, alwan_mat3x3_f32 *rgb_from, alwan_f32 *offset, alwan_video_space space);
+alwan_status alwan_rgb_to_video_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_video_space space);
+alwan_status alwan_rgb_to_video_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_video_space space);
+alwan_status alwan_video_to_rgb_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_video_space space);
+alwan_status alwan_video_to_rgb_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_video_space space);
+alwan_status alwan_rgb_to_video_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_video_space space);
+alwan_status alwan_rgb_to_video_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_video_space space);
+alwan_status alwan_video_to_rgb_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_video_space space);
+alwan_status alwan_video_to_rgb_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_video_space space);
+alwan_status alwan_rgb_to_video_map_interleave_ex(void *out, size_t out_stride, void const *rgb_in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_video_space space);
+alwan_status alwan_video_to_rgb_map_interleave_ex(void *rgb_out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_video_space space);
+alwan_status alwan_rgb_to_video_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_video_space space);
+alwan_status alwan_video_to_rgb_map_planar_ex(void *out0, size_t out_stride, void *out1, void *out2, void const *in0, size_t in_stride, void const *in1, void const *in2, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_video_space space);
+
+/* RGBA flattened over a background, as scikit-image's rgba2rgb:
+ * clip((1 - alpha) background + alpha rgb, 0, 1) per channel, in the image's precision.
+ * background is 3 values in [0, 1], NULL for white; the u8 form reads value * (1 / 255)
+ * and writes doubles. ALWAN_E_RANGE for a background outside [0, 1]. Suite 255. */
+alwan_status alwan_rgba_to_rgb_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgba_in, size_t in_stride, size_t count, alwan_f64 const *background);
+alwan_status alwan_rgba_to_rgb_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgba_in, size_t in_stride, size_t count, alwan_f32 const *background);
+alwan_status alwan_rgba_to_rgb_u8_map_interleave(double *rgb_out, size_t out_stride, unsigned char const *rgba_in, size_t in_stride, size_t count, double const *background);
 
 /* RGB <-> HWB conversions (Hue [0-1], Whiteness [0-1], Blackness [0-1]) */
 alwan_status alwan_rgb_to_hwb_f32(alwan_hwb_f32 *hwb_out, alwan_rgb_f32 const *rgb);
@@ -10797,6 +10944,63 @@ alwan_status alwan_psnr_f32(alwan_f32 *psnr_out, alwan_f32 *cpsnr_out, alwan_f32
  * ---------------------------------------------------------------- */
 alwan_status alwan_ssim_f64(alwan_f64 *ssim_out, alwan_f64 const *test, size_t test_row_stride, alwan_f64 const *ref, size_t ref_row_stride, size_t width, size_t height, alwan_f64 data_range);
 alwan_status alwan_ssim_f32(alwan_f32 *ssim_out, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, alwan_f32 data_range);
+
+/* ----------------------------------------------------------------
+ * Image comparison metrics, as scikit-image's skimage.metrics
+ *
+ * width x height pixels of channels values each (1 to 4), rows row_stride bytes apart,
+ * every value taking part. 8-bit images compare their raw values, as scikit-image casts
+ * them without rescaling. The sums follow numpy's orders (pairwise over contiguous runs,
+ * buffers of 8192 where a float32 array is averaged in float64). Suite 256.
+ *
+ * alwan_mean_squared_error_{T}: mean((a - b)^2) over every value.
+ * alwan_normalized_root_mse_{T}: sqrt(MSE) over the true image's root mean square
+ *   (EUCLIDEAN), its range (MIN_MAX) or its mean (MEAN); ALWAN_E_RANGE when that is 0.
+ * alwan_normalized_mutual_information_{T}: (H(A) + H(B)) / H(A, B) from a joint
+ *   histogram of bins x bins (0 reads as 100) over each image's range, entropies in nats.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_NRMSE_EUCLIDEAN = 0,
+    ALWAN_NRMSE_MIN_MAX = 1,
+    ALWAN_NRMSE_MEAN = 2
+} alwan_nrmse_normalization;
+
+alwan_status alwan_mean_squared_error_f64(double *mse, alwan_f64 const *a, size_t a_row_stride, alwan_f64 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels);
+alwan_status alwan_mean_squared_error_f32(double *mse, alwan_f32 const *a, size_t a_row_stride, alwan_f32 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels);
+alwan_status alwan_mean_squared_error_u8(double *mse, unsigned char const *a, size_t a_row_stride, unsigned char const *b, size_t b_row_stride, size_t width, size_t height, size_t channels);
+alwan_status alwan_normalized_root_mse_f64(double *nrmse, alwan_f64 const *image_true, size_t true_row_stride, alwan_f64 const *image_test, size_t test_row_stride, size_t width, size_t height, size_t channels, alwan_nrmse_normalization normalization);
+alwan_status alwan_normalized_root_mse_f32(double *nrmse, alwan_f32 const *image_true, size_t true_row_stride, alwan_f32 const *image_test, size_t test_row_stride, size_t width, size_t height, size_t channels, alwan_nrmse_normalization normalization);
+alwan_status alwan_normalized_root_mse_u8(double *nrmse, unsigned char const *image_true, size_t true_row_stride, unsigned char const *image_test, size_t test_row_stride, size_t width, size_t height, size_t channels, alwan_nrmse_normalization normalization);
+alwan_status alwan_normalized_mutual_information_f64(double *nmi, alwan_f64 const *a, size_t a_row_stride, alwan_f64 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, size_t bins);
+alwan_status alwan_normalized_mutual_information_f32(double *nmi, alwan_f32 const *a, size_t a_row_stride, alwan_f32 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, size_t bins);
+alwan_status alwan_normalized_mutual_information_u8(double *nmi, unsigned char const *a, size_t a_row_stride, unsigned char const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, size_t bins);
+
+/* SSIM of 1 to 4 channels, the mean of the per-channel indices, as scikit-image's
+ * structural_similarity with channel_axis. The zero params are alwan_ssim's settings (the
+ * paper's): a Gaussian window of sigma 1.5, truncate 3.5, population covariance.
+ * UNIFORM with sample_covariance set is scikit-image's default (a 7 x 7 box). win_size 0
+ * reads as 7 for UNIFORM and 2 int(3.5 sigma + 0.5) + 1 for GAUSSIAN; the map is averaged
+ * with (win_size - 1) / 2 cropped from every edge. The Gaussian runs through alwan_filter,
+ * bit-exact to scipy, and the box is scipy's running sum, so this and alwan_ssim can part
+ * in the last bits. ALWAN_E_RANGE for an even window or one larger than the image, a
+ * negative k1 or k2, a sigma over 64. */
+typedef enum {
+    ALWAN_SSIM_WINDOW_GAUSSIAN = 0,
+    ALWAN_SSIM_WINDOW_UNIFORM = 1
+} alwan_ssim_window;
+
+/* A zero field is alwan_ssim's setting. */
+typedef struct {
+    alwan_ssim_window window;
+    size_t win_size;             /* odd; 0 as above */
+    int sample_covariance;       /* non-zero: N / (N - 1), scikit-image's default */
+    double sigma;                /* GAUSSIAN; 0 reads as 1.5 */
+    double k1, k2;               /* 0 read as 0.01 and 0.03 */
+} alwan_ssim_params;
+
+alwan_status alwan_structural_similarity_f64(double *ssim, alwan_f64 const *test, size_t test_row_stride, alwan_f64 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
+alwan_status alwan_structural_similarity_f32(double *ssim, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
+alwan_status alwan_structural_similarity_u8(double *ssim, unsigned char const *test, size_t test_row_stride, unsigned char const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
 
 /* PU-SSIM, pu21_metric.m's SSIM: luminance from RGB with its weights (0.212656,
  * 0.715158, 0.072186) when channels is 3, or the values themselves when it is 1, in

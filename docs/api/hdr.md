@@ -714,6 +714,65 @@ it to, so the two agree away from the image edges and not at them.
 
 ---
 
+## Image comparison metrics
+
+```c
+alwan_status alwan_mean_squared_error_{T}(double *mse, alwan_{T} const *a, size_t a_row_stride,
+                                          alwan_{T} const *b, size_t b_row_stride,
+                                          size_t width, size_t height, size_t channels);
+alwan_status alwan_normalized_root_mse_{T}(double *nrmse, alwan_{T} const *image_true, size_t true_row_stride,
+                                           alwan_{T} const *image_test, size_t test_row_stride,
+                                           size_t width, size_t height, size_t channels,
+                                           alwan_nrmse_normalization normalization);
+alwan_status alwan_normalized_mutual_information_{T}(double *nmi, alwan_{T} const *a, size_t a_row_stride,
+                                                     alwan_{T} const *b, size_t b_row_stride,
+                                                     size_t width, size_t height, size_t channels,
+                                                     size_t bins);
+alwan_status alwan_structural_similarity_{T}(double *ssim, alwan_{T} const *test, size_t test_row_stride,
+                                             alwan_{T} const *ref, size_t ref_row_stride,
+                                             size_t width, size_t height, size_t channels,
+                                             double data_range, alwan_ssim_params const *params);
+/* each also for 8-bit images, same arguments with unsigned char pixels: */
+alwan_status alwan_mean_squared_error_u8(...);
+alwan_status alwan_normalized_root_mse_u8(...);
+alwan_status alwan_normalized_mutual_information_u8(...);
+alwan_status alwan_structural_similarity_u8(...);
+```
+
+scikit-image's `mean_squared_error`, `normalized_root_mse`, `normalized_mutual_information`
+and `structural_similarity`, on `width x height` pixels of 1 to 4 channels. 8-bit images
+compare their raw values, as scikit-image casts them without rescaling.
+
+- **MSE** is the mean of `(a - b)^2` over every value.
+- **NRMSE** is `sqrt(MSE)` over the true image's root mean square (`EUCLIDEAN`), its range
+  (`MIN_MAX`) or its mean (`MEAN`). A zero denominator is `ALWAN_E_RANGE`.
+- **NMI** is `(H(A) + H(B)) / H(A, B)`, entropies in nats, from a joint histogram of
+  `bins x bins` (0 reads as 100) over each image's range.
+- **SSIM** is the mean of the per-channel indices, as `channel_axis` gives it. The zero
+  `alwan_ssim_params` are `alwan_ssim`'s settings, the paper's: a Gaussian window of sigma 1.5
+  truncated at 3.5, and population covariance. `UNIFORM` with `sample_covariance` set is
+  scikit-image's own default, a 7 x 7 box. `win_size` 0 reads as 7 for the box and
+  `2 int(3.5 sigma + 0.5) + 1` for the Gaussian. The map is averaged with `(win_size - 1) / 2`
+  cropped from every edge.
+
+The sums follow numpy's orders, which is where two correct implementations part in the last
+bits. A mean over a contiguous array is numpy's pairwise sum. A float32 array averaged in
+float64, and a cropped view, are reduced through buffers of 8192 values. The Gaussian runs
+through `alwan_filter`, which is bit-exact to scipy, and the box is scipy's running sum
+transcribed from `ni_filters.c`.
+
+In suite 256 on a 3-channel pair:
+- MSE, NRMSE and NMI equal scikit-image to the bit in f64, f32 and u8.
+- SSIM is within 1.1e-16 in f64 and exact in u8.
+- SSIM in f32 is within 6.4e-8: scikit-image stays in float32 there, while alwan computes in
+  double.
+- With the paper's setting, the result is within 5e-15 of `alwan_ssim`, whose blur sums its
+  taps in another order.
+
+**Returns:** `ALWAN_E_INVALID` for a NULL, a zero size, channels outside 1 to 4, an unknown
+normalisation or window, or a data range that is not finite and positive. `ALWAN_E_RANGE` for
+an even window, a window larger than the image, a negative `k1` or `k2`, or a sigma over 64.
+
 ## Exposure and Bracket Merging
 
 ```c

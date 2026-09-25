@@ -978,6 +978,65 @@ header never mentions any chroma offset.
 
 ---
 
+### alwan_rgb_to_video_{T} / alwan_video_to_rgb_{T} (YIQ, YUV, YDbDr, YPbPr, 8-bit YCbCr)
+
+```c
+typedef enum {
+    ALWAN_VIDEO_YIQ = 0, ALWAN_VIDEO_YUV = 1, ALWAN_VIDEO_YDBDR = 2,
+    ALWAN_VIDEO_YPBPR = 3, ALWAN_VIDEO_YCBCR = 4
+} alwan_video_space;
+
+alwan_status alwan_video_matrix_{T}(alwan_mat3x3_{T} *from_rgb, alwan_mat3x3_{T} *rgb_from,
+                                    alwan_{T} *offset, alwan_video_space space);
+alwan_status alwan_rgb_to_video_{T}_map_interleave(alwan_{T} *out, size_t out_stride,
+                                                   alwan_{T} const *rgb_in, size_t in_stride,
+                                                   size_t count, alwan_video_space space);
+alwan_status alwan_video_to_rgb_{T}_map_interleave(...);   /* same shape, back to RGB */
+/* _map_planar twins, and typed alwan_rgb_to_video_map_{interleave,planar}_ex and
+ * alwan_video_to_rgb_map_{interleave,planar}_ex computing in double */
+```
+
+The analogue video spaces as scikit-image's `rgb2yiq`, `rgb2yuv`, `rgb2ydbdr`, `rgb2ypbpr`
+and `rgb2ycbcr` compute them, with their inverses: YIQ for NTSC, YUV for PAL, YDbDr for
+SECAM, and YPbPr, the analogue component form of BT.601. `YCBCR` is that same BT.601
+transform in scikit-image's 8-bit form: luma 16 to 235 and chroma centred on 128 for RGB in
+`[0, 1]`.
+
+`out = from_rgb . rgb + offset` on the way in, `rgb = rgb_from . (in - offset)` on the way
+out. Both matrices are scikit-image's own numbers, including the inverses it computes, and
+the offset is `(16, 128, 128)` for `YCBCR` and zero otherwise. `alwan_video_matrix_{T}` hands
+them out; any of its outputs may be NULL, but not all of them.
+
+The three products accumulate with fused multiply-adds, `fma(v2, m2, fma(v1, m1, v0 m0))`,
+which is how numpy's matmul computes them through OpenBLAS. That makes every value in suite
+255 equal to scikit-image's to the bit, in both precisions. A BLAS that does not fuse lands
+within an ulp.
+
+`alwan_rgb_to_ycbcr_{T}` with `ALWAN_YCBCR_BT601` is the same transform written full range.
+Taken through `alwan_ycbcr_full_to_legal_{T}` at 8 bits and multiplied by 255, it lands
+within 1.3e-4 of `ALWAN_VIDEO_YCBCR`: scikit-image rounds its coefficients to three
+decimals (65.481, 128.553, 24.966).
+
+**Returns:** `ALWAN_E_INVALID` for a NULL buffer, `count` 0, an unknown space or pixel
+format.
+
+### alwan_rgba_to_rgb_{T}_map_interleave
+
+```c
+alwan_status alwan_rgba_to_rgb_{T}_map_interleave(alwan_{T} *rgb_out, size_t out_stride,
+                                                  alwan_{T} const *rgba_in, size_t in_stride,
+                                                  size_t count, alwan_{T} const *background);
+alwan_status alwan_rgba_to_rgb_u8_map_interleave(double *rgb_out, size_t out_stride,
+                                                 unsigned char const *rgba_in, size_t in_stride,
+                                                 size_t count, double const *background);
+```
+
+Flattens RGBA over a background as scikit-image's `rgba2rgb`:
+`clip((1 - alpha) background + alpha rgb, 0, 1)` per channel, in the image's precision.
+`background` is three values in `[0, 1]`, or NULL for white. The 8-bit form reads each value
+as `v * (1 / 255)`, as `img_as_float` does, and writes doubles. `ALWAN_E_RANGE` for a
+background value outside `[0, 1]`.
+
 ## Luma Pickers: HSY and HSPLog
 
 ### alwan_rgb_to_hsy_{T} / alwan_hsy_to_rgb_{T}

@@ -1,0 +1,6 @@
+macadam1942.csv: MacAdam (1942), "Visual Sensitivities to Color Differences
+in Daylight", JOSA 32(5), observer PGN, as tabulated by Wyszecki and Stiles
+(2000), Table 2(5.4.1), after Silberstein and MacAdam (1945); taken from
+colour-science's colour.models.datasets.macadam_ellipses
+(DATA_MACADAM_1942_ELLIPSES), BSD-3-Clause, Colour Developers. Written by
+alwan_dev/gendata/data/macadam1942.py.
