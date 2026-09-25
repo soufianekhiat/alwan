@@ -50,8 +50,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#define ALWAN_WP_COORD(v) ((v) < 0.0 ? -1 : (long)(v))
-#define ALWAN_WP_FLOOR(v) ((v) < 0.0 ? (long)floor(v) : (long)(v))
+/* A source coordinate as a whole pixel. NaN reads as outside (-1 for COORD, the far
+ * negative end for FLOOR) and a magnitude past 2^30 is held there, so the cast is always
+ * defined (long is 32 bits on Windows) and the result is still outside any image. */
+#define ALWAN_WP_BIG 1073741824.0
+#define ALWAN_WP_COORD(v) (!((v) >= 0.0) ? -1L : (v) < ALWAN_WP_BIG ? (long)(v) : (long)ALWAN_WP_BIG)
+#define ALWAN_WP_FLOOR(v) (!((v) > -ALWAN_WP_BIG) ? -(long)ALWAN_WP_BIG : (v) < ALWAN_WP_BIG ? (long)floor(v) : (long)ALWAN_WP_BIG)
 
 typedef struct {
     void const *src;
@@ -98,7 +102,7 @@ static int alwan_wp_eval(double *vout, alwan_wp_img const *im, double xin, doubl
     double dx, dy;
     size_t c;
     int const f32 = im->kind == 1;
-    if (xin < 0.0 || xin >= (double)im->w || yin < 0.0 || yin >= (double)im->h) return 0;
+    if (!(xin >= 0.0 && xin < (double)im->w && yin >= 0.0 && yin < (double)im->h)) return 0;   /* NaN is outside */
     xin -= 0.5;
     yin -= 0.5;
     x = ALWAN_WP_FLOOR(xin);
@@ -296,7 +300,7 @@ static int alwan_wp_field(alwan_wp_map const *m, double x, double y, double *sx,
 }
 
 /* The source point shown at output point (x, y): 0 when there is none. */
-static int alwan_wp_eval_map(alwan_wp_map const *m, double x, double y, double *sx, double *sy) {
+static int alwan_wp_eval_map_raw(alwan_wp_map const *m, double x, double y, double *sx, double *sy) {
     switch (m->p->map) {
     case ALWAN_WARP_MAP_SWIRL: {
         /* c + R(phi(r)) (p - c), phi = angle f(1 - r / R), f the C2 quintic 6s^5 - 15s^4 + 10s^3:
@@ -330,6 +334,13 @@ static int alwan_wp_eval_map(alwan_wp_map const *m, double x, double y, double *
         }
         return 1;
     }
+}
+
+/* The map's source point, or 0 when it has none: the map says so, or the point is not
+ * finite (a callback's inf, a field texel's NaN, a perspective divide by zero) or lies more
+ * than 1e9 pixels out, which is outside any image and would not survive a cast to long. */
+static int alwan_wp_eval_map(alwan_wp_map const *m, double x, double y, double *sx, double *sy) {
+    return alwan_wp_eval_map_raw(m, x, y, sx, sy) && fabs(*sx) < 1e9 && fabs(*sy) < 1e9;
 }
 
 /* One sub-sample: the map at (x, y), the source reconstructed there, or the fill. */

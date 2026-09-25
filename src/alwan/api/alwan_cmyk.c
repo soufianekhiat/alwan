@@ -696,7 +696,7 @@ static void alwan__cmyk_inv_lookup(double *cmy, double *corners,
     for (r = 0; r < 3; r++) {
         double u = (lab[r] - inv->lo[r]) / (inv->hi[r] - inv->lo[r]);
         double f;
-        if (u < 0.0) u = 0.0;
+        if (!(u > 0.0)) u = 0.0;   /* NaN included: the cast below must see a number */
         if (u > 1.0) u = 1.0;
         u *= (double)(n - 1);
         i0[r] = (int)u;
@@ -806,7 +806,7 @@ static alwan_status alwan__cmyk_inv_eval(double *cmy, double *miss,
     lab[1] = target->a;
     lab[2] = target->b;
     for (i = 0; i < 3; i++) {
-        if (lab[i] < inv->lo[i] || lab[i] > inv->hi[i]) {
+        if (!(lab[i] >= inv->lo[i] && lab[i] <= inv->hi[i])) {   /* NaN defers too */
             return alwan__lab_to_cmyk(cmy, miss, &inv->model, target, inv->k);
         }
     }

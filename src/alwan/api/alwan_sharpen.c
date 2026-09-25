@@ -58,7 +58,7 @@ static alwan_status alwan_sh_unsharp(void *out, size_t out_rs, void const *src, 
                                      size_t h, double radius, double amount, int clip, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     size_t const n = w * h;
-    long const r = (long)(4.0 * radius + 0.5);
+    long r;
     double *data, *tmp, *k;
     double lo = 0.0, hi = 1.0, ksum = 0.0;
     size_t x, y, c;
@@ -68,6 +68,7 @@ static alwan_status alwan_sh_unsharp(void *out, size_t out_rs, void const *src, 
     if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
     if (!alwan_sh_finite(radius) || !alwan_sh_finite(amount)) return ALWAN_E_INVALID;
     if (!(radius > 0.0) || radius > 1000.0 || n / w != h) return ALWAN_E_RANGE;
+    r = (long)(4.0 * radius + 0.5);   /* radius is finite and at most 1000 here */
 
     data = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * ch * sizeof(double)), sizeof(double));
     k = (double *)ALWAN_ALLOC(alwan_safe_array_size((size_t)(2 * r + 1), sizeof(double)), sizeof(double));

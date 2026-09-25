@@ -119,9 +119,10 @@ static size_t alwan_th_histogram(double *counts, double *centres, double const *
         memset(counts, 0, nb * sizeof(double));
         for (i = 0; i < n; i++) {
             double const f = alwan_th_r(alwan_th_r(alwan_th_r(v[i] - first, f32) / denom, f32) * (double)nb, f32);
-            size_t k = (size_t)f;
-            if (k >= nb) k = nb - 1;
-            if (v[i] < edges[k]) k--;
+            /* f is in [0, nb] for finite data, but a float32 range wider than FLT_MAX makes it
+             * inf / inf: take the cell only for a number in range, so the cast is defined */
+            size_t k = f > 0.0 ? (f < (double)nb ? (size_t)f : nb - 1) : 0;
+            if (k > 0 && v[i] < edges[k]) k--;
             else if (k != nb - 1 && v[i] >= edges[k + 1]) k++;
             counts[k] += 1.0;
         }

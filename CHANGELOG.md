@@ -622,6 +622,29 @@
 
 ### Fixed
 
+- **`alwan_xyz_to_spectrum_meng2015` read through a caller's illuminant unchecked.** An
+  illuminant with `values` NULL was dereferenced; one with a single sample, equal or NaN
+  wavelength bounds divided by zero into a NaN position that was cast to an index. Such an
+  illuminant is now `ALWAN_E_INVALID`, and every cell is taken only for a position in range.
+
+- **Float-to-index casts that NaN, inf or a far value could reach.** check_table_registry
+  had not been run while the image tools landed, and flagged 29 new casts. Most turned
+  over integers; five took floats a caller controls, where the cast is undefined behaviour
+  (x86 gives INT_MIN, long is 32 bits on Windows). On x64 the checks around them happened
+  to reject the result, but nothing guaranteed it:
+  - `alwan_warp_{T}`: a callback's inf, a field texel's NaN, a perspective divide by zero
+    or a point past 2^31 pixels went through `(long)`, and a NaN passed the bilinear and
+    bicubic samplers' range test. A source point that is not finite, or more than 1e9
+    pixels out, now has no source and takes the fill, which is what an off-image point
+    already gave.
+  - `alwan_cmyk_inverse_eval_*`: a NaN Lab passed the cache's range test and was cast to a
+    cell; it now defers to the full solve, as a colour outside the cache does.
+  - `alwan_threshold_*`: float32 data spanning more than FLT_MAX made the histogram's
+    position inf / inf; the cell is now taken only for a number in range.
+  - `alwan_sharpen_*`: the tap count was computed from a NaN radius before the radius
+    was refused.
+  Suite 263 feeds each of them, and ran clean under AddressSanitizer.
+
 - **Every CLF alwan exported with a view transform had its 3D LUT transposed.** CLF
   orders a LUT3D array with blue varying fastest and red slowest; alwan holds a cube the
   other way round, R-fastest, which is what `.cube` stores on disk, and
