@@ -2,6 +2,13 @@
 
 ### Fixed: output differs
 
+- **ADX10 and ADX16 had the wrong scale and offset.** They encoded (density + 0.5) * 400 of
+  1023 and (density + 0.5) * 25600 of 65535, which puts density 0 at code 200 and density 1 at
+  600. SMPTE ST 2065-3, the Academy's ADX IDT CTL and OCIO's ADX10/16_to_ACES2065-1 all read
+  500 * density + 95 of 1023 and 8000 * density + 1520 of 65535: density 0 is code 95 and a
+  code of 595 is density 1. Both directions now follow that, and ADX10 spans density -0.19 to
+  1.856. Suite 57 pins nine code values against OCIO's matrix to its float32 rounding.
+
 - **The ACES 2.0 cinema presets were not ACES 2.0.** `ALWAN_ACES2_OUT_DCDM_48NIT` and
   `ALWAN_ACES2_OUT_P3DCI_48NIT` ran a chain of their own: the tonescale of a 48 nit peak,
   the result taken from AP1 through D60 matrices, and DCDM "normalised" to an equal-energy

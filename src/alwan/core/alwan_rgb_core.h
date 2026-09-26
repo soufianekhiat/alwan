@@ -1123,33 +1123,31 @@ ALWAN_INLINE alwan_scalar alwan_linear_identity(alwan_scalar v) {
     return v;
 }
 
-/* ADX10/ADX16 -- ACES S-2008-001 "Academy Density Exchange Encoding (ADX)" */
+/* ADX10/ADX16 -- SMPTE ST 2065-3 (ACES S-2008-001) "Academy Density Exchange Encoding":
+ * code value = 500 * density + 95 of 1023 (10-bit), 8000 * density + 1520 of 65535 (16-bit),
+ * as the Academy's ADX IDT CTL and OCIO's ADX10/16_to_ACES2065-1 read it. */
 ALWAN_INLINE alwan_scalar alwan_adx10_oetf(alwan_scalar density) {
-    alwan_scalar ref_pt = ALWAN_LITERAL(0.5);
-    alwan_scalar scale  = ALWAN_LITERAL(400.0);
-    alwan_scalar norm   = ALWAN_LITERAL(1023.0);
-    alwan_scalar cv_raw = (density + ref_pt) * scale;
+    alwan_scalar norm = ALWAN_LITERAL(1023.0);
+    alwan_scalar cv_raw = density * ALWAN_LITERAL(500.0) + ALWAN_LITERAL(95.0);
     alwan_scalar cv = ALWAN_SELECT(cv_raw < ALWAN_ZERO, ALWAN_ZERO,
                       ALWAN_SELECT(cv_raw > norm, norm, cv_raw));
     return cv / norm;
 }
 
 ALWAN_INLINE alwan_scalar alwan_adx10_eotf(alwan_scalar encoded) {
-    return encoded * ALWAN_LITERAL(1023.0) / ALWAN_LITERAL(400.0) - ALWAN_LITERAL(0.5);
+    return (encoded * ALWAN_LITERAL(1023.0) - ALWAN_LITERAL(95.0)) / ALWAN_LITERAL(500.0);
 }
 
 ALWAN_INLINE alwan_scalar alwan_adx16_oetf(alwan_scalar density) {
-    alwan_scalar ref_pt = ALWAN_LITERAL(0.5);
-    alwan_scalar scale  = ALWAN_LITERAL(25600.0);
-    alwan_scalar norm   = ALWAN_LITERAL(65535.0);
-    alwan_scalar cv_raw = (density + ref_pt) * scale;
+    alwan_scalar norm = ALWAN_LITERAL(65535.0);
+    alwan_scalar cv_raw = density * ALWAN_LITERAL(8000.0) + ALWAN_LITERAL(1520.0);
     alwan_scalar cv = ALWAN_SELECT(cv_raw < ALWAN_ZERO, ALWAN_ZERO,
                       ALWAN_SELECT(cv_raw > norm, norm, cv_raw));
     return cv / norm;
 }
 
 ALWAN_INLINE alwan_scalar alwan_adx16_eotf(alwan_scalar encoded) {
-    return encoded * ALWAN_LITERAL(65535.0) / ALWAN_LITERAL(25600.0) - ALWAN_LITERAL(0.5);
+    return (encoded * ALWAN_LITERAL(65535.0) - ALWAN_LITERAL(1520.0)) / ALWAN_LITERAL(8000.0);
 }
 
 ALWAN_INLINE alwan_scalar alwan_gamma_oetf_v(alwan_scalar lin, alwan_scalar gamma) {

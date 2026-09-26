@@ -1259,36 +1259,31 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_linear_identity)(ALWAN_CORE_T v
 
 /* ================================================================
  * ADX (Academy Density Exchange) - SMPTE ST 2065-3
+ * code value = 500 * density + 95 of 1023 (10-bit), 8000 * density + 1520 of 65535 (16-bit)
  * ================================================================ */
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_adx10_oetf)(ALWAN_CORE_T density) {
-    ALWAN_CORE_T ref_pt = ALWAN_CORE_LITERAL(0.5);
-    ALWAN_CORE_T scale  = ALWAN_CORE_LITERAL(400.0);
-    ALWAN_CORE_T norm   = ALWAN_CORE_LITERAL(1023.0);
-
-    ALWAN_CORE_T cv_raw = (density + ref_pt) * scale;
+    ALWAN_CORE_T norm = ALWAN_CORE_LITERAL(1023.0);
+    ALWAN_CORE_T cv_raw = density * ALWAN_CORE_LITERAL(500.0) + ALWAN_CORE_LITERAL(95.0);
     ALWAN_CORE_T cv = ALWAN_CORE_SELECT(cv_raw < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,
                       ALWAN_CORE_SELECT(cv_raw > norm, norm, cv_raw));
     return cv / norm;
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_adx10_eotf)(ALWAN_CORE_T encoded) {
-    return encoded * ALWAN_CORE_LITERAL(1023.0) / ALWAN_CORE_LITERAL(400.0) - ALWAN_CORE_LITERAL(0.5);
+    return (encoded * ALWAN_CORE_LITERAL(1023.0) - ALWAN_CORE_LITERAL(95.0)) / ALWAN_CORE_LITERAL(500.0);
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_adx16_oetf)(ALWAN_CORE_T density) {
-    ALWAN_CORE_T ref_pt = ALWAN_CORE_LITERAL(0.5);
-    ALWAN_CORE_T scale  = ALWAN_CORE_LITERAL(25600.0);
-    ALWAN_CORE_T norm   = ALWAN_CORE_LITERAL(65535.0);
-
-    ALWAN_CORE_T cv_raw = (density + ref_pt) * scale;
+    ALWAN_CORE_T norm = ALWAN_CORE_LITERAL(65535.0);
+    ALWAN_CORE_T cv_raw = density * ALWAN_CORE_LITERAL(8000.0) + ALWAN_CORE_LITERAL(1520.0);
     ALWAN_CORE_T cv = ALWAN_CORE_SELECT(cv_raw < ALWAN_CORE_ZERO, ALWAN_CORE_ZERO,
                       ALWAN_CORE_SELECT(cv_raw > norm, norm, cv_raw));
     return cv / norm;
 }
 
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_adx16_eotf)(ALWAN_CORE_T encoded) {
-    return encoded * ALWAN_CORE_LITERAL(65535.0) / ALWAN_CORE_LITERAL(25600.0) - ALWAN_CORE_LITERAL(0.5);
+    return (encoded * ALWAN_CORE_LITERAL(65535.0) - ALWAN_CORE_LITERAL(1520.0)) / ALWAN_CORE_LITERAL(8000.0);
 }
 
 /* ================================================================
