@@ -3807,7 +3807,10 @@ typedef struct {
     alwan_aces_primaries_f64 primaries;
     alwan_f64 peak_luminance;
     alwan_transfer_function eotf;
-    int needs_d60_to_d65;  /* 1 if chromatic adaptation needed */
+    /* DCDM: the display-linear limit RGB is encoded as XYZ (equal-energy white), times
+     * 48 / 52.37, before the gamma 2.6. xyz_e_matrix is RGBtoXYZ(limit) with that scale in. */
+    int xyz_e;
+    alwan_f64 xyz_e_matrix[9];
 } aces2_output_config;
 
 /* Standard primaries definitions */
@@ -3832,26 +3835,11 @@ static void primaries_rec2020(alwan_aces_primaries_f64 *p) {
     p->white_x = ALWAN_D65_x; p->white_y = ALWAN_D65_y;
 }
 
-static void primaries_p3_dci(alwan_aces_primaries_f64 *p) {
-    p->red_x = ALWAN_P3_RED_x;     p->red_y = ALWAN_P3_RED_y;
-    p->green_x = ALWAN_P3_GREEN_x; p->green_y = ALWAN_P3_GREEN_y;
-    p->blue_x = ALWAN_P3_BLUE_x;   p->blue_y = ALWAN_P3_BLUE_y;
-    /* DCI white point */
-    p->white_x = ALWAN_LITERAL(0.314); p->white_y = ALWAN_LITERAL(0.351);
-}
-
-/* DCDM uses CIE XYZ primaries */
-static void primaries_xyz(alwan_aces_primaries_f64 *p) {
-    p->red_x = ALWAN_LITERAL(1.0);    p->red_y = ALWAN_LITERAL(0.0);
-    p->green_x = ALWAN_LITERAL(0.0);  p->green_y = ALWAN_LITERAL(1.0);
-    p->blue_x = ALWAN_LITERAL(0.0);   p->blue_y = ALWAN_LITERAL(0.0);
-    /* Equal energy white for XYZ */
-    p->white_x = ALWAN_LITERAL(0.3333); p->white_y = ALWAN_LITERAL(0.3333);
-}
-
 /* Get preset configuration */
 static int get_output_config(alwan_aces2_output output, aces2_output_config *config) {
-    config->needs_d60_to_d65 = 1;  /* Most outputs need D60->D65 */
+    int k;
+    config->xyz_e = 0;
+    for (k = 0; k < 9; k++) config->xyz_e_matrix[k] = ALWAN_LITERAL(0.0);
 
     switch (output) {
         /* SDR Displays (100 nits) */
@@ -3917,19 +3905,30 @@ static int get_output_config(alwan_aces2_output output, aces2_output_config *con
             config->eotf = ALWAN_TF_HLG;
             break;
 
-        /* Cinema */
-        case ALWAN_ACES2_OUT_DCDM_48NIT:
-            primaries_xyz(&config->primaries);
-            config->peak_luminance = ALWAN_LITERAL(48.0);
+        /* Cinema, as the Academy's aces-output CTL: the 48 nit outputs render at a peak of
+         * 100 (the tonescale of a 100 nit display, rescaled to 48 nits by the projector),
+         * limited to P3-D65. "DCDM (P3-D65 Limited)" encodes XYZ with an equal-energy white
+         * and a linear scale of 48 / 52.37; "P3-D65 (48 nits)" encodes P3-D65. ACES 2.0 has
+         * no P3-DCI output, so ALWAN_ACES2_OUT_P3DCI_48NIT is the P3-D65 one. */
+        case ALWAN_ACES2_OUT_DCDM_48NIT: {
+            int i;
+            primaries_p3_d65(&config->primaries);
+            config->peak_luminance = ALWAN_LITERAL(100.0);
             config->eotf = ALWAN_TF_GAMMA26;
-            config->needs_d60_to_d65 = 0;  /* DCDM doesn't need CAT */
+            config->xyz_e = 1;
+            primaries_to_rgb_to_xyz_f64(config->primaries.red_x, config->primaries.red_y,
+                                        config->primaries.green_x, config->primaries.green_y,
+                                        config->primaries.blue_x, config->primaries.blue_y,
+                                        config->primaries.white_x, config->primaries.white_y,
+                                        ALWAN_LITERAL(1.0), config->xyz_e_matrix);
+            for (i = 0; i < 9; i++) config->xyz_e_matrix[i] *= ALWAN_LITERAL(48.0) / ALWAN_LITERAL(52.37);
             break;
+        }
 
         case ALWAN_ACES2_OUT_P3DCI_48NIT:
-            primaries_p3_dci(&config->primaries);
-            config->peak_luminance = ALWAN_LITERAL(48.0);
+            primaries_p3_d65(&config->primaries);
+            config->peak_luminance = ALWAN_LITERAL(100.0);
             config->eotf = ALWAN_TF_GAMMA26;
-            config->needs_d60_to_d65 = 0;  /* DCI uses its own white point */
             break;
 
         default:
@@ -3938,13 +3937,6 @@ static int get_output_config(alwan_aces2_output output, aces2_output_config *con
 
     return ALWAN_OK;
 }
-
-/* D60 to D65 chromatic adaptation matrix (Bradford) */
-static alwan_f64 const g_d60_to_d65_bradford[9] = {
-    ALWAN_LITERAL( 0.98722400870301763), ALWAN_LITERAL(-0.00611322860685689), ALWAN_LITERAL( 0.01595328833591263),
-    ALWAN_LITERAL(-0.00759837181166235), ALWAN_LITERAL( 1.00186148473965364), ALWAN_LITERAL( 0.00533003579138894),
-    ALWAN_LITERAL( 0.00307257705853153), ALWAN_LITERAL(-0.00509596151113058), ALWAN_LITERAL( 1.08168060306579528)
-};
 
 /* ----------------------------------------------------------------
  * ACES 2.0 Output Transform Implementation
@@ -3962,135 +3954,21 @@ alwan_status alwan_aces2_output_transform_f64(alwan_rgb_f64 *rgb_out,
     int status = get_output_config(output, &config);
     if (status != ALWAN_OK) return status;
 
-    /* Special handling for cinema presets that can't use generic matrix calculation */
-    if (output == ALWAN_ACES2_OUT_DCDM_48NIT) {
-        /* DCDM: output directly to XYZ (D65) with gamma 2.6 encoding */
-
-        /* Initialize AP1 primaries for JMh conversion */
-        alwan_aces_primaries_f64 ap1;
-        alwan_aces_primaries_ap1_default_f64(&ap1);
-
-        /* Use P3-D65 as the limiting primaries for gamut compression */
-        alwan_aces_primaries_f64 p3_d65;
-        primaries_p3_d65(&p3_d65);
-
-        /* Step 1: Apply tonescale compression */
-        alwan_rgb_f64 rgb_ts;
-        alwan_aces_tonescale_compress20_f64(&rgb_ts, rgb_in, config.peak_luminance);
-
-        /* Step 2: Convert tonescale output to JMh for gamut compression */
-        alwan_vec3_f64 jmh_ts;
-        alwan_aces_rgb_to_jmh20_f64(&jmh_ts, &rgb_ts, &ap1);
-
-        /* Step 3: Apply gamut compression using P3-D65 as limiting primaries */
-        alwan_vec3_f64 jmh_gc;
-        alwan_aces_gamut_compress20_f64(&jmh_gc, &jmh_ts, config.peak_luminance, &p3_d65);
-
-        /* Step 4: Convert JMh back to RGB in AP1 space */
-        alwan_rgb_f64 rgb_ap1;
-        alwan_aces_jmh_to_rgb20_f64(&rgb_ap1, &jmh_gc, &ap1);
-
-        /* Step 5: Convert AP1 to XYZ
-         * ACES 2.0 DCDM uses equal-energy white point (E), not D60 or D65.
-         * The JMh conversion with XYZ "primaries" effectively outputs raw XYZ values
-         * normalized to equal-energy white. Since we did gamut compress with P3-D65,
-         * we need to convert AP1 to XYZ and normalize to preserve neutrality.
-         *
-         * For DCDM, the tonescale already maps luminance appropriately for 48 nits,
-         * so we don't apply additional scaling. The output is simply X'Y'Z' with
-         * gamma 2.6 encoding.
-         */
-        alwan_f64 xyz[3];
-        xyz[0] = ACES1_AP1_TO_XYZ_D60_f64[0] * rgb_ap1.r + ACES1_AP1_TO_XYZ_D60_f64[1] * rgb_ap1.g + ACES1_AP1_TO_XYZ_D60_f64[2] * rgb_ap1.b;
-        xyz[1] = ACES1_AP1_TO_XYZ_D60_f64[3] * rgb_ap1.r + ACES1_AP1_TO_XYZ_D60_f64[4] * rgb_ap1.g + ACES1_AP1_TO_XYZ_D60_f64[5] * rgb_ap1.b;
-        xyz[2] = ACES1_AP1_TO_XYZ_D60_f64[6] * rgb_ap1.r + ACES1_AP1_TO_XYZ_D60_f64[7] * rgb_ap1.g + ACES1_AP1_TO_XYZ_D60_f64[8] * rgb_ap1.b;
-
-        /* Step 6: Normalize XYZ to equal-energy white for DCDM
-         * D60 white point in XYZ is approximately (0.9526, 1.0, 1.0089)
-         * We scale each component so that neutral colors have X=Y=Z */
-        static alwan_f64 const D60_WHITE_X = ALWAN_LITERAL(0.952646074569846);
-        static alwan_f64 const D60_WHITE_Z = ALWAN_LITERAL(1.008825184351586);
-        xyz[0] /= D60_WHITE_X;
-        xyz[2] /= D60_WHITE_Z;
-
-        /* Step 7: Clamp negative values */
-        alwan_f64 x_clamped = xyz[0] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : xyz[0];
-        alwan_f64 y_clamped = xyz[1] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : xyz[1];
-        alwan_f64 z_clamped = xyz[2] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : xyz[2];
-
-        /* Step 8: Apply gamma 2.6 encoding */
-        rgb_out->r = aces_gamma26_oetf_f64_v(x_clamped);
-        rgb_out->g = aces_gamma26_oetf_f64_v(y_clamped);
-        rgb_out->b = aces_gamma26_oetf_f64_v(z_clamped);
-
-        return ALWAN_OK;
-    }
-
-    if (output == ALWAN_ACES2_OUT_P3DCI_48NIT) {
-        /* P3-DCI: P3 primaries with DCI white point and gamma 2.6 encoding */
-
-        /* Initialize AP1 primaries for JMh conversion */
-        alwan_aces_primaries_f64 ap1;
-        alwan_aces_primaries_ap1_default_f64(&ap1);
-
-        /* Use P3-D65 as the limiting primaries for gamut compression
-         * (P3-DCI has same primaries, just different white point) */
-        alwan_aces_primaries_f64 p3_d65;
-        primaries_p3_d65(&p3_d65);
-
-        /* Step 1: Apply tonescale compression */
-        alwan_rgb_f64 rgb_ts;
-        alwan_aces_tonescale_compress20_f64(&rgb_ts, rgb_in, config.peak_luminance);
-
-        /* Step 2: Convert tonescale output to JMh for gamut compression */
-        alwan_vec3_f64 jmh_ts;
-        alwan_aces_rgb_to_jmh20_f64(&jmh_ts, &rgb_ts, &ap1);
-
-        /* Step 3: Apply gamut compression using P3-D65 as limiting primaries */
-        alwan_vec3_f64 jmh_gc;
-        alwan_aces_gamut_compress20_f64(&jmh_gc, &jmh_ts, config.peak_luminance, &p3_d65);
-
-        /* Step 4: Convert JMh back to RGB in AP1 space */
-        alwan_rgb_f64 rgb_ap1;
-        alwan_aces_jmh_to_rgb20_f64(&rgb_ap1, &jmh_gc, &ap1);
-
-        /* Step 5: Convert AP1 to XYZ (D60) */
-        alwan_f64 xyz_d60[3];
-        xyz_d60[0] = ACES1_AP1_TO_XYZ_D60_f64[0] * rgb_ap1.r + ACES1_AP1_TO_XYZ_D60_f64[1] * rgb_ap1.g + ACES1_AP1_TO_XYZ_D60_f64[2] * rgb_ap1.b;
-        xyz_d60[1] = ACES1_AP1_TO_XYZ_D60_f64[3] * rgb_ap1.r + ACES1_AP1_TO_XYZ_D60_f64[4] * rgb_ap1.g + ACES1_AP1_TO_XYZ_D60_f64[5] * rgb_ap1.b;
-        xyz_d60[2] = ACES1_AP1_TO_XYZ_D60_f64[6] * rgb_ap1.r + ACES1_AP1_TO_XYZ_D60_f64[7] * rgb_ap1.g + ACES1_AP1_TO_XYZ_D60_f64[8] * rgb_ap1.b;
-
-        /* Step 6: Convert XYZ (D60) to P3-DCI
-         * P3-DCI uses DCI white point (0.314, 0.351)
-         * For simplicity, we use the same conversion as ACES 1.x which applies D60->D65
-         * then converts to P3-D65 (same primaries as P3-DCI) */
-        alwan_f64 xyz_d65[3];
-        xyz_d65[0] = ACES1_D60_TO_D65_f64[0] * xyz_d60[0] + ACES1_D60_TO_D65_f64[1] * xyz_d60[1] + ACES1_D60_TO_D65_f64[2] * xyz_d60[2];
-        xyz_d65[1] = ACES1_D60_TO_D65_f64[3] * xyz_d60[0] + ACES1_D60_TO_D65_f64[4] * xyz_d60[1] + ACES1_D60_TO_D65_f64[5] * xyz_d60[2];
-        xyz_d65[2] = ACES1_D60_TO_D65_f64[6] * xyz_d60[0] + ACES1_D60_TO_D65_f64[7] * xyz_d60[1] + ACES1_D60_TO_D65_f64[8] * xyz_d60[2];
-
-        /* XYZ (D65) to P3-D65 matrix (same primaries as P3-DCI) */
-        static alwan_f64 const XYZ_D65_TO_P3[9] = {
-            ALWAN_LITERAL( 2.4934969119), ALWAN_LITERAL(-0.9313836179), ALWAN_LITERAL(-0.4027107845),
-            ALWAN_LITERAL(-0.8294889696), ALWAN_LITERAL( 1.7626640603), ALWAN_LITERAL( 0.0236246858),
-            ALWAN_LITERAL( 0.0358458302), ALWAN_LITERAL(-0.0761723893), ALWAN_LITERAL( 0.9568845240)
-        };
-
-        alwan_f64 p3[3];
-        p3[0] = XYZ_D65_TO_P3[0] * xyz_d65[0] + XYZ_D65_TO_P3[1] * xyz_d65[1] + XYZ_D65_TO_P3[2] * xyz_d65[2];
-        p3[1] = XYZ_D65_TO_P3[3] * xyz_d65[0] + XYZ_D65_TO_P3[4] * xyz_d65[1] + XYZ_D65_TO_P3[5] * xyz_d65[2];
-        p3[2] = XYZ_D65_TO_P3[6] * xyz_d65[0] + XYZ_D65_TO_P3[7] * xyz_d65[1] + XYZ_D65_TO_P3[8] * xyz_d65[2];
-
-        /* Step 7: Clamp to [0, 1] for cinema */
-        alwan_f64 r_clamped = p3[0] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (p3[0] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : p3[0]);
-        alwan_f64 g_clamped = p3[1] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (p3[1] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : p3[1]);
-        alwan_f64 b_clamped = p3[2] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (p3[2] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : p3[2]);
-
-        /* Step 8: Apply gamma 2.6 encoding */
-        rgb_out->r = aces_gamma26_oetf_f64_v(r_clamped);
-        rgb_out->g = aces_gamma26_oetf_f64_v(g_clamped);
-        rgb_out->b = aces_gamma26_oetf_f64_v(b_clamped);
-
+    if (config.xyz_e) {
+        /* DCDM: the display-linear P3-D65 render, clamped to [0, 1], to XYZ times
+         * 48 / 52.37, then the gamma 2.6 (the CTL's display_encoding) */
+        alwan_rgb_f64 lin;
+        alwan_f64 rgb[3], xyz[3];
+        int i;
+        status = alwan_aces2_output_transform_custom_display_linear_f64(&lin, rgb_in, config.peak_luminance, &config.primaries);
+        if (status != ALWAN_OK) return status;
+        rgb[0] = lin.r; rgb[1] = lin.g; rgb[2] = lin.b;
+        for (i = 0; i < 3; i++)
+            rgb[i] = rgb[i] < ALWAN_LITERAL(0.0) ? ALWAN_LITERAL(0.0) : (rgb[i] > ALWAN_LITERAL(1.0) ? ALWAN_LITERAL(1.0) : rgb[i]);
+        mult_vec_mat3(rgb, config.xyz_e_matrix, xyz);
+        status = alwan_oetf_apply_f64(xyz, sizeof(alwan_f64), xyz, sizeof(alwan_f64), 3, config.eotf);
+        if (status != ALWAN_OK) return status;
+        rgb_out->r = xyz[0]; rgb_out->g = xyz[1]; rgb_out->b = xyz[2];
         return ALWAN_OK;
     }
 
@@ -4116,22 +3994,8 @@ alwan_status alwan_aces2_output_transform_f32(alwan_rgb_f32 *rgb_out,
     if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
     if (output < 0 || output >= ALWAN_ACES2_OUT_COUNT) return ALWAN_E_INVALID;
 
-    /* DCDM / P3-DCI cinema presets use a bespoke XYZ-domain scalar path that
-     * the batch impl does not replicate; keep them on the f64 reference. */
-    if (output == ALWAN_ACES2_OUT_DCDM_48NIT || output == ALWAN_ACES2_OUT_P3DCI_48NIT) {
-#if ALWAN_WITH_F64
-        alwan_rgb_f64 in64 = {(alwan_f64)rgb_in->r, (alwan_f64)rgb_in->g, (alwan_f64)rgb_in->b};
-        alwan_rgb_f64 out64;
-        int s = alwan_aces2_output_transform_f64(&out64, &in64, output);
-        rgb_out->r = (float)out64.r; rgb_out->g = (float)out64.g; rgb_out->b = (float)out64.b;
-        return s;
-#else
-        return ALWAN_E_INVALID;
-#endif
-    }
-
-    /* General presets: native single-precision via the templated batch
-     * pipeline (one pixel). alwan_rgb_f32 is three contiguous floats. */
+    /* Native single precision via the templated batch pipeline (one pixel).
+     * alwan_rgb_f32 is three contiguous floats. */
     return aces2_ot_map_impl_f32((alwan_f32 *)rgb_out, (alwan_f32 const *)rgb_in,
                                  output, 1, 3 * sizeof(alwan_f32), 3 * sizeof(alwan_f32));
 }
@@ -4340,8 +4204,8 @@ alwan_status alwan_aces2_output_transform_f32_map_interleave(alwan_f32 *out, siz
  * ---------------------------------------------------------------- */
 typedef struct {
     aces2_output_config config;
-    int cinema;                          /* 0, or the DCDM / P3-DCI preset being inverted */
-    aces2_JMhParams_f64 decode_params;   /* RGB -> JMh: the limit primaries, AP1 for cinema */
+    alwan_f64 xyz_e_inverse[9];          /* DCDM: the scaled XYZ back to the limit RGB */
+    aces2_JMhParams_f64 decode_params;   /* RGB -> JMh: the limit primaries */
     aces2_JMhParams_f64 ap1_params;      /* JMh -> AP1 RGB, the tonescale and the reach gamut */
     int gamut_identity;                  /* the gamut-compression primaries are AP1 */
     alwan_f64 limit_J_max;
@@ -4359,17 +4223,11 @@ static alwan_status aces2_inv_init_f64(aces2_inv_state_f64 *st, alwan_aces2_outp
     /* The gamut compression's own range check (alwan_aces_gamut_compress20_inv) */
     if (st->config.peak_luminance < ALWAN_LITERAL(1.0) || st->config.peak_luminance > ALWAN_LITERAL(10000.0)) return ALWAN_E_RANGE;
 
-    st->cinema = (output == ALWAN_ACES2_OUT_DCDM_48NIT || output == ALWAN_ACES2_OUT_P3DCI_48NIT) ? (int)output : 0;
+    if (st->config.xyz_e) invert_mat3(st->config.xyz_e_matrix, st->xyz_e_inverse);
     alwan_aces_primaries_ap1_default_f64(&ap1);
     init_JMhParams_f64(&ap1, &st->ap1_params);
-    if (st->cinema) {
-        /* cinema: RGB -> JMh in AP1, gamut compression against P3-D65, as the forward */
-        init_JMhParams_f64(&ap1, &st->decode_params);
-        primaries_p3_d65(&gamut_primaries);
-    } else {
-        init_JMhParams_f64(&st->config.primaries, &st->decode_params);
-        gamut_primaries = st->config.primaries;
-    }
+    init_JMhParams_f64(&st->config.primaries, &st->decode_params);
+    gamut_primaries = st->config.primaries;
     st->gamut_identity = primaries_are_ap1(&gamut_primaries);
     st->limit_J_max = Y_to_J_f64(st->config.peak_luminance, &st->ap1_params);
     if (!st->gamut_identity)
@@ -4384,41 +4242,13 @@ static alwan_status aces2_inv_apply_f64(aces2_inv_state_f64 const *st, alwan_f64
     alwan_f64 rgb[3], aab[3], jmh[3];
     alwan_f64 J, M, h, J_exp, M_exp;
 
-    if (st->cinema == ALWAN_ACES2_OUT_DCDM_48NIT) {
-        /* DCDM: decode gamma 2.6, undo the equal-energy normalisation to D60, XYZ (D60) to
-         * AP1. ACES1_XYZ_D60_TO_AP1 is the gendata inverse of the forward's AP1 -> XYZ D60;
-         * the literal it replaced had a wrong third row (blue off by up to 4%). */
-        static alwan_f64 const D60_WHITE_X = ALWAN_LITERAL(0.952646074569846);
-        static alwan_f64 const D60_WHITE_Z = ALWAN_LITERAL(1.008825184351586);
+    if (st->config.xyz_e) {
+        /* DCDM: decode the gamma 2.6, then the scaled XYZ back to the limit RGB */
+        alwan_f64 const encoded[3] = {in[0], in[1], in[2]};
         alwan_f64 xyz[3];
-        xyz[0] = aces_gamma26_eotf_f64_v(in[0]);
-        xyz[1] = aces_gamma26_eotf_f64_v(in[1]);
-        xyz[2] = aces_gamma26_eotf_f64_v(in[2]);
-        xyz[0] *= D60_WHITE_X;
-        xyz[2] *= D60_WHITE_Z;
-        rgb[0] = ACES1_XYZ_D60_TO_AP1[0] * xyz[0] + ACES1_XYZ_D60_TO_AP1[1] * xyz[1] + ACES1_XYZ_D60_TO_AP1[2] * xyz[2];
-        rgb[1] = ACES1_XYZ_D60_TO_AP1[3] * xyz[0] + ACES1_XYZ_D60_TO_AP1[4] * xyz[1] + ACES1_XYZ_D60_TO_AP1[5] * xyz[2];
-        rgb[2] = ACES1_XYZ_D60_TO_AP1[6] * xyz[0] + ACES1_XYZ_D60_TO_AP1[7] * xyz[1] + ACES1_XYZ_D60_TO_AP1[8] * xyz[2];
-    } else if (st->cinema == ALWAN_ACES2_OUT_P3DCI_48NIT) {
-        /* P3-DCI: decode gamma 2.6, P3 to XYZ (D65), D65 to D60, XYZ (D60) to AP1 */
-        static alwan_f64 const P3_D65_TO_XYZ[9] = {
-            ALWAN_LITERAL(0.4865709486), ALWAN_LITERAL(0.2656676932), ALWAN_LITERAL(0.1982172852),
-            ALWAN_LITERAL(0.2289745641), ALWAN_LITERAL(0.6917385218), ALWAN_LITERAL(0.0792869141),
-            ALWAN_LITERAL(0.0000000000), ALWAN_LITERAL(0.0451133819), ALWAN_LITERAL(1.0439443689)
-        };
-        alwan_f64 p3_linear[3], xyz_d65[3], xyz_d60[3];
-        p3_linear[0] = aces_gamma26_eotf_f64_v(in[0]);
-        p3_linear[1] = aces_gamma26_eotf_f64_v(in[1]);
-        p3_linear[2] = aces_gamma26_eotf_f64_v(in[2]);
-        xyz_d65[0] = P3_D65_TO_XYZ[0] * p3_linear[0] + P3_D65_TO_XYZ[1] * p3_linear[1] + P3_D65_TO_XYZ[2] * p3_linear[2];
-        xyz_d65[1] = P3_D65_TO_XYZ[3] * p3_linear[0] + P3_D65_TO_XYZ[4] * p3_linear[1] + P3_D65_TO_XYZ[5] * p3_linear[2];
-        xyz_d65[2] = P3_D65_TO_XYZ[6] * p3_linear[0] + P3_D65_TO_XYZ[7] * p3_linear[1] + P3_D65_TO_XYZ[8] * p3_linear[2];
-        xyz_d60[0] = ACES1_D65_TO_D60[0] * xyz_d65[0] + ACES1_D65_TO_D60[1] * xyz_d65[1] + ACES1_D65_TO_D60[2] * xyz_d65[2];
-        xyz_d60[1] = ACES1_D65_TO_D60[3] * xyz_d65[0] + ACES1_D65_TO_D60[4] * xyz_d65[1] + ACES1_D65_TO_D60[5] * xyz_d65[2];
-        xyz_d60[2] = ACES1_D65_TO_D60[6] * xyz_d65[0] + ACES1_D65_TO_D60[7] * xyz_d65[1] + ACES1_D65_TO_D60[8] * xyz_d65[2];
-        rgb[0] = ACES1_XYZ_D60_TO_AP1[0] * xyz_d60[0] + ACES1_XYZ_D60_TO_AP1[1] * xyz_d60[1] + ACES1_XYZ_D60_TO_AP1[2] * xyz_d60[2];
-        rgb[1] = ACES1_XYZ_D60_TO_AP1[3] * xyz_d60[0] + ACES1_XYZ_D60_TO_AP1[4] * xyz_d60[1] + ACES1_XYZ_D60_TO_AP1[5] * xyz_d60[2];
-        rgb[2] = ACES1_XYZ_D60_TO_AP1[6] * xyz_d60[0] + ACES1_XYZ_D60_TO_AP1[7] * xyz_d60[1] + ACES1_XYZ_D60_TO_AP1[8] * xyz_d60[2];
+        alwan_status const status = alwan_eotf_apply_f64(xyz, sizeof(alwan_f64), encoded, sizeof(alwan_f64), 3, st->config.eotf);
+        if (status != ALWAN_OK) return status;
+        mult_vec_mat3(xyz, st->xyz_e_inverse, rgb);
     } else if (st->config.eotf == ALWAN_TF_HLG) {
         /* The forward normalised by the peak, applied the inverse OOTF E = Yd^((1-g)/g) Fd
          * and the HLG OETF. Undo: the inverse OETF gives E, the OOTF Fd = Ys^(g-1) E with
@@ -4502,8 +4332,8 @@ static alwan_status aces2_inv_apply_f64(aces2_inv_state_f64 const *st, alwan_f64
  * compression -> gamut compression to the limit gamut -> JMh -> RGB decoded with the
  * LIMIT primaries' JMh parameters (which is where the D60 to D65 adaptation happens,
  * inside the CAM) -> clamp -> encode. The inverse undoes each step in reverse order,
- * as OCIO's ACES_OUTPUT_TRANSFORM_20 inverse does. The cinema presets decode through
- * their own matrices to AP1 and compress against P3-D65, as their forward does. */
+ * as OCIO's ACES_OUTPUT_TRANSFORM_20 inverse does. DCDM first takes its XYZ back to the
+ * P3-D65 limit RGB. */
 alwan_status alwan_aces2_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
                                           alwan_rgb_f64 const *rgb_in,
                                           alwan_aces2_output output) {

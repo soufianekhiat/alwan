@@ -1120,8 +1120,7 @@ directly in the limit primaries. No clamp, no display encode.
 > over the f64 worker, and it copies the f64 temporary into `rgb_out` unconditionally, so
 > a rejected call (out-of-range `peak_luminance`) fills the caller's buffer with the
 > uninitialized stack value and returns `ALWAN_E_INVALID` alongside it. The same pattern
-> is in `alwan_aces2_output_transform_custom_f32` and in the DCDM / P3-DCI branch of
-> `alwan_aces2_output_transform_f32`.
+> is in `alwan_aces2_output_transform_custom_f32`.
 
 ---
 

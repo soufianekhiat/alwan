@@ -9258,7 +9258,10 @@ alwan_status alwan_cmyk_to_lab_f64(alwan_lab_f64 *lab_out, alwan_cmyk_f64 const 
  * inside the gamut, and the distance to the gamut's edge outside it. A colour the press
  * cannot print is not an error and is not clamped silently: the CMYK is the closest the
  * characterisation offers and the difference says how far it fell short. lab is relative
- * to the data's white, D50 for the ISO printing conditions. */
+ * to the data's white, D50 for the ISO printing conditions. A Lab with a NaN or infinite
+ * component is ALWAN_E_INVALID, as a CMYK outside [0, 1] is for alwan_cmyk_to_lab: there
+ * is no nearest ink to a colour that is not a number. Until 2026-09-26 a NaN Lab returned
+ * ALWAN_OK with the inks uninitialised. */
 alwan_status alwan_lab_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_out, alwan_lab_f32 const *lab,
                                    alwan_f32 k, alwan_cmyk_model const *model);
 alwan_status alwan_lab_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_out, alwan_lab_f64 const *lab,
@@ -9296,6 +9299,11 @@ alwan_status alwan_lab_to_cmyk_f64(alwan_cmyk_f64 *cmyk_out, alwan_f64 *delta_e_
  * The black is fixed at build, as it is an input to the exact search: a colour can be
  * printed with more ink and less black or the reverse, so a cache spanning k would
  * interpolate between two different ink-sharing decisions and print neither.
+ *
+ * A Lab with a NaN or infinite component is ALWAN_E_INVALID from the eval, as from the
+ * exact search it defers to. The map form stops at the first such pixel and returns that
+ * status, with the pixels before it written, as it does for any pixel the search cannot
+ * answer; convert a buffer that may hold NaN by clearing those pixels first.
  *
  * delta_e_out is MEASURED, not interpolated. The inks are put back through the forward
  * model and compared to the target by CIEDE2000, so the number includes the cache's own
@@ -10596,9 +10604,14 @@ typedef enum {
     /* HDR Displays (HLG) */
     ALWAN_ACES2_OUT_REC2100_1000NIT_HLG = 9, /* Rec.2100, 1000 nits, HLG */
 
-    /* Cinema */
-    ALWAN_ACES2_OUT_DCDM_48NIT = 10, /* DCDM X'Y'Z', 48 nits, Gamma 2.6 */
-    ALWAN_ACES2_OUT_P3DCI_48NIT = 11, /* P3-DCI, 48 nits, Gamma 2.6 */
+    /* Cinema, as the Academy's aces-output CTL: rendered at a peak of 100 (a 100 nit
+     * display's tonescale, which the projector shows at 48 nits), limited to P3-D65,
+     * clamped to [0, 1]. Until 2026-09-26 both ran a bespoke chain at peak 48 that was
+     * not ACES 2.0 and did not invert. */
+    ALWAN_ACES2_OUT_DCDM_48NIT = 10, /* "DCDM (P3-D65 Limited)": X'Y'Z' with an equal-energy
+                                      * white, XYZ times 48 / 52.37, Gamma 2.6 */
+    ALWAN_ACES2_OUT_P3DCI_48NIT = 11, /* "P3-D65 (48 nits)": P3-D65, Gamma 2.6. ACES 2.0 has no
+                                       * P3-DCI output; the name is kept, the white is D65 */
 
     ALWAN_ACES2_OUT_COUNT = 12
 } alwan_aces2_output;
@@ -10610,9 +10623,11 @@ typedef enum {
  *   1. Input (AP1 linear) -> JMh
  *   2. Tonescale + Chroma compression
  *   3. Gamut compression to limiting primaries
- *   4. JMh -> RGB (limiting primaries)
- *   5. Chromatic adaptation (D60 -> D65 if needed)
+ *   4. JMh -> RGB (limiting primaries; the D60 -> D65 adaptation happens in the CAM)
+ *   5. Clamp, and for DCDM the limit RGB to XYZ times 48 / 52.37
  *   6. Display encoding (EOTF)
+ * Every preset matches OCIO's FIXED_FUNCTION_ACES_OUTPUT_TRANSFORM_20 with the preset's
+ * peak and limit primaries, followed by its display encoding (suite 258).
  *
  * @param rgb_out  Output RGB, display-encoded [0,1]
  * @param rgb_in   Input RGB in ACEScg (AP1 linear), scene-referred

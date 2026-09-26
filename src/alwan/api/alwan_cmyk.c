@@ -261,6 +261,14 @@ static alwan_status alwan__lab_to_cmyk(double *out, double *miss_out, alwan_cmyk
     double best[3], miss = 1e30;
     int i, j, l, s, found = 0;
     if (!m) return ALWAN_E_INVALID;
+    /* A NaN target made every CIEDE2000 miss NaN: NaN >= 1e30 is false, so the scan counted
+     * a node as found, but NaN < start_d is false too, so no start was kept and best[] went
+     * out uninitialised. Infinities reached ALWAN_E_INVALID through found = 0 already. A
+     * bound rather than isfinite, so the test survives a compiler assuming finite math. */
+    if (!(target->L > -1e300 && target->L < 1e300 && target->a > -1e300 && target->a < 1e300 &&
+          target->b > -1e300 && target->b < 1e300)) {
+        return ALWAN_E_INVALID;
+    }
     for (s = 0; s < ALWAN__CMYK_STARTS; s++) {
         start_d[s] = 1e30;
         start[s][0] = start[s][1] = start[s][2] = 0.0;

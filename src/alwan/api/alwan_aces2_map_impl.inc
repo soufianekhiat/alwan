@@ -123,6 +123,9 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
             (ALWAN_CORE_T)config.peak_luminance, jmh_params);
     }
 
+    ALWAN_CORE_T xyz_e_m[9];
+    for (int k = 0; k < 9; k++) xyz_e_m[k] = (ALWAN_CORE_T)config.xyz_e_matrix[k];
+
     int is_pq = (config.eotf == ALWAN_TF_PQ);
     int is_hlg = (config.eotf == ALWAN_TF_HLG);
     ALWAN_CORE_T peak = (ALWAN_CORE_T)config.peak_luminance;
@@ -197,6 +200,17 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
         ALWAN_CORE_T r = rgb_lim.v[0];
         ALWAN_CORE_T g = rgb_lim.v[1];
         ALWAN_CORE_T b = rgb_lim.v[2];
+        if (config.xyz_e) {
+            /* DCDM: clamp the limit RGB to [0, 1], then to XYZ times 48 / 52.37; the XYZ
+             * stays in [0, 1], so the clamp below leaves it alone */
+            r = r < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0) : (r > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : r);
+            g = g < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0) : (g > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : g);
+            b = b < ALWAN_CORE_LITERAL(0.0) ? ALWAN_CORE_LITERAL(0.0) : (b > ALWAN_CORE_LITERAL(1.0) ? ALWAN_CORE_LITERAL(1.0) : b);
+            ALWAN_CORE_T const x = xyz_e_m[0] * r + xyz_e_m[1] * g + xyz_e_m[2] * b;
+            ALWAN_CORE_T const y = xyz_e_m[3] * r + xyz_e_m[4] * g + xyz_e_m[5] * b;
+            ALWAN_CORE_T const z = xyz_e_m[6] * r + xyz_e_m[7] * g + xyz_e_m[8] * b;
+            r = x; g = y; b = z;
+        }
 
         /* Clamp + encode exactly as the scalar output transform: clamp the
          * normalized display-linear RGB to [0,1]; for PQ scale to absolute

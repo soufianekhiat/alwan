@@ -145,8 +145,8 @@ typedef enum {
     ALWAN_ACES2_OUT_REC2100_1000NIT_HLG,      /* Rec.2100, HLG */
 
     /* Cinema */
-    ALWAN_ACES2_OUT_DCDM_48NIT,               /* DCDM X'Y'Z' */
-    ALWAN_ACES2_OUT_P3DCI_48NIT,              /* P3-DCI, Gamma 2.6 */
+    ALWAN_ACES2_OUT_DCDM_48NIT,               /* DCDM (P3-D65 Limited), X'Y'Z' */
+    ALWAN_ACES2_OUT_P3DCI_48NIT,              /* P3-D65 (48 nits), Gamma 2.6 */
 
     ALWAN_ACES2_OUT_COUNT                     /* Sentinel -- number of presets */
 } alwan_aces2_output;
@@ -180,10 +180,17 @@ as OCIO's `ACES_OUTPUT_TRANSFORM_20` inverse does:
 4. Invert the tonescale, then the chroma compression.
 5. Convert JMh back to AP1 RGB.
 
-The cinema presets (DCDM and P3-DCI) decode their XYZ or P3 signal to AP1 first, as
-their forward encodes from it.
+The cinema presets follow the Academy's aces-output CTL. Both render at a peak of 100,
+the tonescale of a 100 nit display that the projector shows at 48 nits, limited to
+P3-D65 and clamped to [0, 1]. DCDM is the CTL's "DCDM (P3-D65 Limited)": the limit RGB
+goes to XYZ with an equal-energy white, times 48 / 52.37, then gamma 2.6. The preset
+named P3DCI is the CTL's "P3-D65 (48 nits)", P3-D65 at gamma 2.6, since ACES 2.0 has no
+P3-DCI output; the enum keeps its name. The inverse decodes DCDM's XYZ back to the
+P3-D65 limit RGB and continues as for any other preset.
 
-Suite 258 holds presets 0 to 8 to OCIO 2.5's inverse. The median error is at float32's
+Suite 258 holds presets 0 to 8 to OCIO 2.5's inverse, and the two cinema presets'
+forward and inverse to OCIO's fixed function at peak 100 and P3-D65 followed by the
+CTL's encoding. The median error is at float32's
 floor, a few 1e-7 to 2e-6. The tails, up to 3e-4 at the 99th percentile in SDR, come
 from alwan's gamut-compression tables, which differ from OCIO 2.5's by a median 1e-5 in
 the forward. The inverse magnifies that difference near the gamut and peak boundaries.
@@ -194,6 +201,12 @@ Until 2026-09-25 the inverse skipped the tonescale and the chroma compression. I
 converted through an adaptation matrix instead of the limiting primaries' JMh, and the
 cinema presets used a hand-typed XYZ to AP1 matrix with a wrong third row. SDR output
 was off by nearly the whole value, and PQ output by up to 661 times.
+
+Until 2026-09-26 the cinema presets ran a chain of their own that was not ACES 2.0: a
+tonescale for a 48 nit peak, the result converted from AP1 through D60 matrices, and DCDM
+normalised to an equal-energy white by dividing X and Z by D60's. Their codes sat a
+median 0.22 from the CTL's, a grey of scene 1.0 topped out below 0.79, and a code from
+the forward could come back from the inverse wrong by up to 7e7.
 
 ### alwan_aces2_output_transform_custom_{T}
 

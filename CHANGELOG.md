@@ -2,6 +2,30 @@
 
 ### Fixed: output differs
 
+- **The ACES 2.0 cinema presets were not ACES 2.0.** `ALWAN_ACES2_OUT_DCDM_48NIT` and
+  `ALWAN_ACES2_OUT_P3DCI_48NIT` ran a chain of their own: the tonescale of a 48 nit peak,
+  the result taken from AP1 through D60 matrices, and DCDM "normalised" to an equal-energy
+  white by dividing X and Z by D60's. Their codes sat a median 0.22 from the reference, a
+  grey of scene 1.0 topped out below 0.79, and the inverse could return a forward code
+  wrong by up to 7e7 (DCDM was held only to "under 5% of samples far off"). They now follow
+  the Academy's aces-output CTL: a peak of 100 (the projector shows it at 48 nits),
+  P3-D65 limiting primaries, a clamp to [0, 1], then for DCDM ("DCDM (P3-D65 Limited)")
+  XYZ with an equal-energy white times 48 / 52.37 and gamma 2.6, and for the preset
+  named P3DCI ("P3-D65 (48 nits)") P3-D65 at gamma 2.6. ACES 2.0 has no P3-DCI output;
+  the enum keeps its name and its white is D65. Against OCIO 2.5's fixed function at that
+  peak and those primaries, followed by the CTL's encoding: forward median 2e-7 and worst
+  2.7e-3 in code value, inverse median 1.1e-6, the same as the P3-D65 100 nit presets
+  (suite 258). Forward then inverse on unclamped samples now closes as for every other
+  preset: median 2e-7, 99th percentile 5e-6. The f32 forward and the maps run the same
+  chain (the f32 forward was a widening facade for these two).
+
+- **The CMYK inverse returned ALWAN_OK with uninitialised inks for a NaN Lab.** In
+  `alwan_lab_to_cmyk_{T}` every CIEDE2000 distance to a NaN target is NaN, so the search
+  counted a node as found yet kept no starting point. A Lab with a NaN or infinite
+  component is now ALWAN_E_INVALID from the exact search, from
+  `alwan_cmyk_inverse_eval_{T}` (which defers such a Lab to the search) and from the map
+  forms, which stop at that pixel as for any pixel the search cannot answer (suite 263).
+
 - **`alwan_csf_{T}` was not Barten's model.** It documented "simplified Barten CSF model
   (1999)" and ran a formula of its own that no edition of Barten's work contains, from 0.0011
   to 2720 times the model's sensitivity over its range (1000 cd/m^2 at 4 cycles per degree:
