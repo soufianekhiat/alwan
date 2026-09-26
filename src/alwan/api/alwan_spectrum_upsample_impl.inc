@@ -1,11 +1,12 @@
 /* No include guard -- included twice (f32 and f64 passes).
  *
- * Native dual-precision RGB->spectrum upsampling. The basis spectra and
- * Jakob2019 coefficient LUTs are dual-declared (f32 + f64 twins from the
- * same CSV) in data/alwan_data_tables.h and read here via
- * ALWAN_CORE_FNLIT(NAME), so the f32 pass reads native float data and
- * every operation runs at the selected precision -- a genuine f32 path
- * rather than a widen-to-f64 facade.
+ * Native dual-precision RGB->spectrum upsampling. The basis spectra are
+ * dual-declared (f32 + f64 twins from the same CSV) in data/alwan_data_tables.h
+ * and read here via ALWAN_CORE_FNLIT(NAME), so the f32 pass reads native float
+ * data and every operation runs at the selected precision -- a genuine f32 path
+ * rather than a widen-to-f64 facade. The Jakob2019 tables are float32 at the
+ * source and exist once; each pass widens what it reads to its own precision
+ * (alwan_jakob2019_fetch.inc).
  *
  * Every element read goes through a reader in core/alwan_table_core, so this
  * file is governed by ALWAN_READ_DATA_NO_BOUND_CHECK rather than by whatever
@@ -386,26 +387,9 @@ alwan_status ALWAN_SPD_MAPNAME(alwan_xyz_to_spectrum_otsu2018, ALWAN_CORE_SUFFIX
 }
 
 /* ----------------------------------------------------------------
- * Jakob2019: trilinear LUT sample + polynomial evaluation
+ * Jakob2019: rgb2spec's lookup (alwan_jakob2019_fetch.inc) + the sigmoid
  * ---------------------------------------------------------------- */
-/* The three coefficient cubes are PLANAR and b-fastest, not the interleaved
- * r-fastest layout alwan_table3d_sample_trilinear reads, so they go through
- * the planar reader. Addressing is the shared gate: spu_clamp is
- * NaN-transparent, so `(int)(clamp(NaN)*63)` used to land on INT_MIN and the
- * index arithmetic signed-overflowed before dereferencing. Finite coordinates
- * are bit-identical -- same clamp, same multiply, same corner blend. */
-static void ALWAN_CORE_FN(jakob2019_lut_sample)(
-        ALWAN_CORE_T const *lut_c0, ALWAN_CORE_T const *lut_c1, ALWAN_CORE_T const *lut_c2,
-        ALWAN_CORE_T r, ALWAN_CORE_T g, ALWAN_CORE_T b,
-        ALWAN_CORE_T *out_c0, ALWAN_CORE_T *out_c1, ALWAN_CORE_T *out_c2) {
-    ALWAN_CORE_VEC3 coord;
-    coord.v[0] = r; coord.v[1] = g; coord.v[2] = b;
-    ALWAN_CORE_VEC3 const c = ALWAN_CORE_FNVLIT(alwan_table3d_planar3_sample_trilinear)(
-        lut_c0, lut_c1, lut_c2, ALWAN_TABLE_JAKOB2019_RES, coord);
-    *out_c0 = c.v[0];
-    *out_c1 = c.v[1];
-    *out_c2 = c.v[2];
-}
+#include "alwan_jakob2019_fetch.inc"
 
 static inline ALWAN_CORE_T ALWAN_CORE_FN(jakob2019_eval_poly)(
         ALWAN_CORE_T c0, ALWAN_CORE_T c1, ALWAN_CORE_T c2, ALWAN_CORE_T wavelength) {
@@ -416,82 +400,34 @@ static inline ALWAN_CORE_T ALWAN_CORE_FN(jakob2019_eval_poly)(
     return ALWAN_CORE_FN(spu_clamp)(R, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
 }
 
-/* Resolve one gamut's three coefficient cubes. A gamut whose cubes were
- * compiled out (data/alwan_data_tables_config.h) leaves the pointers NULL and
- * comes back ALWAN_E_NODATA. Hoisted out of the entry point so the bulk map
- * below resolves once for the whole buffer instead of once per pixel, and so
- * the six guarded cases exist in one place. */
-static alwan_status ALWAN_CORE_FN(jakob2019_luts)(
-        alwan_jakob2019_gamut gamut, ALWAN_CORE_T const **out_c0,
-        ALWAN_CORE_T const **out_c1, ALWAN_CORE_T const **out_c2) {
-    ALWAN_CORE_T const *lut_c0 = NULL, *lut_c1 = NULL, *lut_c2 = NULL;
-    switch (gamut) {
-        case ALWAN_JAKOB2019_SRGB:
-#if ALWAN_TABLE_JAKOB2019_SRGB
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_PROPHOTO_RGB:
-#if ALWAN_TABLE_JAKOB2019_PROPHOTO
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_ACES2065_1:
-#if ALWAN_TABLE_JAKOB2019_ACES
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_REC2020:
-#if ALWAN_TABLE_JAKOB2019_REC2020
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_ERGB:
-#if ALWAN_TABLE_JAKOB2019_ERGB
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_XYZ:
-#if ALWAN_TABLE_JAKOB2019_XYZ
-            lut_c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c0); lut_c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c1); lut_c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c2);
-#endif
-            break;
-        default:
-            return ALWAN_E_INVALID;
-    }
-    if (!lut_c0 || !lut_c1 || !lut_c2) return ALWAN_E_NODATA;
-    *out_c0 = lut_c0; *out_c1 = lut_c1; *out_c2 = lut_c2;
-    return ALWAN_OK;
-}
-
-/* One body, no ctx and no allocation, from cubes the caller already resolved. */
+/* One body, no ctx and no allocation, from a table the caller already resolved. */
 static void ALWAN_CORE_FN(jakob2019_fill)(ALWAN_CORE_T *values,
-        ALWAN_CORE_T const *lut_c0, ALWAN_CORE_T const *lut_c1, ALWAN_CORE_T const *lut_c2,
+        alwan_f32 const *coeff, alwan_f32 const *scale,
         ALWAN_CORE_T r, ALWAN_CORE_T g, ALWAN_CORE_T b) {
-    ALWAN_CORE_T c0, c1, c2;
+    ALWAN_CORE_T c[3];
     ALWAN_CORE_T const wl_min = (ALWAN_CORE_T)JAKOB2019_WAVELENGTH_MIN;
     ALWAN_CORE_T const wl_step = ((ALWAN_CORE_T)JAKOB2019_WAVELENGTH_MAX - (ALWAN_CORE_T)JAKOB2019_WAVELENGTH_MIN)
                                / (ALWAN_CORE_T)(JAKOB2019_WAVELENGTH_COUNT - 1);
     size_t i;
 
-    ALWAN_CORE_FN(jakob2019_lut_sample)(lut_c0, lut_c1, lut_c2, r, g, b, &c0, &c1, &c2);
+    ALWAN_CORE_FN(alwan__jakob2019_fetch)(c, coeff, scale, r, g, b, 0);
 
     for (i = 0; i < JAKOB2019_WAVELENGTH_COUNT; i++) {
         ALWAN_CORE_T const wavelength = wl_min + (ALWAN_CORE_T)i * wl_step;
-        values[i] = ALWAN_CORE_FN(jakob2019_eval_poly)(c0, c1, c2, wavelength);
+        values[i] = ALWAN_CORE_FN(jakob2019_eval_poly)(c[0], c[1], c[2], wavelength);
     }
 }
 
 alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_jakob2019)(
         ALWAN_CORE_SPD *out_spd, alwan_jakob2019_gamut gamut,
         ALWAN_CORE_RGB const *rgb, alwan_ctx *ctx) {
-    ALWAN_CORE_T const *lut_c0, *lut_c1, *lut_c2;
+    alwan_f32 const *coeff, *scale;
     alwan_status st;
     int status;
 
     if (!rgb || !out_spd) return ALWAN_E_INVALID;
 
-    st = ALWAN_CORE_FN(jakob2019_luts)(gamut, &lut_c0, &lut_c1, &lut_c2);
+    st = ALWAN_CORE_FN(alwan__jakob2019_tables)(gamut, &coeff, &scale);
     if (st != ALWAN_OK) return st;
 
     status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
@@ -499,20 +435,20 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_jakob2019)(
         JAKOB2019_WAVELENGTH_COUNT, ctx);
     if (status != ALWAN_OK) return status;
 
-    ALWAN_CORE_FN(jakob2019_fill)(out_spd->values, lut_c0, lut_c1, lut_c2, rgb->r, rgb->g, rgb->b);
+    ALWAN_CORE_FN(jakob2019_fill)(out_spd->values, coeff, scale, rgb->r, rgb->g, rgb->b);
 
     return ALWAN_OK;
 }
 
 /* The same recovery over a buffer: in holds three values per pixel, out holds
- * band_count, both with byte strides. The gamut's cubes are resolved once for
+ * band_count, both with byte strides. The gamut's table is resolved once for
  * the whole call. band_count is in and out: with out NULL it receives the
  * method's fixed sample count and nothing is written, and the gamut is not
  * consulted, because the sample count belongs to the method. */
 alwan_status ALWAN_SPD_MAPNAME(alwan_rgb_to_spectrum_jakob2019, ALWAN_CORE_SUFFIX)(
         ALWAN_CORE_T *out, size_t out_stride, ALWAN_CORE_T const *in, size_t in_stride,
         size_t count, size_t *band_count, alwan_jakob2019_gamut gamut) {
-    ALWAN_CORE_T const *lut_c0, *lut_c1, *lut_c2;
+    alwan_f32 const *coeff, *scale;
     alwan_status st;
     size_t p;
 
@@ -523,13 +459,13 @@ alwan_status ALWAN_SPD_MAPNAME(alwan_rgb_to_spectrum_jakob2019, ALWAN_CORE_SUFFI
     }
     if (!in || *band_count != JAKOB2019_WAVELENGTH_COUNT) return ALWAN_E_INVALID;
 
-    st = ALWAN_CORE_FN(jakob2019_luts)(gamut, &lut_c0, &lut_c1, &lut_c2);
+    st = ALWAN_CORE_FN(alwan__jakob2019_tables)(gamut, &coeff, &scale);
     if (st != ALWAN_OK) return st;
 
     for (p = 0; p < count; p++) {
         ALWAN_CORE_T const *const s = (ALWAN_CORE_T const *)((char const *)in + p * in_stride);
         ALWAN_CORE_T *const o = (ALWAN_CORE_T *)((char *)out + p * out_stride);
-        ALWAN_CORE_FN(jakob2019_fill)(o, lut_c0, lut_c1, lut_c2, s[0], s[1], s[2]);
+        ALWAN_CORE_FN(jakob2019_fill)(o, coeff, scale, s[0], s[1], s[2]);
     }
     return ALWAN_OK;
 }

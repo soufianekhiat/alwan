@@ -6367,12 +6367,16 @@ typedef enum {
  * rgb: input RGB values (in the specified gamut, clamped to [0, 1])
  * ctx: context (for allocation)
  * Returns ALWAN_OK on success, ALWAN_E_NOMEM on allocation failure, ALWAN_E_INVALID if gamut is invalid
+ * The coefficients come from rgb2spec_opt's table for the gamut, looked up as
+ * rgb2spec_fetch does (alwan_jakob2019_coeff_sample); the spectrum is
+ * 1/2 + U / (2 sqrt(1 + U^2)) with U = c0 l^2 + c1 l + c2, l in nm, as
+ * colour.recovery.sd_Jakob2019. Black reads the table entry fitted for black.
  * Note: Requires pre-generated LUT data for the specified gamut (see generate_data.ps1) */
 alwan_status alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f64 const *rgb, alwan_ctx *ctx);
 alwan_status alwan_rgb_to_spectrum_jakob2019_f32(alwan_spd_f32 *out_spd, alwan_jakob2019_gamut gamut, alwan_rgb_f32 const *rgb, alwan_ctx *ctx);
 
 /* The same recovery over a buffer: in holds three values per pixel, out holds
- * band_count, both strided in bytes. The gamut's three cubes are resolved once
+ * band_count, both strided in bytes. The gamut's table is resolved once
  * for the whole call rather than per pixel, which is the reason to prefer this
  * form for an image. band_count follows the same in-and-out rule as the other
  * bulk upsamplers, and with out NULL the gamut is not consulted at all. */
@@ -12171,7 +12175,9 @@ alwan_status alwan_machado_matrix_sample_f64(alwan_mat3x3_f64 *result,
 
 /* Jakob 2019 spectral upsampling polynomial coefficients for an RGB coordinate.
  * result_c012: output 3 coefficients (c0, c1, c2)
- * gamut: which gamut's coefficient cubes to read
+ * gamut: which gamut's table to read (rgb2spec_opt's, read the way rgb2spec_fetch
+ *        reads it: the largest component on a lightness axis dense near black,
+ *        the other two as fractions of it)
  * coord: input [0,1] RGB coordinate
  * mode: LINEAR (0, the default) or NEAREST or TRILINEAR, optionally
  *       | ALWAN_SAMPLE_STRICT */

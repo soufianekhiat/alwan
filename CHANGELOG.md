@@ -2,6 +2,21 @@
 
 ### Fixed: output differs
 
+- **Jakob 2019 upsampling read a resampled table, and missed black and the dark end.**
+  `alwan_rgb_to_spectrum_jakob2019_{T}` and `alwan_jakob2019_coeff_sample_{T}` read
+  rgb2spec_opt's coefficients resampled onto a regular 64^3 RGB grid at 8 decimals. That
+  grid stored zero coefficients at black, a flat 50% reflectance; a grey of 0.001 came
+  out 19 times too bright and 0.01 four times too dark; and dark or saturated colours
+  missed the spectrum of the reference lookup by up to 1.0 in reflectance (sRGB: median
+  4e-4, worst 5e-2 on uniform colours). alwan now ships rgb2spec_opt's own table (the
+  lightness axis dense near black, the other two components as fractions of the
+  largest), float32 as the tool writes it and once for both precisions, and looks it up
+  as rgb2spec_fetch does. Against colour's LUT3D_Jakob2019 and sd_Jakob2019 on the same
+  table: 2e-13 in reflectance (f32 7e-5). Integrated back under each gamut's white, a
+  dark surface colour now returns its RGB to a median 1e-2 of its largest component,
+  where the grid gave 6e-2 to 2e-1 and up to 3.1. Ties for the largest component go to
+  the later channel, as in rgb2spec; a NaN component reads as 0. Suite 266.
+
 - **ADX10 and ADX16 had the wrong scale and offset.** They encoded (density + 0.5) * 400 of
   1023 and (density + 0.5) * 25600 of 65535, which puts density 0 at code 200 and density 1 at
   600. SMPTE ST 2065-3, the Academy's ADX IDT CTL and OCIO's ADX10/16_to_ACES2065-1 all read

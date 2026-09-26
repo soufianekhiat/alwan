@@ -364,23 +364,32 @@ coordinate.
 > these coefficients give a reflectance that is wrong at every wavelength, with
 > no error raised anywhere.
 
-> **`ALWAN_SAMPLE_TETRAHEDRAL` returns `ALWAN_E_INVALID` here**, even though the
-> tables are 64^3 cubes: this reader uses the 2-D strip mode set (see
-> [Sample modes](#sample-modes)) and the planar core has no tetrahedral path.
-> `ALWAN_SAMPLE_BILINEAR` and `ALWAN_SAMPLE_CATMULL_ROM` are rejected too.
-> Accepted: NEAREST, TRILINEAR, LINEAR.
+> **`ALWAN_SAMPLE_TETRAHEDRAL` returns `ALWAN_E_INVALID` here**: this reader uses
+> the 2-D strip mode set (see [Sample modes](#sample-modes)) and rgb2spec's lookup
+> is trilinear. `ALWAN_SAMPLE_BILINEAR` and `ALWAN_SAMPLE_CATMULL_ROM` are rejected
+> too. Accepted: NEAREST, TRILINEAR, LINEAR.
 
 > **With `ALWAN_JAKOB2019_XYZ` the `alwan_rgb_{T}` fields carry X, Y and Z.** The
 > struct field names stay `r`, `g`, `b` and are fed straight into the sampler.
 
-Each gamut selects three **planar** scalar cubes, one per coefficient, 64 nodes
-per axis, indexed **b-fastest** as `(r*64 + g)*64 + b`. That is a different
-layout from the interleaved r-fastest `alwan_table3d_sample_{T}` above, which is
-why these have their own reader rather than a flag on that one.
+Each gamut selects rgb2spec_opt's own table, float32 in every build, and reads it
+the way rgb2spec_fetch does. The component holding the largest value picks one of
+three blocks; that value runs on a 64-node lightness axis that is dense near black
+(`smoothstep(smoothstep(k / 63))`), and the other two components, as fractions of
+it, run on regular 64-node axes. The eight surrounding entries are blended
+trilinearly, in the precision of the call. Ties for the largest go to the later
+channel, as in rgb2spec, and black reads the entry rgb2spec_opt fitted for black.
+Suite 266 holds the f64 result to colour's `LUT3D_Jakob2019` on the same table at
+2e-13.
 
-Coordinates are clamped into `[0, 1]` per axis and a NaN axis resolves to the
-cube's low corner, both returning `ALWAN_OK`. `| ALWAN_SAMPLE_STRICT` turns an
-out-of-range or NaN axis into `ALWAN_E_RANGE` with `result_c012` untouched.
+Until 2026-09-26 the table was resampled onto a regular RGB cube at 8 decimals.
+Black came out a flat 50% reflectance, and dark or saturated colours missed the
+reference spectrum by up to 1.0 in reflectance.
+
+Coordinates are clamped into `[0, 1]` per axis and a NaN axis reads as 0, both
+returning `ALWAN_OK`. `| ALWAN_SAMPLE_STRICT` turns an out-of-range or NaN axis
+into `ALWAN_E_RANGE` with `result_c012` untouched. NEAREST reads the closest node
+on each of the three axes.
 
 Under LINEAR or TRILINEAR the coefficients are bit-identical to the ones
 `alwan_rgb_to_spectrum_jakob2019_{T}` samples internally; see
@@ -486,5 +495,5 @@ For the AgX pipeline as a whole see
 ## See also
 
 - [color-vision-deficiency.md](color-vision-deficiency.md) -- the matrix ramp in use
-- [aces.md](aces.md) -- the AgX and Jakob2019 cube readers
+- [aces.md](aces.md) -- the AgX cube readers
 - [map.md](map.md) -- bulk and strided conversion APIs

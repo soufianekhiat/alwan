@@ -156,70 +156,23 @@ alwan_status ALWAN_CORE_FNLIT(alwan_machado_matrix_sample)(ALWAN_CORE_MAT3X3 *re
     return ALWAN_OK;
 }
 
+#include "alwan_jakob2019_fetch.inc"
+
 alwan_status ALWAN_CORE_FNLIT(alwan_jakob2019_coeff_sample)(ALWAN_CORE_T *result_c012,
                         alwan_jakob2019_gamut gamut,
                         ALWAN_CORE_RGB const *coord, alwan_sample_mode mode) {
+    alwan_f32 const *coeff, *scale;
+    alwan_status st;
     if (!result_c012 || !coord) return ALWAN_E_INVALID;
     if (!ALWAN_CORE_FN(table_mode_ok_strip)(mode)) return ALWAN_E_INVALID;
 
-    /* A gamut whose cubes were compiled out leaves these NULL: ALWAN_E_NODATA. */
-    ALWAN_CORE_T const *c0 = NULL;
-    ALWAN_CORE_T const *c1 = NULL;
-    ALWAN_CORE_T const *c2 = NULL;
-    switch (gamut) {
-        case ALWAN_JAKOB2019_SRGB:
-#if ALWAN_TABLE_JAKOB2019_SRGB
-            c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c0);
-            c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_srgb_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_PROPHOTO_RGB:
-#if ALWAN_TABLE_JAKOB2019_PROPHOTO
-            c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c0);
-            c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_prophoto_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_ACES2065_1:
-#if ALWAN_TABLE_JAKOB2019_ACES
-            c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c0);
-            c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_aces_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_REC2020:
-#if ALWAN_TABLE_JAKOB2019_REC2020
-            c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c0);
-            c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_rec2020_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_ERGB:
-#if ALWAN_TABLE_JAKOB2019_ERGB
-            c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c0);
-            c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_ergb_c2);
-#endif
-            break;
-        case ALWAN_JAKOB2019_XYZ:
-#if ALWAN_TABLE_JAKOB2019_XYZ
-            c0 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c0);
-            c1 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c1);
-            c2 = ALWAN_CORE_FNLIT(alwan_table_jakob2019_xyz_c2);
-#endif
-            break;
-        default: return ALWAN_E_INVALID;
-    }
+    /* A gamut whose table was compiled out comes back ALWAN_E_NODATA. */
+    st = ALWAN_CORE_FN(alwan__jakob2019_tables)(gamut, &coeff, &scale);
+    if (st == ALWAN_E_INVALID) return st;
     ALWAN_TABLE_STRICT_CHECK_3(coord);
-    if (!c0 || !c1 || !c2) return ALWAN_E_NODATA;
-    ALWAN_CORE_VEC3 in;
-    in.v[0] = coord->r; in.v[1] = coord->g; in.v[2] = coord->b;
-    ALWAN_CORE_VEC3 const out = ALWAN_CORE_FNVLIT(alwan_table3d_planar3_sample)(
-        c0, c1, c2, ALWAN_TABLE_JAKOB2019_RES, in, mode);
-    result_c012[0] = out.v[0];
-    result_c012[1] = out.v[1];
-    result_c012[2] = out.v[2];
+    if (st != ALWAN_OK) return st;
+    ALWAN_CORE_FN(alwan__jakob2019_fetch)(result_c012, coeff, scale, coord->r, coord->g, coord->b,
+                                          ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST);
     return ALWAN_OK;
 }
 

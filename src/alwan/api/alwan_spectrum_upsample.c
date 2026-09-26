@@ -12,10 +12,11 @@
  * rather than widening to double.
  *
  * No payload lives here any more. The Smits1999 and Mallett2019 basis spectra
- * and the Jakob2019 coefficient cubes are all declared in
+ * and the Jakob2019 coefficient tables are all declared in
  * data/alwan_data_tables.h: the basis spectra are defined in
- * data/alwan_data_tables_api.c, the cubes in data/alwan_data_tables_spectral.c,
- * which keeps ~110 MB of CSV preprocessing out of this translation unit. What
+ * data/alwan_data_tables_api.c, the Jakob2019 tables in
+ * data/alwan_data_tables_spectral.c, which keeps 160 MB of CSV preprocessing
+ * out of this translation unit. What
  * remains below is the sampling geometry -- range, count and step -- that the
  * impl needs to build an alwan_spd around the data.
  */
@@ -119,21 +120,21 @@ ALWAN_DIAG_POP
 #define JAKOB2019_WAVELENGTH_MIN ALWAN_LITERAL(360.0)
 #define JAKOB2019_WAVELENGTH_MAX ALWAN_LITERAL(780.0)
 
-/* The Jakob2019 coefficient cubes and their extents
- * (ALWAN_TABLE_JAKOB2019_RES / _SIZE) are declared in
- * data/alwan_data_tables.h and defined in data/alwan_data_tables_spectral.c.
- * Moving them out of this file sheds ~110 MB of preprocessing: 18 cubes, each
- * #included once per precision from the same CSV. */
+/* The Jakob2019 tables and their extents (ALWAN_TABLE_JAKOB2019_*) are
+ * declared in data/alwan_data_tables.h and defined in
+ * data/alwan_data_tables_spectral.c: rgb2spec_opt's table and lightness axis per
+ * gamut, float32 once for both precisions. */
 
 /* ----------------------------------------------------------------
  * Native dual-precision instantiation of the recovery methods.
- * The dual-declared f32/f64 twins -- the Smits/Mallett basis spectra and the
- * Jakob2019 cubes, all in data/ -- are selected per precision via
- * ALWAN_CORE_FNLIT(NAME) inside the impl, so each pass reads native data of
- * its own precision (no per-element casts). Every read goes through a reader
- * in core/alwan_table_core, which is header-only: this build sets no /GL and
- * no /LTCG, and upsampling runs per pixel, so a reader in a .c would be a real
- * call per sample.
+ * The dual-declared f32/f64 twins -- the Smits/Mallett basis spectra, in
+ * data/ -- are selected per precision via ALWAN_CORE_FNLIT(NAME) inside the
+ * impl, so each pass reads native data of its own precision (no per-element
+ * casts). Every read of those goes through a reader in core/alwan_table_core,
+ * which is header-only: this build sets no /GL and no /LTCG, and upsampling
+ * runs per pixel, so a reader in a .c would be a real call per sample. The
+ * Jakob2019 lookup is static in alwan_jakob2019_fetch.inc, included by this
+ * translation unit, for the same reason.
  * ---------------------------------------------------------------- */
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH

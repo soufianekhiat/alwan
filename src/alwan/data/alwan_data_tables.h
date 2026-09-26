@@ -80,6 +80,12 @@ extern "C" {
  * nothing reads one. */
 #define ALWAN_TABLE_EXTERN_F64_ONLY(name, extent) extern alwan_f64 const name##_f64[extent];
 
+/* Data that is f32 in EVERY build, an f64-only one included, and read by both
+ * precisions. For a table whose source is float32 (the Jakob 2019 tables come out
+ * of rgb2spec_opt as float), an f64 twin would hold the same values in twice the
+ * space. The f64 readers widen each value as they read it. */
+#define ALWAN_TABLE_EXTERN_F32_ONLY(name, extent) extern alwan_f32 const name##_f32[extent];
+
 #define ALWAN_TABLE_EXTERN(name, extent) \
     ALWAN_TABLE_EXTERN_F32(name, extent) \
     ALWAN_TABLE_EXTERN_F64(name, extent)
@@ -139,72 +145,70 @@ ALWAN_TABLE_EXTERN(alwan_table_tony_mcmapface_cube, ALWAN_TABLE_TONY_MCMAPFACE_C
 #endif
 
 /* ================================================================
- * HOMED HERE -- rank 3, PLANAR scalar cubes, B-fastest
+ * HOMED HERE -- Jakob 2019, rgb2spec's own table, float32
  *
- * Jakob 2019 stores three independent polynomial coefficient fields per gamut,
- * so these are three scalar cubes rather than one interleaved RGB cube, and
- * the index runs b-fastest. That is why they are read by
- * alwan_jakob2019_coeff_sample_* and NOT by alwan_table3d_sample_trilinear,
- * whose layout is interleaved and r-fastest. They share the addressing gate.
+ * Per gamut, the table rgb2spec_opt writes: for the channel l holding the
+ * largest component, a lightness index k over the non-uniform axis in _scale,
+ * then j over the component (l + 2) % 3 and i over (l + 1) % 3 as fractions of
+ * the largest, then c0, c1, c2 (wavelength in nm):
+ *     coeff[(((l * RES + k) * RES + j) * RES + i) * 3 + c]
+ * Read by alwan__jakob2019_fetch (api/alwan_jakob2019_fetch.inc) the way
+ * rgb2spec_fetch reads it. The x and y cells go through the gate; k is found by
+ * comparisons on the scale axis, never by a cast.
  * ================================================================ */
 
 enum {
-    ALWAN_TABLE_JAKOB2019_RES  = 64,
-    ALWAN_TABLE_JAKOB2019_SIZE = 64 * 64 * 64
+    ALWAN_TABLE_JAKOB2019_RES        = 64,
+    ALWAN_TABLE_JAKOB2019_SCALE_SIZE = 64,
+    ALWAN_TABLE_JAKOB2019_COEFF_SIZE = 3 * 64 * 64 * 64 * 3
 };
 
-/* ---- jakob2019_srgb c0/c1/c2 -- rank 3, 64^3, TRILINEAR------------------
- * Reader: alwan_jakob2019_coeff_sample_{f32,f64}
- * Source: alwan_dev/gendata/data/jakob2019.py */
+/* ---- jakob2019_srgb scale + coeff -- sRGB, D65 ----
+ * Reader: alwan__jakob2019_fetch
+ * Source: rgb2spec_opt via alwan_dev/gendata/data/jakob2019_luts.py */
 #if ALWAN_TABLE_JAKOB2019_SRGB
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_srgb_c0, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_srgb_c1, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_srgb_c2, ALWAN_TABLE_JAKOB2019_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_srgb_scale, ALWAN_TABLE_JAKOB2019_SCALE_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_srgb_coeff, ALWAN_TABLE_JAKOB2019_COEFF_SIZE)
 #endif
 
-/* ---- jakob2019_prophoto c0/c1/c2 -- rank 3, 64^3, TRILINEAR--------------
- * Reader: alwan_jakob2019_coeff_sample_{f32,f64}
- * Source: alwan_dev/gendata/data/jakob2019.py */
+/* ---- jakob2019_prophoto scale + coeff -- ProPhoto RGB, D50 ----
+ * Reader: alwan__jakob2019_fetch
+ * Source: rgb2spec_opt via alwan_dev/gendata/data/jakob2019_luts.py */
 #if ALWAN_TABLE_JAKOB2019_PROPHOTO
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_prophoto_c0, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_prophoto_c1, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_prophoto_c2, ALWAN_TABLE_JAKOB2019_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_prophoto_scale, ALWAN_TABLE_JAKOB2019_SCALE_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_prophoto_coeff, ALWAN_TABLE_JAKOB2019_COEFF_SIZE)
 #endif
 
-/* ---- jakob2019_aces c0/c1/c2 -- rank 3, 64^3, TRILINEAR------------------
- * Reader: alwan_jakob2019_coeff_sample_{f32,f64}
- * Source: alwan_dev/gendata/data/jakob2019.py */
+/* ---- jakob2019_aces scale + coeff -- ACES2065-1, D60 ----
+ * Reader: alwan__jakob2019_fetch
+ * Source: rgb2spec_opt via alwan_dev/gendata/data/jakob2019_luts.py */
 #if ALWAN_TABLE_JAKOB2019_ACES
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_aces_c0, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_aces_c1, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_aces_c2, ALWAN_TABLE_JAKOB2019_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_aces_scale, ALWAN_TABLE_JAKOB2019_SCALE_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_aces_coeff, ALWAN_TABLE_JAKOB2019_COEFF_SIZE)
 #endif
 
-/* ---- jakob2019_rec2020 c0/c1/c2 -- rank 3, 64^3, TRILINEAR---------------
- * Reader: alwan_jakob2019_coeff_sample_{f32,f64}
- * Source: alwan_dev/gendata/data/jakob2019.py */
+/* ---- jakob2019_rec2020 scale + coeff -- Rec.2020, D65 ----
+ * Reader: alwan__jakob2019_fetch
+ * Source: rgb2spec_opt via alwan_dev/gendata/data/jakob2019_luts.py */
 #if ALWAN_TABLE_JAKOB2019_REC2020
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_rec2020_c0, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_rec2020_c1, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_rec2020_c2, ALWAN_TABLE_JAKOB2019_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_rec2020_scale, ALWAN_TABLE_JAKOB2019_SCALE_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_rec2020_coeff, ALWAN_TABLE_JAKOB2019_COEFF_SIZE)
 #endif
 
-/* ---- jakob2019_ergb c0/c1/c2 -- rank 3, 64^3, TRILINEAR------------------
- * Reader: alwan_jakob2019_coeff_sample_{f32,f64}
- * Source: alwan_dev/gendata/data/jakob2019.py */
+/* ---- jakob2019_ergb scale + coeff -- eRGB, illuminant E ----
+ * Reader: alwan__jakob2019_fetch
+ * Source: rgb2spec_opt via alwan_dev/gendata/data/jakob2019_luts.py */
 #if ALWAN_TABLE_JAKOB2019_ERGB
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_ergb_c0, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_ergb_c1, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_ergb_c2, ALWAN_TABLE_JAKOB2019_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_ergb_scale, ALWAN_TABLE_JAKOB2019_SCALE_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_ergb_coeff, ALWAN_TABLE_JAKOB2019_COEFF_SIZE)
 #endif
 
-/* ---- jakob2019_xyz c0/c1/c2 -- rank 3, 64^3, TRILINEAR-------------------
- * Reader: alwan_jakob2019_coeff_sample_{f32,f64}
- * Source: alwan_dev/gendata/data/jakob2019.py */
+/* ---- jakob2019_xyz scale + coeff -- CIE XYZ, illuminant E ----
+ * Reader: alwan__jakob2019_fetch
+ * Source: rgb2spec_opt via alwan_dev/gendata/data/jakob2019_luts.py */
 #if ALWAN_TABLE_JAKOB2019_XYZ
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_xyz_c0, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_xyz_c1, ALWAN_TABLE_JAKOB2019_SIZE)
-ALWAN_TABLE_EXTERN(alwan_table_jakob2019_xyz_c2, ALWAN_TABLE_JAKOB2019_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_xyz_scale, ALWAN_TABLE_JAKOB2019_SCALE_SIZE)
+ALWAN_TABLE_EXTERN_F32_ONLY(alwan_table_jakob2019_xyz_coeff, ALWAN_TABLE_JAKOB2019_COEFF_SIZE)
 #endif
 
 

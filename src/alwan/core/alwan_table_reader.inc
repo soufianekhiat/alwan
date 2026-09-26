@@ -422,10 +422,13 @@ ALWAN_INLINE ALWAN_CORE_MAT3X3 ALWAN_TABLE_FN_(alwan_table1d_mat3_sample)(
  * Rank 3, three PLANAR scalar cubes sharing one coordinate, B-fastest
  * index = (r*size + g)*size + b
  *
- * This is the Jakob 2019 coefficient layout: three independent scalar fields,
- * not one interleaved RGB cube, and the fastest axis is b rather than r. A
- * separate reader rather than a flag on alwan_table3d_sample, because a
- * layout mismatch that compiles is exactly the trap this file exists to close.
+ * Three independent scalar fields, not one interleaved RGB cube, and the
+ * fastest axis is b rather than r. It held the Jakob 2019 coefficients until
+ * 2026-09-26, when those moved to rgb2spec's own table and lookup
+ * (api/alwan_jakob2019_fetch.inc); hlsl_regression/table_compute.hlsl still
+ * exercises it. A separate reader rather than a flag on
+ * alwan_table3d_sample, because a layout mismatch that compiles is exactly the
+ * trap this file exists to close.
  *
  * The blend runs b, then g, then r: fastest axis first, as it always has here.
  * ================================================================ */

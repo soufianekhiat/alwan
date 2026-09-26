@@ -532,6 +532,8 @@ alwan_status alwan_rgb_to_spectrum_jakob2019_f64(alwan_spd_f64 *out_spd,
 
 Jakob & Hanika 2019 polynomial coefficient model. Input RGB is in the selected `gamut`, clamped to `[0,1]`. Output: **360-780 nm, 85 samples at 5 nm**.
 
+The coefficients come from rgb2spec_opt's table for the gamut (Jakob's reference implementation), looked up as rgb2spec_fetch does; see `alwan_jakob2019_coeff_sample_{T}` in [tables.md](tables.md). The spectrum is `1/2 + U / (2 sqrt(1 + U^2))` with `U = c0 l^2 + c1 l + c2`, `l` in nm. Suite 266 holds it to colour's `LUT3D_Jakob2019` and `sd_Jakob2019` on the same tables at 2e-13 in reflectance (f32: 7e-5, the polynomial's cancellation in float). Each table was fitted under its gamut's white: D65 for sRGB and Rec.2020, D50 for ProPhoto, D60 for ACES2065-1, equal energy for eRGB and XYZ. Integrated back under that white, a surface colour returns its RGB to a median 4e-4 of its largest component, and dark colours to about 1e-2.
+
 > **Requires generated LUT data.** Jakob2019 reads a per-gamut polynomial coefficient table embedded from `src/alwan/data/spectral_lut/**`. These tables are produced by the gendata pipeline (`generate_data.ps1` in the `alwan_dev` repo) and compiled in via `ALWAN_EMBED_DATA`. If a gamut's table was not generated, the call returns an error. Smits1999 and Mallett2019 use small embedded basis spectra and do not need this step.
 
 **Gamut types:**
