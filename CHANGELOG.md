@@ -2,6 +2,26 @@
 
 ### Fixed: output differs
 
+- **ACES 2.0 gamut compression built its cusp table its own way.** alwan searched
+  every integer hue for the largest in-gamut M and looked hues up uniformly. OCIO 2.5
+  (`make_uniform_hue_gamut_table`) places a sample exactly on every corner hue of
+  the limiting cube and of the AP1 reach gamut, finds each cusp on the cube's edge by
+  bisection, and searches the resulting non-uniform hue table. alwan's corners came
+  out rounded, and `alwan_aces_gamut_compress20_{T}` sat up to 1.5e-2 (relative) from
+  OCIO's `FIXED_FUNCTION_ACES_GAMUT_COMPRESS_20` forward, and its inverse up to 0.14.
+  The builder is now a port of OCIO's, in float, with OCIO's JMh parameters and its
+  double matrix inverse, since the upper hull gamma fit turns a 1e-6 difference in
+  the RGB it tests into 1e-4 in gamma. Over 896 rows at Rec.709, P3-D65, Rec.2020 and
+  AP1 limits, 100 and 1000 nits: forward median 2.5e-8, worst 2.2e-5; inverse median
+  2.3e-8, worst 2.5e-4 (suite 54). The embedded preset tables are regenerated and
+  carry the hue table; the unused 48 nit P3-D65 table is gone. The output
+  transforms read the same tables, so the presets move too.
+- **AP1 limiting primaries were taken as a pass-through.** OCIO compresses to AP1's
+  cube at peak like to any limit (the reach is AP1 at limit J max), and above limit
+  J max it sets M to 0; alwan returned the input unchanged. The standalone functions
+  and the output transforms with custom AP1 limits now compress (inverse at 100
+  nits was 0.58 off, now 2.5e-5).
+
 - **Jakob 2019 upsampling read a resampled table, and missed black and the dark end.**
   `alwan_rgb_to_spectrum_jakob2019_{T}` and `alwan_jakob2019_coeff_sample_{T}` read
   rgb2spec_opt's coefficients resampled onto a regular 64^3 RGB grid at 8 decimals. That

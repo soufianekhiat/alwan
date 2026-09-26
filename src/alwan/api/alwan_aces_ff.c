@@ -2978,235 +2978,568 @@ static alwan_f64 find_gamut_boundary_intersection(alwan_f64 cusp_J,
 ALWAN_DIAG_POP
 
 /* ----------------------------------------------------------------
- * ACES 2.0: Build cusp table for limit primaries
- * Finds the gamut boundary (max M) at each hue degree
+ * ACES 2.0: limiting-gamut cusp table, as OCIO 2.5 builds it
+ * Source: OCIO src/OpenColorIO/ops/fixedfunction/ACES2/Transform.cpp
+ * (make_uniform_hue_gamut_table, build_hue_table, find_display_cusp_for_hue,
+ * make_upper_hull_gamma).
+ *
+ * The hue table is uniform at one degree except that it places a sample exactly
+ * on every corner hue of the limiting RGB cube at peak and of the AP1 reach gamut
+ * at limit_J_max. Each cusp is the point of the limiting cube's edge between two
+ * corners that has the sampled hue, found by bisection along the edge. The upper
+ * hull gamma is then fitted per entry. The lookup (init_hue_dependent_params)
+ * searches this table for the hue's interval. alwan used to search each integer
+ * hue for the largest in-gamut M and look hues up uniformly, which put the cusp
+ * off the cube edge and rounded the corners: up to 1.5% of M away from OCIO near
+ * the corner hues. Everything here runs in float, as OCIO does; the tables are
+ * built once per (peak, limiting primaries) and cached or embedded.
  * ---------------------------------------------------------------- */
 
-static void build_cusp_table_for_hue_f64(alwan_f64 hue_deg, aces2_JMhParams_f64 const *p,
-                                      alwan_f64 limit_J_max, alwan_f64 lum_limit,
-                                      aces2_GamutCuspEntry_f64 *cusp) {
-    /* Binary search for maximum M at this hue while staying in-gamut.
-     * lum_limit = peak_luminance / 100.0: the max valid display channel value
-     * (1.0 for SDR 100 nit, 10.0 for HDR 1000 nit). */
-    static alwan_f64 const SEARCH_RANGE = ALWAN_LITERAL(50.0);
-    static alwan_f64 const SEARCH_MAX = ALWAN_LITERAL(500.0);
-    static alwan_f64 const SEARCH_TOL = ALWAN_LITERAL(0.001);
+#define ACES2_CORNERS 6
+#define ACES2_CORNERS_TOTAL (ACES2_CORNERS + 2)
 
-    /* Find J at cusp by searching for max M */
-    alwan_f64 best_M = ALWAN_LITERAL(0.0);
-    alwan_f64 best_J = ALWAN_LITERAL(0.0);
+/* OCIO's parameters and conversions, in the precision and operation order OCIO
+ * uses, for the table builder only. The upper hull gamma fit is ill-conditioned:
+ * a 1e-6 difference in the RGB it tests moves gamma by 1e-4, and alwan's own f64
+ * parameters rounded to float differ from OCIO's by an ulp here and there. So the
+ * builder carries its own copy of OCIO's arithmetic:
+ *   - MatrixArray: 4x4 double, Imath's Gauss-Jordan inverse, row-major inner();
+ *   - rgb2xyz_from_xy and build_conversion_matrix(C, XYZ_E, ADAPTATION_NONE);
+ *   - init_JMhParams: float products after the double matrices are rounded;
+ *   - RGB_to_JMh / JMh_to_RGB in float as ACES2/Transform.cpp writes them. */
 
-    /* Sample J values to find approximate cusp location (step=1 for precision) */
-    for (alwan_f64 J_sample = ALWAN_LITERAL(5.0);
-         J_sample < limit_J_max - ALWAN_LITERAL(0.5);
-         J_sample += ALWAN_LITERAL(1.0)) {
+typedef struct { alwan_f64 v[16]; } aces2_ocio_m44;
 
-        /* Binary search for max M at this J */
-        alwan_f64 low = ALWAN_LITERAL(0.0);
-        alwan_f64 high = SEARCH_RANGE;
-
-        while (high < SEARCH_MAX) {
-            alwan_f64 jmh[3] = {J_sample, high, hue_deg};
-            alwan_f64 aab[3], rgb[3];
-            JMh_to_Aab_f64(jmh, p, aab);
-            Aab_to_RGB_f64(aab, p, rgb);
-
-            if (rgb[0] < ALWAN_LITERAL(0.0) || rgb[1] < ALWAN_LITERAL(0.0) ||
-                rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > lum_limit ||
-                rgb[1] > lum_limit || rgb[2] > lum_limit) {
-                break;
-            }
-            low = high;
-            high += SEARCH_RANGE;
-        }
-
-        /* Refine with binary search */
-        while ((high - low) > SEARCH_TOL) {
-            alwan_f64 mid = (high + low) * ALWAN_LITERAL(0.5);
-            alwan_f64 jmh[3] = {J_sample, mid, hue_deg};
-            alwan_f64 aab[3], rgb[3];
-            JMh_to_Aab_f64(jmh, p, aab);
-            Aab_to_RGB_f64(aab, p, rgb);
-
-            if (rgb[0] < ALWAN_LITERAL(0.0) || rgb[1] < ALWAN_LITERAL(0.0) ||
-                rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > lum_limit ||
-                rgb[1] > lum_limit || rgb[2] > lum_limit) {
-                high = mid;
-            } else {
-                low = mid;
-            }
-        }
-
-        if (low > best_M) {
-            best_M = low;
-            best_J = J_sample;
-        }
-    }
-
-    /* Refine J at cusp */
-    alwan_f64 J_low = best_J - ALWAN_LITERAL(2.0);
-    alwan_f64 J_high = best_J + ALWAN_LITERAL(2.0);
-    if (J_low < ALWAN_LITERAL(1.0)) J_low = ALWAN_LITERAL(1.0);
-    if (J_high > limit_J_max - ALWAN_LITERAL(0.5)) J_high = limit_J_max - ALWAN_LITERAL(0.5);
-
-    while ((J_high - J_low) > ALWAN_LITERAL(0.01)) {
-        alwan_f64 J_mid1 = J_low + (J_high - J_low) * ALWAN_LITERAL(0.33);
-        alwan_f64 J_mid2 = J_low + (J_high - J_low) * ALWAN_LITERAL(0.67);
-
-        /* Get M at each J */
-        alwan_f64 M1 = ALWAN_LITERAL(0.0), M2 = ALWAN_LITERAL(0.0);
-        for (int iter = 0; iter < 2; iter++) {
-            alwan_f64 J_test = (iter == 0) ? J_mid1 : J_mid2;
-            alwan_f64 low_m = ALWAN_LITERAL(0.0);
-            alwan_f64 high_m = best_M + ALWAN_LITERAL(50.0);
-
-            while ((high_m - low_m) > SEARCH_TOL) {
-                alwan_f64 mid_m = (high_m + low_m) * ALWAN_LITERAL(0.5);
-                alwan_f64 jmh[3] = {J_test, mid_m, hue_deg};
-                alwan_f64 aab[3], rgb[3];
-                JMh_to_Aab_f64(jmh, p, aab);
-                Aab_to_RGB_f64(aab, p, rgb);
-
-                if (rgb[0] < ALWAN_LITERAL(0.0) || rgb[1] < ALWAN_LITERAL(0.0) ||
-                    rgb[2] < ALWAN_LITERAL(0.0) || rgb[0] > lum_limit ||
-                    rgb[1] > lum_limit || rgb[2] > lum_limit) {
-                    high_m = mid_m;
-                } else {
-                    low_m = mid_m;
-                }
-            }
-            if (iter == 0) M1 = low_m;
-            else M2 = low_m;
-        }
-
-        if (M1 > M2) {
-            J_high = J_mid2;
-            if (M1 > best_M) {
-                best_M = M1;
-                best_J = J_mid1;
-            }
-        } else {
-            J_low = J_mid1;
-            if (M2 > best_M) {
-                best_M = M2;
-                best_J = J_mid2;
-            }
-        }
-    }
-
-    cusp->J = best_J;
-    /* OCIO stores M * (1 + smooth_m * smooth_cusps) in the cusp table, not raw M */
-    cusp->M = best_M * (1.0 + ACES_GAMUT_SMOOTH_M_VALUE * ACES_GAMUT_SMOOTH_CUSPS_VALUE);
-    /* gamma_top_inv: overwritten by make_upper_hull_gamma binary search if available */
-    alwan_f64 J_ratio = best_J / limit_J_max;
-    cusp->gamma_top_inv = ALWAN_LITERAL(1.0) / (ALWAN_LITERAL(1.0) + J_ratio);
+static void aces2_ocio_m44_identity(aces2_ocio_m44 *m) {
+    int i;
+    for (i = 0; i < 16; i++) m->v[i] = 0.0;
+    m->v[0] = m->v[5] = m->v[10] = m->v[15] = 1.0;
 }
 
-/* ----------------------------------------------------------------
- * ACES 2.0: Compute upper hull gamma per hue (binary search, matches OCIO)
- * Source: OCIO Transform.cpp make_upper_hull_gamma
- * ---------------------------------------------------------------- */
-
-static alwan_f64 compute_focus_J(alwan_f64 cusp_J, alwan_f64 mid_J, alwan_f64 limit_J_max);
-
-static void make_upper_hull_gamma_f64(aces2_GamutCompressParams_f64 *gcp,
-                                       alwan_f64 peak_luminance,
-                                       alwan_f64 mid_J,
-                                       alwan_f64 focus_dist,
-                                       aces2_JMhParams_f64 const *limit_params) {
-    static alwan_f64 const GAMMA_MIN = ALWAN_LITERAL(0.0);
-    static alwan_f64 const GAMMA_MAX = ALWAN_LITERAL(5.0);
-    static alwan_f64 const GAMMA_STEP = ALWAN_LITERAL(0.4);
-    static alwan_f64 const GAMMA_ACC = ALWAN_LITERAL(1e-5);
-    static int const NTEST = 5;
-    static alwan_f64 const test_pos[5] = {0.01, 0.1, 0.5, 0.8, 0.99};
-
-    alwan_f64 lum_limit = peak_luminance / ALWAN_LITERAL(100.0);
-
-    for (int i = 0; i < 360; i++) {
-        alwan_f64 hue = (alwan_f64)i;
-        alwan_f64 cusp_J = gcp->cusp_table[i + 1].J;
-        alwan_f64 cusp_M = gcp->cusp_table[i + 1].M;
-
-        alwan_f64 focus_J = compute_focus_J(cusp_J, mid_J, gcp->limit_J_max);
-        alwan_f64 analytical_threshold = cusp_J +
-            ALWAN_LITERAL(0.3) * (gcp->limit_J_max - cusp_J);
-
-        /* Generate test data: 5 positions along the upper boundary */
-        alwan_f64 test_J_int[5], test_slope[5], test_J_int_cusp[5], test_h[5];
-        for (int t = 0; t < NTEST; t++) {
-            alwan_f64 testJ = cusp_J + test_pos[t] * (gcp->limit_J_max - cusp_J);
-            alwan_f64 sg = aces2_get_focus_gain_f64_v(testJ, analytical_threshold,
-                                                       gcp->limit_J_max, focus_dist);
-            test_J_int[t] = aces2_solve_j_intersect_f64_v(testJ, cusp_M, focus_J,
-                                                           gcp->limit_J_max, sg);
-            test_slope[t] = aces2_compression_vector_slope_f64_v(
-                test_J_int[t], focus_J, gcp->limit_J_max, sg);
-            test_J_int_cusp[t] = aces2_solve_j_intersect_f64_v(
-                cusp_J, cusp_M, focus_J, gcp->limit_J_max, sg);
-            test_h[t] = hue;
+/* Imath Matrix44::gjInverse, as OCIO's MatrixOpData::MatrixArray::inverse */
+static void aces2_ocio_m44_inverse(aces2_ocio_m44 const *in, aces2_ocio_m44 *out) {
+    aces2_ocio_m44 t = *in;
+    int i, j, k;
+    aces2_ocio_m44_identity(out);
+    for (i = 0; i < 3; i++) {
+        int pivot = i;
+        alwan_f64 pivotsize = t.v[i * 4 + i];
+        if (pivotsize < 0) pivotsize = -pivotsize;
+        for (j = i + 1; j < 4; j++) {
+            alwan_f64 tmp = t.v[j * 4 + i];
+            if (tmp < 0.0) tmp = -tmp;
+            if (tmp > pivotsize) { pivot = j; pivotsize = tmp; }
         }
-
-        /* Binary search for gamma */
-        alwan_f64 low = GAMMA_MIN;
-        alwan_f64 high = low + GAMMA_STEP;
-        int outside = 0;
-
-        while (!outside && high < GAMMA_MAX) {
-            alwan_f64 gamma_inv = ALWAN_LITERAL(1.0) / high;
-            int all_outside = 1;
-            for (int t = 0; t < NTEST && all_outside; t++) {
-                alwan_f64 approxM = aces2_find_gamut_boundary_f64_v(
-                    cusp_J, cusp_M, gcp->limit_J_max,
-                    gamma_inv, gcp->lower_hull_gamma_inv,
-                    test_J_int[t], test_slope[t], test_J_int_cusp[t]);
-                alwan_f64 approxJ = test_J_int[t] + test_slope[t] * approxM;
-                alwan_f64 jmh[3] = {approxJ, approxM, hue};
-                alwan_f64 aab[3], rgb[3];
-                JMh_to_Aab_f64(jmh, limit_params, aab);
-                Aab_to_RGB_f64(aab, limit_params, rgb);
-                /* outside_hull: any component >= lum_limit (>= matches OCIO for HDR) */
-                if (!(rgb[0] >= lum_limit || rgb[1] >= lum_limit || rgb[2] >= lum_limit)) {
-                    all_outside = 0;
-                }
+        if (pivotsize == 0.0) return;
+        if (pivot != i) {
+            for (j = 0; j < 4; j++) {
+                alwan_f64 tmp = t.v[i * 4 + j]; t.v[i * 4 + j] = t.v[pivot * 4 + j]; t.v[pivot * 4 + j] = tmp;
+                tmp = out->v[i * 4 + j]; out->v[i * 4 + j] = out->v[pivot * 4 + j]; out->v[pivot * 4 + j] = tmp;
             }
-            if (all_outside) {
+        }
+        for (j = i + 1; j < 4; j++) {
+            alwan_f64 const f = t.v[j * 4 + i] / t.v[i * 4 + i];
+            for (k = 0; k < 4; k++) {
+                t.v[j * 4 + k] -= f * t.v[i * 4 + k];
+                out->v[j * 4 + k] -= f * out->v[i * 4 + k];
+            }
+        }
+    }
+    for (i = 3; i >= 0; --i) {
+        alwan_f64 f = t.v[i * 4 + i];
+        if (f == 0.0) return;
+        for (j = 0; j < 4; j++) {
+            t.v[i * 4 + j] /= f;
+            out->v[i * 4 + j] /= f;
+        }
+        for (j = 0; j < i; j++) {
+            f = t.v[j * 4 + i];
+            for (k = 0; k < 4; k++) {
+                t.v[j * 4 + k] -= f * t.v[i * 4 + k];
+                out->v[j * 4 + k] -= f * out->v[i * 4 + k];
+            }
+        }
+    }
+}
+
+static void aces2_ocio_m44_inner(aces2_ocio_m44 const *a, aces2_ocio_m44 const *b, aces2_ocio_m44 *out) {
+    int r, c, i;
+    for (r = 0; r < 4; r++)
+        for (c = 0; c < 4; c++) {
+            alwan_f64 accum = 0.0;
+            for (i = 0; i < 4; i++) accum += a->v[r * 4 + i] * b->v[i * 4 + c];
+            out->v[r * 4 + c] = accum;
+        }
+}
+
+/* rgb2xyz_from_xy(primaries), chromaticities as double */
+static void aces2_ocio_rgb2xyz(alwan_f64 const xy[8], aces2_ocio_m44 *out) {
+    aces2_ocio_m44 m, inv;
+    alwan_f64 wht[3], gain;
+    int i, j;
+    aces2_ocio_m44_identity(&m);
+    m.v[0] = xy[0]; m.v[4] = xy[1]; m.v[8] = 1. - xy[0] - xy[1];
+    m.v[1] = xy[2]; m.v[5] = xy[3]; m.v[9] = 1. - xy[2] - xy[3];
+    m.v[2] = xy[4]; m.v[6] = xy[5]; m.v[10] = 1. - xy[4] - xy[5];
+    aces2_ocio_m44_inverse(&m, &inv);
+    wht[0] = xy[6] / xy[7];
+    wht[1] = 1.0;
+    wht[2] = (1.0 - xy[6] - xy[7]) / xy[7];
+    aces2_ocio_m44_identity(out);
+    for (i = 0; i < 3; i++) {
+        gain = wht[0] * inv.v[i * 4 + 0] + wht[1] * inv.v[i * 4 + 1] + wht[2] * inv.v[i * 4 + 2];
+        for (j = 0; j < 3; j++) out->v[j * 4 + i] = gain * m.v[j * 4 + i];
+    }
+}
+
+/* build_conversion_matrix(C, CIE_XYZ_ILLUM_E, ADAPTATION_NONE) */
+static void aces2_ocio_to_xyz_e(alwan_f64 const xy[8], aces2_ocio_m44 *out) {
+    static alwan_f64 const E[8] = {1., 0., 0., 1., 0., 0., 1. / 3., 1. / 3.};
+    aces2_ocio_m44 src, dst, dst_inv;
+    aces2_ocio_rgb2xyz(xy, &src);
+    aces2_ocio_rgb2xyz(E, &dst);
+    aces2_ocio_m44_inverse(&dst, &dst_inv);
+    aces2_ocio_m44_inner(&dst_inv, &src, out);
+}
+
+static void aces2_ocio_m33f(aces2_ocio_m44 const *m, float out[9]) {
+    out[0] = (float)m->v[0]; out[1] = (float)m->v[1]; out[2] = (float)m->v[2];
+    out[3] = (float)m->v[4]; out[4] = (float)m->v[5]; out[5] = (float)m->v[6];
+    out[6] = (float)m->v[8]; out[7] = (float)m->v[9]; out[8] = (float)m->v[10];
+}
+
+/* invert_f33: the float values into a double MatrixArray, inverted, rounded back */
+static void aces2_ocio_invert_f33(float const in[9], float out[9]) {
+    aces2_ocio_m44 m, inv;
+    aces2_ocio_m44_identity(&m);
+    m.v[0] = in[0]; m.v[1] = in[1]; m.v[2] = in[2];
+    m.v[4] = in[3]; m.v[5] = in[4]; m.v[6] = in[5];
+    m.v[8] = in[6]; m.v[9] = in[7]; m.v[10] = in[8];
+    aces2_ocio_m44_inverse(&m, &inv);
+    aces2_ocio_m33f(&inv, out);
+}
+
+static void aces2_ocio_mv(float const m[9], float const v[3], float o[3]) {
+    int r;
+    for (r = 0; r < 3; r++) o[r] = v[0] * m[3 * r] + v[1] * m[3 * r + 1] + v[2] * m[3 * r + 2];
+}
+
+static float aces2_ocio_cone_fwd(float v) {
+    float const F = ALWAN_POW_F32(ALWAN_ABS_F32(v), 0.42f);
+    float const Ra = F / (27.13f + F);
+    return v < 0.0f ? -Ra : Ra;
+}
+
+static float aces2_ocio_cone_inv(float v) {
+    float a = ALWAN_ABS_F32(v);
+    float F, Rc;
+    if (a > 0.99f) a = 0.99f;
+    F = (27.13f * a) / (1.0f - a);
+    Rc = ALWAN_POW_F32(F, 1.0f / 0.42f);
+    return v < 0.0f ? -Rc : Rc;
+}
+
+static void aces2_ocio_jmh_params_f32(alwan_aces_primaries_f64 const *pr, aces2_JMhParams_f32 *p) {
+    static float const base[9] = {2.0f, 1.0f, 1.0f / 20.0f,
+                                  1.0f, -12.0f / 11.0f, 1.0f / 11.0f,
+                                  1.0f / 9.0f, 1.0f / 9.0f, -2.0f / 9.0f};
+    static alwan_f64 const cam16_xy[8] = {0.8336, 0.1735, 2.3854, -1.4659, 0.087, -0.125, 0.333, 0.333};
+    alwan_f64 const xy[8] = {pr->red_x, pr->red_y, pr->green_x, pr->green_y,
+                             pr->blue_x, pr->blue_y, pr->white_x, pr->white_y};
+    aces2_ocio_m44 d_rgb2xyz, d_cam2xyz, d_xyz2cam;
+    float rgb2xyz[9], m16[9], rgb2rgb[9], cr[9], mc[9], ma[9], inv[9];
+    float XYZ_w[3], RGB_w[3], D[3], WC[3], AW[3];
+    float const hundred[3] = {100.0f, 100.0f, 100.0f};
+    float const K = 1.0f / (5.0f * 100.0f + 1.0f);
+    float const K4 = K * K * K * K;
+    float const F_L = 0.2f * K4 * (5.0f * 100.0f)
+                    + 0.1f * ALWAN_POW_F32(1.0f - K4, 2.0f) * ALWAN_POW_F32(5.0f * 100.0f, 1.0f / 3.0f);
+    float const F_L_n = F_L / 100.0f;
+    float Y_W, A_w;
+    int i, r, c;
+
+    aces2_ocio_to_xyz_e(xy, &d_rgb2xyz);
+    aces2_ocio_to_xyz_e(cam16_xy, &d_cam2xyz);
+    aces2_ocio_m44_inverse(&d_cam2xyz, &d_xyz2cam);
+    aces2_ocio_m33f(&d_rgb2xyz, rgb2xyz);
+    aces2_ocio_m33f(&d_xyz2cam, m16);
+
+    aces2_ocio_mv(rgb2xyz, hundred, XYZ_w);
+    Y_W = XYZ_w[1];
+    aces2_ocio_mv(m16, XYZ_w, RGB_w);
+
+    p->cz = 0.59f * (1.48f + ALWAN_SQRT_F32(20.0f / 100.0f));
+    p->inv_cz = 1.0f / p->cz;
+    for (i = 0; i < 3; i++) {
+        D[i] = F_L_n * Y_W / RGB_w[i];
+        WC[i] = D[i] * RGB_w[i];
+        AW[i] = aces2_ocio_cone_fwd(WC[i]);
+    }
+    for (i = 0; i < 9; i++) cr[i] = 400.0f * base[i];
+    A_w = cr[0] * AW[0] + cr[1] * AW[1] + cr[2] * AW[2];
+    {
+        float const F = ALWAN_POW_F32(F_L, 0.42f);
+        p->A_w_J = F / (27.13f + F);
+    }
+    p->inv_A_w_J = 1.0f / p->A_w_J;
+    p->F_L_n = F_L_n;
+
+    /* RGBtoRGB_f33(prims, CAM16) = XYZtoRGB(CAM16) RGBtoXYZ(prims), times 100, then D */
+    for (r = 0; r < 3; r++)
+        for (c = 0; c < 3; c++)
+            rgb2rgb[3 * r + c] = m16[3 * r] * rgb2xyz[c] + m16[3 * r + 1] * rgb2xyz[3 + c] + m16[3 * r + 2] * rgb2xyz[6 + c];
+    for (r = 0; r < 3; r++)
+        for (c = 0; c < 3; c++)
+            mc[3 * r + c] = D[r] * (rgb2rgb[3 * r + c] * 100.0f);
+    for (i = 0; i < 3; i++) {
+        ma[i] = cr[i] / A_w;
+        ma[3 + i] = cr[3 + i] * 43.0f * 0.9f;
+        ma[6 + i] = cr[6 + i] * 43.0f * 0.9f;
+    }
+    for (i = 0; i < 9; i++) {
+        p->MATRIX_RGB_to_CAM16_c.m[i] = mc[i];
+        p->MATRIX_cone_response_to_Aab.m[i] = ma[i];
+    }
+    aces2_ocio_invert_f33(mc, inv);
+    for (i = 0; i < 9; i++) p->MATRIX_CAM16_to_RGB.m[i] = inv[i];
+    aces2_ocio_invert_f33(ma, inv);
+    for (i = 0; i < 9; i++) p->MATRIX_Aab_to_cone.m[i] = inv[i];
+}
+
+static float aces2_ocio_rgb_to_A(float const rgb[3], aces2_JMhParams_f32 const *p) {
+    float m[3], a[3], aab[3];
+    aces2_ocio_mv(p->MATRIX_RGB_to_CAM16_c.m, rgb, m);
+    a[0] = aces2_ocio_cone_fwd(m[0]); a[1] = aces2_ocio_cone_fwd(m[1]); a[2] = aces2_ocio_cone_fwd(m[2]);
+    aces2_ocio_mv(p->MATRIX_cone_response_to_Aab.m, a, aab);
+    return aab[0];
+}
+
+static alwan_vec3_f32 aces2_rgb_to_jmh_gt_f32(float r, float g, float b, aces2_JMhParams_f32 const *p) {
+    float const rgb[3] = {r, g, b};
+    float m[3], a[3], aab[3], h;
+    alwan_vec3_f32 jmh;
+    aces2_ocio_mv(p->MATRIX_RGB_to_CAM16_c.m, rgb, m);
+    a[0] = aces2_ocio_cone_fwd(m[0]); a[1] = aces2_ocio_cone_fwd(m[1]); a[2] = aces2_ocio_cone_fwd(m[2]);
+    aces2_ocio_mv(p->MATRIX_cone_response_to_Aab.m, a, aab);
+    if (aab[0] <= 0.0f) {
+        jmh.v[0] = jmh.v[1] = jmh.v[2] = 0.0f;
+        return jmh;
+    }
+    jmh.v[0] = 100.0f * ALWAN_POW_F32(aab[0], p->cz);
+    jmh.v[1] = ALWAN_SQRT_F32(aab[1] * aab[1] + aab[2] * aab[2]);
+    h = 180.0f * ALWAN_ATAN2_F32(aab[2], aab[1]) / 3.14159265358979f;
+    jmh.v[2] = h < 0.0f ? h + 360.0f : h;
+    return jmh;
+}
+
+static alwan_vec3_f32 aces2_jmh_to_rgb_gt_f32(float J, float M, float h, aces2_JMhParams_f32 const *p) {
+    float const hr = 3.14159265358979f * h / 180.0f;
+    float const aab[3] = {ALWAN_POW_F32(J * (1.0f / 100.0f), p->inv_cz),
+                          M * ALWAN_COS_F32(hr), M * ALWAN_SIN_F32(hr)};
+    float a[3], m[3];
+    alwan_vec3_f32 rgb;
+    aces2_ocio_mv(p->MATRIX_Aab_to_cone.m, aab, a);
+    m[0] = aces2_ocio_cone_inv(a[0]); m[1] = aces2_ocio_cone_inv(a[1]); m[2] = aces2_ocio_cone_inv(a[2]);
+    aces2_ocio_mv(p->MATRIX_CAM16_to_RGB.m, m, rgb.v);
+    return rgb;
+}
+
+/* Unit cube corners in the order R, Y, G, C, B, M, so the hues rotate in order */
+static void aces2_cube_corner(int i, float c[3]) {
+    c[0] = (float)(((i + 1) % ACES2_CORNERS) < 3);
+    c[1] = (float)(((i + 5) % ACES2_CORNERS) < 3);
+    c[2] = (float)(((i + 3) % ACES2_CORNERS) < 3);
+}
+
+/* Place the lowest hue at [1], close the cycle with [0] and [7] and move their
+ * hues by one turn so the table stays monotonic. */
+static void aces2_rotate_corners(float const tmp_rgb[ACES2_CORNERS][3], float const tmp_jmh[ACES2_CORNERS][3],
+                                 float rgb[ACES2_CORNERS_TOTAL][3], float jmh[ACES2_CORNERS_TOTAL][3]) {
+    int i, k, min_index = 0;
+    for (i = 1; i < ACES2_CORNERS; i++)
+        if (tmp_jmh[i][2] < tmp_jmh[min_index][2]) min_index = i;
+    for (i = 0; i < ACES2_CORNERS; i++)
+        for (k = 0; k < 3; k++) {
+            rgb[i + 1][k] = tmp_rgb[(i + min_index) % ACES2_CORNERS][k];
+            jmh[i + 1][k] = tmp_jmh[(i + min_index) % ACES2_CORNERS][k];
+        }
+    for (k = 0; k < 3; k++) {
+        rgb[0][k] = rgb[ACES2_CORNERS][k];
+        rgb[ACES2_CORNERS + 1][k] = rgb[1][k];
+        jmh[0][k] = jmh[ACES2_CORNERS][k];
+        jmh[ACES2_CORNERS + 1][k] = jmh[1][k];
+    }
+    jmh[0][2] -= 360.0f;
+    jmh[ACES2_CORNERS + 1][2] += 360.0f;
+}
+
+static void aces2_limiting_corners_f32(float rgb[ACES2_CORNERS_TOTAL][3], float jmh[ACES2_CORNERS_TOTAL][3],
+                                       aces2_JMhParams_f32 const *p, float peak) {
+    float tmp_rgb[ACES2_CORNERS][3], tmp_jmh[ACES2_CORNERS][3];
+    int i, k;
+    for (i = 0; i < ACES2_CORNERS; i++) {
+        float c[3];
+        alwan_vec3_f32 v;
+        aces2_cube_corner(i, c);
+        for (k = 0; k < 3; k++) tmp_rgb[i][k] = (peak / 100.0f) * c[k];
+        v = aces2_rgb_to_jmh_gt_f32(tmp_rgb[i][0], tmp_rgb[i][1], tmp_rgb[i][2], p);
+        for (k = 0; k < 3; k++) tmp_jmh[i][k] = v.v[k];
+    }
+    aces2_rotate_corners(tmp_rgb, tmp_jmh, rgb, jmh);
+}
+
+/* The reach gamut's corners at limit_J_max: scale each unit corner until its
+ * achromatic response reaches the one of limit_J_max. */
+static void aces2_reach_corners_f32(float jmh[ACES2_CORNERS_TOTAL][3], aces2_JMhParams_f32 const *p,
+                                    float limit_J, float maximum_source) {
+    float tmp_rgb[ACES2_CORNERS][3], tmp_jmh[ACES2_CORNERS][3], rgb_unused[ACES2_CORNERS_TOTAL][3];
+    float const limit_A = ALWAN_POW_F32(limit_J * (1.0f / 100.0f), p->inv_cz);
+    int i, k;
+    for (i = 0; i < ACES2_CORNERS; i++) {
+        float c[3], lower = 0.0f, upper = maximum_source;
+        alwan_vec3_f32 v;
+        aces2_cube_corner(i, c);
+        while ((upper - lower) > 1e-3f) {
+            float const test = (lower + upper) / 2.0f;
+            float corner[3], A;
+            for (k = 0; k < 3; k++) corner[k] = test * c[k];
+            A = aces2_ocio_rgb_to_A(corner, p);
+            if (A < limit_A) lower = test; else upper = test;
+            if (A == limit_A) break;
+        }
+        for (k = 0; k < 3; k++) tmp_rgb[i][k] = upper * c[k];
+        v = aces2_rgb_to_jmh_gt_f32(tmp_rgb[i][0], tmp_rgb[i][1], tmp_rgb[i][2], p);
+        for (k = 0; k < 3; k++) tmp_jmh[i][k] = v.v[k];
+    }
+    aces2_rotate_corners(tmp_rgb, tmp_jmh, rgb_unused, jmh);
+}
+
+/* Merge the two corner hue lists into one sorted list of unique hues */
+static int aces2_sorted_corner_hues(float sorted[2 * ACES2_CORNERS],
+                                    float const reach[ACES2_CORNERS_TOTAL][3],
+                                    float const display[ACES2_CORNERS_TOTAL][3]) {
+    int idx = 0, r = 1, d = 1;
+    while (r < ACES2_CORNERS + 1 || d < ACES2_CORNERS + 1) {
+        float const rh = reach[r][2], dh = display[d][2];
+        if (rh == dh) { sorted[idx] = rh; r++; d++; }
+        else if (rh < dh) { sorted[idx] = rh; r++; }
+        else { sorted[idx] = dh; d++; }
+        idx++;
+    }
+    return idx;
+}
+
+static void aces2_hue_interval_fill(unsigned samples, float lower, float upper, unsigned base, float *out) {
+    float const delta = (upper - lower) / (float)samples;
+    unsigned i;
+    for (i = 0; i != samples; i++) out[base + i] = lower + (float)i * delta;
+}
+
+/* OCIO's build_hue_table, index for index: 360 nominal samples between [1] and
+ * [360], each corner hue on a sample, the samples between corners evenly spaced. */
+static void aces2_build_hue_table_f32(float out[ACES2_CUSP_TABLE_SIZE], float const *sorted, unsigned unique_hues) {
+    unsigned const nominal = 360u;
+    unsigned samples_count[2 * ACES2_CORNERS + 2] = {0};
+    unsigned last_idx = 0xFFFFFFFFu;
+    unsigned min_index = sorted[0] == 0.0f ? 0u : 1u;
+    unsigned hue_idx, i, total = 0;
+    for (hue_idx = 0; hue_idx != unique_hues; hue_idx++) {
+        unsigned nominal_idx = (unsigned)ALWAN_ROUND_F32(sorted[hue_idx] * 1.0f);
+        if (nominal_idx < min_index) nominal_idx = min_index;
+        if (nominal_idx > nominal - 1u) nominal_idx = nominal - 1u;
+        if (last_idx == nominal_idx) {
+            if (hue_idx > 1 && samples_count[hue_idx - 2] != (samples_count[hue_idx - 1] - 1u))
+                samples_count[hue_idx - 1] = samples_count[hue_idx - 1] - 1u;
+            else
+                nominal_idx = nominal_idx + 1u;
+        }
+        samples_count[hue_idx] = nominal_idx < nominal - 1u ? nominal_idx : nominal - 1u;
+        last_idx = min_index = nominal_idx;
+    }
+    i = 0;
+    aces2_hue_interval_fill(samples_count[0], 0.0f, sorted[0], total + 1u, out);
+    total += samples_count[0];
+    for (i = 1; i != unique_hues; i++) {
+        unsigned const samples = samples_count[i] - samples_count[i - 1];
+        aces2_hue_interval_fill(samples, sorted[i - 1], sorted[i], total + 1u, out);
+        total += samples;
+    }
+    aces2_hue_interval_fill(nominal - total, sorted[i - 1], 360.0f, total + 1u, out);
+    out[0] = out[nominal] - 360.0f;
+    out[nominal + 1u] = out[1] + 360.0f;
+}
+
+/* The cusp at a hue: bisect along the cube edge between the two corners that
+ * bracket it. prev carries the edge and position of the last search, as OCIO's. */
+static void aces2_display_cusp_for_hue_f32(float hue, float const rgb_c[ACES2_CORNERS_TOTAL][3],
+                                           float const jmh_c[ACES2_CORNERS_TOTAL][3],
+                                           aces2_JMhParams_f32 const *p, float prev[2], float JM[2]) {
+    int upper_corner = 1, lower_corner, i, k;
+    float lower_t, upper_t = 1.0f, sample_t;
+    float sample[3];
+    alwan_vec3_f32 jmh;
+    for (i = upper_corner; i != ACES2_CORNERS_TOTAL; i++) {
+        if (jmh_c[i][2] > hue) { upper_corner = i; break; }
+    }
+    lower_corner = upper_corner - 1;
+    if (jmh_c[lower_corner][2] == hue) {
+        JM[0] = jmh_c[lower_corner][0];
+        JM[1] = jmh_c[lower_corner][1];
+        return;
+    }
+    lower_t = ((float)upper_corner == prev[0]) ? prev[1] : 0.0f;
+    while ((upper_t - lower_t) > 1e-7f) {
+        sample_t = (lower_t + upper_t) / 2.0f;
+        for (k = 0; k < 3; k++)
+            sample[k] = (rgb_c[upper_corner][k] - rgb_c[lower_corner][k]) * sample_t + rgb_c[lower_corner][k];
+        jmh = aces2_rgb_to_jmh_gt_f32(sample[0], sample[1], sample[2], p);
+        if (jmh.v[2] < jmh_c[lower_corner][2]) upper_t = sample_t;
+        else if (jmh.v[2] >= jmh_c[upper_corner][2]) lower_t = sample_t;
+        else if (jmh.v[2] > hue) upper_t = sample_t;
+        else lower_t = sample_t;
+    }
+    sample_t = (lower_t + upper_t) / 2.0f;
+    for (k = 0; k < 3; k++)
+        sample[k] = (rgb_c[upper_corner][k] - rgb_c[lower_corner][k]) * sample_t + rgb_c[lower_corner][k];
+    jmh = aces2_rgb_to_jmh_gt_f32(sample[0], sample[1], sample[2], p);
+    prev[0] = (float)upper_corner;
+    prev[1] = sample_t;
+    JM[0] = jmh.v[0];
+    JM[1] = jmh.v[1];
+}
+
+/* One upper-hull gamma candidate: every test point's boundary estimate must land
+ * outside the limiting cube at peak. */
+static int aces2_gamma_fit_f32(float cusp_J, float cusp_M, float hue, float top_gamma_inv,
+                               float const Jis[5], float const slope[5], float const Jic[5],
+                               float peak, float limit_J, float lower_hull_gamma_inv,
+                               aces2_JMhParams_f32 const *lp) {
+    float const lum_limit = peak / 100.0f;
+    int t;
+    for (t = 0; t < 5; t++) {
+        float const aM = (float)aces2_find_gamut_boundary_f32_v(cusp_J, cusp_M, limit_J, top_gamma_inv,
+                                                               lower_hull_gamma_inv, Jis[t], slope[t], Jic[t]);
+        float const aJ = Jis[t] + slope[t] * aM;
+        alwan_vec3_f32 const rgb = aces2_jmh_to_rgb_gt_f32(aJ, aM, hue, lp);
+        if (!(rgb.v[0] > lum_limit || rgb.v[1] > lum_limit || rgb.v[2] > lum_limit)) return 0;
+    }
+    return 1;
+}
+
+static void aces2_build_gamut_tables_f32(aces2_GamutCompressParams_f64 *gcp,
+                                         alwan_aces_primaries_f64 const *limit_primaries,
+                                         alwan_f64 peak_luminance) {
+    static float const test_pos[5] = {0.01f, 0.1f, 0.5f, 0.8f, 0.99f};
+    aces2_JMhParams_f32 rp, lp;
+    float reach_c[ACES2_CORNERS_TOTAL][3], lim_rgb[ACES2_CORNERS_TOTAL][3], lim_jmh[ACES2_CORNERS_TOTAL][3];
+    float sorted[2 * ACES2_CORNERS], hues[ACES2_CUSP_TABLE_SIZE];
+    float cusp[ACES2_CUSP_TABLE_SIZE][3];
+    float prev[2] = {0.0f, 0.0f};
+    float const peak = (float)peak_luminance;
+    /* OCIO init_ToneScaleParams: forward_limit = 8 r_hit, log_peak, c_t */
+    float const r_hit = 128.0f + (896.0f - 128.0f) * (ALWAN_LN_F32(peak / 100.0f) / ALWAN_LN_F32(10000.0f / 100.0f));
+    float const log_peak = ALWAN_LOG10_F32(peak / 100.0f);
+    float const c_t = 10.013f / 100.0f * (1.0f + (ALWAN_LN_F32(peak / 100.0f) / ALWAN_LN_F32(2.0f)) * 0.14f);
+    float const focus_dist = 1.35f + 1.35f * 1.75f * log_peak;
+    float const lower_hull_gamma_inv = 1.0f / (1.14f + 0.07f * log_peak);
+    float limit_J, mid_J;
+    unsigned unique;
+    int i;
+
+    {
+        /* OCIO takes the limiting chromaticities as float, the AP1 reach ones as double */
+        alwan_aces_primaries_f64 ap1, lim;
+        alwan_aces_primaries_ap1_default_f64(&ap1);
+        lim.red_x = (float)limit_primaries->red_x;     lim.red_y = (float)limit_primaries->red_y;
+        lim.green_x = (float)limit_primaries->green_x; lim.green_y = (float)limit_primaries->green_y;
+        lim.blue_x = (float)limit_primaries->blue_x;   lim.blue_y = (float)limit_primaries->blue_y;
+        lim.white_x = (float)limit_primaries->white_x; lim.white_y = (float)limit_primaries->white_y;
+        aces2_ocio_jmh_params_f32(&ap1, &rp);
+        aces2_ocio_jmh_params_f32(&lim, &lp);
+    }
+    /* OCIO _Y_to_J; F_L_n, A_w_J and cz do not depend on the primaries */
+    {
+        float F = ALWAN_POW_F32(peak * rp.F_L_n, 0.42f);
+        limit_J = 100.0f * ALWAN_POW_F32((F / (27.13f + F)) * rp.inv_A_w_J, rp.cz);
+        F = ALWAN_POW_F32((c_t * 100.0f) * rp.F_L_n, 0.42f);
+        mid_J = 100.0f * ALWAN_POW_F32((F / (27.13f + F)) * rp.inv_A_w_J, rp.cz);
+    }
+    aces2_reach_corners_f32(reach_c, &rp, limit_J, 8.0f * r_hit);
+    aces2_limiting_corners_f32(lim_rgb, lim_jmh, &lp, peak);
+    unique = (unsigned)aces2_sorted_corner_hues(sorted, reach_c, lim_jmh);
+    aces2_build_hue_table_f32(hues, sorted, unique);
+
+    for (i = 1; i != ACES2_CUSP_TABLE_SIZE - 1; i++) {
+        float JM[2];
+        aces2_display_cusp_for_hue_f32(hues[i], lim_rgb, lim_jmh, &lp, prev, JM);
+        cusp[i][0] = JM[0];
+        cusp[i][1] = JM[1] * (1.0f + 0.27f * 0.12f);   /* smooth_m * smooth_cusps */
+    }
+    cusp[0][0] = cusp[360][0];   cusp[0][1] = cusp[360][1];
+    cusp[361][0] = cusp[1][0];   cusp[361][1] = cusp[1][1];
+
+    /* Upper hull gamma per entry */
+    for (i = 1; i != ACES2_CUSP_TABLE_SIZE - 1; i++) {
+        float const cJ = cusp[i][0], cM = cusp[i][1], hue = hues[i];
+        float const at = (limit_J - cJ) * 0.3f + cJ;
+        float const focus_J = (float)aces2_compute_focus_j_f32_v(cJ, mid_J, limit_J);
+        float Jis[5], slope[5], Jic[5];
+        float low = 0.0f, high = 0.4f;
+        int t, outside = 0;
+        for (t = 0; t < 5; t++) {
+            float const testJ = (limit_J - cJ) * test_pos[t] + cJ;
+            float const sg = aces2_get_focus_gain_f32_v(testJ, at, limit_J, focus_dist);
+            Jis[t] = aces2_solve_j_intersect_f32_v(testJ, cM, focus_J, limit_J, sg);
+            slope[t] = aces2_compression_vector_slope_f32_v(Jis[t], focus_J, limit_J, sg);
+            Jic[t] = aces2_solve_j_intersect_f32_v(cJ, cM, focus_J, limit_J, sg);
+        }
+        while (!outside && high < 5.0f) {
+            if (aces2_gamma_fit_f32(cJ, cM, hue, 1.0f / high, Jis, slope, Jic, peak, limit_J, lower_hull_gamma_inv, &lp)) {
                 outside = 1;
             } else {
                 low = high;
-                high += GAMMA_STEP;
+                high = high + 0.4f;
             }
         }
-
-        /* Refine with binary search */
-        while ((high - low) > GAMMA_ACC) {
-            alwan_f64 mid = (high + low) * ALWAN_LITERAL(0.5);
-            alwan_f64 gamma_inv = ALWAN_LITERAL(1.0) / mid;
-            int all_outside = 1;
-            for (int t = 0; t < NTEST && all_outside; t++) {
-                alwan_f64 approxM = aces2_find_gamut_boundary_f64_v(
-                    cusp_J, cusp_M, gcp->limit_J_max,
-                    gamma_inv, gcp->lower_hull_gamma_inv,
-                    test_J_int[t], test_slope[t], test_J_int_cusp[t]);
-                alwan_f64 approxJ = test_J_int[t] + test_slope[t] * approxM;
-                alwan_f64 jmh[3] = {approxJ, approxM, hue};
-                alwan_f64 aab[3], rgb[3];
-                JMh_to_Aab_f64(jmh, limit_params, aab);
-                Aab_to_RGB_f64(aab, limit_params, rgb);
-                if (!(rgb[0] >= lum_limit || rgb[1] >= lum_limit || rgb[2] >= lum_limit)) {
-                    all_outside = 0;
-                }
-            }
-            if (all_outside) high = mid;
-            else low = mid;
+        while ((high - low) > 1e-5f) {
+            float const g = (high + low) / 2.0f;
+            if (aces2_gamma_fit_f32(cJ, cM, hue, 1.0f / g, Jis, slope, Jic, peak, limit_J, lower_hull_gamma_inv, &lp))
+                high = g;
+            else
+                low = g;
         }
-
-        gcp->cusp_table[i + 1].gamma_top_inv = ALWAN_LITERAL(1.0) / high;
+        cusp[i][2] = 1.0f / high;
     }
+    cusp[0][2] = cusp[360][2];
+    cusp[361][2] = cusp[1][2];
 
-    /* Wrap-around */
-    gcp->cusp_table[0].gamma_top_inv = gcp->cusp_table[360].gamma_top_inv;
-    gcp->cusp_table[361].gamma_top_inv = gcp->cusp_table[1].gamma_top_inv;
+    for (i = 0; i < ACES2_CUSP_TABLE_SIZE; i++) {
+        gcp->cusp_table[i].J = (alwan_f64)cusp[i][0];
+        gcp->cusp_table[i].M = (alwan_f64)cusp[i][1];
+        gcp->cusp_table[i].gamma_top_inv = (alwan_f64)cusp[i][2];
+        gcp->hue_table[i] = (alwan_f64)hues[i];
+    }
+}
+
+/* OCIO lookup_hue_interval: the upper index of the table interval holding h.
+ * A plain bisection over the whole table lands on the same index as OCIO's
+ * narrowed one, the table being monotonic. */
+static int aces2_hue_interval_f64(float h, alwan_f64 const *hues) {
+    int lo = 0, hi = ACES2_CUSP_TABLE_SIZE - 1;
+    while (lo + 1 < hi) {
+        int const mid = (lo + hi) / 2;
+        if (h > (float)hues[mid]) lo = mid; else hi = mid;
+    }
+    return hi < 1 ? 1 : hi;
+}
+
+static int aces2_hue_interval_f32(float h, float const *hues) {
+    int lo = 0, hi = ACES2_CUSP_TABLE_SIZE - 1;
+    while (lo + 1 < hi) {
+        int const mid = (lo + hi) / 2;
+        if (h > hues[mid]) lo = mid; else hi = mid;
+    }
+    return hi < 1 ? 1 : hi;
 }
 
 /* ----------------------------------------------------------------
@@ -3243,11 +3576,12 @@ static struct {
  * alwan's own gamut-boundary builder -- the builder is validated bit-exactly
  * against OCIO's full ACES 2.0 output transform by test suite 55 (OCIO and
  * colour-science do not expose these internal tables, so the validated builder
- * is the reference). Layout per file: 362 cusp entries x {J, M, gamma_top_inv}
- * (= ACES2_CUSP_TABLE_SIZE) followed by 360 reach_m values (ACES2_REACH_TABLE_SIZE). */
+ * is the reference). Layout per file: 362 cusp entries x {J, M, gamma_top_inv, hue}
+ * (= ACES2_CUSP_TABLE_SIZE; the hue table is not uniform, see
+ * aces2_build_gamut_tables_f32) followed by 360 reach_m values (ACES2_REACH_TABLE_SIZE). */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
-#define ALWAN_ACES2_GCP_LEN (ACES2_CUSP_TABLE_SIZE * 3 + ACES2_REACH_TABLE_SIZE)
+#define ALWAN_ACES2_GCP_LEN (ACES2_CUSP_TABLE_SIZE * 4 + ACES2_REACH_TABLE_SIZE)
 static alwan_f64 const g_aces2_gamut_rec709_100[ALWAN_ACES2_GCP_LEN]  = {
 #include "../data/aces2/gamut_rec709_100.csv"
 };
@@ -3256,9 +3590,6 @@ static alwan_f64 const g_aces2_gamut_p3d65_100[ALWAN_ACES2_GCP_LEN]   = {
 };
 static alwan_f64 const g_aces2_gamut_p3d65_1000[ALWAN_ACES2_GCP_LEN]  = {
 #include "../data/aces2/gamut_p3d65_1000.csv"
-};
-static alwan_f64 const g_aces2_gamut_p3d65_48[ALWAN_ACES2_GCP_LEN]    = {
-#include "../data/aces2/gamut_p3d65_48.csv"
 };
 static alwan_f64 const g_aces2_gamut_rec2020_500[ALWAN_ACES2_GCP_LEN] = {
 #include "../data/aces2/gamut_rec2020_500.csv"
@@ -3290,8 +3621,6 @@ static alwan_f64 const *aces2_find_embedded_gamut_tables(
     } else if (peak == ALWAN_LITERAL(1000.0)) {
         primaries_p3_d65(&ref);  if (memcmp(&ref, p, sizeof(ref)) == 0) return g_aces2_gamut_p3d65_1000;
         primaries_rec2020(&ref); if (memcmp(&ref, p, sizeof(ref)) == 0) return g_aces2_gamut_rec2020_1000;
-    } else if (peak == ALWAN_LITERAL(48.0)) {
-        primaries_p3_d65(&ref);  if (memcmp(&ref, p, sizeof(ref)) == 0) return g_aces2_gamut_p3d65_48;
     } else if (peak == ALWAN_LITERAL(500.0)) {
         primaries_rec2020(&ref); if (memcmp(&ref, p, sizeof(ref)) == 0) return g_aces2_gamut_rec2020_500;
     } else if (peak == ALWAN_LITERAL(2000.0)) {
@@ -3322,7 +3651,8 @@ static void alwan__gendata_dump_aces2_gamut(alwan_f64 peak,
         f = fopen(fn, "w");
         if (f) {
             for (i = 0; i < ACES2_CUSP_TABLE_SIZE; i++)
-                fprintf(f, "%.17g,%.17g,%.17g,\n", gcp->cusp_table[i].J, gcp->cusp_table[i].M, gcp->cusp_table[i].gamma_top_inv);
+                fprintf(f, "%.17g,%.17g,%.17g,%.17g,\n", gcp->cusp_table[i].J, gcp->cusp_table[i].M,
+                        gcp->cusp_table[i].gamma_top_inv, gcp->hue_table[i]);
             for (i = 0; i < ACES2_REACH_TABLE_SIZE; i++)
                 fprintf(f, "%.17g,\n", gcp->reach_m_table[i]);
             fclose(f);
@@ -3376,21 +3706,19 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
         if (emb) {
             int i;
             for (i = 0; i < ACES2_CUSP_TABLE_SIZE; i++) {
-                gcp->cusp_table[i].J             = emb[i * 3 + 0];
-                gcp->cusp_table[i].M             = emb[i * 3 + 1];
-                gcp->cusp_table[i].gamma_top_inv = emb[i * 3 + 2];
+                gcp->cusp_table[i].J             = emb[i * 4 + 0];
+                gcp->cusp_table[i].M             = emb[i * 4 + 1];
+                gcp->cusp_table[i].gamma_top_inv = emb[i * 4 + 2];
+                gcp->hue_table[i]                = emb[i * 4 + 3];
             }
             {
-                alwan_f64 const *reach = emb + ACES2_CUSP_TABLE_SIZE * 3;
+                alwan_f64 const *reach = emb + ACES2_CUSP_TABLE_SIZE * 4;
                 gcp->reach_max_M = ALWAN_LITERAL(0.0);
                 for (i = 0; i < ACES2_REACH_TABLE_SIZE; i++) {
                     gcp->reach_m_table[i] = reach[i];
                     if (reach[i] > gcp->reach_max_M) gcp->reach_max_M = reach[i];
                 }
             }
-            for (i = 0; i < 360; i++) gcp->hue_table[i + 1] = (alwan_f64)i;
-            gcp->hue_table[0]   = gcp->hue_table[360] - ALWAN_LITERAL(360.0);
-            gcp->hue_table[361] = gcp->hue_table[1]   + ALWAN_LITERAL(360.0);
 
             g_aces2_gcp_cache_f64.peak  = peak_luminance;
             g_aces2_gcp_cache_f64.prim  = *limit_primaries;
@@ -3401,10 +3729,6 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
         }
     }
 #endif /* ALWAN_EMBED_DATA */
-
-    /* Initialize aces2_JMhParams_f64 for limit primaries */
-    aces2_JMhParams_f64 limit_params;
-    init_JMhParams_f64(limit_primaries, &limit_params);
 
     /* Build reach table using float32 binary search to match OCIO's float32 precision.
      * At near-degenerate hues (h~268-270 deg where AP1 ~ limit gamut), float32 rounding
@@ -3419,28 +3743,13 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
         }
     }
 
-    /* Build cusp table for limit primaries */
-    /* First and last entries are duplicates for wrap-around interpolation */
-    alwan_f64 lum_limit = peak_luminance / ALWAN_LITERAL(100.0);
-    for (int i = 0; i < 360; i++) {
-        build_cusp_table_for_hue_f64((alwan_f64)i, &limit_params,
-                                  gcp->limit_J_max, lum_limit, &gcp->cusp_table[i + 1]);
-        gcp->hue_table[i + 1] = (alwan_f64)i;
-    }
-
-    /* Wrap-around entries (J, M only -- gamma_top_inv set by make_upper_hull_gamma) */
-    gcp->cusp_table[0] = gcp->cusp_table[360];
-    gcp->hue_table[0] = gcp->hue_table[360] - ALWAN_LITERAL(360.0);
-    gcp->cusp_table[361] = gcp->cusp_table[1];
-    gcp->hue_table[361] = gcp->hue_table[1] + ALWAN_LITERAL(360.0);
-
-    /* Compute upper hull gamma per hue via binary search (matches OCIO) */
-    make_upper_hull_gamma_f64(gcp, peak_luminance, gcp->mid_J, gcp->focus_dist, &limit_params);
+    /* Hue table, cusp table and upper hull gamma, as OCIO 2.5 builds them */
+    aces2_build_gamut_tables_f32(gcp, limit_primaries, peak_luminance);
 
 #ifdef ALWAN_GENDATA_DUMP_ACES2
     /* Regeneration hook for gendata/aces2_gamut_tables.py: dump each unique
      * (peak, primaries) config's freshly-built tables once, in the embed layout
-     * (362 cusp {J,M,gamma} then 360 reach). Never compiled into normal builds. */
+     * (362 cusp {J,M,gamma,hue} then 360 reach). Never compiled into normal builds. */
     alwan__gendata_dump_aces2_gamut(peak_luminance, limit_primaries, gcp);
 #endif
 
@@ -3526,15 +3835,18 @@ static void init_hue_dependent_params_f64(alwan_f64 h_deg,
     if (!(fh > -1.0e6f && fh < 1.0e6f)) fh = 0.0f;
     while (fh < 0.0f) fh += 360.0f;
     while (fh >= 360.0f) fh -= 360.0f;
-    int idx0 = (int)fh + 1;
-    int idx1 = (idx0 + 1 < ACES2_CUSP_TABLE_SIZE) ? idx0 + 1 : 1;
-    float ft = fh - (float)(idx0 - 1);
-    float fcJ = (float)gcp->cusp_table[idx0].J * (1.0f - ft)
-              + (float)gcp->cusp_table[idx1].J * ft;
-    float fcM = (float)gcp->cusp_table[idx0].M * (1.0f - ft)
-              + (float)gcp->cusp_table[idx1].M * ft;
-    float fgti = (float)gcp->cusp_table[idx0].gamma_top_inv * (1.0f - ft)
-               + (float)gcp->cusp_table[idx1].gamma_top_inv * ft;
+    /* The hue table is not uniform (OCIO 2.5): find the interval, then lerp as
+     * OCIO's lerpf, (b - a) t + a */
+    int idx1 = aces2_hue_interval_f64(fh, gcp->hue_table);
+    int idx0 = idx1 - 1;
+    float fh0 = (float)gcp->hue_table[idx0];
+    float ft = (fh - fh0) / ((float)gcp->hue_table[idx1] - fh0);
+    float fcJ = ((float)gcp->cusp_table[idx1].J - (float)gcp->cusp_table[idx0].J) * ft
+              + (float)gcp->cusp_table[idx0].J;
+    float fcM = ((float)gcp->cusp_table[idx1].M - (float)gcp->cusp_table[idx0].M) * ft
+              + (float)gcp->cusp_table[idx0].M;
+    float fgti = ((float)gcp->cusp_table[idx1].gamma_top_inv - (float)gcp->cusp_table[idx0].gamma_top_inv) * ft
+               + (float)gcp->cusp_table[idx0].gamma_top_inv;
 
     hdp->cusp_J = (alwan_f64)fcJ;
     hdp->cusp_M = (alwan_f64)fcM;
@@ -3554,8 +3866,8 @@ static void init_hue_dependent_params_f64(alwan_f64 h_deg,
     int ridx0 = (int)frh;
     int ridx1 = (ridx0 + 1) % ACES2_REACH_TABLE_SIZE;
     float frt = frh - (float)ridx0;
-    float f_reach = (float)gcp->reach_m_table[ridx0] * (1.0f - frt)
-                  + (float)gcp->reach_m_table[ridx1] * frt;
+    float f_reach = ((float)gcp->reach_m_table[ridx1] - (float)gcp->reach_m_table[ridx0]) * frt
+                  + (float)gcp->reach_m_table[ridx0];
     hdp->reach_m = (alwan_f64)f_reach;
 }
 
@@ -3569,13 +3881,13 @@ static void init_hue_dependent_params_f32(float h_deg,
     if (!(fh > -1.0e6f && fh < 1.0e6f)) fh = 0.0f;
     while (fh < 0.0f) fh += 360.0f;
     while (fh >= 360.0f) fh -= 360.0f;
-    int idx0 = (int)fh + 1;
-    int idx1 = (idx0 + 1 < ACES2_CUSP_TABLE_SIZE) ? idx0 + 1 : 1;
-    float ft  = fh - (float)(idx0 - 1);
-    float fcJ = gcp->cusp_table[idx0].J * (1.0f - ft) + gcp->cusp_table[idx1].J * ft;
-    float fcM = gcp->cusp_table[idx0].M * (1.0f - ft) + gcp->cusp_table[idx1].M * ft;
-    float fgti = gcp->cusp_table[idx0].gamma_top_inv * (1.0f - ft)
-               + gcp->cusp_table[idx1].gamma_top_inv * ft;
+    int idx1 = aces2_hue_interval_f32(fh, gcp->hue_table);
+    int idx0 = idx1 - 1;
+    float ft  = (fh - gcp->hue_table[idx0]) / (gcp->hue_table[idx1] - gcp->hue_table[idx0]);
+    float fcJ = (gcp->cusp_table[idx1].J - gcp->cusp_table[idx0].J) * ft + gcp->cusp_table[idx0].J;
+    float fcM = (gcp->cusp_table[idx1].M - gcp->cusp_table[idx0].M) * ft + gcp->cusp_table[idx0].M;
+    float fgti = (gcp->cusp_table[idx1].gamma_top_inv - gcp->cusp_table[idx0].gamma_top_inv) * ft
+               + gcp->cusp_table[idx0].gamma_top_inv;
 
     hdp->cusp_J          = fcJ;
     hdp->cusp_M          = fcM;
@@ -3591,8 +3903,8 @@ static void init_hue_dependent_params_f32(float h_deg,
     int ridx0 = (int)frh;
     int ridx1 = (ridx0 + 1) % ACES2_REACH_TABLE_SIZE;
     float frt = frh - (float)ridx0;
-    hdp->reach_m = gcp->reach_m_table[ridx0] * (1.0f - frt)
-                 + gcp->reach_m_table[ridx1] * frt;
+    hdp->reach_m = (gcp->reach_m_table[ridx1] - gcp->reach_m_table[ridx0]) * frt
+                 + gcp->reach_m_table[ridx0];
 }
 
 /* ----------------------------------------------------------------
@@ -3624,17 +3936,6 @@ static void compress_gamut_inv_f64(alwan_f64 J, alwan_f64 M, alwan_f64 h,
  * Reference: OCIO Transform.cpp gamut_compress_fwd
  * ---------------------------------------------------------------- */
 
-/* Check if primaries are approximately equal to AP1 */
-static int primaries_are_ap1(alwan_aces_primaries_f64 const *p) {
-    static alwan_f64 const tol = ALWAN_LITERAL(0.001);
-    return ALWAN_ABS(p->red_x - AP1_RED_x) < tol &&
-           ALWAN_ABS(p->red_y - AP1_RED_y) < tol &&
-           ALWAN_ABS(p->green_x - AP1_GREEN_x) < tol &&
-           ALWAN_ABS(p->green_y - AP1_GREEN_y) < tol &&
-           ALWAN_ABS(p->blue_x - AP1_BLUE_x) < tol &&
-           ALWAN_ABS(p->blue_y - AP1_BLUE_y) < tol;
-}
-
 void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
                                  alwan_vec3_f64 const *jmh_in,
                                  alwan_f64 peak_luminance,
@@ -3656,15 +3957,8 @@ void alwan_aces_gamut_compress20_f64(alwan_vec3_f64 *jmh_out,
         return;
     }
 
-    /* When limit primaries equal reach primaries (AP1), no compression needed.
-     * This matches OCIO behavior: colors within AP1 gamut pass through unchanged.
-     */
-    if (primaries_are_ap1(limit_primaries)) {
-        jmh_out->v[0] = J;
-        jmh_out->v[1] = M;
-        jmh_out->v[2] = h;
-        return;
-    }
+    /* AP1 limits are not a pass-through: OCIO compresses to AP1's cube at peak like to
+     * any limit, the reach being AP1 at limit J max. */
 
     /* Initialize JMh parameters for reach gamut (AP1) */
     alwan_aces_primaries_f64 reach_primaries;
@@ -3737,14 +4031,6 @@ void alwan_aces_gamut_compress20_inv_f64(alwan_vec3_f64 *jmh_out,
     if (J <= ALWAN_LITERAL(0.0)) {
         jmh_out->v[0] = ALWAN_LITERAL(0.0);
         jmh_out->v[1] = ALWAN_LITERAL(0.0);
-        jmh_out->v[2] = h;
-        return;
-    }
-
-    /* When limit primaries equal reach primaries (AP1), identity */
-    if (primaries_are_ap1(limit_primaries)) {
-        jmh_out->v[0] = J;
-        jmh_out->v[1] = M;
         jmh_out->v[2] = h;
         return;
     }
@@ -4207,7 +4493,6 @@ typedef struct {
     alwan_f64 xyz_e_inverse[9];          /* DCDM: the scaled XYZ back to the limit RGB */
     aces2_JMhParams_f64 decode_params;   /* RGB -> JMh: the limit primaries */
     aces2_JMhParams_f64 ap1_params;      /* JMh -> AP1 RGB, the tonescale and the reach gamut */
-    int gamut_identity;                  /* the gamut-compression primaries are AP1 */
     alwan_f64 limit_J_max;
     aces2_GamutCompressParams_f64 gcp;
     aces2_TSParams_f64 ts;
@@ -4228,10 +4513,8 @@ static alwan_status aces2_inv_init_f64(aces2_inv_state_f64 *st, alwan_aces2_outp
     init_JMhParams_f64(&ap1, &st->ap1_params);
     init_JMhParams_f64(&st->config.primaries, &st->decode_params);
     gamut_primaries = st->config.primaries;
-    st->gamut_identity = primaries_are_ap1(&gamut_primaries);
     st->limit_J_max = Y_to_J_f64(st->config.peak_luminance, &st->ap1_params);
-    if (!st->gamut_identity)
-        init_GamutCompressParams_f64(st->config.peak_luminance, &gamut_primaries, &st->ap1_params, &st->gcp);
+    init_GamutCompressParams_f64(st->config.peak_luminance, &gamut_primaries, &st->ap1_params, &st->gcp);
     init_TSParams_f64(st->config.peak_luminance, &st->ts);
     init_ChromaCompressParams_f64(st->config.peak_luminance, &st->ap1_params, &st->chroma);
     return ALWAN_OK;
@@ -4296,9 +4579,6 @@ static alwan_status aces2_inv_apply_f64(aces2_inv_state_f64 const *st, alwan_f64
     if (J <= ALWAN_LITERAL(0.0)) {
         J_exp = ALWAN_LITERAL(0.0);
         M_exp = ALWAN_LITERAL(0.0);
-    } else if (st->gamut_identity) {
-        J_exp = J;
-        M_exp = M;
     } else if (M <= ALWAN_LITERAL(0.0) || J > st->limit_J_max) {
         J_exp = J;
         M_exp = ALWAN_LITERAL(0.0);

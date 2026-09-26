@@ -16,7 +16,7 @@
  *   init_ChromaCompressParams_f32 / init_ChromaCompressParams_f64
  *   init_GamutCompressParams_f32  / init_GamutCompressParams_f64
  *   init_hue_dependent_params_f32 / init_hue_dependent_params_f64
- *   get_output_config, primaries_are_ap1  (precision-independent)
+ *   get_output_config  (precision-independent)
  */
 
 /* ----------------------------------------------------------------
@@ -114,14 +114,12 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
     ALWAN_CORE_FNLIT(init_ChromaCompressParams)(
         (ALWAN_CORE_T)config.peak_luminance, jmh_params, &chroma_params);
 
-    int skip_gamut = primaries_are_ap1(&config.primaries);
     ALWAN_CORE_FNLIT(aces2_GamutCompressParams) gcp;
-    ALWAN_CORE_T limit_J_max = ALWAN_CORE_LITERAL(0.0);
-    if (!skip_gamut) { ALWAN_CORE_FNLIT(init_GamutCompressParams)(
-            (ALWAN_CORE_T)config.peak_luminance, &limit_prim, jmh_params, &gcp);
-        limit_J_max = ALWAN_CORE_FNVLIT(aces2_y_to_j)(
-            (ALWAN_CORE_T)config.peak_luminance, jmh_params);
-    }
+    ALWAN_CORE_T limit_J_max;
+    ALWAN_CORE_FNLIT(init_GamutCompressParams)(
+        (ALWAN_CORE_T)config.peak_luminance, &limit_prim, jmh_params, &gcp);
+    limit_J_max = ALWAN_CORE_FNVLIT(aces2_y_to_j)(
+        (ALWAN_CORE_T)config.peak_luminance, jmh_params);
 
     ALWAN_CORE_T xyz_e_m[9];
     for (int k = 0; k < 9; k++) xyz_e_m[k] = (ALWAN_CORE_T)config.xyz_e_matrix[k];
@@ -176,9 +174,9 @@ static int ALWAN_CORE_FNLIT(aces2_ot_map_impl)(
         ALWAN_CORE_T M_cc = ALWAN_CORE_FNLIT(chroma_compress_fwd_impl)(
             jmh.v[0], jmh.v[1], jmh.v[2], J_ts, &chroma_params);
 
-        /* Gamut compress (skipped when limit primaries == AP1) */
+        /* Gamut compress */
         ALWAN_CORE_T J_gc = J_ts, M_gc = M_cc;
-        if (!skip_gamut && J_gc > ALWAN_CORE_LITERAL(0.0) && M_gc > ALWAN_CORE_LITERAL(0.0)) {
+        if (J_gc > ALWAN_CORE_LITERAL(0.0) && M_gc > ALWAN_CORE_LITERAL(0.0)) {
             if (J_gc > limit_J_max) {
                 /* Above the limit: drop colourfulness but KEEP J (matches the
                  * scalar gamut_compress20 / OCIO; the old code clamped J). */

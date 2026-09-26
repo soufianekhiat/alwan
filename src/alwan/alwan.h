@@ -10555,8 +10555,13 @@ void alwan_aces_jmh_to_rgb20_f64(alwan_rgb_f64 *rgb_out,
  *
  * jmh_in:        Input JMh values (J=lightness, M=colorfulness, h=hue in degrees)
  * peak_luminance: Peak display luminance in nits (1-10000)
- * limit_primaries: Display gamut primaries (use AP1 for wide gamut)
+ * limit_primaries: Display gamut primaries. AP1 is compressed too (to AP1's cube
+ *                 at peak), as OCIO does; it is not a pass-through.
  * jmh_out:       Output compressed JMh values
+ *
+ * Matches OCIO 2.5's FIXED_FUNCTION_ACES_GAMUT_COMPRESS_20 (suite 54: median 2.5e-8,
+ * worst 2.2e-5 relative; the inverse worst 2.5e-4). The tables are built once per
+ * (peak, limit primaries) as OCIO builds them, and embedded for the output presets.
  *
  * Note: For RGB-to-RGB gamut compression, chain with rgb_to_jmh20/jmh_to_rgb20.
  */
