@@ -16,7 +16,7 @@ static void ALWAN_CORE_FN(get_surround_params)(alwan_ciecam02_surround surround,
         case ALWAN_CIECAM02_SURROUND_AVERAGE:
             *F = ALWAN_CORE_LITERAL(1.0); *c = ALWAN_CORE_LITERAL(0.69); *Nc = ALWAN_CORE_LITERAL(1.0); break;
         case ALWAN_CIECAM02_SURROUND_DIM:
-            *F = ALWAN_CORE_LITERAL(0.9); *c = ALWAN_CORE_LITERAL(0.59); *Nc = ALWAN_CORE_LITERAL(0.95); break;
+            *F = ALWAN_CORE_LITERAL(0.9); *c = ALWAN_CORE_LITERAL(0.59); *Nc = ALWAN_CORE_LITERAL(0.9); break;
         case ALWAN_CIECAM02_SURROUND_DARK:
             *F = ALWAN_CORE_LITERAL(0.8); *c = ALWAN_CORE_LITERAL(0.525); *Nc = ALWAN_CORE_LITERAL(0.8); break;
         default:
@@ -30,7 +30,7 @@ static void ALWAN_CORE_FN(get_cam16_surround_params)(alwan_cam16_surround surrou
         case ALWAN_CAM16_SURROUND_AVERAGE:
             *F = ALWAN_CORE_LITERAL(1.0); *c = ALWAN_CORE_LITERAL(0.69); *Nc = ALWAN_CORE_LITERAL(1.0); break;
         case ALWAN_CAM16_SURROUND_DIM:
-            *F = ALWAN_CORE_LITERAL(0.9); *c = ALWAN_CORE_LITERAL(0.59); *Nc = ALWAN_CORE_LITERAL(0.95); break;
+            *F = ALWAN_CORE_LITERAL(0.9); *c = ALWAN_CORE_LITERAL(0.59); *Nc = ALWAN_CORE_LITERAL(0.9); break;
         case ALWAN_CAM16_SURROUND_DARK:
             *F = ALWAN_CORE_LITERAL(0.8); *c = ALWAN_CORE_LITERAL(0.525); *Nc = ALWAN_CORE_LITERAL(0.8); break;
         default:

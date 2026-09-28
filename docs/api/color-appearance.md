@@ -23,7 +23,7 @@ Color appearance models (CAMs) predict how colors appear under varying viewing c
 - **RLAB** -- Fairchild cross-media model (forward + inverse)
 - **Hellwig & Fairchild 2022** -- HK-effect CAM (forward + inverse)
 - **Kim 2009** -- forward + inverse
-- **Hunt** -- forward only (inverse not implemented)
+- **Hunt** -- forward + inverse (closed form)
 - **LLAB**, **ATD95 (Guth)**, **Nayatani 1995** -- forward only
 - **CAM18sl** -- self-luminous stimuli (forward + inverse)
 - **CAM20u** -- unrelated colors (forward + inverse)
@@ -47,9 +47,9 @@ Each model has its own precision-specific struct. Fields shown here use the CIEC
 ```c
 /* Surround enum (model-specific: alwan_ciecam02_surround, alwan_cam16_surround, ...) */
 typedef enum {
-    ALWAN_CIECAM02_SURROUND_AVERAGE = 0,  /* Average surround (outdoor/office) */
-    ALWAN_CIECAM02_SURROUND_DIM     = 1,  /* Dim surround (cinema) */
-    ALWAN_CIECAM02_SURROUND_DARK    = 2   /* Dark surround (home theater) */
+    ALWAN_CIECAM02_SURROUND_AVERAGE = 0,  /* F 1.0, c 0.69,  Nc 1.0 */
+    ALWAN_CIECAM02_SURROUND_DIM     = 1,  /* F 0.9, c 0.59,  Nc 0.9 */
+    ALWAN_CIECAM02_SURROUND_DARK    = 2   /* F 0.8, c 0.525, Nc 0.8 */
 } alwan_ciecam02_surround;
 /* CAM16 uses ALWAN_CAM16_SURROUND_*, ZCAM uses ALWAN_ZCAM_SURROUND_*, etc. */
 
@@ -405,16 +405,14 @@ alwan_status alwan_<model>_inverse_{T}(alwan_xyz_{T} *xyz_out,
 | Model | Prefix | Inverse | Agrees with colour-science to |
 |---|---|---|---|
 | RLAB (Fairchild 1996) | `alwan_rlab_` | Yes | 2.8e-08 |
-| Hunt (1991, 1995) | `alwan_hunt_` | No | 4.6e-08 |
+| Hunt (1991, 1995) | `alwan_hunt_` | Yes | 4.2e-14, fourteen viewing conditions |
 | Hellwig and Fairchild 2022 | `alwan_hellwig2022_` | Yes | -- |
 | Kim, Weyrich and Kautz 2009 | `alwan_kim2009_` | Yes | 4e-11 |
 | LLAB (Luo, Lo, Kuo 1996) | `alwan_llab_` | No | -- |
 | ATD95 (Guth 1995) | `alwan_atd95_` | No | 4.3e-10 |
 | Nayatani 1995 | `alwan_nayatani95_` | No | validated |
 
-Hunt has no inverse because inverting it is disproportionately complex, not
-because the forward is approximate. LLAB, ATD95 and Nayatani95 are forward-only
-as published.
+LLAB, ATD95 and Nayatani95 are forward-only as published.
 
 > **Zero-initialise the viewing conditions.** Several of these structs use `0` as
 > a "derive this for me" sentinel, so `alwan_hunt_viewing_conditions_f64 vc = {0};`
@@ -457,6 +455,14 @@ non-positive value**:
 | `N_cb`, `N_bb` | derive `0.725 * (Y_w / Y_b)^0.2` |
 
 `helson_judd_effect` is off by default, matching Hunt's own default.
+
+The surround is one of three rows of Hunt's table: `NORMAL` is normal scenes (N_c 1.0,
+N_b 75), `DIM` television and CRT displays in dim surrounds (1.0, 25), `DARK` projected
+transparencies in dark surrounds (0.7, 10). A proximal field only acts through `p`: the
+reference white is scaled by Hunt's
+`sqrt((1 - p) p_rho + (1 + p) / p_rho) / sqrt((1 + p) p_rho + (1 - p) / p_rho)`, with
+`p_rho` the proximal field's cone response over the background's, so a proximal field
+equal to the background leaves the white alone whatever `p` is.
 
 ### Hellwig2022
 

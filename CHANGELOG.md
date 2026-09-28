@@ -2,6 +2,37 @@
 
 ### Fixed: output differs
 
+- **The dim surround of CIECAM02, CAM16, CIECAM16 and Kim 2009 used Nc 0.95.** CIE
+  159:2004, Li et al. 2017 and CIE 248:2022 tabulate dim as F 0.9, c 0.59, Nc 0.9 (Nc
+  equals F in every row), and colour-science agrees. alwan's dim forward sat up to 4.9e-2
+  (relative) from colour's and the inverse up to 0.15; Kim 2009, which takes the CIECAM02
+  table and picks dim for 0.01 <= Y_b / Y_w < 0.18, carried the same 0.95. Average and
+  dark were right. All four now match colour under all three surrounds, with and without
+  discounting: CIECAM02 1.1e-11 forward and 3.9e-15 inverse, CAM16 and CIECAM16 3.4e-14
+  and 3.7e-15, Kim 2009 3.1e-13 (suites 13, 14, 145, 46). The suites had only checked
+  that dim's J differs from average's.
+
+- **Hunt's dark surround was the light-box row.** `ALWAN_HUNT_SURROUND_DARK` gave N_c 0.7,
+  N_b 25, which is Hunt's "large transparencies on light boxes". His "projected
+  transparencies, dark surrounds" row is N_c 0.7, N_b 10, and dark now uses it. Outputs
+  under the dark surround move by up to 0.27 (relative).
+
+- **Hunt's proximal-field term p was not Hunt's formula.** With p set, the reference white
+  was adjusted by the proximal field's chromaticity, 3 rho_P / sum(rho_P), with no
+  background and no square root. Hunt's form (Fairchild, Color Appearance Models, the Hunt
+  chapter; colour's `adjusted_reference_white_signals`) is rho_W' = rho_W
+  sqrt((1 - p) p_rho + (1 + p) / p_rho) / sqrt((1 + p) p_rho + (1 - p) / p_rho) with
+  p_rho = rho_P / rho_B, the proximal field's cone response over the background's. Any
+  condition with p moved by up to 4.9 (relative); the forward and the inverse share the
+  term, so the round trip was never going to show it. colour 0.4.7 has its own defect
+  here: its `chromatic_adaptation` passes the cone bleach factors where the function
+  documents the background, so the reference (gendata/tests/cam_surround_reference.py)
+  runs colour's source with that call site corrected, and with three more edits that
+  let colour run induction factors given, scotopic responses given, and a coloured
+  background standing in for the proximal field. Hunt now matches that reference to
+  4.2e-14 under fourteen conditions (suite 29), where only the default was compared
+  before.
+
 - **ACES 2.0 gamut compression built its cusp table its own way.** alwan searched
   every integer hue for the largest in-gamut M and looked hues up uniformly. OCIO 2.5
   (`make_uniform_hue_gamut_table`) places a sample exactly on every corner hue of

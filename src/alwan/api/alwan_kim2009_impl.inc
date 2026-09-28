@@ -30,7 +30,7 @@ static void ALWAN_CORE_FNLIT(kim2009_get_induction_factors)(
         /* Dim surround */
         *F = ALWAN_CORE_LITERAL(0.9);
         *c = ALWAN_CORE_LITERAL(0.59);
-        *Nc = ALWAN_CORE_LITERAL(0.95);
+        *Nc = ALWAN_CORE_LITERAL(0.9);
     } else {
         /* Dark surround */
         *F = ALWAN_CORE_LITERAL(0.8);

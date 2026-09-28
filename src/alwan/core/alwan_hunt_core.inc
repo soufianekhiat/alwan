@@ -102,7 +102,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(hunt_surround_Nc)(alwan_hunt_surroun
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(hunt_surround_Nb)(alwan_hunt_surround s) {
     switch (s) {
         case ALWAN_HUNT_SURROUND_DIM:  return ALWAN_CORE_LITERAL(25.0);
-        case ALWAN_HUNT_SURROUND_DARK: return ALWAN_CORE_LITERAL(25.0);
+        case ALWAN_HUNT_SURROUND_DARK: return ALWAN_CORE_LITERAL(10.0);
         case ALWAN_HUNT_SURROUND_NORMAL:
         default:                       return ALWAN_CORE_LITERAL(75.0);
     }
@@ -150,7 +150,7 @@ typedef struct {
 
 ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hunt_v_adapt) ALWAN_CORE_FNVLIT(hunt_adapt_params)(
     ALWAN_CORE_VEC3 rgb_w, ALWAN_CORE_T Y_w, ALWAN_CORE_T Y_b, ALWAN_CORE_T La, ALWAN_CORE_T FL,
-    ALWAN_CORE_VEC3 rgb_p, ALWAN_CORE_T p, int helson_judd, int discount) {
+    ALWAN_CORE_VEC3 rgb_p, ALWAN_CORE_VEC3 rgb_b, ALWAN_CORE_T p, int helson_judd, int discount) {
 
     ALWAN_CORE_FNLIT(alwan_hunt_v_adapt) ap;
     const ALWAN_CORE_T rgb_w_sum = rgb_w.v[0] + rgb_w.v[1] + rgb_w.v[2];
@@ -187,14 +187,19 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hunt_v_adapt) ALWAN_CORE_FNVLIT(hunt_adapt_p
         ap.w[i] = rgb_w.v[i];
     }
 
-    /* Proximal field adjustment of the reference white, when p is given. */
+    /* Proximal field adjustment of the reference white, when p is given. Hunt's form,
+     * as Fairchild (Color Appearance Models, the Hunt chapter) gives it and as colour's
+     * adjusted_reference_white_signals documents it: p_rho = rho_P / rho_B, the proximal
+     * field's cone response over the background's, under a square root. Until 2026-09-28
+     * this used the proximal field's chromaticity, 3 rho_P / sum(rho_P), with no square
+     * root and no background. colour's own caller passes the cone bleach factors where
+     * the function documents the background; see gendata/tests/cam_surround_reference.py. */
     if (p != ALWAN_CORE_LITERAL(0.0)) {
-        const ALWAN_CORE_T p_rgb_sum = rgb_p.v[0] + rgb_p.v[1] + rgb_p.v[2];
-        const ALWAN_CORE_T p_sum_safe = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(p_rgb_sum) > ALWAN_CORE_LITERAL(1e-12), p_rgb_sum, ALWAN_CORE_ONE);
         for (i = 0; i < 3; i++) {
-            const ALWAN_CORE_T p_rgb = ALWAN_CORE_LITERAL(3.0) * rgb_p.v[i] / p_sum_safe;
-            ap.w[i] = rgb_w.v[i] * ((ALWAN_CORE_LITERAL(1.0) - p) * p_rgb + (ALWAN_CORE_LITERAL(1.0) + p) / p_rgb) /
-                   ((ALWAN_CORE_LITERAL(1.0) + p) * p_rgb + (ALWAN_CORE_LITERAL(1.0) - p) / p_rgb);
+            const ALWAN_CORE_T b_safe = ALWAN_CORE_SELECT(ALWAN_CORE_ABS(rgb_b.v[i]) > ALWAN_CORE_LITERAL(1e-12), rgb_b.v[i], ALWAN_CORE_ONE);
+            const ALWAN_CORE_T p_rgb = rgb_p.v[i] / b_safe;
+            ap.w[i] = rgb_w.v[i] * ALWAN_CORE_SQRT((ALWAN_CORE_LITERAL(1.0) - p) * p_rgb + (ALWAN_CORE_LITERAL(1.0) + p) / p_rgb) /
+                   ALWAN_CORE_SQRT((ALWAN_CORE_LITERAL(1.0) + p) * p_rgb + (ALWAN_CORE_LITERAL(1.0) - p) / p_rgb);
         }
     }
     return ap;
@@ -230,9 +235,9 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(hunt_adapt_undo)(
 /* Chromatic adaptation, shared by the stimulus and the reference white. */
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(hunt_adapt)(
     ALWAN_CORE_VEC3 rgb, ALWAN_CORE_VEC3 rgb_w, ALWAN_CORE_T Y_w, ALWAN_CORE_T Y_b, ALWAN_CORE_T La, ALWAN_CORE_T FL,
-    ALWAN_CORE_VEC3 rgb_p, ALWAN_CORE_T p, int helson_judd, int discount) {
+    ALWAN_CORE_VEC3 rgb_p, ALWAN_CORE_VEC3 rgb_b, ALWAN_CORE_T p, int helson_judd, int discount) {
     return ALWAN_CORE_FNVLIT(hunt_adapt_apply)(rgb,
-        ALWAN_CORE_FNVLIT(hunt_adapt_params)(rgb_w, Y_w, Y_b, La, FL, rgb_p, p, helson_judd, discount), FL);
+        ALWAN_CORE_FNVLIT(hunt_adapt_params)(rgb_w, Y_w, Y_b, La, FL, rgb_p, rgb_b, p, helson_judd, discount), FL);
 }
 
 /* ----------------------------------------------------------------
@@ -329,8 +334,9 @@ ALWAN_INLINE ALWAN_CORE_XYZ ALWAN_CORE_FNVLIT(alwan_hunt_inverse)(
     {
     const ALWAN_CORE_VEC3 rgb_w = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(HUNT_V_M_HPE), xyz_w_v);
     const ALWAN_CORE_VEC3 rgb_p = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(HUNT_V_M_HPE), xyz_p_v);
+    const ALWAN_CORE_VEC3 rgb_b = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(HUNT_V_M_HPE), xyz_b_v);
     const ALWAN_CORE_FNLIT(alwan_hunt_v_adapt) ap = ALWAN_CORE_FNVLIT(hunt_adapt_params)(
-        rgb_w, Y_w, Y_b, La, FL, rgb_p, vc.p, vc.helson_judd_effect, vc.discount_illuminant);
+        rgb_w, Y_w, Y_b, La, FL, rgb_p, rgb_b, vc.p, vc.helson_judd_effect, vc.discount_illuminant);
     const ALWAN_CORE_VEC3 rgb_aw = ALWAN_CORE_FNVLIT(hunt_adapt_apply)(rgb_w, ap, FL);
 
     const ALWAN_CORE_T A_aw = ALWAN_CORE_LITERAL(2.0) * rgb_aw.v[0] + rgb_aw.v[1] + rgb_aw.v[2] / ALWAN_CORE_LITERAL(20.0) - ALWAN_CORE_LITERAL(3.05) + ALWAN_CORE_ONE;
@@ -492,11 +498,12 @@ ALWAN_INLINE ALWAN_CORE_FNLIT(alwan_hunt_v_correlates) ALWAN_CORE_FNVLIT(alwan_h
     const ALWAN_CORE_VEC3 rgb   = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(HUNT_V_M_HPE), xyz_v);
     const ALWAN_CORE_VEC3 rgb_w = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(HUNT_V_M_HPE), xyz_w_v);
     const ALWAN_CORE_VEC3 rgb_p = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(HUNT_V_M_HPE), xyz_p_v);
+    const ALWAN_CORE_VEC3 rgb_b = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(ALWAN_CORE_FNLIT(HUNT_V_M_HPE), xyz_b_v);
 
     {
-    const ALWAN_CORE_VEC3 rgb_a  = ALWAN_CORE_FNVLIT(hunt_adapt)(rgb,   rgb_w, Y_w, Y_b, La, FL, rgb_p, vc.p,
+    const ALWAN_CORE_VEC3 rgb_a  = ALWAN_CORE_FNVLIT(hunt_adapt)(rgb,   rgb_w, Y_w, Y_b, La, FL, rgb_p, rgb_b, vc.p,
                                           vc.helson_judd_effect, vc.discount_illuminant);
-    const ALWAN_CORE_VEC3 rgb_aw = ALWAN_CORE_FNVLIT(hunt_adapt)(rgb_w, rgb_w, Y_w, Y_b, La, FL, rgb_p, vc.p,
+    const ALWAN_CORE_VEC3 rgb_aw = ALWAN_CORE_FNVLIT(hunt_adapt)(rgb_w, rgb_w, Y_w, Y_b, La, FL, rgb_p, rgb_b, vc.p,
                                           vc.helson_judd_effect, vc.discount_illuminant);
 
     /* Achromatic post-adaptation signals. */
