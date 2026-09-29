@@ -26,6 +26,22 @@ static ALWAN_CORE_RGB ALWAN_CORE_FN(aces1_mat3)(ALWAN_CORE_T const *m, ALWAN_COR
     return o;
 }
 
+/* aces-dev ACESlib.ODT_Common.ctl roll_white_fwd, as aces1_roll_white_fwd in the f64 path */
+static ALWAN_CORE_T ALWAN_CORE_FN(aces1_roll_white_fwd)(ALWAN_CORE_T in, ALWAN_CORE_T new_wht, ALWAN_CORE_T width) {
+    ALWAN_CORE_T const x0 = ALWAN_CORE_LITERAL(-1.0);
+    ALWAN_CORE_T const x1 = x0 + width;
+    ALWAN_CORE_T const y0 = -new_wht;
+    ALWAN_CORE_T const y1 = x1;
+    ALWAN_CORE_T const m1 = x1 - x0;
+    ALWAN_CORE_T const a = y0 - y1 + m1;
+    ALWAN_CORE_T const b = ALWAN_CORE_LITERAL(2.0) * (y1 - y0) - m1;
+    ALWAN_CORE_T const c = y0;
+    ALWAN_CORE_T const tt = (-in - x0) / (x1 - x0);
+    if (tt < ALWAN_CORE_LITERAL(0.0)) return -(tt * b + c);
+    if (tt > ALWAN_CORE_LITERAL(1.0)) return in;
+    return -((tt * a + b) * tt + c);
+}
+
 static ALWAN_CORE_T ALWAN_CORE_FN(aces1_hermite_quad)(ALWAN_CORE_T x,
         ALWAN_CORE_T const *px, ALWAN_CORE_T const *py, ALWAN_CORE_T const *ps, int n) {
     if (x <= px[0])
@@ -315,6 +331,18 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
         }
     }
 
+    /* D60 simulation on the linear code value, as the f64 path */
+    if (output == ALWAN_ACES1_OUT_SRGB_D60_100NIT) {
+        rrt.r = ALWAN_CORE_MIN(rrt.r, ALWAN_CORE_LITERAL(1.0)) * ALWAN_CORE_LITERAL(0.955);
+        rrt.g = ALWAN_CORE_MIN(rrt.g, ALWAN_CORE_LITERAL(1.0)) * ALWAN_CORE_LITERAL(0.955);
+        rrt.b = ALWAN_CORE_MIN(rrt.b, ALWAN_CORE_LITERAL(1.0)) * ALWAN_CORE_LITERAL(0.955);
+    } else if (output == ALWAN_ACES1_OUT_P3DCI_48NIT) {
+        ALWAN_CORE_T const new_wht = ALWAN_CORE_LITERAL(0.918), width = ALWAN_CORE_LITERAL(0.5), sc = ALWAN_CORE_LITERAL(0.96);
+        rrt.r = ALWAN_CORE_MIN(ALWAN_CORE_FN(aces1_roll_white_fwd)(rrt.r, new_wht, width), new_wht) * sc;
+        rrt.g = ALWAN_CORE_MIN(ALWAN_CORE_FN(aces1_roll_white_fwd)(rrt.g, new_wht, width), new_wht) * sc;
+        rrt.b = ALWAN_CORE_MIN(ALWAN_CORE_FN(aces1_roll_white_fwd)(rrt.b, new_wht, width), new_wht) * sc;
+    }
+
     /* dimSurround + ODT desat (100-nit video only) */
     {
         int is_cinema = (output == ALWAN_ACES1_OUT_P3DCI_48NIT || output == ALWAN_ACES1_OUT_P3D60_48NIT ||
@@ -344,7 +372,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
         lim.b = ALWAN_CORE_MIN(ALWAN_CORE_MAX(lim.b, ALWAN_CORE_LITERAL(0.0)), ALWAN_CORE_LITERAL(1.0));
         xyz = ALWAN_CORE_FN(aces1_mat3)(ALWAN_CORE_FNLIT(ACES1_REC2020_TO_XYZ), lim);
     }
-    int needs_d65 = (output != ALWAN_ACES1_OUT_SRGB_D60_100NIT && output != ALWAN_ACES1_OUT_P3D60_48NIT);
+    int needs_d65 = (output != ALWAN_ACES1_OUT_SRGB_D60_100NIT && output != ALWAN_ACES1_OUT_P3D60_48NIT &&
+                     output != ALWAN_ACES1_OUT_P3DCI_48NIT && output != ALWAN_ACES1_OUT_DCDM_48NIT);
     d65 = needs_d65 ? ALWAN_CORE_FN(aces1_mat3)(ALWAN_CORE_FNLIT(ACES1_D60_TO_D65), xyz) : xyz;
 
     ALWAN_CORE_T const *xyz_to_display = NULL;
@@ -354,8 +383,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_aces1_output_transform)(ALWAN_CORE_RGB *rgb_
         case ALWAN_ACES1_OUT_REC709_100NIT:      xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC709); break;
         case ALWAN_ACES1_OUT_SRGB_100NIT:
         case ALWAN_ACES1_OUT_SRGB_D60_100NIT:    xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC709); use_srgb = 1; break;
-        case ALWAN_ACES1_OUT_P3DCI_48NIT:
-        case ALWAN_ACES1_OUT_P3D60_48NIT:
+        case ALWAN_ACES1_OUT_P3DCI_48NIT:        xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_P3DCI); use_gamma26 = 1; break;
+        case ALWAN_ACES1_OUT_P3D60_48NIT:        xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_P3D60); use_gamma26 = 1; break;
         case ALWAN_ACES1_OUT_P3D65_48NIT:        xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_P3D65); use_gamma26 = 1; break;
         case ALWAN_ACES1_OUT_P3D65_100NIT:       xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_P3D65); use_srgb = 1; break;
         case ALWAN_ACES1_OUT_REC2020_100NIT:     xyz_to_display = ALWAN_CORE_FNLIT(ACES1_XYZ_TO_REC2020); break;

@@ -10428,10 +10428,13 @@ typedef enum {
     /* SDR Displays */
     ALWAN_ACES1_OUT_REC709_100NIT = 0, /* Rec.709, 100 nits, BT.1886 */
     ALWAN_ACES1_OUT_SRGB_100NIT = 1, /* sRGB, 100 nits, sRGB EOTF */
-    ALWAN_ACES1_OUT_SRGB_D60_100NIT = 2, /* sRGB (D60 sim), 100 nits */
+    ALWAN_ACES1_OUT_SRGB_D60_100NIT = 2, /* sRGB (D60 sim), 100 nits: ODT.Academy.sRGB_D60sim_100nits_dim,
+                                          * the ACES white unadapted, clipped at 1 and scaled by 0.955 */
 
     /* P3 Displays */
-    ALWAN_ACES1_OUT_P3DCI_48NIT = 3, /* P3-DCI, 48 nits, Gamma 2.6 */
+    ALWAN_ACES1_OUT_P3DCI_48NIT = 3, /* P3-DCI, 48 nits, Gamma 2.6: ODT.Academy.P3DCI_D60sim_48nits (1.0.3's
+                                      * P3DCI_48nits), the ACES white on a DCI-white projector, white
+                                      * rolled off to 0.918 and scaled by 0.96 */
     ALWAN_ACES1_OUT_P3D60_48NIT = 4, /* P3-D60, 48 nits, Gamma 2.6 */
     ALWAN_ACES1_OUT_P3D65_48NIT = 5, /* P3-D65, 48 nits, Gamma 2.6 */
     ALWAN_ACES1_OUT_P3D65_100NIT = 6, /* P3-D65 (Display P3), 100 nits */
@@ -10445,7 +10448,8 @@ typedef enum {
     ALWAN_ACES1_OUT_REC2020_4000NIT_PQ = 10, /* Rec.2020, 4000 nits, PQ */
 
     /* Cinema */
-    ALWAN_ACES1_OUT_DCDM_48NIT = 11, /* DCDM X'Y'Z', 48 nits, Gamma 2.6 */
+    ALWAN_ACES1_OUT_DCDM_48NIT = 11, /* DCDM X'Y'Z', 48 nits, Gamma 2.6: ODT.Academy.DCDM, XYZ of the ACES
+                                      * white, unadapted */
 
     /* ACES 1.0.3 ODT.Academy.Rec2020_ST2084_*nits: the earlier HDR ODTs, C5 + C9 splines with
      * 0.18 at 10 cd/m2. Kept under their own names; the values above are the current transforms. */
@@ -10698,6 +10702,9 @@ alwan_status alwan_aces2_output_transform_custom_f64(alwan_rgb_f64 *rgb_out,
  * transform: tonescale + chroma compression + gamut compression, decoded in
  * the LIMIT primaries -- WITHOUT the [0,peak] clamp + display encode (eotf).
  * Out-of-gamut / over-range residuals are preserved (values can exceed [0,1]).
+ * The INPUT is clamped as the Academy's outputTransform_fwd clamps it, each AP1 channel to
+ * [0, 8 r_hit] (1024 at 100 nits, 4096 at 1000; NaN reads as 0), as OCIO and the map forms
+ * do; this path did not until 2026-09-29.
  * alwan_aces2_output_transform_custom == this + clamp + display encode (eotf), exactly. */
 alwan_status alwan_aces2_output_transform_custom_display_linear_f32(alwan_rgb_f32 *rgb_out,
                                              alwan_rgb_f32 const *rgb_in,

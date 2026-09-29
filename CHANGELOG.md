@@ -2,6 +2,31 @@
 
 ### Fixed: output differs
 
+- **Four ACES 1.x presets did not follow their ODTs.** None of them had a reference to
+  compare against. `ALWAN_ACES1_OUT_SRGB_D60_100NIT` skipped the D60 simulation's clip at 1
+  and scale by 0.955. `ALWAN_ACES1_OUT_P3DCI_48NIT` rendered in P3-D65 through a D60 to D65
+  adaptation where `ODT.Academy.P3DCI_D60sim_48nits` (1.0.3's `P3DCI_48nits`) keeps the ACES
+  white on a DCI-white projector, rolls the code value off towards 0.918, clips there and
+  scales by 0.96, in the DCI-P3 primaries with the DCI white. `ALWAN_ACES1_OUT_P3D60_48NIT`
+  used the P3-D65 matrix where the ODT has the DCI-P3 primaries with the ACES white.
+  `ALWAN_ACES1_OUT_DCDM_48NIT` adapted to D65 where `ODT.Academy.DCDM` encodes the ACES
+  white's XYZ unadapted. Against OCIO 2.5's views they were 20, 93, 31 and 31 codes of 1023
+  out at worst; now 0.01, 0.01, 0.06 and 0.01 (DCDM against OCIO's cinema RRT and ODT with
+  the CTL's DCDM tail), and the inverses undo the new steps (the reverse roll-off, the
+  scale) and match OCIO's inverse views on greys within its spline fit (suite 56).
+
+- **The scalar ACES 2.0 forward skipped the Academy's input clamp.** `outputTransform_fwd`
+  begins with `clamp_AP0_to_AP1(aces, 0, forward_limit)`, each AP1 channel to [0, 8 r_hit]
+  (1024 at 100 nits, 4096 at 1000); OCIO applies it as a Range before its fixed function, and
+  alwan's map forms had it. `alwan_aces2_output_transform_{T}`, `_custom_{T}` and
+  `_custom_display_linear_{T}` did not, so a colour outside AP1 rendered differently through
+  the scalar than through the map: AP0's blue primary at 1000 nits PQ came out 0.036 in blue
+  where OCIO and the map give 0.472. Every preset now matches what OCIO shows (its builtin
+  output transform and display) within 1e-5 of code on all of suite 55's inputs, the three
+  outside AP1 included, and the map agrees with the scalar to 6e-9. Suite 55's reference
+  generator was rewritten on OCIO's builtins: it had no input clamp, scaled PQ by peak /
+  10000 and encoded HLG without the OOTF, so the suite compared 18% grey only.
+
 - **The dim surround of CIECAM02, CAM16, CIECAM16 and Kim 2009 used Nc 0.95.** CIE
   159:2004, Li et al. 2017 and CIE 248:2022 tabulate dim as F 0.9, c 0.59, Nc 0.9 (Nc
   equals F in every row), and colour-science agrees. alwan's dim forward sat up to 4.9e-2

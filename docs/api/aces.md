@@ -44,10 +44,10 @@ typedef enum {
     /* SDR Displays */
     ALWAN_ACES1_OUT_REC709_100NIT,        /* Rec.709, 100 nits, BT.1886 */
     ALWAN_ACES1_OUT_SRGB_100NIT,          /* sRGB, 100 nits, sRGB EOTF */
-    ALWAN_ACES1_OUT_SRGB_D60_100NIT,      /* sRGB (D60 sim), 100 nits */
+    ALWAN_ACES1_OUT_SRGB_D60_100NIT,      /* sRGB (D60 sim), 100 nits: clip at 1, scale 0.955 */
 
     /* P3 Displays */
-    ALWAN_ACES1_OUT_P3DCI_48NIT,          /* P3-DCI, 48 nits, Gamma 2.6 */
+    ALWAN_ACES1_OUT_P3DCI_48NIT,          /* P3-DCI (D60 sim), 48 nits, Gamma 2.6 */
     ALWAN_ACES1_OUT_P3D60_48NIT,          /* P3-D60, 48 nits, Gamma 2.6 */
     ALWAN_ACES1_OUT_P3D65_48NIT,          /* P3-D65, 48 nits, Gamma 2.6 */
     ALWAN_ACES1_OUT_P3D65_100NIT,         /* P3-D65 (Display P3), 100 nits */
@@ -64,7 +64,7 @@ typedef enum {
     ALWAN_ACES1_OUT_REC2020_4000NIT_PQ_V103,
 
     /* Cinema */
-    ALWAN_ACES1_OUT_DCDM_48NIT,           /* DCDM X'Y'Z', 48 nits, Gamma 2.6 */
+    ALWAN_ACES1_OUT_DCDM_48NIT,           /* DCDM X'Y'Z' of the ACES white, 48 nits, Gamma 2.6 */
 
     ALWAN_ACES1_OUT_COUNT                 /* Sentinel -- number of presets */
 } alwan_aces1_output;
@@ -107,8 +107,19 @@ alwan_status alwan_aces1_output_transform_{T}_map_interleave(alwan_{T} *out, siz
 
 The same transform over a buffer of RGB triples, strides in bytes. The preset is validated once
 and each pixel is the scalar transform, so a map and its scalar twin agree to the bit (suite 56
-asserts equality over every preset). Suite 56 also holds seven presets to OCIO's display views
-at a thirtieth of a 10-bit code.
+asserts equality over every preset). Suite 56 also holds twelve presets to OCIO's display views
+at a thirtieth of a 10-bit code, and the inverse of the five cinema and D60 simulation presets
+to OCIO's inverse view on greys (3e-4, OCIO's spline fit).
+
+The D60 simulation and cinema presets follow the aces-dev v1.3.1 ODTs. sRGB (D60 sim) is
+`ODT.Academy.sRGB_D60sim_100nits_dim`: the ACES white is not adapted, and the linear code value
+is clipped at 1 and scaled by 0.955 before the surround step. P3-DCI is `P3DCI_D60sim_48nits`
+(1.0.3's `P3DCI_48nits`): the ACES white on a DCI-white projector, the code value rolled off
+towards 0.918 (`roll_white_fwd`), clipped there and scaled by 0.96, in the DCI-P3 primaries with
+the DCI white. P3-D60 is `P3D60_48nits`, the DCI-P3 primaries with the ACES white. DCDM is
+`ODT.Academy.DCDM`: XYZ of the ACES white, unadapted, floored at zero. P3-D65 at 48 nits adapts
+D60 to D65 as before. Until 2026-09-29 neither simulation ran, P3-DCI and P3-D60 rendered in
+P3-D65, and DCDM was adapted to D65: 20, 93, 31 and 31 codes of 1023 from OCIO at worst.
 
 **Example:**
 ```c
@@ -166,6 +177,14 @@ alwan_status alwan_aces2_output_transform_inv_{T}(alwan_rgb_{T} *rgb_out,
 
 Complete ACES 2.0 rendering pipeline. Input: ACEScg (AP1 linear). Output: display-encoded RGB.
 
+The input is clamped first, as the Academy's `outputTransform_fwd` does with
+`clamp_AP0_to_AP1(aces, 0, forward_limit)`: each AP1 channel to [0, 8 r_hit], 1024 at 100 nits and
+4096 at 1000, NaN to 0. OCIO applies the same clamp as a Range before its fixed function. The map
+forms always had it; the scalar forward did not until 2026-09-29, so a colour outside AP1 came out
+differently from the two (AP0's blue primary at 1000 nits PQ: 0.036 in blue where OCIO and the map
+give 0.472). Suite 55 holds every preset, those inputs included, to what OCIO 2.5 shows: its
+builtin output transform followed by the builtin display, within 1e-5 of code.
+
 Pipeline stages: AP1 -> JMh -> Tonescale + Chroma compress -> Gamut compress -> RGB -> Chromatic adaptation -> Display EOTF.
 
 The inverse takes display-encoded RGB back to ACEScg by undoing each stage in reverse,
@@ -188,7 +207,12 @@ named P3DCI is the CTL's "P3-D65 (48 nits)", P3-D65 at gamma 2.6, since ACES 2.0
 P3-DCI output; the enum keeps its name. The inverse decodes DCDM's XYZ back to the
 P3-D65 limit RGB and continues as for any other preset.
 
-Suite 258 holds presets 0 to 8 to OCIO 2.5's inverse, and the two cinema presets'
+HLG follows the Academy's `ST2084_2_HLG_1000nits`: BT.2100's inverse OOTF at 1000 nits (system
+gamma 1.2) with no floor on the luminance, then the HLG OETF. OCIO's HLG display floors the
+luminance at about 0.027 nits and so lifts the darkest colours; above that the two agree to
+float32 (suite 258 leaves out the six dark greys below it).
+
+Suite 258 holds presets 0 to 9 to OCIO 2.5's inverse, and the two cinema presets'
 forward and inverse to OCIO's fixed function at peak 100 and P3-D65 followed by the
 CTL's encoding. The median error is at float32's
 floor, a few 1e-7 to 2e-6. The tails, up to 3e-4 at the 99th percentile in SDR, come

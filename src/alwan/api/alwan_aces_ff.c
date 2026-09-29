@@ -1135,6 +1135,31 @@ static float const ACES1_XYZ_TO_P3D65_f32[9] = {
 ALWAN_DIAG_POP
 #endif
 
+/* The cinema ODTs' other two P3 whites: ODT.Academy.P3D60_48nits and P3DCI_D60sim_48nits take
+ * D60 XYZ into the DCI-P3 primaries with the ACES white and with the DCI white, unadapted. */
+#if ALWAN_WITH_F64
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static alwan_f64 const ACES1_XYZ_TO_P3D60_f64[9] = {
+#include "../data/matrices/aces_xyz_to_p3d60.csv"
+};
+static alwan_f64 const ACES1_XYZ_TO_P3DCI_f64[9] = {
+#include "../data/matrices/aces_xyz_to_p3dci.csv"
+};
+ALWAN_DIAG_POP
+#endif
+#if ALWAN_WITH_F32
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static float const ACES1_XYZ_TO_P3D60_f32[9] = {
+#include "../data/matrices/aces_xyz_to_p3d60.csv"
+};
+static float const ACES1_XYZ_TO_P3DCI_f32[9] = {
+#include "../data/matrices/aces_xyz_to_p3dci.csv"
+};
+ALWAN_DIAG_POP
+#endif
+
 #if ALWAN_WITH_F64
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
@@ -1207,6 +1232,25 @@ static alwan_f64 gamma26_oetf(alwan_f64 x) {
 /* PQ (ST.2084) OETF */
 static alwan_f64 pq_oetf(alwan_f64 Y, alwan_f64 peak_nits) {
     return aces_pq_oetf_f64_v(Y, peak_nits);
+}
+
+/* aces-dev ACESlib.ODT_Common.ctl roll_white_fwd: a quadratic shoulder over the top `width` of
+ * the linear code value that brings 1.0 down to new_wht. P3DCI_D60sim_48nits runs it with
+ * 0.918 and 0.5 so the red channel, which a D60 white on a DCI-white projector drives
+ * highest, reaches the top of the range smoothly instead of clipping first. */
+static alwan_f64 aces1_roll_white_fwd(alwan_f64 in, alwan_f64 new_wht, alwan_f64 width) {
+    alwan_f64 const x0 = ALWAN_LITERAL(-1.0);
+    alwan_f64 const x1 = x0 + width;
+    alwan_f64 const y0 = -new_wht;
+    alwan_f64 const y1 = x1;
+    alwan_f64 const m1 = x1 - x0;
+    alwan_f64 const a = y0 - y1 + m1;
+    alwan_f64 const b = ALWAN_LITERAL(2.0) * (y1 - y0) - m1;
+    alwan_f64 const c = y0;
+    alwan_f64 const t = (-in - x0) / (x1 - x0);
+    if (t < ALWAN_LITERAL(0.0)) return -(t * b + c);
+    if (t > ALWAN_LITERAL(1.0)) return in;
+    return -((t * a + b) * t + c);
 }
 
 alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
@@ -1342,6 +1386,23 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
 
     }
 
+    /* D60 simulation, on the linear code value and before the surround (aces-dev
+     * ODT.Academy.sRGB_D60sim_100nits_dim and P3DCI_D60sim_48nits). A D60 white on a display
+     * calibrated to another white needs unequal codes, red highest; scaling the whole range
+     * down keeps white inside it. The sRGB one clips at 1 and scales by 0.955; the DCI one rolls
+     * the top off to 0.918, clips there and scales by 0.96. Until 2026-09-29 neither ran, and
+     * the DCI preset also rendered in P3-D65 through a D60 to D65 adaptation. */
+    if (output == ALWAN_ACES1_OUT_SRGB_D60_100NIT) {
+        rrt.r = fmin(rrt.r, ALWAN_LITERAL(1.0)) * ALWAN_LITERAL(0.955);
+        rrt.g = fmin(rrt.g, ALWAN_LITERAL(1.0)) * ALWAN_LITERAL(0.955);
+        rrt.b = fmin(rrt.b, ALWAN_LITERAL(1.0)) * ALWAN_LITERAL(0.955);
+    } else if (output == ALWAN_ACES1_OUT_P3DCI_48NIT) {
+        alwan_f64 const new_wht = ALWAN_LITERAL(0.918), width = ALWAN_LITERAL(0.5), scale = ALWAN_LITERAL(0.96);
+        rrt.r = fmin(aces1_roll_white_fwd(rrt.r, new_wht, width), new_wht) * scale;
+        rrt.g = fmin(aces1_roll_white_fwd(rrt.g, new_wht, width), new_wht) * scale;
+        rrt.b = fmin(aces1_roll_white_fwd(rrt.b, new_wht, width), new_wht) * scale;
+    }
+
     /* dimSurround + ODT desaturation apply ONLY to 100-nit video outputs.
      * Cinema (dark surround) and HDR PQ outputs skip both -- per ACES ODT specs.
      * HDR PQ ODTs use a combined tone curve and no surround correction.
@@ -1397,9 +1458,12 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
         mat3_mul_vec3_aces1(ACES1_REC2020_TO_XYZ_f64, &lim, &xyz);
     }
 
-    /* Step 4: D60 to D65 (for D65 white point outputs) */
+    /* Step 4: D60 to D65 (for D65 white point outputs). The D60 simulations, P3-D60 and DCDM
+     * keep the ACES white: the CTL takes their D60 XYZ to the display unadapted. */
     int needs_d65 = (output != ALWAN_ACES1_OUT_SRGB_D60_100NIT &&
-                     output != ALWAN_ACES1_OUT_P3D60_48NIT);
+                     output != ALWAN_ACES1_OUT_P3D60_48NIT &&
+                     output != ALWAN_ACES1_OUT_P3DCI_48NIT &&
+                     output != ALWAN_ACES1_OUT_DCDM_48NIT);
     if (needs_d65) {
         mat3_mul_vec3_aces1(ACES1_D60_TO_D65_f64, &xyz, &d65);
     } else {
@@ -1423,7 +1487,13 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
             use_srgb = 1;
             break;
         case ALWAN_ACES1_OUT_P3DCI_48NIT:
+            xyz_to_display = ACES1_XYZ_TO_P3DCI_f64;
+            use_gamma26 = 1;
+            break;
         case ALWAN_ACES1_OUT_P3D60_48NIT:
+            xyz_to_display = ACES1_XYZ_TO_P3D60_f64;
+            use_gamma26 = 1;
+            break;
         case ALWAN_ACES1_OUT_P3D65_48NIT:
             xyz_to_display = ACES1_XYZ_TO_P3D65_f64;
             use_gamma26 = 1;
@@ -1454,7 +1524,8 @@ alwan_status alwan_aces1_output_transform_f64(alwan_rgb_f64 *rgb_out,
             peak_nits = ALWAN_LITERAL(4000.0);
             break;
         case ALWAN_ACES1_OUT_DCDM_48NIT:
-            /* DCDM stays in XYZ */
+            /* DCDM stays in XYZ, the ACES white's (ODT.Academy.DCDM: no adaptation), floored at
+             * zero by the OETF and not clipped above */
             display = d65;
             display.r = gamma26_oetf(display.r * ALWAN_LITERAL(48.0) / ALWAN_LITERAL(52.37));
             display.g = gamma26_oetf(display.g * ALWAN_LITERAL(48.0) / ALWAN_LITERAL(52.37));
@@ -1560,6 +1631,12 @@ ALWAN_DIAG_DISABLE_FLOAT_CONV
 static alwan_f64 const ACES1_P3D65_TO_XYZ[9] = {
 #include "../data/matrices/aces_p3d65_to_xyz.csv"
 };
+static alwan_f64 const ACES1_P3D60_TO_XYZ[9] = {
+#include "../data/matrices/aces_p3d60_to_xyz.csv"
+};
+static alwan_f64 const ACES1_P3DCI_TO_XYZ[9] = {
+#include "../data/matrices/aces_p3dci_to_xyz.csv"
+};
 ALWAN_DIAG_POP
 
 ALWAN_DIAG_PUSH
@@ -1575,6 +1652,26 @@ static alwan_f64 const ACES1_XYZ_D60_TO_AP1[9] = {
 #include "../data/matrices/aces_xyz_d60_to_ap1.csv"
 };
 ALWAN_DIAG_POP
+
+/* aces-dev ACESlib.ODT_Common.ctl roll_white_rev, the inverse of aces1_roll_white_fwd */
+static alwan_f64 aces1_roll_white_rev(alwan_f64 in, alwan_f64 new_wht, alwan_f64 width) {
+    alwan_f64 const x0 = ALWAN_LITERAL(-1.0);
+    alwan_f64 const x1 = x0 + width;
+    alwan_f64 const y0 = -new_wht;
+    alwan_f64 const y1 = x1;
+    alwan_f64 const m1 = x1 - x0;
+    alwan_f64 const a = y0 - y1 + m1;
+    alwan_f64 const b = ALWAN_LITERAL(2.0) * (y1 - y0) - m1;
+    alwan_f64 c = y0;
+    if (-in < y0) return -x0;
+    if (-in > y1) return in;
+    c = c + in;
+    {
+        alwan_f64 const discrim = ALWAN_SQRT_F64(b * b - ALWAN_LITERAL(4.0) * a * c);
+        alwan_f64 const t = (ALWAN_LITERAL(2.0) * c) / (-discrim - b);
+        return -((t * (x1 - x0)) + x0);
+    }
+}
 
 /* Inverse RRT (simplified) */
 static alwan_f64 aces1_segmented_spline_c5_inv(alwan_f64 y) {
@@ -1752,7 +1849,8 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         case ALWAN_ACES1_OUT_P3DCI_48NIT:
         case ALWAN_ACES1_OUT_P3D60_48NIT:
         case ALWAN_ACES1_OUT_P3D65_48NIT:
-            display_to_xyz = ACES1_P3D65_TO_XYZ;
+            display_to_xyz = output == ALWAN_ACES1_OUT_P3DCI_48NIT ? ACES1_P3DCI_TO_XYZ :
+                             output == ALWAN_ACES1_OUT_P3D60_48NIT ? ACES1_P3D60_TO_XYZ : ACES1_P3D65_TO_XYZ;
             display.r = gamma26_eotf(rgb_in->r);
             display.g = gamma26_eotf(rgb_in->g);
             display.b = gamma26_eotf(rgb_in->b);
@@ -1814,9 +1912,11 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
         mat3_mul_vec3_aces1(display_to_xyz, &display, &xyz);
     }
 
-    /* Step 3: D65 to D60 (for D65 white point outputs) */
+    /* Step 3: D65 to D60 (for D65 white point outputs; the forward's unadapted ones skip it) */
     int needs_d65 = (output != ALWAN_ACES1_OUT_SRGB_D60_100NIT &&
-                     output != ALWAN_ACES1_OUT_P3D60_48NIT);
+                     output != ALWAN_ACES1_OUT_P3D60_48NIT &&
+                     output != ALWAN_ACES1_OUT_P3DCI_48NIT &&
+                     output != ALWAN_ACES1_OUT_DCDM_48NIT);
     if (needs_d65) {
         mat3_mul_vec3_aces1(ACES1_D65_TO_D60, &xyz, &d60);
     } else {
@@ -1873,6 +1973,19 @@ alwan_status alwan_aces1_output_transform_inv_f64(alwan_rgb_f64 *rgb_out,
                 ap1.b *= scale;
             }
         }
+    }
+
+    /* The D60 simulations undone (InvODT.Academy.sRGB_D60sim_100nits_dim and
+     * P3DCI_D60sim_48nits): the scale, and for DCI the white roll-off. */
+    if (output == ALWAN_ACES1_OUT_SRGB_D60_100NIT) {
+        ap1.r /= ALWAN_LITERAL(0.955);
+        ap1.g /= ALWAN_LITERAL(0.955);
+        ap1.b /= ALWAN_LITERAL(0.955);
+    } else if (output == ALWAN_ACES1_OUT_P3DCI_48NIT) {
+        alwan_f64 const new_wht = ALWAN_LITERAL(0.918), width = ALWAN_LITERAL(0.5), scale = ALWAN_LITERAL(0.96);
+        ap1.r = aces1_roll_white_rev(ap1.r / scale, new_wht, width);
+        ap1.g = aces1_roll_white_rev(ap1.g / scale, new_wht, width);
+        ap1.b = aces1_roll_white_rev(ap1.b / scale, new_wht, width);
     }
 
     /* Step 7 and 8: back through the tone scale to rendering-space RGB */
@@ -4305,13 +4418,32 @@ alwan_status alwan_aces2_output_transform_custom_display_linear_f64(alwan_rgb_f6
     alwan_aces_primaries_f64 ap1;
     alwan_aces_primaries_ap1_default_f64(&ap1);
 
+    /* Step 0: the CTL's clamp_AP0_to_AP1(aces, 0, forward_limit) (Lib.Academy.OutputTransform
+     * outputTransform_fwd), forward_limit = 8 r_hit: 1024 at 100 nits, 4096 at 1000. OCIO puts
+     * it in a Range before the fixed function, and the map forms had it; this path did not, so
+     * a colour outside AP1 rendered differently here than there (AP0 blue at 1000 nits PQ:
+     * 0.036 against 0.472 in blue). NaN reads as 0, as in the maps. */
+    alwan_rgb_f64 in_c;
+    {
+        alwan_f64 const r_hit = ALWAN_LITERAL(128.0) + ALWAN_LITERAL(768.0)
+            * (ALWAN_LN(peak_luminance / ALWAN_LITERAL(100.0)) / ALWAN_LN(ALWAN_LITERAL(100.0)));
+        alwan_f64 const hi = ALWAN_LITERAL(8.0) * r_hit;
+        alwan_f64 c[3] = {rgb_in->r, rgb_in->g, rgb_in->b};
+        int i;
+        for (i = 0; i < 3; i++) {
+            if (!(c[i] >= ALWAN_LITERAL(0.0))) c[i] = ALWAN_LITERAL(0.0);
+            else if (c[i] > hi) c[i] = hi;
+        }
+        in_c.r = c[0]; in_c.g = c[1]; in_c.b = c[2];
+    }
+
     /* Step 1: Convert input RGB (AP1) to JMh */
     alwan_vec3_f64 jmh;
-    alwan_aces_rgb_to_jmh20_f64(&jmh, rgb_in, &ap1);
+    alwan_aces_rgb_to_jmh20_f64(&jmh, &in_c, &ap1);
 
     /* Step 2: Apply tonescale compression */
     alwan_rgb_f64 rgb_ts;
-    alwan_aces_tonescale_compress20_f64(&rgb_ts, rgb_in, peak_luminance);
+    alwan_aces_tonescale_compress20_f64(&rgb_ts, &in_c, peak_luminance);
 
     /* Step 3: Convert tonescale output to JMh for gamut compression */
     alwan_vec3_f64 jmh_ts;
