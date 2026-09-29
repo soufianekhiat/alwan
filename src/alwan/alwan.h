@@ -478,7 +478,11 @@ typedef enum {
     ALWAN_TF_BT2020 = 3, /* Same as BT.709 */
     ALWAN_TF_PQ = 4, /* Perceptual Quantizer (SMPTE ST 2084) */
     ALWAN_TF_ST2084 = 5, /* Alias for PQ */
-    ALWAN_TF_HLG = 6, /* Hybrid Log-Gamma (BT.2100) */
+    ALWAN_TF_HLG = 6, /* Hybrid Log-Gamma (BT.2100). The OETF encodes scene light; the EOTF decodes
+                       * to display light with L_W = 1, L_B = 0 and the system gamma 1.2 applied to
+                       * each channel, which is BT.2100's OOTF exactly on neutrals (on colours the
+                       * OOTF scales by luminance: alwan_hlg_ootf). The two are not inverses: the
+                       * OETF then the EOTF is the OOTF. Suite 267 holds both to colour. */
     ALWAN_TF_BT1886 = 7, /* BT.1886 EOTF only */
     ALWAN_TF_ACESPROXY = 8, /* ACES Proxy */
     ALWAN_TF_ACESCC = 9, /* ACEScc (log encoding for color correction) */
@@ -1264,7 +1268,10 @@ alwan_status alwan_view_transform_map_interleave_ex(void *out, size_t out_stride
  * per-primary hue-flight / chroma-attenuation / purity controls, plus optional
  * cube-tip split-toning). Unlike the fixed AgX views this is parameterized;
  * input is linear Rec.709, output is display-linear Rec.709 (apply the display
- * OETF as with the AgX views).
+ * OETF as with the AgX views). Each input channel is clamped to [-65504, 65504]
+ * first, as Jp-DRT.dctl does. Suite 267 holds it to the DCTL itself, compiled as
+ * written and run in float (1.5e-5 relative); with the tips at zero this is the
+ * DCTL's linear-in, Rec.709, linear-out rendering.
  *
  * For log-encoded / non-Rec.709 footage, decode + convert to linear Rec.709
  * first with the existing bulk helpers, then apply -- e.g.
@@ -4988,7 +4995,12 @@ alwan_status alwan_astm_e2022_weights_f32(alwan_f32 *weights_out, size_t *node_c
  * cameras, and the same integration was also reachable as alwan_xyz_from_spd_camera,
  * which returned camera RGB in an alwan_xyz. The enum, that function and
  * alwan_spd_camera_sensitivity are gone. The NPL cameras are registry indices 52 and 53,
- * and give the same numbers, to the bit, as they did. */
+ * and give the same numbers, to the bit, as they did.
+ *
+ * Simpson's rule on an even number of samples is Simpson's 1/3 over all but the last
+ * interval plus a trapezoid on that one. scipy.integrate.simpson treats an even count
+ * with Cartwright's correction instead, a different rule, so the two differ there.
+ * Suite 267 holds the result to numpy.interp and scipy on five grids. */
 alwan_status alwan_camera_rgb_from_spd_f64(alwan_rgb_f64 *rgb_out, alwan_spd_f64 const *spd, alwan_spd_f64 const *illuminant, size_t camera, alwan_integrate_method method, alwan_ctx *ctx);
 alwan_status alwan_camera_rgb_from_spd_f32(alwan_rgb_f32 *rgb_out, alwan_spd_f32 const *spd, alwan_spd_f32 const *illuminant, size_t camera, alwan_integrate_method method, alwan_ctx *ctx);
 

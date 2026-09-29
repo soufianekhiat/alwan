@@ -200,7 +200,12 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FN(jp2499_render)(ALWAN_CORE_VEC3 rgb,
         ALWAN_CORE_T m, ALWAN_CORE_T s, ALWAN_CORE_T c, ALWAN_CORE_T fl, ALWAN_CORE_T ds,
         ALWAN_CORE_MAT3X3 inset, ALWAN_CORE_MAT3X3 outset_inv,
         ALWAN_CORE_VEC3 white_tip, ALWAN_CORE_VEC3 black_tip) {
-    ALWAN_CORE_T r = rgb.v[0], g = rgb.v[1], b = rgb.v[2];
+    /* Jp-DRT clamps the input to the half-float range before anything else
+     * (minf3(HALF_MAXIMUM) / maxf3(-HALF_MAXIMUM)); the max channel is taken after. */
+    const ALWAN_CORE_T half_max = ALWAN_CORE_LITERAL(65504.0);
+    ALWAN_CORE_T r = ALWAN_CORE_MAX(-half_max, ALWAN_CORE_MIN(half_max, rgb.v[0]));
+    ALWAN_CORE_T g = ALWAN_CORE_MAX(-half_max, ALWAN_CORE_MIN(half_max, rgb.v[1]));
+    ALWAN_CORE_T b = ALWAN_CORE_MAX(-half_max, ALWAN_CORE_MIN(half_max, rgb.v[2]));
     ALWAN_CORE_T mx = ALWAN_CORE_MAX(r, ALWAN_CORE_MAX(g, b));
 
     /* Ratio pass 1. */

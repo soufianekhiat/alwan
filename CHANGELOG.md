@@ -2,6 +2,21 @@
 
 ### Fixed: output differs
 
+- **The Sigma SDMerill (NPL) camera responded outside its measured range.** Its data
+  covers 400-680 nm, but the generator was given 380-780 nm for it, so colour's constant
+  extrapolation filled 380-399 and 681-780 nm with the 400 and 680 nm values.
+  `alwan_camera_rgb_from_spd` (registry index 53) therefore read light there that the
+  camera does not see: up to 1.9% of the largest channel on a ColorChecker patch under
+  D65. The table is zero outside 400-680 nm now, as the header always said. The Nikon
+  5100 (NPL) and the rawtoaces pack were right; against numpy.interp and scipy's
+  trapezoid and Simpson on five grids, every camera now agrees to 1.3e-15 (suite 267).
+
+- **JP2499 did not clamp its input to the half-float range.** Jp-DRT.dctl clamps each
+  channel to [-65504, 65504] before rendering; alwan's port did not, so a channel above
+  that rendered up to 1e-3 relative away from the DCTL. It clamps now. Below 65504 the
+  output is unchanged: against the DCTL itself, compiled as written and run in float,
+  alwan agrees to 1.5e-5 relative over five parameter sets and 132 colours (suite 267).
+
 - **Four ACES 1.x presets did not follow their ODTs.** None of them had a reference to
   compare against. `ALWAN_ACES1_OUT_SRGB_D60_100NIT` skipped the D60 simulation's clip at 1
   and scale by 0.955. `ALWAN_ACES1_OUT_P3DCI_48NIT` rendered in P3-D65 through a D60 to D65
