@@ -230,6 +230,13 @@ Integrate an SPD against an observer's CMFs to obtain XYZ tristimulus values.
 | `method` | Numerical integration rule (see below). |
 | `bandpass_nm` | Bandpass width for the Stearns & Stearns bandpass correction; `0` disables it. |
 
+The correction is the three-tap filter of Stearns and Stearns (1988), as ASTM E308
+adopts it, written in the measured values on both sides; the width must equal the
+spectrum's own interval. colour-science 0.4.7's `bandpass_correction_Stearns1988` applies
+the same filter in place, left to right, so each sample reads the neighbour it has
+already corrected; on a fluorescent spectrum at 5 nm that is 1 % of peak off the
+formula. alwan follows the formula (suite 12).
+
 **Observer types:**
 ```c
 typedef enum {

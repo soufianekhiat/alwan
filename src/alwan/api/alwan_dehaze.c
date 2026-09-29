@@ -20,9 +20,11 @@
  *   J        = (I - A) / max(t, t0) + A
  *
  * The model is linear in radiance, so I should be linear light. Patches are clipped at
- * the image border rather than padded. There is no reference implementation to hold this
- * to: suite 192 hazes a scene that satisfies the prior with a known A and t and measures
- * how much of each the method recovers, and checks that a haze-free image passes through.
+ * the image border rather than padded. No library ships the whole method, so suite 192
+ * holds it to one composed from scipy's minimum filter, the paper's airlight rule and
+ * OpenCV's guided filter (gendata/tests/dehaze_reference.py), hazes a scene that satisfies
+ * the prior with a known A and t to measure how much of each the method recovers, and
+ * checks that a haze-free image passes through.
  */
 
 #include "../alwan.h"

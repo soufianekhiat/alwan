@@ -2369,7 +2369,14 @@ patch minimum of `I / A` measures the haze: the airlight `A` is taken among the 
 image as the colour guide (the authors' own replacement for soft matting), and the scene
 is `J = (I - A) / max(t, t0) + A`. Work on linear light; scale the radii with the image.
 
-There is no reference implementation to compare with, so suite 192 makes haze with a
+No library ships the whole method, so suite 192 composes one from oracle primitives:
+scipy's `minimum_filter` for both patch minima, the paper's airlight rule (the top 0.1 %
+of the dark channel, then the highest channel mean), and OpenCV's `guidedFilter` with the
+hazy image as the colour guide. On a hazed photograph at three settings alwan picks the
+same airlight pixel, and its `t` and `J` agree to OpenCV's float32 rounding (1.0e-7 and
+1.9e-7); with the refinement off they agree exactly.
+
+The suite also makes haze with a
 known answer: a scene that satisfies the prior, hazed with a known `A` and `t`. The
 airlight comes back within 0.017 (the sky it is read from is 2 % scene), the transmission
 to a median error of 0.029, the scene to a mean error of 0.032 (omega keeps 5 % of the

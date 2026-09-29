@@ -3950,8 +3950,10 @@ alwan_status alwan_color_transfer_f64(alwan_f64 *out, size_t out_stride, alwan_f
  * 30 with eps 1e-3; scale the radii with the image. guide_radius 0 skips the refinement.
  * ALWAN_E_INVALID for a NULL, a zero size, a stride too small, a parameter out of range
  * or a non-finite pixel; ALWAN_E_RANGE when the airlight found has a channel at or
- * below 0. There is no reference implementation to compare with; suite 192 hazes a scene
- * with a known A and t and measures what is recovered. */
+ * below 0. No library ships the whole method: suite 192 holds it to one composed from
+ * scipy's minimum filter, the paper's airlight rule and OpenCV's guided filter (the same
+ * airlight pixel, t and J to OpenCV's float32 rounding, 2e-7), and hazes a scene with a
+ * known A and t to measure what is recovered. */
 typedef struct {
     size_t patch_radius;
     alwan_f64 omega;          /* the haze kept for depth, 0..1 */
@@ -4927,7 +4929,9 @@ alwan_status alwan_spd_extend_planckian_f32(alwan_spd_f32 *dst, alwan_spd_f32 co
  *              SPD's own spacing rather than selecting a strength: a value that
  *              disagrees with (wavelength_max - wavelength_min) / (count - 1),
  *              or an SPD of fewer than three samples, is ALWAN_E_INVALID rather
- *              than a correction applied at the wrong width.
+ *              than a correction applied at the wrong width. The filter reads the
+ *              measured values, as the paper and ASTM E308 write it; colour-science
+ *              0.4.7 applies it in place and is 1 % of peak off (suite 12).
  * ctx: context
  * Returns ALWAN_OK on success, ALWAN_E_INVALID for a bandpass that is not the
  * SPD's interval or an unknown integration method */
