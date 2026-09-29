@@ -12,6 +12,7 @@
 #include "../simd/alwan_simd.h"
 #include "../alwan_platform.h"
 #include "../alwan.h"
+#include "../core/alwan_half_core.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -162,42 +163,15 @@ ALWAN_INLINE void alwan__store_tile_aos3(alwan_f64 *base, size_t offset, size_t 
  * IEEE 754 half-float (binary16) scalar conversion
  * ---------------------------------------------------------------- */
 
+/* The pixel formats' half floats go through the core's conversions. This file had its
+ * own pair until 3.0.0, and its encoder truncated the mantissa instead of rounding to
+ * nearest even, subnormals included, and wrote NaN as infinity. */
 ALWAN_INLINE float alwan__f16_to_f32(uint16_t h) {
-    uint32_t sign = (uint32_t)(h & 0x8000u) << 16;
-    uint32_t exp  = (h >> 10) & 0x1Fu;
-    uint32_t mant = h & 0x03FFu;
-    uint32_t f;
-    if (exp == 0) {
-        if (mant == 0) { f = sign; }
-        else {
-            exp = 1;
-            while (!(mant & 0x0400u)) { mant <<= 1; exp--; }
-            mant &= 0x03FFu;
-            f = sign | ((exp + 127u - 15u) << 23) | (mant << 13);
-        }
-    } else if (exp == 31) {
-        f = sign | 0x7F800000u | (mant << 13);
-    } else {
-        f = sign | ((exp + 127u - 15u) << 23) | (mant << 13);
-    }
-    float result;
-    memcpy(&result, &f, sizeof(float));
-    return result;
+    return alwan_half_to_float_f64_v((alwan_half)h);
 }
 
 ALWAN_INLINE uint16_t alwan__f32_to_f16(float val) {
-    uint32_t f;
-    memcpy(&f, &val, sizeof(float));
-    uint32_t sign = (f >> 16) & 0x8000u;
-    int32_t exp = (int32_t)((f >> 23) & 0xFFu) - 127 + 15;
-    uint32_t mant = f & 0x007FFFFFu;
-    if (exp <= 0) {
-        if (exp < -10) return (uint16_t)sign;
-        mant |= 0x00800000u;
-        return (uint16_t)(sign | (mant >> (14 - exp)));
-    }
-    if (exp >= 31) return (uint16_t)(sign | 0x7C00u);
-    return (uint16_t)(sign | ((uint32_t)exp << 10) | (mant >> 13));
+    return (uint16_t)alwan_float_to_half_f64_v(val);
 }
 
 /* ----------------------------------------------------------------

@@ -109,8 +109,11 @@ ALWAN_INLINE alwan_half alwan_float_to_half_v(float f) {
     if (exp > 15) {
         /* Overflow -> Inf (or NaN if source was NaN) */
         if (exp == 128 && mant != 0) {
-            /* NaN: preserve some mantissa bits */
-            return (alwan_half)(sign | 0x7C00u | (mant >> 13));
+            /* NaN: keep the payload's top ten bits. A payload held only in the low
+             * thirteen would leave a zero mantissa, which is infinity, so it keeps
+             * bit 0 set instead (numpy's rule). */
+            uint32_t payload = mant >> 13;
+            return (alwan_half)(sign | 0x7C00u | (payload != 0u ? payload : 1u));
         }
         return (alwan_half)(sign | 0x7C00u);
     }
@@ -139,11 +142,13 @@ ALWAN_INLINE alwan_half alwan_float_to_half_v(float f) {
         return (alwan_half)(sign | (uint32_t)((exp + 15) << 10) | half_mant);
     }
 
-    if (exp >= -24) {
-        /* Denormalized: shift mantissa with implicit leading 1 */
-        mant |= 0x00800000u; /* add implicit leading 1 */
-        int shift = -exp - 1; /* shift = 14 + (-exp - 15 + 1) => but we need total shift from 23-bit to 10-bit + denorm */
-        shift = 13 + (-exp - 14); /* 13 is normal shift, plus extra for each step below normal */
+    if (exp >= -25) {
+        /* Subnormal half: the implicit 1 joins the mantissa, which shifts right by the
+         * normal 13 plus one per step below 2^-14. 2^-25 to 2^-24 is included: it is
+         * half the smallest subnormal and above, and rounds up to it except at the
+         * exact tie. Below 2^-25 everything rounds to zero. */
+        mant |= 0x00800000u;
+        int shift = 13 + (-exp - 14);
         uint32_t half_mant = mant >> shift;
 
         /* Round to nearest even */

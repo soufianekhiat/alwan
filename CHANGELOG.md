@@ -2,6 +2,17 @@
 
 ### Fixed: output differs
 
+- **F16 pixel buffers were written by truncation.** Every `_ex` form and
+  `alwan_image_convert` writing ALWAN_PIXEL_F16 without F16C went through an encoder of
+  the map layer's own that dropped the low 13 mantissa bits instead of rounding to
+  nearest even, so each half read up to one ulp (about 1e-3 relative) low and differed
+  from the F16C path, which rounds; it also wrote NaN as infinity. The core encoder
+  behind `alwan_float_to_half` had two faults of its own: 2^-25 to 2^-24 went to zero
+  where the smallest subnormal is the nearest half, and a NaN whose payload sat only in
+  the low 13 bits became infinity. There is one encoder now, the core's, and it matches
+  numpy at every rounding boundary of every finite half, both signs, NaN and infinity
+  included (suite 268).
+
 - **The Sigma SDMerill (NPL) camera responded outside its measured range.** Its data
   covers 400-680 nm, but the generator was given 380-780 nm for it, so colour's constant
   extrapolation filled 380-399 and 681-780 nm with the 400 and 680 nm values.
