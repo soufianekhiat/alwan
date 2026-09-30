@@ -64,6 +64,8 @@ tools/*.json
 !src/alwan/data/**/LICENSE.txt
 !src/alwan/data/LICENSE-*.txt
 !src/alwan/data/**/SOURCE.txt
+!src/alwan/data/**/LICENSE-*.txt
+!licenses/*.txt
 *.log
 *.pyc
 /build

@@ -1,8 +1,10 @@
-NOT VENDORED THIRD-PARTY DATA.
+rgb2spec, Wenzel Jakob, BSD-3-Clause
+https://github.com/mitsuba-renderer/rgb2spec (licence text: licenses/rgb2spec-BSD-3-Clause.txt
+at the repository root, and THIRD_PARTY_NOTICES.md)
 
-jakob2019/ holds spectral upsampling coefficient tables that alwan REGENERATES
-with its own tool, gendata/tools/datagen/gen_jakob2019_table, which implements
-the method of Jakob and Hanika (2019). The Zenodo tables published with the paper
-are not used, and their licence is not stated.
-
-Written by gendata/data/jakob2019_luts.py.
+jakob2019/ holds the Jakob and Hanika (2019) spectral upsampling coefficient tables as
+rgb2spec_opt writes them, one scale and one coefficient table per gamut, float32 values
+printed so each parses back to the same float. rgb2spec_opt is built from its source, vendored
+in alwan_dev/gendata/tools/rgb2spec, as gendata/tools/datagen/gen_jakob2019_table, and run by
+gendata/data/jakob2019_luts.py. src/alwan/api/alwan_jakob2019_fetch.inc reads them as
+rgb2spec_fetch does. The Zenodo tables published with the paper are not used.

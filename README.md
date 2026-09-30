@@ -966,5 +966,6 @@ contributions and design discussions are welcome.
 
 ## License
 
-MIT License; see [LICENSE](LICENSE) for details.
+MIT License; see [LICENSE](LICENSE) for details. Code ported from, and data generated with, other
+permissively licensed projects is listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 

@@ -929,6 +929,14 @@
 
 ### Added
 
+- **THIRD_PARTY_NOTICES.md and `licenses/`.** One place that lists every project alwan ports
+  code from or generates shipped data with (OpenCV, OpenColorIO and Imath, colour-science,
+  colour-hdri, colour-checker-detection, scikit-image, Pillow, Ottosson's Oklab code,
+  rgb2spec, PyWavelets, DaltonLens, ColorAide, spectral_film_lut, utility-dctls, Tony
+  McMapface, rawtoaces-data, ACES, Fogra), with the copyright lines and the full licence
+  texts. It also records four items shipped without a licence grant on record (the AgX
+  tables and sigmoid, JP2499, APCA, the Freetone palette) for a decision before release.
+
 - **OpenCV's oil painting and DCT denoising: `ALWAN_STYLIZE_OIL_PAINTING` and
   `ALWAN_DENOISE_DCT_OPENCV`.** Ports of opencv_contrib 5.0.0's xphoto `oilPainting`
   (`oilpainting.cpp`, Apache-2.0, Copyright the OpenCV authors; after Holzmann 1988) and
