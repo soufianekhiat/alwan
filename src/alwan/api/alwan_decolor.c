@@ -185,6 +185,10 @@ static void dcl_rgb_to_lab(float *lab, float r, float g, float b) {
     }
 }
 
+void alwan__cv_rgb_to_lab_f32(float *lab, float r, float g, float b) {
+    dcl_rgb_to_lab(lab, r, g, b);
+}
+
 /* ------------------------------------------------------------------------------------ */
 /* Decolor::gradvector: forward differences, the last column / row 0, stored with x      */
 /* outermost (OpenCV reads the transposed matrices): grad[x*h + y], then the vertical.   */

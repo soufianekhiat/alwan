@@ -3060,6 +3060,61 @@ alwan_status alwan_gradient_edit(unsigned char *out, size_t out_row_stride,
                                  size_t channels, alwan_gradient_edit_method method,
                                  alwan_gradient_edit_params const *params);
 
+/* Non-photorealistic filters on the domain transform (Gastal and Oliveira 2011), a port of
+ * OpenCV 5.0.0's photo module (Apache-2.0; cv::edgePreservingFilter, cv::detailEnhance,
+ * cv::stylization, cv::pencilSketch). The domain transform maps each row and column to a
+ * line whose length grows with the colour change between neighbours, so a 1-D filter along
+ * it smooths flat areas and stops at edges; three passes of horizontal then vertical.
+ *
+ *   ALWAN_STYLIZE_EDGE_PRESERVING_RECURSIVE  edgePreservingFilter RECURS_FILTER: the
+ *                                            recursive filter; sigma_s 60, sigma_r 0.4
+ *   ALWAN_STYLIZE_EDGE_PRESERVING_NORMCONV   NORMCONV_FILTER: the normalised convolution
+ *                                            (a box in the transformed domain); 60, 0.4
+ *   ALWAN_STYLIZE_DETAIL_ENHANCE             detailEnhance: CIELAB L* split into the
+ *                                            recursive filter's base and the detail, the
+ *                                            detail tripled; sigma_s 10, sigma_r 0.15
+ *   ALWAN_STYLIZE_STYLIZATION                stylization: the normalised convolution, darkened
+ *                                            by 1 - the summed Sobel gradient magnitude of its
+ *                                            channels; sigma_s 60, sigma_r 0.45
+ *   ALWAN_STYLIZE_PENCIL_SKETCH_GREY         pencilSketch's grey drawing: shade_factor times
+ *                                            the widths of the domain boxes, one channel out;
+ *                                            sigma_s 60, sigma_r 0.07, shade_factor 0.02
+ *   ALWAN_STYLIZE_PENCIL_SKETCH_COLOR        pencilSketch's colour drawing: the grey drawing
+ *                                            as the Y of the image's YCrCb
+ *
+ * Images are 8-bit, channels 3 (RGB) or 4 (RGBA, the fourth copied through), row-major with
+ * row strides in bytes; out has src's size and channels, one channel for the grey sketch,
+ * and may be src. The result is OpenCV's to the bit (suite 274 against cv2 5.0.0, IPP off),
+ * the float work single precision as OpenCV's is: its colour conversions (the float Lab
+ * inverse reads data/opencv/lab2srgb_float.csv), its Sobel and magnitude and its rounding
+ * to 8 bits. OpenCV computes in BGR; alwan hands it BGR, which matters because the
+ * normalised convolution's index arithmetic is not symmetric in the channels.
+ *
+ * ALWAN_E_INVALID for a NULL image, a size under 2 x 2 or over 46340, a stride too small,
+ * a channel count other than 3 or 4, an unknown method or a negative or NaN parameter;
+ * ALWAN_E_NOMEM when the buffers (about 60 bytes a pixel) do not fit. */
+typedef enum {
+    ALWAN_STYLIZE_EDGE_PRESERVING_RECURSIVE = 0,
+    ALWAN_STYLIZE_EDGE_PRESERVING_NORMCONV = 1,
+    ALWAN_STYLIZE_DETAIL_ENHANCE = 2,
+    ALWAN_STYLIZE_STYLIZATION = 3,
+    ALWAN_STYLIZE_PENCIL_SKETCH_GREY = 4,
+    ALWAN_STYLIZE_PENCIL_SKETCH_COLOR = 5
+} alwan_stylize_method;
+
+/* Each method reads its own fields; a zero field is its default (the method's own, listed
+ * above). The values are cast to float, as OpenCV takes them. */
+typedef struct {
+    alwan_f64 sigma_s;       /* the spatial extent, in pixels */
+    alwan_f64 sigma_r;       /* the range extent, in the [0, 1] colour units */
+    alwan_f64 shade_factor;  /* PENCIL_SKETCH_*: the drawing's darkness, 0.02 */
+} alwan_stylize_params;
+
+alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,
+                           unsigned char const *src, size_t src_row_stride,
+                           size_t width, size_t height, size_t channels,
+                           alwan_stylize_method method, alwan_stylize_params const *params);
+
 /* Morphology: grey-level erosion and dilation and their composites, for cleaning a
  * selection mask or a matte, and for pulling out detail smaller than a shape. Each of 1 to
  * 4 channels on its own; out may be src.

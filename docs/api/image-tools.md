@@ -815,6 +815,75 @@ alwan's matches the AVX2 build the reference came from: the gradient magnitude o
 the CPU's approximate reciprocal square root with one Newton step where alwan takes 1 / sqrt,
 so on another CPU a few pixels may land a level apart there.
 
+## Stylization filters
+
+```c
+typedef enum {
+    ALWAN_STYLIZE_EDGE_PRESERVING_RECURSIVE = 0,
+    ALWAN_STYLIZE_EDGE_PRESERVING_NORMCONV = 1,
+    ALWAN_STYLIZE_DETAIL_ENHANCE = 2,
+    ALWAN_STYLIZE_STYLIZATION = 3,
+    ALWAN_STYLIZE_PENCIL_SKETCH_GREY = 4,
+    ALWAN_STYLIZE_PENCIL_SKETCH_COLOR = 5
+} alwan_stylize_method;
+
+alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,
+                           unsigned char const *src, size_t src_row_stride,
+                           size_t width, size_t height, size_t channels,
+                           alwan_stylize_method method, alwan_stylize_params const *params);
+```
+
+OpenCV's non-photorealistic filters on the domain transform (Gastal and Oliveira 2011), a
+port of OpenCV 5.0.0's `photo/src/npr.cpp` and `npr.hpp` (Apache-2.0, notice in the
+source). The domain transform maps each row and each column to a line whose length grows
+with the colour change between neighbours, so a 1-D filter along that line smooths flat
+areas and stops at edges; three passes, each horizontal then vertical, with the extent
+shrinking by half each pass.
+
+| Method | OpenCV | What it does | sigma_s, sigma_r |
+|---|---|---|---|
+| `EDGE_PRESERVING_RECURSIVE` | `edgePreservingFilter`, `RECURS_FILTER` | the recursive filter along the transformed lines | 60, 0.4 |
+| `EDGE_PRESERVING_NORMCONV` | `NORMCONV_FILTER` | the normalised convolution: a box in the transformed domain | 60, 0.4 |
+| `DETAIL_ENHANCE` | `detailEnhance` | CIELAB L* split into the recursive filter's base and the rest, the rest tripled | 10, 0.15 |
+| `STYLIZATION` | `stylization` | the normalised convolution, darkened by 1 - the summed Sobel magnitude of its channels | 60, 0.45 |
+| `PENCIL_SKETCH_GREY` | `pencilSketch`, first output | shade_factor times the widths of the domain boxes; one channel out | 60, 0.07 |
+| `PENCIL_SKETCH_COLOR` | `pencilSketch`, second output | the grey drawing as the Y of the image's YCrCb | 60, 0.07 |
+
+`alwan_stylize_params` holds `sigma_s` (the spatial extent, in pixels), `sigma_r` (the range
+extent, in [0, 1] colour units) and `shade_factor` (the pencil drawing's darkness, 0.02).
+A zero field reads as the method's default above; the values go to float, as OpenCV takes
+them.
+
+Images are 8-bit, channels 3 (RGB) or 4 (RGBA, the fourth copied through); the grey sketch
+writes one channel. Row strides are in bytes, and out may be src. OpenCV computes in BGR,
+and alwan hands the port BGR: the normalised convolution decodes flat indices in a way that
+is not symmetric in the channels.
+
+The OpenCV operations the functions call are reproduced from its sources, each as the x64
+build computes it with IPP off: the 8-bit conversions (cvRound, ties to even; an infinite or
+NaN value is 0, as the SSE conversion's overflow makes it), float BGR to Lab (the int16
+table `alwan_decolor` reads) and Lab to BGR (blocks of eight pixels with reciprocal
+constants and a scalar tail with divisions; the sRGB curve a cubic spline over 1024
+intervals, its coefficients and the matrix in `data/opencv/lab2srgb_float.csv`, rebuilt from
+OpenCV's source by `gendata/data/stylize_tables.py`), float YCrCb both ways (fused
+multiply-adds in blocks of eight, the tail unfused), the 3 x 3 Sobel (its [1 2 1] pass sums
+(a + c) + 2b on the vector blocks, (a + 2b) + c on the tail) and `magnitude` (fused from
+sixteen values). The filter itself is OpenCV's scalar code: single precision, powf for the
+recursive feedback, the feedback's exp and each pass's sigma in double.
+
+One OpenCV behaviour is kept rather than repaired: when a whole row or column is shorter in
+the transformed domain than the normalised convolution's radius (a flat run of fewer than
+about 91 pixels at the defaults), OpenCV's index decoding reads one float past its table
+and divides by zero, the non-finite value spreads through the running sums, and every pixel
+it reaches comes out 0. alwan reads 0 at that index and gets the same result.
+
+Suite 274 holds it to cv2 5.0.0 with IPP off on procedural images, eight sizes from 2 x 2
+(one with flat black rows and columns that take the path above), every method at its
+defaults and at other parameters: all 101,312 bytes equal, in the ordinary and the
+deterministic build. On the 166 SRIC photographs at a twelfth of their size (41 million
+bytes, six methods) every byte equals cv2's with IPP off; with IPP on, as the pip wheel
+ships, one byte is one level off.
+
 ## Morphology
 
 ```c

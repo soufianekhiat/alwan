@@ -67,6 +67,11 @@ alwan_status alwan__warp_run(void *out, size_t out_rs, size_t ow, size_t oh, voi
 alwan_status alwan__denoise_nlm(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h, int buades,
                                 double hh, size_t s, size_t d, double sigma, int fast_exp, int kind);
 /* alwan_fft.c: a DFT of any length in double, in place; the inverse is not scaled */
+/* OpenCV 5.0.0's float sRGB to CIELAB (cvtColor COLOR_BGR2Lab on a float image: clip,
+ * 14-bit round, trilinear on its 33-node int16 table), shared by alwan_decolor and
+ * alwan_stylize; lab receives L, a, b for sRGB-encoded r, g, b. api/alwan_decolor.c. */
+void alwan__cv_rgb_to_lab_f32(float *lab, float r, float g, float b);
+
 typedef struct alwan__fft alwan__fft;
 alwan__fft *alwan__fft_create(size_t n);
 void alwan__fft_destroy(alwan__fft *f);

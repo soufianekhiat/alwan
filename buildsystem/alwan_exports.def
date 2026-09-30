@@ -1977,6 +1977,7 @@ EXPORTS
     alwan_structural_similarity_f32
     alwan_structural_similarity_f64
     alwan_structural_similarity_u8
+    alwan_stylize
     alwan_sucs_to_xyz_f32
     alwan_sucs_to_xyz_f64
     alwan_table1d_mat3_sample_f32

@@ -929,6 +929,19 @@
 
 ### Added
 
+- **`alwan_stylize`: OpenCV's non-photorealistic filters.** A port of OpenCV 5.0.0's photo
+  module (`npr.cpp`, `npr.hpp`; OpenCV, Apache-2.0, notice in the source) after Gastal and
+  Oliveira 2011's domain transform: `edgePreservingFilter` with both flags,
+  `detailEnhance`, `stylization` and `pencilSketch`'s grey and colour drawings. One
+  function, a method enum and zero-default parameters, on 8-bit RGB or RGBA. The OpenCV
+  operations they call are reproduced from its sources: the float Lab to BGR conversion (its
+  spline and matrix in `data/opencv/lab2srgb_float.csv`, rebuilt by
+  `gendata/data/stylize_tables.py`), float YCrCb both ways, the 3 x 3 Sobel, `magnitude` and
+  the 8-bit conversions, with OpenCV's vector blocks and tails; the Lab forward conversion is
+  shared with `alwan_decolor` (`alwan__cv_rgb_to_lab_f32`). Equal to cv2 (IPP off) on every
+  byte of suite 274, ordinary and deterministic builds, and on the 166 SRIC photographs at a
+  twelfth of their size (41 million bytes); one byte is a level off with IPP on.
+
 - **`alwan_white_balance`: OpenCV xphoto's white balancers.** A port of opencv_contrib 5.0.0's
   xphoto module (opencv_contrib, Apache-2.0): `SimpleWB` (per-channel percentile stretch, 8-bit
   and float), `GrayworldWB` (grey world over the pixels that are not too colourful, 8- and
