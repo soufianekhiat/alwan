@@ -21,6 +21,9 @@
  * about twice the masked pixels in a row, and n b in memory. Last, as scikit-image does,
  * each channel is clipped to the range of its known pixels, which params.unclipped turns
  * off.
+ *
+ * ALWAN_INPAINT_TELEA_OPENCV and ALWAN_INPAINT_NS_OPENCV are OpenCV's, in
+ * api/alwan_inpaint_opencv.c.
  */
 
 #include "../alwan.h"
@@ -260,6 +263,10 @@ static alwan_status alwan_ip_run(void *out, size_t out_rs, void const *src, size
     alwan_status st;
     if (!out || !src || !mask || w == 0 || h == 0 || ch == 0 || ch > 4 || n / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < w || mask_rs < w) return ALWAN_E_INVALID;
+    if (method == ALWAN_INPAINT_TELEA_OPENCV || method == ALWAN_INPAINT_NS_OPENCV) {
+        return alwan__inpaint_opencv(out, out_rs, src, src_rs, is_f32 ? ALWAN_PIXEL_F32 : ALWAN_PIXEL_F64, ch, w, h,
+                                     mask, mask_rs, method, params);
+    }
     if (method != ALWAN_INPAINT_BIHARMONIC) return ALWAN_E_INVALID;
     img = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, ch * sizeof(double)), sizeof(double));
     if (!img) return ALWAN_E_NOMEM;
@@ -297,6 +304,22 @@ static alwan_status alwan_ip_run(void *out, size_t out_rs, void const *src, size
     }
     ALWAN_FREE(img);
     return st;
+}
+
+/* Any precision build: the pixel format picks the type. BIHARMONIC takes F32 and F64. */
+alwan_status alwan_inpaint(void *out, size_t out_row_stride, void const *src, size_t src_row_stride,
+                           alwan_pixel_format format, size_t channels, size_t width, size_t height,
+                           unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method,
+                           alwan_inpaint_params const *params) {
+    if (method == ALWAN_INPAINT_BIHARMONIC) {
+        if (format == ALWAN_PIXEL_F32 || format == ALWAN_PIXEL_F64) {
+            return alwan_ip_run(out, out_row_stride, src, src_row_stride, channels, width, height, mask, mask_row_stride,
+                                method, params, format == ALWAN_PIXEL_F32);
+        }
+        return ALWAN_E_INVALID;
+    }
+    return alwan__inpaint_opencv(out, out_row_stride, src, src_row_stride, format, channels, width, height, mask,
+                                 mask_row_stride, method, params);
 }
 
 #if ALWAN_WITH_F64_FACADE

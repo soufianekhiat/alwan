@@ -2932,22 +2932,53 @@ alwan_status alwan_deconvolve_f64(alwan_f64 *out, size_t out_row_stride, alwan_f
  *                             scikit-image's restoration.inpaint_biharmonic does (suite 215).
  *                             Cost grows with the region's width: fine for spots, lines and
  *                             scratches; a solid hole of 200 x 200 needs about 400 MB
+ *   ALWAN_INPAINT_TELEA_OPENCV  OpenCV 5.0.0's cv::inpaint with INPAINT_TELEA (Telea 2004):
+ *                             the mask's boundary marched inwards in order of distance,
+ *                             each pixel a weighted sum of the known pixels within the
+ *                             radius and of their gradients. Ported from photo/src/
+ *                             inpaint.cpp (Intel licence, BSD-style; notice in the source)
+ *   ALWAN_INPAINT_NS_OPENCV   the same with INPAINT_NS (after Bertalmio, Bertozzi and
+ *                             Sapiro 2001): the weights follow the isophotes, and the
+ *                             pixel is their weighted mean
+ *
+ * The OpenCV methods match cv2.inpaint value for value (suite 275): TELEA and NS on U8 with
+ * one channel, or three (OpenCV's CV_8UC3 path; a fourth is copied through), and each
+ * channel of U16, F32 and F64 on its own through OpenCV's one-channel path (OpenCV itself
+ * takes U16 and F32 with one channel only; F64 is computed in float, as its CV_32F, and only
+ * the masked pixels are written from it). They keep OpenCV's arithmetic as it is: an
+ * integer result is cvRound(v + 0.5) for TELEA, so it lands a level up from the nearest
+ * about half the time; TELEA's central image difference is scaled by 2 where its one-sided
+ * ones are not; and next to the image's first row or column the gradient reads shift one
+ * pixel inwards, so a masked pixel's src value can reach the fill before that pixel is
+ * filled (the known values are checked for being finite, the masked ones are not). An
+ * image one pixel high or wide makes OpenCV read outside its buffer; alwan does not, and
+ * does not claim to match it there.
  *
  * params NULL is every default. ALWAN_E_INVALID for a NULL, a zero size, a channel count
  * out of range, a stride too small, a non-finite known value, a mask that marks every
- * pixel or an unknown method; ALWAN_E_NOMEM when a region's system does not fit. */
+ * pixel, a negative or non-finite radius or an unknown method; ALWAN_E_NOMEM when a
+ * region's system does not fit. */
 typedef enum {
-    ALWAN_INPAINT_BIHARMONIC = 0
+    ALWAN_INPAINT_BIHARMONIC = 0,
+    ALWAN_INPAINT_TELEA_OPENCV = 1,
+    ALWAN_INPAINT_NS_OPENCV = 2
 } alwan_inpaint_method;
 
 /* Each method reads its own fields; a zero field is its default. */
 typedef struct {
-    int unclipped; /* BIHARMONIC: non-zero leaves the fill as solved; 0 clips each channel to the range
-                    * of its known pixels, as scikit-image does */
+    int unclipped;    /* BIHARMONIC: non-zero leaves the fill as solved; 0 clips each channel to the range
+                       * of its known pixels, as scikit-image does */
+    alwan_f64 radius; /* TELEA, NS: OpenCV's inpaintRadius, 3; rounded half to even and held to 1..100
+                       * as OpenCV does */
 } alwan_inpaint_params;
 
 alwan_status alwan_inpaint_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
 alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
+/* The same on a pixel format: U8 and U16 for TELEA and NS, F32 and F64 for every method. */
+alwan_status alwan_inpaint(void *out, size_t out_row_stride, void const *src, size_t src_row_stride,
+                           alwan_pixel_format format, size_t channels, size_t width, size_t height,
+                           unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method,
+                           alwan_inpaint_params const *params);
 
 /* Decolorization: an RGB image to one grey channel that keeps the colour contrast a luma
  * throws away, so that a red and a green of the same lightness stay apart.

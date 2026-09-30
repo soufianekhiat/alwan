@@ -929,6 +929,19 @@
 
 ### Added
 
+- **`alwan_inpaint`: OpenCV's Telea and Navier-Stokes inpainting.** Two methods,
+  `ALWAN_INPAINT_TELEA_OPENCV` and `ALWAN_INPAINT_NS_OPENCV`, ported from OpenCV 5.0.0's
+  `photo/src/inpaint.cpp` (Intel Corporation's licence, BSD-style, notice in
+  `api/alwan_inpaint_opencv.c`), with `params.radius` for `inpaintRadius` (0 reads as 3), and
+  `alwan_inpaint`, the family on a pixel format: U8 with one channel or three (a fourth is
+  copied through), and each channel of U16, F32 and F64 through OpenCV's one-channel path.
+  OpenCV's arithmetic is kept as it is, its quirks included (TELEA's integer result is
+  cvRound(v + 0.5), its central image difference is doubled, and next to the first row or
+  column the gradient reads shift one pixel inwards and can read a masked src value).
+  Equal to cv2.inpaint (IPP off) on every filled value of suite 275, ordinary and
+  deterministic builds, and on 1,008 cases drawn from 42 SRIC photographs at a sixteenth of
+  their size. The float forms `alwan_inpaint_{T}` take the two methods too.
+
 - **`alwan_stylize`: OpenCV's non-photorealistic filters.** A port of OpenCV 5.0.0's photo
   module (`npr.cpp`, `npr.hpp`; OpenCV, Apache-2.0, notice in the source) after Gastal and
   Oliveira 2011's domain transform: `edgePreservingFilter` with both flags,

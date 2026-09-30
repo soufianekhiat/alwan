@@ -149,6 +149,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_l0_smooth.c
   src/alwan/api/alwan_deconvolve.c
   src/alwan/api/alwan_inpaint.c
+  src/alwan/api/alwan_inpaint_opencv.c
   src/alwan/api/alwan_morphology.c
   src/alwan/api/alwan_background.c
   src/alwan/api/alwan_threshold.c

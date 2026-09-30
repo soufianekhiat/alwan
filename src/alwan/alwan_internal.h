@@ -71,6 +71,11 @@ alwan_status alwan__denoise_nlm(void *out, size_t out_rs, void const *src, size_
  * 14-bit round, trilinear on its 33-node int16 table), shared by alwan_decolor and
  * alwan_stylize; lab receives L, a, b for sRGB-encoded r, g, b. api/alwan_decolor.c. */
 void alwan__cv_rgb_to_lab_f32(float *lab, float r, float g, float b);
+/* cv::inpaint's TELEA and NS (OpenCV 5.0.0) on U8, U16, F32 or F64 pixels, the entry behind
+ * alwan_inpaint and alwan_inpaint_{T} for those methods. api/alwan_inpaint_opencv.c. */
+alwan_status alwan__inpaint_opencv(void *out, size_t out_rs, void const *src, size_t src_rs, alwan_pixel_format format,
+                                   size_t ch, size_t w, size_t h, unsigned char const *mask, size_t mask_rs,
+                                   alwan_inpaint_method method, alwan_inpaint_params const *params);
 
 typedef struct alwan__fft alwan__fft;
 alwan__fft *alwan__fft_create(size_t n);

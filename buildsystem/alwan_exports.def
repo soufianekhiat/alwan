@@ -1046,6 +1046,7 @@ EXPORTS
     alwan_index_stress_f32
     alwan_index_stress_f64
     alwan_inertia_tensor
+    alwan_inpaint
     alwan_inpaint_f32
     alwan_inpaint_f64
     alwan_interop_count

@@ -647,7 +647,9 @@ float32. The transforms are alwan's own (see `L0_SMOOTH`).
 
 ```c
 typedef enum {
-    ALWAN_INPAINT_BIHARMONIC = 0
+    ALWAN_INPAINT_BIHARMONIC = 0,
+    ALWAN_INPAINT_TELEA_OPENCV = 1,
+    ALWAN_INPAINT_NS_OPENCV = 2
 } alwan_inpaint_method;
 
 alwan_status alwan_inpaint_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -655,15 +657,22 @@ alwan_status alwan_inpaint_{T}(alwan_{T} *out, size_t out_row_stride,
                                size_t width, size_t height,
                                unsigned char const *mask, size_t mask_row_stride,
                                alwan_inpaint_method method, alwan_inpaint_params const *params);
+alwan_status alwan_inpaint(void *out, size_t out_row_stride, void const *src, size_t src_row_stride,
+                           alwan_pixel_format format, size_t channels, size_t width, size_t height,
+                           unsigned char const *mask, size_t mask_row_stride,
+                           alwan_inpaint_method method, alwan_inpaint_params const *params);
 ```
 
 The pixels a mask marks (non-zero bytes, one per pixel) filled from their surroundings: a
-dust spot, a scratch, a hot pixel cluster, a wire or a date stamp to remove. The values
-`src` holds under the mask are never read. 1 to 4 channels; `out` may be `src`.
+dust spot, a scratch, a hot pixel cluster, a wire or a date stamp to remove. 1 to 4
+channels; `out` may be `src`. `BIHARMONIC` never reads the values `src` holds under the
+mask; the OpenCV methods can (see below). `alwan_inpaint` takes a pixel format: U8 and U16
+for the OpenCV methods, F32 and F64 for all three.
 
 | Field of `alwan_inpaint_params` | Method | 0 reads as |
 |---|---|---|
 | `unclipped` | `BIHARMONIC` | 0: clip each channel to its known pixels' range, as scikit-image |
+| `radius` | `TELEA_OPENCV`, `NS_OPENCV` | 3, OpenCV's usual `inpaintRadius`; rounded half to even and held to 1..100 as OpenCV does |
 
 ### `BIHARMONIC`
 
@@ -689,6 +698,42 @@ Suite 215 holds it to scikit-image's `restoration.inpaint_biharmonic`, solved by
 to 5.8e-15 on grey and colour images with scattered spots, a diagonal scratch, a solid
 block and a mask along the top edge into a corner, and to 9.5e-7 on float32, which
 scikit-image solves in float32.
+
+### `TELEA_OPENCV` and `NS_OPENCV`
+
+OpenCV 5.0.0's `cv::inpaint`, ported from `photo/src/inpaint.cpp` (Intel Corporation's
+licence, BSD-style; the notice is in `api/alwan_inpaint_opencv.c`). Both march the mask's
+boundary inwards in order of distance, a fast-marching front keyed by arrival time, and set
+each pixel from the known pixels within the radius. `TELEA_OPENCV` is Telea 2004: a sum
+weighted by distance, by how close the pixel lies to the front and by its direction to it,
+of each neighbour's value carried forward by its gradient. `NS_OPENCV` is OpenCV's reading
+of Bertalmio, Bertozzi and Sapiro 2001: a mean weighted to follow the isophotes. Both are
+quick and local, like `BIHARMONIC` better on thin defects than on large holes, and both
+leave the blur and streaks those methods are known for.
+
+Types. U8 with one channel runs OpenCV's `CV_8UC1` path, with three its `CV_8UC3` path (a
+fourth channel is copied from `src`), U16 and F32 with one channel are OpenCV's `CV_16UC1`
+and `CV_32FC1`. OpenCV takes nothing else; alwan runs each channel of a multi-channel U16,
+F32 or F64 image through the one-channel path on its own, and computes F64 in float, as
+`CV_32FC1`, writing back only the masked pixels (the known ones keep their bits).
+
+OpenCV's arithmetic is kept as it is. An integer `TELEA_OPENCV` result is `cvRound(v + 0.5)`,
+so about half the time it lands a level above the nearest; its central image difference is
+scaled by 2 where the one-sided ones are not; its three-channel path takes the distance
+weight's square root in double and the one-channel path in float, so a grey image filled
+as one channel and as three copies can differ. Next to the image's first row or column the
+gradient reads shift one pixel inwards (`km = k - 1 + (k == 1)`), so they can read a masked
+pixel's `src` value before that pixel is filled. Known values are checked for being finite,
+masked ones are not. An image one pixel high or wide makes OpenCV read outside its buffer;
+alwan does not, and does not claim to match it there. A mask that marks every pixel is
+`ALWAN_E_INVALID`, where OpenCV returns the image unchanged.
+
+Suite 275 holds both to `cv2.inpaint` (IPP off) on every filled value, ordinary and
+deterministic builds: five sizes, one two pixels wide, five masks (a thin diagonal
+scratch, a disc, a band along two edges, a speckle, blocks against the edges), U8 with one
+and three channels, U16 and F32, radii 3, 1, 5, 2.5 and 0.4. The forms OpenCV lacks are held
+to the ones it has. Outside the suite, 1,008 cases drawn from 42 SRIC photographs at a
+sixteenth of their size, RGB, RGBA, U16 and F32, radii 0.4 to 7, were equal too.
 
 ## Decolorization
 
