@@ -853,13 +853,18 @@ alwan_status alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, 
  * RGB Color Space Conversion
  * ---------------------------------------------------------------- */
 
-/* Convert RGB color from one color space to another
- * Handles chromatic adaptation if white points differ (using Bradford CAT by default)
- * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
+/* Convert RGB color from one color space to another: src_rgb -> XYZ -> dst_rgb by the two
+ * spaces' matrices. LINEAR values in and out: the descriptors name their spaces' transfer
+ * functions but this does not apply them, so encoded (sRGB, ACEScct, PQ...) values must be
+ * decoded first (alwan_eotf_apply) and re-encoded after (alwan_oetf_apply), or use
+ * alwan_image_convert, which does both. Where the white points differ by more than 1e-6
+ * in xy the XYZ is adapted by Bradford, but only with a ctx: with ctx NULL the white
+ * points are left as they are. Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 alwan_status alwan_rgb_convert_f64(alwan_rgb_f64 *dst_rgb, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_rgb_f64 const *src_rgb, alwan_ctx *ctx);
 alwan_status alwan_rgb_convert_f32(alwan_rgb_f32 *dst_rgb, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_rgb_f32 const *src_rgb, alwan_ctx *ctx);
 
-/* MapRGB color space conversion for arrays of colors
+/* MapRGB color space conversion for arrays of colors, linear values, the same rules as
+ * alwan_rgb_convert_f64 (no transfer function; Bradford only with a ctx)
  * More efficient than calling alwan_rgb_convert_f64 in a loop
  * count: number of RGB triplets to convert
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
@@ -2474,7 +2479,9 @@ typedef struct {
                              * 0 reads as 16 */
     int wavelet;            /* WAVELET: an alwan_wavelet; 0 is ALWAN_WAVELET_DB1 (Haar), scikit-image's
                              * default */
-    size_t wavelet_levels;  /* WAVELET: decomposition levels; 0 reads as the maximum minus 3, at least 1 */
+    size_t wavelet_levels;  /* WAVELET: decomposition levels; 0 reads as the maximum minus 3, at least 1.
+                             * More than the maximum (PyWavelets' dwt_max_level for the shorter side and
+                             * the filter) is ALWAN_E_RANGE, where scikit-image warns and runs on */
     int wavelet_visushrink; /* WAVELET: non-zero thresholds by VisuShrink; 0 by BayesShrink */
     int wavelet_hard;       /* WAVELET: non-zero thresholds hard; 0 soft */
     size_t kernel_size;     /* MEDIAN: the window's side, odd, 3 to 255; 0 reads as 3 */

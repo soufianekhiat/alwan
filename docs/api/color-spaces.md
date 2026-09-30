@@ -349,9 +349,14 @@ alwan_status alwan_rgb_convert_{T}(alwan_rgb_{T} *dst_rgb,
                                     alwan_ctx *ctx);
 ```
 
-Converts a single RGB color between two spaces. When the source and destination
-white points differ, chromatic adaptation is applied automatically using the
-**Bradford CAT** by default. Returns `ALWAN_OK` on success, `ALWAN_E_INVALID` on error.
+Converts a single RGB color between two spaces through XYZ, by the two spaces'
+matrices. **Linear values in and out:** the descriptors carry their spaces' transfer
+functions but this function does not apply them, so encoded values (sRGB, ACEScct, PQ)
+must be decoded with `alwan_eotf_apply_{T}` first and encoded with `alwan_oetf_apply_{T}`
+after; `alwan_image_convert_{T}` does both. When the white points differ, the XYZ is
+adapted with the **Bradford CAT**, but only when a `ctx` is passed: with `ctx` NULL the
+white points are left as they are. Returns `ALWAN_OK` on success, `ALWAN_E_INVALID` on
+error.
 
 A strided bulk variant is available:
 
@@ -370,8 +375,8 @@ alwan_rgb_space_desc_{T} srgb_desc, bt2020_desc;
 alwan_rgb_get_space_descriptor_{T}(&srgb_desc, ALWAN_RGB_SPACE_SRGB, ctx);
 alwan_rgb_get_space_descriptor_{T}(&bt2020_desc, ALWAN_RGB_SPACE_BT2020, ctx);
 
-alwan_rgb_{T} rgb_in = {0.8, 0.3, 0.2};
-alwan_rgb_{T} rgb_out;
+alwan_rgb_{T} rgb_in = {0.8, 0.3, 0.2};   /* linear sRGB, not encoded */
+alwan_rgb_{T} rgb_out;                     /* linear BT.2020 */
 alwan_rgb_convert_{T}(&rgb_out, &srgb_desc, &bt2020_desc, &rgb_in, ctx);
 ```
 
