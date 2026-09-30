@@ -1,0 +1,9 @@
+OpenCV 5.0.0, the OpenCV authors, Apache License 2.0 (LICENSE-opencv.txt beside this file)
+https://github.com/opencv/opencv, commit 40738fb16ceddb5fb3fea747585f7ce6abb0605b (tag 5.0.0)
+
+rgb2lab_lut_s16.csv: the int16 table OpenCV's cvtColor(COLOR_BGR2Lab) interpolates for a
+32-bit float sRGB image (initLUTforLABLUVs16 in imgproc/src/color_lab.cpp), 33 x 33 x 33
+nodes, blue outermost then green then red, each L * 16384 / 100, (a + 128) * 64 and
+(b + 128) * 64. Read back from cv2 5.0.0 at the nodes, where the interpolation returns them
+exactly, by alwan_dev/gendata/data/decolor_lab_lut.py, which checks every node reproduces
+cvtColor to the bit. alwan_decolor (ALWAN_DECOLOR_LU2012) reads it.

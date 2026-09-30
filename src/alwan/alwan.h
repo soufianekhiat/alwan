@@ -2873,6 +2873,45 @@ typedef struct {
 alwan_status alwan_inpaint_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
 alwan_status alwan_inpaint_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, unsigned char const *mask, size_t mask_row_stride, alwan_inpaint_method method, alwan_inpaint_params const *params);
 
+/* Decolorization: an RGB image to one grey channel that keeps the colour contrast a luma
+ * throws away, so that a red and a green of the same lightness stay apart.
+ *
+ *   ALWAN_DECOLOR_LU2012  Lu, Xu and Jia 2012, "Contrast Preserving Decolorization", as
+ *                         OpenCV's cv::decolor computes it (a port of OpenCV 5.0.0,
+ *                         Apache-2.0): the grey is a second-order polynomial in R, G and B
+ *                         whose nine weights are fitted so that neighbouring greys differ
+ *                         by the CIELAB difference of the colours, with the sign the
+ *                         channels agree on; fitted on the image brought to at most
+ *                         working_size in height plus width, applied at full size and
+ *                         stretched to [0, 1]. src is sRGB-encoded in [0, 1], R first;
+ *                         the CIELAB step is OpenCV's float conversion, a 33-node table read
+ *                         back from cv2 (data/opencv/rgb2lab_lut_s16.csv). Computed in single
+ *                         precision as OpenCV does, both entry points alike. cv::decolor's
+ *                         8-bit grey is cvRound(out * 255) of the f32 result (bit-exact,
+ *                         suite 271); its colour-boosted second output is not provided
+ *                         (swap L* for the grey in alwan's Lab conversions for that).
+ *
+ * channels is 3 or 4 (the fourth is ignored); out is one channel, width x height. A grey
+ * with no range, from a flat image, is 0 everywhere. params NULL is every default.
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
+ * small, a negative or NaN parameter or an unknown method; ALWAN_E_NOMEM when the
+ * gradient system (about 200 bytes a working pixel) does not fit. */
+typedef enum {
+    ALWAN_DECOLOR_LU2012 = 0
+} alwan_decolor_method;
+
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    alwan_f64 sigma;      /* LU2012: the contrast kernel's width, 0.02 */
+    int max_iterations;   /* LU2012: OpenCV's maxIter, 15; the loop stops after one more update */
+    alwan_f64 tolerance;  /* LU2012: the energy change that ends the loop, 1e-4 */
+    int working_size;     /* LU2012: the fit runs on the image resized (bilinear) to at most this
+                           * much height plus width, 800 */
+} alwan_decolor_params;
+
+alwan_status alwan_decolor_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_decolor_method method, alwan_decolor_params const *params);
+alwan_status alwan_decolor_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_decolor_method method, alwan_decolor_params const *params);
+
 /* Morphology: grey-level erosion and dilation and their composites, for cleaning a
  * selection mask or a matte, and for pulling out detail smaller than a shape. Each of 1 to
  * 4 channels on its own; out may be src.

@@ -690,6 +690,59 @@ to 5.8e-15 on grey and colour images with scattered spots, a diagonal scratch, a
 block and a mask along the top edge into a corner, and to 9.5e-7 on float32, which
 scikit-image solves in float32.
 
+## Decolorization
+
+```c
+typedef enum {
+    ALWAN_DECOLOR_LU2012 = 0
+} alwan_decolor_method;
+
+alwan_status alwan_decolor_{T}(alwan_{T} *out, size_t out_row_stride,
+                               alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                               size_t width, size_t height,
+                               alwan_decolor_method method, alwan_decolor_params const *params);
+```
+
+An sRGB-encoded RGB image (3 or 4 channels, R first, the fourth ignored) to one grey channel
+in [0, 1] that keeps the colour contrast a luma loses: a red and a green of the same
+lightness, which any fixed weighting of R, G and B maps to the same grey, stay apart.
+
+| Field of `alwan_decolor_params` | Method | 0 reads as |
+|---|---|---|
+| `sigma` | `LU2012` | 0.02, the width of the contrast kernel |
+| `max_iterations` | `LU2012` | 15, OpenCV's `maxIter` (the loop stops after one more update) |
+| `tolerance` | `LU2012` | 1e-4, the energy change that ends the loop |
+| `working_size` | `LU2012` | 800: the fit runs on the image resized to at most this height plus width |
+
+### `LU2012`
+
+Lu, Xu and Jia (2012), "Contrast Preserving Decolorization", as OpenCV's `cv::decolor`
+computes it: a port of OpenCV 5.0.0's `photo/src/contrast_preserve.cpp` (Apache-2.0, notice
+in the source). The grey is a polynomial of degree two in R, G and B, nine weights on the
+monomials R^r G^g B^b with 1 <= r + g + b <= 2. They are fitted on the image, brought down
+to `working_size` in height plus width by OpenCV's float bilinear resize when larger, so
+that each pair of horizontal and vertical neighbours differs in grey by the CIELAB
+difference of their colours / 100, with the sign the three channels agree on (when all
+rise or all fall by more than 0.05) and either sign otherwise; the fit starts from 0.33 on
+R, G and B and takes the paper's expectation-maximisation steps. The weights are then
+applied to the full image and the result stretched to [0, 1]. The CIELAB step is OpenCV's
+own float conversion, which interpolates a 33-node int16 table rather than evaluating the
+formula; alwan carries that table, read back from cv2 (`data/opencv/rgb2lab_lut_s16.csv`,
+with OpenCV's licence beside it). Everything is in single precision as OpenCV has it, the
+f64 entry point included.
+
+`cv::decolor` returns 8 bits: `cvRound(out * 255)` of the f32 result is its grey, value
+for value. A fit OpenCV cannot solve (a 9 x 9 pivot under 10 FLT_EPSILON, as for an image
+of two flat colours) leaves its weights at 0, and a grey with no range is 0 everywhere, as
+OpenCV's is. Its second output, the colour-boosted image, is not provided: it swaps L* for
+the grey, which alwan's Lab conversions do.
+
+Suite 271 holds it to `cv2.decolor` with IPP off on procedural images (red and green
+stripes over a ramp, a noisy texture as RGB and RGBA, two flat colours, a flat image, and
+610 x 250 ramps that go through the resize): all 183,172 greys equal, in the ordinary and
+the deterministic build. With IPP on, as the pip wheel ships, OpenCV's resize is Intel's,
+and on the resized case 31 of 152,500 greys are one level off.
+
 ## Morphology
 
 ```c

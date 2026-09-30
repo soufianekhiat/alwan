@@ -520,6 +520,8 @@ EXPORTS
     alwan_data_get_illuminant_xy_f64
     alwan_data_get_srgb_primaries_f32
     alwan_data_get_srgb_primaries_f64
+    alwan_decolor_f32
+    alwan_decolor_f64
     alwan_deconvolve_f32
     alwan_deconvolve_f64
     alwan_default_alloc

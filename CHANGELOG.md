@@ -929,6 +929,16 @@
 
 ### Added
 
+- **`alwan_decolor_{T}`: contrast-preserving decolorization, `ALWAN_DECOLOR_LU2012`.** Lu, Xu
+  and Jia 2012 as OpenCV's `cv::decolor` computes it: a port of OpenCV 5.0.0's
+  `photo/src/contrast_preserve.cpp` (OpenCV, Apache-2.0), with the OpenCV operations it calls
+  reproduced from the same sources (the float sRGB to Lab conversion through its 33-node
+  int16 table, read back from cv2 and shipped with OpenCV's licence in `data/opencv/`; the
+  float bilinear resize; mulTransposed; the float LU solve, whose failure zeroes the fit).
+  Family API, zero-default parameters. The 8-bit grey `cvRound(out * 255)` equals
+  `cv2.decolor`'s (IPP off) on all 183,172 values of suite 271, ordinary and deterministic
+  builds. The colour-boosted second output is not provided.
+
 - **`alwan_color_checker_detect_{T}`: colour checker detection by segmentation.** A port of
   colour-checker-detection 0.2.3's `detect_colour_checkers_segmentation` (colour-checker-detection,
   BSD-3-Clause, Colour Developers), with the OpenCV calls it makes reproduced from OpenCV 5.x's
