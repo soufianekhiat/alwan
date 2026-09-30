@@ -64,7 +64,7 @@ ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_color_matrix_apply)(ALWAN_CO
 /* ================================================================
  * Printer Lights
  * Film-printing convention: 25 lights = neutral (no change).
- * Each light unit = 0.025 log10 exposure change (1 stop ~ 40 lights).
+ * Each light unit = 0.025 log10 exposure change, so twelve lights are a stop (0.30 log E).
  * Formula: output = input * 10^((25 - lights) * 0.025)
  * Source: traditional photochemical film printing; see Kodak Reference Manual
  *   for Cineon (1992) and ISO 5-2:2001 "Photography -- Density measurements".

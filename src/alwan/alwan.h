@@ -7358,7 +7358,9 @@ alwan_status alwan_hunt_forward_f64(alwan_hunt_correlates_f64 *out,
  * what remains reduces to one linear equation. The only iteration is a scalar
  * fixed point on the scotopic response, and it runs only when vc.S is left at
  * 0, since that is the field whose default is the stimulus Y. Round-trips the
- * sRGB gamut to 2.6e-13 in f64.
+ * sRGB gamut to 2.6e-13 in f64. colour-science has no Hunt inverse; given
+ * colour.XYZ_to_Hunt's (J, C, h) under each of fourteen viewing conditions it
+ * returns colour's stimulus to 7.6e-12 (suite 29).
  *
  * Two limits, both inherited from clamps in the forward. A stimulus whose cone
  * response is negative is not recoverable, because the forward's f_n sends
@@ -7434,7 +7436,13 @@ alwan_status alwan_kim2009_forward_f64(alwan_kim2009_correlates_f64 *out,
                                alwan_xyz_f64 const *xyz,
                                alwan_kim2009_viewing_conditions_f64 const *vc);
 
-/* Kim2009 inverse transform: appearance correlates -> XYZ */
+/* Kim2009 inverse transform: appearance correlates -> XYZ
+ *
+ * Inverts the forward exactly: given colour-science's (J, C, h) it returns the stimulus
+ * they came from to 4e-15 under all three surrounds (suite 46). colour's own
+ * Kim2009_to_XYZ does not: it takes the opponent signals back through the paper's printed
+ * inverse matrix, rounded to four decimals, and misses its own stimulus by up to 6.6e-5
+ * of 1 + |X|, which is all that separates the two. */
 alwan_status alwan_kim2009_inverse_f32(alwan_xyz_f32 *xyz_out,
                                alwan_kim2009_correlates_f32 const *correlates,
                                alwan_kim2009_viewing_conditions_f32 const *vc);
@@ -9565,7 +9573,7 @@ alwan_status alwan_color_matrix_get_preset_f32(alwan_mat3x3_f32 *matrix_3x3, alw
  * red_lights: red printer light adjustment (0-50, default 25)
  * green_lights: green printer light adjustment (0-50, default 25)
  * blue_lights: blue printer light adjustment (0-50, default 25)
- * Each light unit represents approximately 0.025 log exposure change
+ * Each light unit is 0.025 log exposure (twelve to a stop), the film laboratory convention
  * Writes the result to rgb_out; this is a void function (no status returned). */
 void alwan_printer_lights_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in,
                                 alwan_f32 red_lights, alwan_f32 green_lights,
