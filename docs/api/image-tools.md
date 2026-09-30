@@ -743,6 +743,78 @@ stripes over a ramp, a noisy texture as RGB and RGBA, two flat colours, a flat i
 the deterministic build. With IPP on, as the pip wheel ships, OpenCV's resize is Intel's,
 and on the resized case 31 of 152,500 greys are one level off.
 
+## Gradient-domain editing
+
+```c
+typedef enum {
+    ALWAN_GRADIENT_EDIT_CLONE_NORMAL = 0,
+    ALWAN_GRADIENT_EDIT_CLONE_MIXED = 1,
+    ALWAN_GRADIENT_EDIT_CLONE_MONOCHROME = 2,
+    ALWAN_GRADIENT_EDIT_COLOR_CHANGE = 3,
+    ALWAN_GRADIENT_EDIT_ILLUMINATION_CHANGE = 4,
+    ALWAN_GRADIENT_EDIT_TEXTURE_FLATTENING = 5
+} alwan_gradient_edit_method;
+
+alwan_status alwan_gradient_edit(unsigned char *out, size_t out_row_stride,
+                                 unsigned char const *src, size_t src_row_stride,
+                                 size_t src_width, size_t src_height,
+                                 unsigned char const *mask, size_t mask_row_stride,
+                                 unsigned char const *dst, size_t dst_row_stride,
+                                 size_t dst_width, size_t dst_height,
+                                 size_t channels, alwan_gradient_edit_method method,
+                                 alwan_gradient_edit_params const *params);
+```
+
+Poisson image editing (Perez, Gangnet and Blake 2003) and the edits OpenCV builds on the
+same solver, as OpenCV 5.0.0's photo module computes them: a port of
+`photo/src/seamless_cloning.cpp` and `seamless_cloning_impl.cpp` (Apache-2.0, notice in the
+source). Each method sets a gradient field inside a mask and solves the Poisson equation for
+the image whose gradients are closest to it, with the pixels on the region's frame held; the
+solve is OpenCV's discrete sine transform, built on OpenCV's own mixed-radix DFT.
+
+| Method | OpenCV | What it does |
+|---|---|---|
+| `CLONE_NORMAL` | `seamlessClone`, `NORMAL_CLONE` | src's gradients inside the mask, dst's outside; the region pasted into dst |
+| `CLONE_MIXED` | `MIXED_CLONE` | at each pixel and channel, the stronger of src's and dst's gradient (by \|gx - gy\|) |
+| `CLONE_MONOCHROME` | `MONOCHROME_TRANSFER` | the gradients of src's grey, so dst keeps its colour and takes src's texture |
+| `COLOR_CHANGE` | `colorChange` | the region's gradients scaled per channel: its colour changes, its texture stays |
+| `ILLUMINATION_CHANGE` | `illuminationChange` | the region's gradients remapped to alpha^beta \|g\|^-beta g, flattening highlights and shadows |
+| `TEXTURE_FLATTENING` | `textureFlattening` | only the gradients on Canny edges of the masked image kept, washing texture out |
+
+| Field of `alwan_gradient_edit_params` | Method | 0 reads as |
+|---|---|---|
+| `center_x`, `center_y` | `CLONE_*` | both 0: the centre of dst, (width / 2, height / 2) |
+| `centre_on_mask_image` | `CLONE_*` | 0: the region's bounding box is centred there; non-zero centres the whole mask image instead (OpenCV's `*_WIDE` flags) |
+| `red_mul`, `green_mul`, `blue_mul` | `COLOR_CHANGE` | 1.0 |
+| `alpha`, `beta` | `ILLUMINATION_CHANGE` | 0.2 and 0.4 |
+| `low_threshold`, `high_threshold` | `TEXTURE_FLATTENING` | 30 and 45 |
+| `kernel_size` | `TEXTURE_FLATTENING` | 3 (Canny's Sobel aperture: 3, 5 or 7) |
+
+A zero field reads as its default, so an exact 0 is out of reach; the factors go to float as
+OpenCV's do, so 1e-300 becomes 0.
+
+Images are 8-bit, as OpenCV's are: the solution is truncated to 8 bits, not rounded, and
+every float step is single precision, as OpenCV has it. channels is 3 (RGB) or 4 (RGBA: the
+fourth channel is copied through from dst for the clones and from src otherwise); row strides
+are in bytes. mask is one byte per src pixel: non-zero pixels are the region, and the value
+weights the gradients (255 is full weight, OpenCV's mask / 255); NULL is all 255. The mask is
+eroded by 3 pixels (OpenCV's three 3 x 3 erosions) before it weights anything. The clones write
+out at dst's size, first clearing a one-pixel frame of the mask as OpenCV does; the other methods
+write out at src's size and ignore dst. out may be src or dst.
+
+The clones return `ALWAN_E_RANGE` when the region does not fit inside dst, or is under 3 x 3
+(OpenCV throws). A mask with nothing left after its frame is cleared leaves dst as it was.
+
+Suite 272 holds every method to cv2 5.0.0 with IPP off, value for value, on procedural images:
+the four clone flags, a region on dst's corner, the default centre, a weighted mask, colour
+change with a mask and without, illumination change on the generic power and on the integer
+and half powers, texture flattening at apertures 3, 5 and 7, and a 3 x 3 image; the ordinary
+and the deterministic build alike. OpenCV's result depends on the CPU in two places, and
+alwan's matches the AVX2 build the reference came from: the gradient magnitude of
+`ILLUMINATION_CHANGE` is fused (sqrt of fma(x, x, y y)), and at beta exactly 0.5 OpenCV takes
+the CPU's approximate reciprocal square root with one Newton step where alwan takes 1 / sqrt,
+so on another CPU a few pixels may land a level apart there.
+
 ## Morphology
 
 ```c

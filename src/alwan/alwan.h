@@ -2912,6 +2912,78 @@ typedef struct {
 alwan_status alwan_decolor_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_decolor_method method, alwan_decolor_params const *params);
 alwan_status alwan_decolor_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_decolor_method method, alwan_decolor_params const *params);
 
+/* Gradient-domain editing: Poisson image editing (Perez, Gangnet and Blake 2003) and the
+ * edits OpenCV builds on the same solver, a port of OpenCV 5.0.0's photo module (Apache-2.0;
+ * cv::seamlessClone, cv::colorChange, cv::illuminationChange, cv::textureFlattening). Each
+ * method sets a gradient field inside a mask and solves the Poisson equation for the image
+ * whose gradients are closest to it, keeping the pixels on the region's frame; OpenCV solves
+ * it with a discrete sine transform, and so does alwan, with OpenCV's own transform.
+ *
+ *   ALWAN_GRADIENT_EDIT_CLONE_NORMAL       seamlessClone NORMAL_CLONE: src's gradients inside
+ *                                          the mask, dst's outside, pasted into dst
+ *   ALWAN_GRADIENT_EDIT_CLONE_MIXED        MIXED_CLONE: at each pixel and channel the stronger
+ *                                          of src's and dst's gradient (by |gx - gy|)
+ *   ALWAN_GRADIENT_EDIT_CLONE_MONOCHROME   MONOCHROME_TRANSFER: the gradients of src's grey
+ *   ALWAN_GRADIENT_EDIT_COLOR_CHANGE       colorChange: src's gradients inside the mask scaled
+ *                                          per channel, so the region changes colour and keeps
+ *                                          its texture
+ *   ALWAN_GRADIENT_EDIT_ILLUMINATION_CHANGE  illuminationChange: the gradients inside the mask
+ *                                          remapped, alpha^beta |g|^-beta g, which flattens
+ *                                          highlights and shadows
+ *   ALWAN_GRADIENT_EDIT_TEXTURE_FLATTENING textureFlattening: only the gradients on Canny edges
+ *                                          of the masked image kept, which washes out texture
+ *
+ * Images are 8-bit, channels 3 (RGB) or 4 (RGBA, the fourth copied through from dst for the
+ * clones and from src otherwise), row-major with row strides in bytes. mask is one byte per
+ * src pixel; non-zero pixels are the region, and its value weights the gradients (255 is
+ * full, as OpenCV's mask / 255); NULL is all 255. The clones read dst and write out at dst's
+ * size: the bounding box of the mask (after a one-pixel frame of it is cleared, as OpenCV
+ * does) is centred on (center_x, center_y) in dst. The other methods ignore dst (NULL is
+ * fine) and write out at src's size. out may be src or dst.
+ *
+ * The result is OpenCV's to the bit (suite 272 against cv2 5.0.0, IPP off), including its
+ * truncation of the solution to 8 bits and its sequence of float roundings; the solver's
+ * float work and the sine transform are single precision, as OpenCV's are.
+ *
+ * ALWAN_E_INVALID for a NULL image, a size under 3 x 3, a stride too small, a channel count
+ * other than 3 or 4, an unknown method, a non-finite parameter or a kernel size other than
+ * 0, 3, 5 or 7; ALWAN_E_RANGE when a clone's region does not fit inside dst or is under
+ * 3 x 3 (OpenCV throws); ALWAN_E_NOMEM when the buffers (about 60 bytes a pixel) do not
+ * fit. A mask with no pixels left after the frame is cleared leaves dst as it was. */
+typedef enum {
+    ALWAN_GRADIENT_EDIT_CLONE_NORMAL = 0,
+    ALWAN_GRADIENT_EDIT_CLONE_MIXED = 1,
+    ALWAN_GRADIENT_EDIT_CLONE_MONOCHROME = 2,
+    ALWAN_GRADIENT_EDIT_COLOR_CHANGE = 3,
+    ALWAN_GRADIENT_EDIT_ILLUMINATION_CHANGE = 4,
+    ALWAN_GRADIENT_EDIT_TEXTURE_FLATTENING = 5
+} alwan_gradient_edit_method;
+
+/* Each method reads its own fields; a zero field is its default, so an exact 0 is out of
+ * reach (the factors are cast to float as OpenCV's are: 1e-300 becomes 0). */
+typedef struct {
+    int center_x, center_y;     /* CLONE_*: where in dst the region's centre lands; both 0 is
+                                 * dst's centre (width / 2, height / 2) */
+    int centre_on_mask_image;   /* CLONE_*: non-zero centres the whole mask image (src's size)
+                                 * there instead of the region's bounding box, OpenCV's
+                                 * NORMAL_CLONE_WIDE and its siblings */
+    alwan_f64 red_mul;          /* COLOR_CHANGE: the gain on R's gradients, 1.0 */
+    alwan_f64 green_mul;        /* COLOR_CHANGE: on G's, 1.0 */
+    alwan_f64 blue_mul;         /* COLOR_CHANGE: on B's, 1.0 */
+    alwan_f64 alpha;            /* ILLUMINATION_CHANGE: 0.2 */
+    alwan_f64 beta;             /* ILLUMINATION_CHANGE: 0.4 */
+    alwan_f64 low_threshold;    /* TEXTURE_FLATTENING: Canny's lower threshold, 30 */
+    alwan_f64 high_threshold;   /* TEXTURE_FLATTENING: Canny's upper threshold, 45 */
+    int kernel_size;            /* TEXTURE_FLATTENING: Canny's Sobel aperture, 3, 5 or 7; 3 */
+} alwan_gradient_edit_params;
+
+alwan_status alwan_gradient_edit(unsigned char *out, size_t out_row_stride,
+                                 unsigned char const *src, size_t src_row_stride, size_t src_width, size_t src_height,
+                                 unsigned char const *mask, size_t mask_row_stride,
+                                 unsigned char const *dst, size_t dst_row_stride, size_t dst_width, size_t dst_height,
+                                 size_t channels, alwan_gradient_edit_method method,
+                                 alwan_gradient_edit_params const *params);
+
 /* Morphology: grey-level erosion and dilation and their composites, for cleaning a
  * selection mask or a matte, and for pulling out detail smaller than a shape. Each of 1 to
  * 4 channels on its own; out may be src.

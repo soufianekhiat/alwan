@@ -726,6 +726,7 @@
  * the deterministic build keeps it; ALWAN_FMA, by contrast, becomes a*b + c there. Use this
  * where a result must match a fused reference (numpy's BLAS, for one). */
 #define ALWAN_FMA_CR_F64(a, b, c) fma((a), (b), (c))
+#define ALWAN_FMA_CR_F32(a, b, c) fmaf((a), (b), (c))
 
 /* Precision-specific literals */
 #define ALWAN_LITERAL_F32(x) x##f

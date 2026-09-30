@@ -929,6 +929,16 @@
 
 ### Added
 
+- **`alwan_gradient_edit`: gradient-domain editing, Poisson image editing (Perez, Gangnet and
+  Blake 2003) and its relatives.** A port of OpenCV 5.0.0's photo module (OpenCV, Apache-2.0):
+  `seamlessClone` (normal, mixed and monochrome, with the `*_WIDE` placement), `colorChange`,
+  `illuminationChange` and `textureFlattening`, with the OpenCV operations they call reproduced
+  from the same sources: the discrete sine transform on OpenCV's mixed-radix DFT (the radix-2,
+  -3, -5, odd-factor and SSE3 radix-4 passes, its permutation and twiddle tables), filter2D and
+  erode on a view reading its parent, the 8-bit grey, magnitude, `cv::pow`, and Canny on three
+  channels. One function, a method enum and zero-default parameters, 8-bit images. The result
+  equals cv2's (IPP off) on every value of suite 272, ordinary and deterministic builds.
+
 - **`alwan_decolor_{T}`: contrast-preserving decolorization, `ALWAN_DECOLOR_LU2012`.** Lu, Xu
   and Jia 2012 as OpenCV's `cv::decolor` computes it: a port of OpenCV 5.0.0's
   `photo/src/contrast_preserve.cpp` (OpenCV, Apache-2.0), with the OpenCV operations it calls
