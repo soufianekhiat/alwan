@@ -2,6 +2,18 @@
 
 ### Fixed: output differs
 
+- **`alwan_lut3d_invert_{T}` stalled outside the forward cube's image.** Its Newton step
+  was clamped into the unit cube, so when one coordinate reached a face the part of the
+  step meant for the other two was thrown away: a node could stop 0.49 from its target
+  where OCIO's exact inverse reaches 0.02, and interpolating the inverse cube towards such
+  nodes put points inside the image up to 8e-2 off. It is a projected Gauss-Newton now: a
+  coordinate held on a face, the least-squares step over the others, a step that would not
+  lower the residual halved and then replaced by the projected steepest descent. Against
+  OCIO 2.5's inverse of a linear Lut3DTransform (suite 161): nodes with a preimage are
+  found to 4.2e-6, no node ends farther from its target than OCIO's exact inverse, and
+  points inside the image land within 5.4e-3 through a 65^3 inverse (OCIO's baked FAST
+  inverse, 5.2e-3). Nodes inside the image come out as before.
+
 - **F16 pixel buffers were written by truncation.** Every `_ex` form and
   `alwan_image_convert` writing ALWAN_PIXEL_F16 without F16C went through an encoder of
   the map layer's own that dropped the low 13 mantissa bits instead of rounding to

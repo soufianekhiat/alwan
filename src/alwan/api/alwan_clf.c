@@ -257,7 +257,12 @@ static int clf_write_tf_node(clf_writer *w, alwan_transfer_function tf,
         return 1;
     }
 
-    /* BT.709/BT.2020: monCurve with exponent=1/0.45=2.222..., offset=0.099 */
+    /* BT.709/BT.2020: monCurve with exponent=1/0.45=2.222..., offset=0.099. The power
+     * segment is exact; the toe is not, because a monCurve's linear segment follows from
+     * its exponent and offset (value and slope continuous) and BT.709's slope-4.5 toe
+     * below 0.018 is not that one. CLF has no node for it, and this is the form OCIO's own
+     * configs use; the file differs from alwan's curve by up to 2.5e-4 of code value
+     * below 0.02 linear (suite 80, read back by OCIO). */
     if (tf == ALWAN_TF_BT709 || tf == ALWAN_TF_BT2020) {
         clf_write_exponent_moncurve(w, 1.0 / 0.45, 0.099,
             is_eotf ? "monCurveFwd" : "monCurveRev",

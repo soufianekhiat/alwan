@@ -375,18 +375,28 @@ alwan_status ALWAN_CORE_FNLIT(alwan_bake_2dlut)(ALWAN_CORE_T *out, int size,
 /* ----------------------------------------------------------------
  * 3D LUT inversion
  *
- * For each node y of the output cube, find an x with F(x) = y, where F is the
- * forward cube sampled trilinearly. Newton's method on the 3x3 system, with
- * the Jacobian by central differences over half a forward cell, a fixed
- * iteration count so a deterministic build takes one path, and every step
- * clamped back into the unit cube.
+ * For each node y of the output cube, find an x in the unit cube minimising
+ * |F(x) - y|, where F is the forward cube sampled trilinearly: projected
+ * Gauss-Newton. The Jacobian is central differences over half a forward cell.
+ * A coordinate on a face of the unit cube whose descent points out of it is
+ * held there, and the step is the least-squares one over the others; with all
+ * three free and a regular Jacobian that is Newton's step. A step that would
+ * not lower the residual is halved, up to eight times; if it still does not,
+ * the projected steepest descent (Cauchy step) is tried the same way. The
+ * iteration count is fixed so a deterministic build takes one path.
+ *
+ * Until 3.0.0 the full Newton step was clamped into the cube. Where y lies
+ * outside F's image one coordinate hits a face, and the clamp threw away the
+ * part of the step that belonged to the others: the node stalled, up to 0.49
+ * from y where OCIO's exact inverse reaches 0.02, and interpolating the cube
+ * towards such nodes pulled points inside the image 8e-2 off.
  *
  * A cube is not invertible everywhere and this cannot pretend otherwise.
  * Where F flattens, any preimage is as good as another and the iteration
  * settles on one; where y is outside F's image there is no preimage at all
- * and the iteration ends on the nearest boundary it can reach. Neither is an
- * error, so the residual is reported instead: the caller sees how far the
- * worst node missed and decides what that means for the table they asked for.
+ * and the iteration ends on the nearest point it finds. Neither is an error,
+ * so the residual is reported instead: the caller sees how far the worst node
+ * missed and decides what that means for the table they asked for.
  * ---------------------------------------------------------------- */
 
 /* Solve m x = b by Cramer's rule. Returns 0 when m is too near singular to
@@ -443,12 +453,15 @@ alwan_status ALWAN_CORE_FNLIT(alwan_lut3d_invert)(ALWAN_CORE_T *out, int out_siz
                  * usually not far from one, and it costs nothing when it is. */
                 x[0] = y[0]; x[1] = y[1]; x[2] = y[2];
 
+                in.v[0] = x[0]; in.v[1] = x[1]; in.v[2] = x[2];
+                f = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, in, size);
+                e[0] = y[0] - f.v[0];
+                e[1] = y[1] - f.v[1];
+                e[2] = y[2] - f.v[2];
+
                 for (it = 0; it < iterations; it++) {
-                    in.v[0] = x[0]; in.v[1] = x[1]; in.v[2] = x[2];
-                    f = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, in, size);
-                    e[0] = y[0] - f.v[0];
-                    e[1] = y[1] - f.v[1];
-                    e[2] = y[2] - f.v[2];
+                    ALWAN_CORE_T g[3], ee = e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
+                    int free_[3], nfree = 0, half, pass;
 
                     for (j = 0; j < 3; j++) {
                         ALWAN_CORE_VEC3 pp, mm, fp, fm;
@@ -469,17 +482,89 @@ alwan_status ALWAN_CORE_FNLIT(alwan_lut3d_invert)(ALWAN_CORE_T *out, int out_siz
                         jac[2 * 3 + j] = (fp.v[2] - fm.v[2]) / span;
                     }
 
-                    if (!ALWAN_CORE_FN(lut_solve3)(dx, jac, e)) {
-                        /* Flat here, so Newton says nothing: step along the error,
-                         * which is the right direction for a LUT near the identity
-                         * and harmless where it is not, since the step is clamped. */
-                        dx[0] = e[0]; dx[1] = e[1]; dx[2] = e[2];
-                    }
+                    /* g = J^T e, minus the gradient of |e|^2 / 2. A coordinate on a face
+                     * whose descent points out of the cube is held; the others are free. */
                     for (j = 0; j < 3; j++) {
-                        if (dx[j] > ALWAN_CORE_LITERAL(0.5)) dx[j] = ALWAN_CORE_LITERAL(0.5);
-                        if (dx[j] < ALWAN_CORE_LITERAL(-0.5)) dx[j] = ALWAN_CORE_LITERAL(-0.5);
-                        x[j] = ALWAN_CORE_FN(lut_unit_clamp)(x[j] + dx[j]);
+                        g[j] = jac[0 * 3 + j] * e[0] + jac[1 * 3 + j] * e[1] + jac[2 * 3 + j] * e[2];
+                        free_[j] = !((x[j] <= ALWAN_CORE_LITERAL(0.0) && g[j] < ALWAN_CORE_LITERAL(0.0)) ||
+                                     (x[j] >= ALWAN_CORE_LITERAL(1.0) && g[j] > ALWAN_CORE_LITERAL(0.0)));
+                        nfree += free_[j];
+                        dx[j] = ALWAN_CORE_LITERAL(0.0);
                     }
+                    if (nfree == 0) break;
+                    if (nfree == 3) {
+                        if (!ALWAN_CORE_FN(lut_solve3)(dx, jac, e)) {
+                            /* Flat here, so Newton says nothing: step along the error,
+                             * the right direction for a LUT near the identity. */
+                            dx[0] = e[0]; dx[1] = e[1]; dx[2] = e[2];
+                        }
+                    } else {
+                        /* Least squares over the free coordinates: (Jf^T Jf) d = Jf^T e. */
+                        int fi[3], a, b, k = 0;
+                        ALWAN_CORE_T nm[4], det;
+                        for (j = 0; j < 3; j++) if (free_[j]) fi[k++] = j;
+                        for (a = 0; a < k; a++) {
+                            for (b = 0; b < k; b++) {
+                                nm[a * 2 + b] = jac[0 * 3 + fi[a]] * jac[0 * 3 + fi[b]]
+                                              + jac[1 * 3 + fi[a]] * jac[1 * 3 + fi[b]]
+                                              + jac[2 * 3 + fi[a]] * jac[2 * 3 + fi[b]];
+                            }
+                        }
+                        if (k == 1) {
+                            if (nm[0] > ALWAN_CORE_LITERAL(1e-24)) dx[fi[0]] = g[fi[0]] / nm[0];
+                            else dx[fi[0]] = g[fi[0]];
+                        } else {
+                            det = nm[0] * nm[3] - nm[1] * nm[2];
+                            if (det > ALWAN_CORE_LITERAL(1e-24) || det < ALWAN_CORE_LITERAL(-1e-24)) {
+                                dx[fi[0]] = (nm[3] * g[fi[0]] - nm[1] * g[fi[1]]) / det;
+                                dx[fi[1]] = (nm[0] * g[fi[1]] - nm[2] * g[fi[0]]) / det;
+                            } else {
+                                dx[fi[0]] = g[fi[0]];
+                                dx[fi[1]] = g[fi[1]];
+                            }
+                        }
+                    }
+                    /* Take the step if it lowers |e|, halving it up to eight times. The
+                     * Gauss-Newton direction, once projected into the cube, need not
+                     * descend; then the projected steepest descent, sized by the Cauchy
+                     * rule |g|^2 / |J g|^2, is tried the same way, and only if that
+                     * fails too has the node nowhere better to go. */
+                    for (pass = 0; pass < 2; pass++) {
+                        if (pass == 1) {
+                            ALWAN_CORE_T jg[3], gg = ALWAN_CORE_LITERAL(0.0), jj, alpha;
+                            for (j = 0; j < 3; j++) {
+                                dx[j] = free_[j] ? g[j] : ALWAN_CORE_LITERAL(0.0);
+                                gg += dx[j] * dx[j];
+                            }
+                            for (j = 0; j < 3; j++) {
+                                jg[j] = jac[j * 3 + 0] * dx[0] + jac[j * 3 + 1] * dx[1] + jac[j * 3 + 2] * dx[2];
+                            }
+                            jj = jg[0] * jg[0] + jg[1] * jg[1] + jg[2] * jg[2];
+                            if (!(gg > ALWAN_CORE_LITERAL(0.0))) break;
+                            alpha = jj > ALWAN_CORE_LITERAL(1e-24) ? gg / jj : ALWAN_CORE_LITERAL(1.0);
+                            for (j = 0; j < 3; j++) dx[j] *= alpha;
+                        }
+                        for (j = 0; j < 3; j++) {
+                            if (dx[j] > ALWAN_CORE_LITERAL(0.5)) dx[j] = ALWAN_CORE_LITERAL(0.5);
+                            if (dx[j] < ALWAN_CORE_LITERAL(-0.5)) dx[j] = ALWAN_CORE_LITERAL(-0.5);
+                        }
+                        for (half = 0; half <= 8; half++) {
+                            ALWAN_CORE_T xn[3], en[3];
+                            for (j = 0; j < 3; j++) xn[j] = ALWAN_CORE_FN(lut_unit_clamp)(x[j] + dx[j]);
+                            in.v[0] = xn[0]; in.v[1] = xn[1]; in.v[2] = xn[2];
+                            f = ALWAN_CORE_FNVLIT(alwan_lut3d_sample)(lut, in, size);
+                            en[0] = y[0] - f.v[0];
+                            en[1] = y[1] - f.v[1];
+                            en[2] = y[2] - f.v[2];
+                            if (en[0] * en[0] + en[1] * en[1] + en[2] * en[2] < ee) {
+                                for (j = 0; j < 3; j++) { x[j] = xn[j]; e[j] = en[j]; }
+                                break;
+                            }
+                            for (j = 0; j < 3; j++) dx[j] *= ALWAN_CORE_LITERAL(0.5);
+                        }
+                        if (half <= 8) break;
+                    }
+                    if (pass == 2) break;
                 }
 
                 out[at * 3 + 0] = x[0];

@@ -12321,16 +12321,21 @@ alwan_status alwan_agx_blender_cube_sample_f64(alwan_rgb_f64 *result,
  * Where the forward table flattens, one preimage is as good as another and the
  * iteration settles on one of them. Where a node lies outside the forward
  * table's image there is no preimage at all, and the iteration ends on the
- * nearest point it can reach inside the unit cube. Neither is reported as an
+ * point of the unit cube it finds nearest (a least-squares step over the
+ * coordinates not held on a face, so one coordinate reaching 0 or 1 does not
+ * stall the others). Neither is reported as an
  * error, because neither is one: the residual is the answer. Read
  * out_worst_residual and judge the table against it, since a large worst
  * residual over an inverse that is meant to be exact says the forward table
  * folds, and over one baked from a clipping view transform says only that the
  * clipped region cannot come back.
  *
- * The Jacobian is central differences over half a forward cell and the step
- * count is fixed, so a deterministic build takes one path through it. Cost is
- * out_size^3 * iterations * 7 trilinear samples. */
+ * The Jacobian is central differences over half a forward cell, a step that
+ * would not lower the residual is halved (at most eight times) and then
+ * replaced by the projected steepest descent, and the step count is fixed, so
+ * a deterministic build takes one path through it. Cost is at most
+ * out_size^3 * iterations * 24 trilinear samples, 7 when every first step is
+ * taken. */
 alwan_status alwan_lut3d_invert_f64(alwan_f64 *out, int out_size,
                         alwan_f64 const *lut, int size,
                         int iterations, alwan_f64 *out_worst_residual);
@@ -12928,7 +12933,13 @@ alwan_status alwan_float_to_half(alwan_uint16 *out, alwan_f32 const *in, size_t 
  * id: CLF ProcessList id attribute (NULL for default)
  * name: CLF ProcessList name attribute (NULL to omit)
  * lut_size: resolution for baked LUT1D nodes (default 4096 if < 2)
- * ctx: context for chromatic adaptation (may be NULL if white points match) */
+ * ctx: context for chromatic adaptation (may be NULL if white points match)
+ *
+ * sRGB, BT.709 and BT.2020 curves are written as monCurve Exponents, pure gammas as basic
+ * Exponents, everything else as a baked LUT1D. BT.709 and BT.2020 are approximate below
+ * 0.02 linear (up to 2.5e-4 of code value): a monCurve's toe follows from its exponent and
+ * offset and is not the standard's slope-4.5 segment. OCIO reads the files alwan writes to
+ * within its float32 rounding (suite 80). */
 alwan_status alwan_clf_export_f64(char const *path, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx);
 alwan_status alwan_clf_export_f32(char const *path, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, char const *id, char const *name, int lut_size, alwan_ctx *ctx);
 
