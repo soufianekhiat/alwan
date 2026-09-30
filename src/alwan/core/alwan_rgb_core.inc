@@ -102,6 +102,10 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNLIT(alwan_full_to_legal_10bit)(ALWAN_CORE
  * value is part of the transfer function, not a step left to the caller. The
  * spec's order is round, then clamp to [CV_min, CV_max]; both bounds are
  * integers so the order is not observable, and colour-science does the same.
+ * A code value exactly half way between two codes would round up, as the Academy's
+ * CTL does (ACESlib.Utilities.ctl round(), int(x + 0.5)), where colour-science's numpy
+ * round goes to even; but a tie needs a linear input of exactly 2^(m/100), which no
+ * float is, so the two never part.
  * Everything else is applied here too: the 2^-9.72 floor and
  * mid_log_offset = 2.5. 10-bit constants.
  *
