@@ -861,6 +861,8 @@ EXPORTS
     alwan_highlights_recovery_blend_f32_map_planar
     alwan_highlights_recovery_blend_f64_map_interleave
     alwan_highlights_recovery_blend_f64_map_planar
+    alwan_highlights_recovery_lchab_f32_map_interleave
+    alwan_highlights_recovery_lchab_f64_map_interleave
     alwan_histogram3d_f32
     alwan_histogram3d_f64
     alwan_hke_luminous_nayatani1997_f32
@@ -1378,6 +1380,11 @@ EXPORTS
     alwan_normalized_root_mse_f32
     alwan_normalized_root_mse_f64
     alwan_normalized_root_mse_u8
+    alwan_ocio_fixed_function_f32
+    alwan_ocio_fixed_function_f32_map_interleave
+    alwan_ocio_fixed_function_f64
+    alwan_ocio_fixed_function_f64_map_interleave
+    alwan_ocio_fixed_params_init
     alwan_oetf_apply_f32
     alwan_oetf_apply_f64
     alwan_okhsl_to_srgb_f32

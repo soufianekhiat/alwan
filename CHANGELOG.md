@@ -929,6 +929,25 @@
 
 ### Added
 
+- **`alwan_ocio_fixed_function_{T}`: OCIO's HSY, gamma-log and double-log fixed functions.**
+  OCIO 2.5's `RGB_TO_HSY_LOG`, `_LIN` and `_VID` (the space its hue curves work in, with
+  magenta at hue 0; not `alwan_rgb_to_hsy`, which is chilliant.com's HCY),
+  `LIN_TO_GAMMA_LOG` and `LIN_TO_DOUBLE_LOG`, each with its inverse, ported from
+  OpenColorIO's `FixedFunctionOpCPU.cpp` (BSD-3-Clause, Contributors to the OpenColorIO
+  Project), with a `_map_interleave` form. `alwan_ocio_fixed_params_init` fills in the
+  parameters of OCIO's Apple Log, Canon Log 2 and Canon Log 3 built-ins, and a zeroed
+  parameter set is refused as OCIO refuses it. Matches PyOpenColorIO to its float32
+  rounding (suite 276): 1.2e-7 forward and 9.4e-7 inverse relative, HSY lin 1.5e-6 and
+  6.7e-6, where OCIO's float saturation cancels.
+
+- **`alwan_highlights_recovery_lchab_{T}_map_interleave`: colour-hdri's LCHab highlight
+  recovery.** Ported from colour-hdri 0.2.6's `highlights_recovery_LCHab` (BSD-3-Clause,
+  Colour Developers). Each pixel keeps its CIE L* and hue and takes the chroma of its
+  version clipped to [0, threshold]. It works in any RGB space, with that space's matrices
+  or the ones its primaries derive, and space NULL is colour-hdri's default, colour's sRGB
+  with IEC 61966-2-1's four-decimal matrices. Matches colour-hdri to 6e-15 relative (suite
+  277) on synthetic pixels and on SRIC crops exposed two stops up.
+
 - **`alwan_inpaint`: OpenCV's Telea and Navier-Stokes inpainting.** Two methods,
   `ALWAN_INPAINT_TELEA_OPENCV` and `ALWAN_INPAINT_NS_OPENCV`, ported from OpenCV 5.0.0's
   `photo/src/inpaint.cpp` (Intel Corporation's licence, BSD-style, notice in

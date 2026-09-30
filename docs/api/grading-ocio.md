@@ -264,3 +264,34 @@ OCIO's inverse log renderer takes its exposure step from a default of 0.088 and 
 the transform, so at any other step it does not invert its own forward transform (0.038 off
 at exposure 1.2 and step 0.12). alwan's inverse uses the step it is given; suite 205 checks
 it undoes the forward to 2e-16 at step 0.12.
+
+## Fixed functions: HSY, gamma log, double log
+
+```c
+alwan_ocio_fixed_params p;
+alwan_ocio_fixed_params_init(&p, ALWAN_OCIO_FF_PRESET_APPLE_LOG);
+alwan_ocio_fixed_function_f64(&log_rgb, &lin_rgb, ALWAN_OCIO_FF_LIN_TO_GAMMA_LOG, &p, 0);
+alwan_ocio_fixed_function_f64(&hsy, &rgb, ALWAN_OCIO_FF_RGB_TO_HSY_LIN, NULL, 0);
+```
+
+Three of OCIO 2.5's `FixedFunctionTransform` styles, ported from
+`ops/fixedfunction/FixedFunctionOpCPU.cpp` (OpenColorIO, BSD-3-Clause). `inverse = 1`
+runs a style backwards, OCIO's `TRANSFORM_DIR_INVERSE`.
+
+| Function | What it does |
+|---|---|
+| `ALWAN_OCIO_FF_RGB_TO_HSY_LOG`, `_LIN`, `_VIDEO` | RGB to OCIO's HSY, the space the hue curves above work in: hue with magenta at 0, Rec.709 luma, and a saturation from the sum of `|channel - luma|` (times 4 for log, 1.25 for video; for scene-linear a blend that divides by `0.15 + R + G + B` above luma 0.01, times 1.4) |
+| `ALWAN_OCIO_FF_LIN_TO_GAMMA_LOG` | a power segment below a break and a log segment above it, mirrored about a point; ten parameters in OCIO's order in `params->gamma_log` |
+| `ALWAN_OCIO_FF_LIN_TO_DOUBLE_LOG` | a log segment, a line, and a second log segment; thirteen parameters in `params->double_log` |
+
+OCIO's HSY is not `alwan_rgb_to_hsy`, which is chilliant.com's HCY (suite 73); only the
+name is shared. The two log styles have no defaults in OCIO, so a zeroed params is
+`ALWAN_E_INVALID`, as OCIO refuses it. `alwan_ocio_fixed_params_init` fills in the curves
+OCIO's built-in camera transforms build from them: Apple Log for gamma log, Canon Log 2
+and Canon Log 3 for double log. The built-ins run them log to linear, so the forward
+direction here is linear to log.
+
+OCIO renders in float32 and alwan in double, so suite 276 compares the two relative to
+`1 + |OCIO|`. The worst differences are 1.2e-7 forward and 9.4e-7 inverse, except HSY lin at
+1.5e-6 and 6.7e-6. HSY lin's saturation divides a sum of `|channel - luma|` that cancels,
+and each log inverse's `exp` scales the rounding of its float input.

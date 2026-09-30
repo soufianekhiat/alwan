@@ -5654,6 +5654,20 @@ alwan_status alwan_highlights_recovery_blend_f32_map_interleave(alwan_f32 *out, 
 alwan_status alwan_highlights_recovery_blend_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_rgb_f32 const *multipliers, alwan_f32 threshold);
 alwan_status alwan_highlights_recovery_blend_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_rgb_f64 const *multipliers, alwan_f64 threshold);
 
+/* colour-hdri's highlights_recovery_LCHab (colour-hdri 0.2.6, BSD-3-Clause): each pixel
+ * keeps its own CIE L* and hue and takes the chroma C*ab of its version clipped to
+ * [0, threshold], so a blown highlight keeps its brightness and loses the false colour
+ * that clipping one channel gave it. RGB is linear (no decoding) in `space`: its
+ * rgb_to_xyz and xyz_to_rgb when has_matrices is set, else the matrices its primaries
+ * derive, and Lab against its white with Y = 1. space NULL is colour-hdri's default,
+ * colour's sRGB, whose matrices are IEC 61966-2-1's four-decimal ones (not the derived
+ * pair, 3.9e-5 away), white D65 (0.3127, 0.3290). threshold 0 is colour-hdri's None:
+ * the clip only floors at 0. ALWAN_E_INVALID for a NULL buffer, a stride under three
+ * values, a negative or non-finite threshold, or a white with y not above 0; the
+ * matrices' ALWAN_E_RANGE for a singular space. Suite 277 holds it to colour-hdri. */
+alwan_status alwan_highlights_recovery_lchab_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_f64 threshold);
+alwan_status alwan_highlights_recovery_lchab_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_f32 threshold);
+
 /* ----------------------------------------------------------------
  * Bayer demosaicing
  *
@@ -10145,6 +10159,73 @@ alwan_status alwan_grading_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const
 alwan_status alwan_grading_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
 alwan_status alwan_grading_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
 alwan_status alwan_grading_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
+
+/* ----------------------------------------------------------------
+ * OpenColorIO fixed functions: HSY, gamma-log and double-log
+ *
+ * OCIO 2.5's FixedFunctionTransform styles that the grading family above does not
+ * already cover as a whole (OpenColorIO, BSD-3-Clause; ops/fixedfunction/
+ * FixedFunctionOpCPU.cpp). inverse = 1 runs the style backwards (OCIO's
+ * TRANSFORM_DIR_INVERSE).
+ *
+ *   ALWAN_OCIO_FF_RGB_TO_HSY_LOG, _LIN, _VIDEO
+ *     RGB to OCIO's HSY: hue with MAGENTA at 0 (not red), Rec.709 luma, and a
+ *     saturation that is the sum of |channel - luma| times 4 (log), 1.25 (video) or,
+ *     for scene-linear, a blend that divides by k + R + G + B above luma 0.01 and
+ *     multiplies by 5 below 0.001, all times 1.4. This is the space the hue curves of
+ *     ALWAN_GRADING_HUE_CURVE work in. It is NOT alwan_rgb_to_hsy, which is the HCY of
+ *     chilliant.com; the two share a name and nothing else.
+ *   ALWAN_OCIO_FF_LIN_TO_GAMMA_LOG
+ *     a power segment below a break and a log segment above it, mirrored about a point:
+ *     E = |x - mirror| + mirror; E < break: slope (E + offset)^power, else
+ *     log_slope log_base(lin_slope E + lin_offset) + log_offset; the result takes the
+ *     sign of x - mirror. params->gamma_log in OCIO's order: mirror, break, power,
+ *     slope, offset, base, log slope, log offset, lin slope, lin offset.
+ *   ALWAN_OCIO_FF_LIN_TO_DOUBLE_LOG
+ *     a log segment up to break1, a line to break2, a second log segment above it.
+ *     params->double_log in OCIO's order: base, break1, break2, then log slope, log
+ *     offset, lin slope, lin offset of the first log segment and of the second, then the
+ *     line's slope and offset.
+ *
+ * The gamma-log and double-log styles have no defaults in OCIO: a zeroed params is
+ * ALWAN_E_INVALID, as OCIO refuses it (a base not above 0; a mirror not below the
+ * break or a zero power; break1 above break2). alwan_ocio_fixed_params_init fills them
+ * with the curves OCIO's built-in camera transforms build from them: Apple Log (gamma
+ * log) and Canon Log 2 and Canon Log 3 (double log). The built-ins run them backwards,
+ * log to linear; the forward direction here is linear to log.
+ * params may be NULL for the HSY styles. OCIO renders in float32; this is double on
+ * both paths, so the two differ by float rounding (suite 276). The map form converts
+ * count pixels of three values, stride bytes apart; out may be in.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_OCIO_FF_RGB_TO_HSY_LOG = 0,     /* FIXED_FUNCTION_RGB_TO_HSY_LOG */
+    ALWAN_OCIO_FF_RGB_TO_HSY_LIN = 1,     /* FIXED_FUNCTION_RGB_TO_HSY_LIN */
+    ALWAN_OCIO_FF_RGB_TO_HSY_VIDEO = 2,   /* FIXED_FUNCTION_RGB_TO_HSY_VID */
+    ALWAN_OCIO_FF_LIN_TO_GAMMA_LOG = 3,   /* FIXED_FUNCTION_LIN_TO_GAMMA_LOG, 10 parameters */
+    ALWAN_OCIO_FF_LIN_TO_DOUBLE_LOG = 4   /* FIXED_FUNCTION_LIN_TO_DOUBLE_LOG, 13 parameters */
+} alwan_ocio_fixed_function;
+
+typedef enum {
+    ALWAN_OCIO_FF_PRESET_APPLE_LOG = 0,   /* gamma_log: OCIO's APPLE_LOG built-in */
+    ALWAN_OCIO_FF_PRESET_CANON_LOG2 = 1,  /* double_log: OCIO's CANON_CLOG2 built-in */
+    ALWAN_OCIO_FF_PRESET_CANON_LOG3 = 2   /* double_log: OCIO's CANON_CLOG3 built-in */
+} alwan_ocio_fixed_preset;
+
+typedef struct {
+    alwan_f64 gamma_log[10];   /* LIN_TO_GAMMA_LOG, OCIO's parameter order */
+    alwan_f64 double_log[13];  /* LIN_TO_DOUBLE_LOG, OCIO's parameter order */
+} alwan_ocio_fixed_params;
+
+/* Fills the block the preset belongs to (gamma_log for Apple Log, double_log for the
+ * Canon logs) and leaves the other as it was. ALWAN_E_INVALID for NULL or an unknown
+ * preset. */
+alwan_status alwan_ocio_fixed_params_init(alwan_ocio_fixed_params *params, alwan_ocio_fixed_preset preset);
+
+alwan_status alwan_ocio_fixed_function_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params, int inverse);
+alwan_status alwan_ocio_fixed_function_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params, int inverse);
+alwan_status alwan_ocio_fixed_function_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params, int inverse);
+alwan_status alwan_ocio_fixed_function_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params, int inverse);
 
 /* ----------------------------------------------------------------
  * Camera Profiling / Polynomial Color Correction

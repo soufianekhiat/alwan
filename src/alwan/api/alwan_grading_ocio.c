@@ -7,7 +7,10 @@
  * the controls a grading panel exposes. OpenColorIO is BSD-3-Clause; the arithmetic here
  * follows OCIO 2.5.0 (src/OpenColorIO/ops/gradingprimary/GradingPrimary.cpp for the
  * parameters, GradingPrimaryOpCPU.cpp for the pixel), and suite 184 holds it to the
- * installed PyOpenColorIO.
+ * installed PyOpenColorIO. The fixed functions at the end (alwan_ocio_fixed_function:
+ * RGB_TO_HSY, LIN_TO_GAMMA_LOG, LIN_TO_DOUBLE_LOG) port ops/fixedfunction/
+ * FixedFunctionOpCPU.cpp, suite 276. OpenColorIO: Copyright Contributors to the
+ * OpenColorIO Project, BSD-3-Clause; redistributions keep this notice.
  *
  * GRADING PRIMARY has three styles, each a fixed chain:
  *
@@ -1602,5 +1605,217 @@ alwan_status alwan_grading_f32_map_interleave(alwan_f32 *out, size_t out_stride,
                                               size_t count, alwan_grading_op op, alwan_grading_style style,
                                               alwan_grading_params const *params, int inverse) {
     return alwan_grading_run(out, out_stride, in, in_stride, count, op, style, params, inverse, 1);
+}
+#endif /* ALWAN_WITH_F32 */
+
+/* ---- fixed functions: RGB_TO_HSY (the hue-curve conversions above), LIN_TO_GAMMA_LOG
+ * and LIN_TO_DOUBLE_LOG, from FixedFunctionOpCPU.cpp and the parameter rules of
+ * FixedFunctionOpData.cpp. OCIO bakes 1 / ln(base) into the log slope and renders in
+ * float; this is the same algebra in double. ---- */
+
+/* std::log as OCIO meets it: -inf at 0 and NaN below (the square root of a negative is
+ * NaN on every path, where the deterministic log is only defined above 0) */
+static double alwan_ff_ln(double a) {
+    if (a > 0.0) return ALWAN_LN_F64(a);
+    return a == 0.0 ? -HUGE_VAL : ALWAN_SQRT_F64(a);
+}
+
+/* pow for a base that is never negative here (E + offset and E' / slope are at least 0
+ * by the mirror); 0 is kept out of the deterministic pow, which wants a positive base */
+static double alwan_ff_pow0(double b, double e) {
+    return b > 0.0 ? ALWAN_POW_F64(b, e) : (e > 0.0 ? 0.0 : ALWAN_POW_F64(b, e));
+}
+
+typedef struct {
+    int func, inverse;
+    double mirror, brk, power, slope, offset, log_slope, log_off, lin_slope, lin_off;  /* gamma log */
+    double prime_break, prime_mirror;
+    double b1, b2, ls1, lo1, ks1, ko1, ls2, lo2, ks2, ko2, line_s, line_o;             /* double log */
+    double b1_log, b2_log;
+} alwan_ff_render;
+
+static alwan_status alwan_ff_prepare(alwan_ff_render *r, alwan_ocio_fixed_function func,
+                                     alwan_ocio_fixed_params const *params, int inverse) {
+    int i;
+    memset(r, 0, sizeof *r);
+    r->func = (int)func;
+    r->inverse = inverse;
+    switch (func) {
+    case ALWAN_OCIO_FF_RGB_TO_HSY_LOG:
+    case ALWAN_OCIO_FF_RGB_TO_HSY_LIN:
+    case ALWAN_OCIO_FF_RGB_TO_HSY_VIDEO:
+        return ALWAN_OK;
+    case ALWAN_OCIO_FF_LIN_TO_GAMMA_LOG: {
+        double const *p;
+        if (!params) return ALWAN_E_INVALID;
+        p = params->gamma_log;
+        for (i = 0; i < 10; i++) if (!alwan_gp_finite(p[i])) return ALWAN_E_INVALID;
+        /* OCIO's checks (a base above 0, the mirror below the break, a power that is not
+         * 0), and a base of 1, which would divide by ln 1 */
+        if (!(p[5] > 0.0) || p[5] == 1.0 || !(p[0] < p[1]) || p[2] == 0.0) return ALWAN_E_INVALID;
+        r->mirror = p[0]; r->brk = p[1];
+        r->power = p[2]; r->slope = p[3]; r->offset = p[4];
+        r->log_slope = p[6] / ALWAN_LN_F64(p[5]);
+        r->log_off = p[7]; r->lin_slope = p[8]; r->lin_off = p[9];
+        r->prime_break = r->slope * alwan_ff_pow0(r->brk + r->offset, r->power);
+        r->prime_mirror = r->slope * alwan_ff_pow0(r->mirror + r->offset, r->power);
+        return ALWAN_OK;
+    }
+    case ALWAN_OCIO_FF_LIN_TO_DOUBLE_LOG: {
+        double const *p;
+        double ln_base;
+        if (!params) return ALWAN_E_INVALID;
+        p = params->double_log;
+        for (i = 0; i < 13; i++) if (!alwan_gp_finite(p[i])) return ALWAN_E_INVALID;
+        if (!(p[0] > 0.0) || p[0] == 1.0 || p[1] > p[2]) return ALWAN_E_INVALID;
+        ln_base = ALWAN_LN_F64(p[0]);
+        r->b1 = p[1]; r->b2 = p[2];
+        r->ls1 = p[3] / ln_base; r->lo1 = p[4]; r->ks1 = p[5]; r->ko1 = p[6];
+        r->ls2 = p[7] / ln_base; r->lo2 = p[8]; r->ks2 = p[9]; r->ko2 = p[10];
+        r->line_s = p[11]; r->line_o = p[12];
+        /* the breaks belong to the log segments, whose values at them bound the inverse's
+         * segments (the line may be empty) */
+        r->b1_log = r->ls1 * alwan_ff_ln(r->ks1 * r->b1 + r->ko1) + r->lo1;
+        r->b2_log = r->ls2 * alwan_ff_ln(r->ks2 * r->b2 + r->ko2) + r->lo2;
+        return ALWAN_OK;
+    }
+    default:
+        return ALWAN_E_INVALID;
+    }
+}
+
+static double alwan_ff_gamma_log(double x, alwan_ff_render const *r) {
+    double const m = x - r->mirror;
+    double const e = ALWAN_ABS_F64(m) + r->mirror;
+    double const y = e < r->brk ? r->slope * alwan_ff_pow0(e + r->offset, r->power)
+                                : r->log_slope * alwan_ff_ln(r->lin_slope * e + r->lin_off) + r->log_off;
+    return m < 0.0 ? -y : y;   /* OCIO's copysign(1, m): only m = -0 differs, never here */
+}
+
+static double alwan_ff_gamma_log_inv(double y, alwan_ff_render const *r) {
+    double const m = y - r->prime_mirror;
+    double const e = ALWAN_ABS_F64(m) + r->prime_mirror;
+    double const x = e < r->prime_break
+        ? alwan_ff_pow0(e / r->slope, 1.0 / r->power) - r->offset
+        : (ALWAN_EXP_F64((e - r->log_off) / r->log_slope) - r->lin_off) / r->lin_slope;
+    return m < 0.0 ? -x : x;
+}
+
+static double alwan_ff_double_log(double x, alwan_ff_render const *r) {
+    if (x <= r->b1) return r->ls1 * alwan_ff_ln(r->ks1 * x + r->ko1) + r->lo1;
+    if (x < r->b2) return r->line_s * x + r->line_o;
+    return r->ls2 * alwan_ff_ln(r->ks2 * x + r->ko2) + r->lo2;
+}
+
+static double alwan_ff_double_log_inv(double y, alwan_ff_render const *r) {
+    if (y <= r->b1_log) return (ALWAN_EXP_F64((y - r->lo1) / r->ls1) - r->ko1) / r->ks1;
+    if (y < r->b2_log) return (y - r->line_o) / r->line_s;
+    return (ALWAN_EXP_F64((y - r->lo2) / r->ls2) - r->ko2) / r->ks2;
+}
+
+static void alwan_ff_pixel(double *p, alwan_ff_render const *r) {
+    int c;
+    switch (r->func) {
+    case ALWAN_OCIO_FF_RGB_TO_HSY_LOG:
+    case ALWAN_OCIO_FF_RGB_TO_HSY_LIN:
+    case ALWAN_OCIO_FF_RGB_TO_HSY_VIDEO: {
+        int const style = r->func == ALWAN_OCIO_FF_RGB_TO_HSY_LOG ? ALWAN_GRADING_LOG
+                        : r->func == ALWAN_OCIO_FF_RGB_TO_HSY_LIN ? ALWAN_GRADING_LIN : ALWAN_GRADING_VIDEO;
+        if (r->inverse) alwan_gh_hsy_to_rgb(p, style);
+        else alwan_gh_rgb_to_hsy(p, style);
+        break;
+    }
+    case ALWAN_OCIO_FF_LIN_TO_GAMMA_LOG:
+        for (c = 0; c < 3; c++) p[c] = r->inverse ? alwan_ff_gamma_log_inv(p[c], r) : alwan_ff_gamma_log(p[c], r);
+        break;
+    default:
+        for (c = 0; c < 3; c++) p[c] = r->inverse ? alwan_ff_double_log_inv(p[c], r) : alwan_ff_double_log(p[c], r);
+        break;
+    }
+}
+
+static alwan_status alwan_ff_run(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count,
+                                 alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params,
+                                 int inverse, int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    alwan_ff_render r;
+    alwan_status st;
+    size_t i;
+    if (!out || !in) return ALWAN_E_INVALID;
+    if (out_stride < 3 * elem || in_stride < 3 * elem) return ALWAN_E_INVALID;
+    st = alwan_ff_prepare(&r, func, params, inverse != 0);
+    if (st != ALWAN_OK) return st;
+    for (i = 0; i < count; i++) {
+        char const *s = (char const *)in + i * in_stride;
+        char *d = (char *)out + i * out_stride;
+        double p[3];
+        int k;
+        for (k = 0; k < 3; k++) p[k] = is_f32 ? (double)((alwan_f32 const *)s)[k] : ((alwan_f64 const *)s)[k];
+        alwan_ff_pixel(p, &r);
+        for (k = 0; k < 3; k++) {
+            if (is_f32) ((alwan_f32 *)d)[k] = (alwan_f32)p[k];
+            else ((alwan_f64 *)d)[k] = p[k];
+        }
+    }
+    return ALWAN_OK;
+}
+
+alwan_status alwan_ocio_fixed_params_init(alwan_ocio_fixed_params *params, alwan_ocio_fixed_preset preset) {
+    if (!params) return ALWAN_E_INVALID;
+    switch (preset) {
+    case ALWAN_OCIO_FF_PRESET_APPLE_LOG: {
+        /* transforms/builtins/AppleCameras.cpp, APPLE_LOG */
+        double const r0 = -0.05641088, rt = 0.01, c = 47.28711236, beta = 0.00964052,
+                     gamma = 0.08550479, delta = 0.69336945;
+        double const v[10] = { r0, rt, 2.0, c, -r0, 2.0, gamma, delta, 1.0, beta };
+        memcpy(params->gamma_log, v, sizeof v);
+        return ALWAN_OK;
+    }
+    case ALWAN_OCIO_FF_PRESET_CANON_LOG2: {
+        /* transforms/builtins/CanonCameras.cpp, CANON_CLOG2: no line */
+        double const v[13] = { 10.0, 0.0, 0.0,
+                               -0.24136077, 0.092864125, -87.099375 / 0.9, 1.0,
+                               0.24136077, 0.092864125, 87.099375 / 0.9, 1.0,
+                               1.0, 0.0 };
+        memcpy(params->double_log, v, sizeof v);
+        return ALWAN_OK;
+    }
+    case ALWAN_OCIO_FF_PRESET_CANON_LOG3: {
+        /* transforms/builtins/CanonCameras.cpp, CANON_CLOG3 */
+        double const v[13] = { 10.0, -0.014 * 0.9, 0.014 * 0.9,
+                               -0.36726845, 0.12783901, -14.98325 / 0.9, 1.0,
+                               0.36726845, 0.12240537, 14.98325 / 0.9, 1.0,
+                               1.9754798 / 0.9, 0.12512219 };
+        memcpy(params->double_log, v, sizeof v);
+        return ALWAN_OK;
+    }
+    default:
+        return ALWAN_E_INVALID;
+    }
+}
+
+#if ALWAN_WITH_F64_FACADE
+alwan_status alwan_ocio_fixed_function_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_ocio_fixed_function func,
+                                           alwan_ocio_fixed_params const *params, int inverse) {
+    return alwan_ff_run(rgb_out, sizeof(alwan_rgb_f64), rgb_in, sizeof(alwan_rgb_f64), 1, func, params, inverse, 0);
+}
+
+alwan_status alwan_ocio_fixed_function_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
+                                                          size_t in_stride, size_t count, alwan_ocio_fixed_function func,
+                                                          alwan_ocio_fixed_params const *params, int inverse) {
+    return alwan_ff_run(out, out_stride, in, in_stride, count, func, params, inverse, 0);
+}
+#endif /* ALWAN_WITH_F64_FACADE */
+
+#if ALWAN_WITH_F32
+alwan_status alwan_ocio_fixed_function_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_ocio_fixed_function func,
+                                           alwan_ocio_fixed_params const *params, int inverse) {
+    return alwan_ff_run(rgb_out, sizeof(alwan_rgb_f32), rgb_in, sizeof(alwan_rgb_f32), 1, func, params, inverse, 1);
+}
+
+alwan_status alwan_ocio_fixed_function_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
+                                                          size_t in_stride, size_t count, alwan_ocio_fixed_function func,
+                                                          alwan_ocio_fixed_params const *params, int inverse) {
+    return alwan_ff_run(out, out_stride, in, in_stride, count, func, params, inverse, 1);
 }
 #endif /* ALWAN_WITH_F32 */

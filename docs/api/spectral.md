@@ -804,6 +804,19 @@ dcraw's highlight blend for white-balanced camera RGB: channels clipped at
 min(multipliers) x threshold, each pixel keeping its lightness and taking the chroma
 magnitude of its clipped version, so clipped highlights stay neutral.
 
+### alwan_highlights_recovery_lchab_{T}_map_interleave
+
+colour-hdri's `highlights_recovery_LCHab` (colour-hdri 0.2.6, BSD-3-Clause). Each pixel
+keeps its own CIE L\* and hue and takes the chroma of its version clipped to
+[0, threshold], so a blown highlight keeps its brightness and loses the colour that
+clipping one channel gave it. The RGB is linear in `space`. The space's own matrices are
+used when `has_matrices` is set, otherwise the ones its primaries derive. `space` NULL is
+colour-hdri's default, colour's sRGB, which uses IEC 61966-2-1's four-decimal matrices;
+those are not each other's exact inverse, so even an unclipped pixel moves by up to 1e-4,
+in colour-hdri as here. `threshold` 0 is colour-hdri's `None`: the clip only floors at 0.
+Suite 277 matches colour-hdri to 6e-15 on synthetic pixels and on SRIC crops exposed two
+stops up.
+
 ---
 
 ## Bayer Demosaicing
