@@ -2689,6 +2689,68 @@ alwan_status alwan_match_template_f32(alwan_f32 *out, size_t out_row_stride, alw
 alwan_status alwan_match_template_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *image, size_t image_row_stride, size_t width, size_t height, alwan_f64 const *templ, size_t templ_row_stride, size_t templ_width, size_t templ_height, alwan_template_params const *params);
 alwan_status alwan_match_template_u8(alwan_f64 *out, size_t out_row_stride, unsigned char const *image, size_t image_row_stride, size_t width, size_t height, unsigned char const *templ, size_t templ_row_stride, size_t templ_width, size_t templ_height, alwan_template_params const *params);
 
+/* Colour checker detection, as colour-checker-detection 0.2.3's segmentation method
+ * (detect_colour_checkers_segmentation, suite 269): the Colour Developers' pipeline, BSD-3,
+ * with the OpenCV calls it makes reproduced from OpenCV 5.x's sources.
+ *
+ * The image (three or more channels, the first three read as RGB, float) is taken to
+ * float32, turned a quarter clockwise if it is taller than wide, and resized by OpenCV's
+ * cubic resize to working_width (1440) wide. Segmentation runs on its sRGB encoding's
+ * largest channel stretched to 8 bits: five bilateral passes (sigma 5, 5), a mean adaptive
+ * threshold (block 21, C 3), a 3 x 3 opening, every contour brought to four points; the
+ * square ones between 1/4800 and 1/24 of the image become boxes, grown by 4/3 and joined;
+ * a joined region whose box has the chart's aspect ratio within 10% and holds half to one
+ * and a half times the swatch count is a chart. Each chart is warped (bicubic) onto a
+ * working_width x working_width / aspect_ratio rectangle, a samples x samples window at
+ * every swatch centre averaged, and the corner order whose swatches are nearest the
+ * reference (mean squared) kept.
+ *
+ * out: up to capacity detections; count: how many were found, also when that is more than
+ * capacity (then ALWAN_E_RANGE, the first capacity written). row_stride in bytes, 0 for
+ * packed. params NULL or zero-filled takes the package's defaults for the ColorChecker
+ * Classic; reference_values, swatches_horizontal x swatches_vertical rows of linear RGB in
+ * the image's space, NULL for the Classic after November 2014 in linear sRGB. The image
+ * should be display-referred RGB in about [0, 1], linear or not: the segmentation encodes it
+ * (skip_srgb_encoding off), and the swatch colours are sampled from the image as given. */
+typedef enum {
+    ALWAN_CHECKER_DETECT_SEGMENTATION = 0
+} alwan_checker_detect_method;
+
+#define ALWAN_CHECKER_MAX_SWATCHES 140
+
+typedef struct {
+    size_t working_width;              /* 0: 1440 */
+    size_t swatches_horizontal;        /* 0: 6 */
+    size_t swatches_vertical;          /* 0: 4 */
+    double aspect_ratio;               /* 0: horizontal / vertical */
+    double aspect_ratio_minimum;       /* 0: 0.9 aspect_ratio */
+    double aspect_ratio_maximum;       /* 0: 1.1 aspect_ratio */
+    size_t swatches_count_minimum;     /* 0: half the swatches */
+    size_t swatches_count_maximum;     /* 0: one and a half times the swatches */
+    double swatch_minimum_area_factor; /* 0: 200 (a swatch at least 1/(swatches * 200) of the image) */
+    double swatch_contour_scale;       /* 0: 4/3 */
+    size_t samples;                    /* 0: 32, the side of each sampling window */
+    size_t bilateral_iterations;       /* 0: 5 */
+    double bilateral_sigma_color;      /* 0: 5 */
+    double bilateral_sigma_space;      /* 0: 5 */
+    size_t threshold_block_size;       /* 0: odd, about 1.5% of working_width (21) */
+    double threshold_constant;         /* 0: 3 */
+    int skip_srgb_encoding;            /* non-zero: segment the image as given, not its sRGB encoding */
+    double const *reference_values;    /* NULL: the ColorChecker Classic (2014) in linear sRGB */
+} alwan_checker_detect_params;
+
+typedef struct {
+    double quad[4][2];                 /* corners in the working image (x, y), the package's quadrilateral */
+    double quad_image[4][2];           /* the same corners in the input image's pixels */
+    float swatches[ALWAN_CHECKER_MAX_SWATCHES][3]; /* swatch colours, row by row from the first corner */
+    size_t swatch_count;
+    double mse;                        /* mean squared distance to the reference values */
+    size_t working_width, working_height;
+} alwan_checker_detection;
+
+alwan_status alwan_color_checker_detect_f32(alwan_checker_detection *out, size_t capacity, size_t *count, alwan_f32 const *image, size_t row_stride, size_t width, size_t height, size_t channels, alwan_checker_detect_method method, alwan_checker_detect_params const *params);
+alwan_status alwan_color_checker_detect_f64(alwan_checker_detection *out, size_t capacity, size_t *count, alwan_f64 const *image, size_t row_stride, size_t width, size_t height, size_t channels, alwan_checker_detect_method method, alwan_checker_detect_params const *params);
+
 /* Iso-contours by marching squares, as scikit-image's find_contours (suite 249). A 2 x 2
  * square walks the image; each corner above the level sets a bit (a corner equal to the
  * level counts as below), the square's case gives the segment or segments crossing it, the

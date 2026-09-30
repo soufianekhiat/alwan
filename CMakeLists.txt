@@ -113,6 +113,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_locus.c
   src/alwan/api/alwan_colour_models.c
   src/alwan/api/alwan_palette.c
+  src/alwan/api/alwan_checker_detect.c
   src/alwan/api/alwan_cmyk.c
   src/alwan/api/alwan_pattern.c
 src/alwan/api/alwan_difference.c

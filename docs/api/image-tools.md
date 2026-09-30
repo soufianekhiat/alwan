@@ -1922,6 +1922,69 @@ is rounding divided by a denominator of the same size, scikit-image's and alwan'
 within 1e-7 of 0 and not comparable closer. On float32-exact values the f32 entry point
 gives the f64 response rounded.
 
+## Colour checker detection
+
+```c
+alwan_status alwan_color_checker_detect_{T}(alwan_checker_detection *out, size_t capacity, size_t *count,
+                                            alwan_{T} const *image, size_t row_stride,
+                                            size_t width, size_t height, size_t channels,
+                                            alwan_checker_detect_method method,
+                                            alwan_checker_detect_params const *params);
+```
+
+Finds ColorChecker charts in a photograph and reads their swatches: colour-checker-detection
+0.2.3's segmentation method (`detect_colour_checkers_segmentation`), a port of the Colour
+Developers' pipeline (BSD-3-Clause) with the OpenCV calls it makes reproduced from OpenCV
+5.x's own sources. One method so far, `ALWAN_CHECKER_DETECT_SEGMENTATION`; the package's
+inference method needs network weights alwan does not ship.
+
+The image is read as float32 RGB (the first three of `channels`), turned a quarter clockwise
+if it is taller than wide, and resized to `working_width` by OpenCV's cubic resize. The
+segmentation works on the sRGB encoding's largest channel, stretched to 8 bits: bilateral
+filtering, a mean adaptive threshold, a 3 x 3 opening, every contour (Suzuki and Abe's
+tracing, as `findContours`), each brought to four points by bisecting `approxPolyDP`'s
+tolerance. The square ones of a plausible size become minimum-area boxes; nested boxes keep
+the smallest; the boxes, grown by `swatch_contour_scale` about their centroids and drawn
+filled, join into regions, and a region whose box has the chart's aspect ratio and holds a
+plausible number of swatch centres is a chart. Each chart is warped (bicubic) onto a
+`working_width` x `working_width / aspect_ratio` rectangle, a `samples` x `samples` window at
+every swatch centre averaged, and of its four corner orders the one whose swatches are
+nearest the reference values (mean squared) is kept, so the first swatch is dark skin
+whichever way the chart was photographed.
+
+| `alwan_checker_detect_params` | Default | Meaning |
+|---|---|---|
+| `working_width` | 1440 | the width detection runs at |
+| `swatches_horizontal`, `swatches_vertical` | 6, 4 | the chart's layout; at most 140 swatches |
+| `aspect_ratio` | 6 / 4 | the chart's aspect ratio |
+| `aspect_ratio_minimum`, `_maximum` | 0.9, 1.1 of it | the range a candidate must fall in |
+| `swatches_count_minimum`, `_maximum` | 12, 36 | half to one and a half times the swatches |
+| `swatch_minimum_area_factor` | 200 | a swatch covers at least 1/(swatches x factor) of the image |
+| `swatch_contour_scale` | 4/3 | how much each swatch box grows before they are joined |
+| `samples` | 32 | the side of each sampling window, in working pixels |
+| `bilateral_iterations`, `_sigma_color`, `_sigma_space` | 5, 5, 5 | the denoising |
+| `threshold_block_size`, `threshold_constant` | 21, 3 | the adaptive threshold (block about 1.5% of the width, odd) |
+| `skip_srgb_encoding` | 0 | segment the image as given rather than its sRGB encoding |
+| `reference_values` | NULL | 3 x swatches linear RGB values for the orientation; NULL is the Classic after November 2014 in linear sRGB, and required for any other layout |
+
+Each `alwan_checker_detection` holds `quad`, the four corners in the working image as the
+package reports them, `quad_image`, the same corners in the input's pixels, the swatch
+colours row by row from the first corner, the swatch count and the orientation's mean squared
+distance. `count` is how many charts were found; with more than `capacity`, the first
+`capacity` are written and the call returns `ALWAN_E_RANGE`. Colours are sampled from the
+image as given, so a linear image gives linear swatches.
+
+Suite 269 holds it to the package on synthetic scenes rendered to the bit on both sides (one
+and two charts, portrait, upside down, turned 30 degrees, a wide 16:9 frame): the same charts,
+the same corners and the same swatch colours, exactly. That is against OpenCV's own code: the
+package's pip build routes the float resize and the 8-bit bilateral filter through Intel's
+IPP, which differs from OpenCV's code by up to 5e-5 in the resized image and a grey level on
+a few pixels of the filtered one. On the 164 photographs of the SRIC collection (12 charts in
+11 of them) alwan and the package find the same charts at the same corners, with the swatch
+colours identical when IPP is off and within 2.4e-6 when it is on, as the package ships. The det build,
+with its polynomial pow and exp and its unfused multiply-adds, finds the same corners and
+swatches within 1.2e-7.
+
 ## Contours
 
 ```c

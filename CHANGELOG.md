@@ -917,6 +917,17 @@
 
 ### Added
 
+- **`alwan_color_checker_detect_{T}`: colour checker detection by segmentation.** A port of
+  colour-checker-detection 0.2.3's `detect_colour_checkers_segmentation` (colour-checker-detection,
+  BSD-3-Clause, Colour Developers), with the OpenCV calls it makes reproduced from OpenCV 5.x's
+  sources (Apache-2.0): cubic resize, bilateral filter, mean adaptive threshold, contour tracing,
+  approxPolyDP, minAreaRect, filled polygons, the bicubic perspective warp. Family API with
+  `ALWAN_CHECKER_DETECT_SEGMENTATION` and zero-default parameters; returns each chart's corners
+  (working and input pixels) and swatch colours, oriented so the first swatch is dark skin.
+  Against the package with OpenCV's IPP HAL off: the same charts, corners and swatch colours,
+  bit for bit, on suite 269's synthetic scenes and on 164 SRIC photographs; with IPP on, as
+  the package ships, the same charts and corners and swatches within 2.4e-6.
+
 - **`alwan_mesopic_adaptation_{T}`**, the CIE 191:2010 adaptation state from a photopic
   adaptation luminance and an S/P ratio, by the standard's iteration: returns the mesopic
   adaptation luminance and `m`. CIE TN 007:2017's examples come out to their three decimals

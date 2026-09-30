@@ -7,3 +7,7 @@ BabelColor's own tables: Classic pre-2014 and post-2014 D50, the 1976 C
 rendering, BabelColor average xyY and reflectance, the Ohta reflectances, PMC,
 Digital SG, and the Image Engineering TE226 v2 D65 set.
 Written by gendata/data/reference_data.py and colorchecker_names.py.
+
+classic_post2014_srgb_linear.csv: the Classic after November 2014 in linear sRGB (CAT02 from
+D50), colour-checker-detection's orientation reference, written by
+gendata/data/checker_detect_reference.py.

@@ -360,6 +360,8 @@ EXPORTS
     alwan_collect3_f64
     alwan_color_checker_data_f32
     alwan_color_checker_data_f64
+    alwan_color_checker_detect_f32
+    alwan_color_checker_detect_f64
     alwan_color_checker_grid
     alwan_color_checker_native_illuminant
     alwan_color_checker_num_patch_names
