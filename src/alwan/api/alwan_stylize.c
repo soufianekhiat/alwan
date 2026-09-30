@@ -34,6 +34,19 @@
  *
  * OpenCV works on BGR; alwan takes RGB and hands the port BGR, since the normalised
  * convolution's index arithmetic is not symmetric in the channels.
+ *
+ * ALWAN_STYLIZE_OIL_PAINTING ports opencv_contrib 5.0.0's xphoto oilPainting
+ * (modules/xphoto/src/oilpainting.cpp, after the histogram method in G. J. Holzmann,
+ * "Beyond Photography: The Digital Darkroom", 1988). opencv_contrib is Copyright the
+ * OpenCV authors, Apache License 2.0 (https://github.com/opencv/opencv_contrib), licence
+ * text in data/opencv/LICENSE-opencv_contrib.txt. Its luminance is cvtColor BGR2GRAY on 8
+ * bits, ((b 3735 + g 19235 + r 9798 + 2^14) >> 15), quantised by cvRound(l / dynRatio);
+ * each output pixel is the mean colour of the (2 size + 1)^2 window's most frequent
+ * quantised luminance, the window's histogram and float sums slid along the row. The mean
+ * is the float sum times 1 / count in double, rounded to float; three channels round it to
+ * 8 bits half to even, one channel truncates it (OpenCV's static_cast). OpenCV then
+ * requantises a copy of its result by dynRatio after handing the result back, which has
+ * no effect, and nor does it here.
  */
 
 #include "../alwan.h"
@@ -519,6 +532,121 @@ static int st_magnitude(float *mag, float const *img, int h, int w) {
 }
 
 /* ------------------------------------------------------------------------------------ */
+/* xphoto::oilPainting (ParallelOilPainting)                                              */
+/* ------------------------------------------------------------------------------------ */
+
+/* saturate_cast<uchar>(float): cvRound, ties to even, INT_MIN (NaN, an infinity, 2^31 and
+ * up) saturating to 0 */
+static unsigned char st_round_u8(float y) {
+    int i;
+    float fr;
+    if (!(y > -2147483648.0f) || !(y < 2147483648.0f)) return 0;
+    if (y <= 0.5f) return 0;
+    if (y >= 255.0f) return 255;
+    i = (int)y;
+    fr = y - (float)i;
+    if (fr > 0.5f || (fr == 0.5f && (i & 1))) i++;
+    return (unsigned char)i;
+}
+
+static void st_oil_add(int *hist, float (*mean)[3], int k, unsigned char const *px, size_t ch, int sign) {
+    hist[k] += sign;
+    if (ch == 1) {
+        if (sign > 0) mean[k][0] += (float)px[0]; else mean[k][0] -= (float)px[0];
+    } else if (sign > 0) {
+        mean[k][0] += (float)px[2];
+        mean[k][1] += (float)px[1];
+        mean[k][2] += (float)px[0];
+    } else {
+        mean[k][0] -= (float)px[2];
+        mean[k][1] -= (float)px[1];
+        mean[k][2] -= (float)px[0];
+    }
+}
+
+/* src and out are w x h, ch 1, 3 or 4 (the fourth copied through), strides in bytes; out
+ * must not overlap src (the caller copies). mean[] holds B, G, R as OpenCV's Vec3f does. */
+static alwan_status st_oil(unsigned char *out, size_t out_rs, unsigned char const *src, size_t src_rs,
+                           int w, int h, size_t ch, int halfsize, int dyn) {
+    size_t const n = (size_t)w * (size_t)h;
+    unsigned char *lum = (unsigned char *)malloc(n);
+    int hist[256];
+    float mean[256][3];
+    double const dratio = 1 / (double)dyn;
+    int x, y, yy, xx, i;
+    if (!lum) return ALWAN_E_NOMEM;
+
+    for (y = 0; y < h; y++) {
+        unsigned char const *s = src + (size_t)y * src_rs;
+        for (x = 0; x < w; x++) {
+            int l;
+            double v, f;
+            long r;
+            if (ch == 1) {
+                l = s[x];
+            } else {
+                int const rr = s[(size_t)x * ch], g = s[(size_t)x * ch + 1], b = s[(size_t)x * ch + 2];
+                l = (b * 3735 + g * 19235 + rr * 9798 + (1 << 14)) >> 15;
+            }
+            /* saturate_cast<uchar>(cvRound(l * dratio)) */
+            v = (double)l * dratio;
+            f = ALWAN_FLOOR_F64(v);
+            r = (long)f;
+            if (v - f > 0.5 || (v - f == 0.5 && (r & 1))) r++;
+            lum[(size_t)y * (size_t)w + (size_t)x] = (unsigned char)(r > 255 ? 255 : r);
+        }
+    }
+
+    for (y = 0; y < h; y++) {
+        unsigned char *d = out + (size_t)y * out_rs;
+        for (x = 0; x < w; x++) {
+            int pos = 0;
+            if (x == 0) {
+                memset(hist, 0, sizeof hist);
+                memset(mean, 0, sizeof mean);
+                for (yy = -halfsize; yy <= halfsize; yy++) {
+                    if (y + yy >= 0 && y + yy < h) {
+                        unsigned char const *vp = src + (size_t)(y + yy) * src_rs;
+                        unsigned char const *uc = lum + (size_t)(y + yy) * (size_t)w;
+                        for (xx = 0; xx <= halfsize && x + xx < w; xx++)
+                            st_oil_add(hist, mean, uc[x + xx], vp + (size_t)(x + xx) * ch, ch, 1);
+                    }
+                }
+            } else {
+                for (yy = -halfsize; yy <= halfsize; yy++) {
+                    if (y + yy >= 0 && y + yy < h) {
+                        unsigned char const *vp = src + (size_t)(y + yy) * src_rs;
+                        unsigned char const *uc = lum + (size_t)(y + yy) * (size_t)w;
+                        xx = x - halfsize - 1;
+                        if (xx >= 0 && xx < w) st_oil_add(hist, mean, uc[xx], vp + (size_t)xx * ch, ch, -1);
+                        xx = x + halfsize;
+                        if (xx >= 0 && xx < w) st_oil_add(hist, mean, uc[xx], vp + (size_t)xx * ch, ch, 1);
+                    }
+                }
+            }
+            /* std::max_element: the first of the largest counts */
+            for (i = 1; i < 256; i++)
+                if (hist[i] > hist[pos]) pos = i;
+            {
+                /* Vec3f / int: each sum times 1. / count in double, saturate_cast<float> */
+                double const inv = 1. / hist[pos];
+                if (ch == 1) {
+                    float const m = (float)((double)mean[pos][0] * inv);
+                    d[x] = (unsigned char)m; /* static_cast<uint8_t>: truncation */
+                } else {
+                    d[(size_t)x * ch + 2] = st_round_u8((float)((double)mean[pos][0] * inv));
+                    d[(size_t)x * ch + 1] = st_round_u8((float)((double)mean[pos][1] * inv));
+                    d[(size_t)x * ch] = st_round_u8((float)((double)mean[pos][2] * inv));
+                    if (ch == 4) d[(size_t)x * 4 + 3] = src[(size_t)y * src_rs + (size_t)x * 4 + 3];
+                }
+            }
+        }
+    }
+    free(lum);
+    return ALWAN_OK;
+}
+
+/* ------------------------------------------------------------------------------------ */
 /* The API                                                                                */
 /* ------------------------------------------------------------------------------------ */
 
@@ -546,6 +674,24 @@ alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,
     alwan_status st = ALWAN_OK;
 
     if (!out || !src) return ALWAN_E_INVALID;
+    if (method == ALWAN_STYLIZE_OIL_PAINTING) {
+        size_t sz, dyn;
+        unsigned char *copy;
+        if (channels != 1 && channels != 3 && channels != 4) return ALWAN_E_INVALID;
+        if (width < 1 || height < 1 || width > 46340 || height > 46340) return ALWAN_E_INVALID;
+        if (src_row_stride < width * channels || out_row_stride < width * channels) return ALWAN_E_INVALID;
+        if (params) p = *params; else memset(&p, 0, sizeof p);
+        sz = p.oil_size == 0 ? 10 : p.oil_size;
+        dyn = p.oil_dyn_ratio == 0 ? 1 : p.oil_dyn_ratio;
+        if (sz > 46340 || dyn > 127) return ALWAN_E_INVALID;
+        /* the window reads the source while the result is written: work from a copy */
+        copy = (unsigned char *)malloc(width * height * channels);
+        if (!copy) return ALWAN_E_NOMEM;
+        for (y = 0; y < height; y++) memcpy(copy + y * width * channels, src + y * src_row_stride, width * channels);
+        st = st_oil(out, out_row_stride, copy, width * channels, (int)width, (int)height, channels, (int)sz, (int)dyn);
+        free(copy);
+        return st;
+    }
     if (channels != 3 && channels != 4) return ALWAN_E_INVALID;
     if (width < 2 || height < 2 || width > 46340 || height > 46340) return ALWAN_E_INVALID;
     if (method < ALWAN_STYLIZE_EDGE_PRESERVING_RECURSIVE || method > ALWAN_STYLIZE_PENCIL_SKETCH_COLOR)

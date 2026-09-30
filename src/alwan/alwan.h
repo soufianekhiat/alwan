@@ -2526,6 +2526,14 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        gaussian (Buades, Coll and Morel 2005; scikit-image
  *                                        denoise_nl_means, fast_mode off, suite 231); slower
  *                                        by the patch's area
+ *   ALWAN_DENOISE_DCT_OPENCV             xphoto::dctDenoising itself (opencv_contrib 5.0.0,
+ *                                        Intel's BSD-style licence), to the bit (suite 279):
+ *                                        DCT's algorithm in OpenCV's single precision, its
+ *                                        cv::dct, its opponent transform and its border,
+ *                                        patches at x < width - block_size only, so the last
+ *                                        row and column are covered by none and come out 0
+ *                                        on 8-bit data and NaN on floats; 1 or 3 channels;
+ *                                        block_size even, 2 to 64 and under both sides
  *
  * alwan_denoise_u8 runs every method on 8-bit data (TV and the float NL means through
  * double in 0..1, rounded back); alwan_denoise_{T} runs every method but NL_MEANS and
@@ -2542,7 +2550,8 @@ typedef enum {
     ALWAN_DENOISE_MEDIAN = 5,
     ALWAN_DENOISE_TV_BREGMAN = 6,
     ALWAN_DENOISE_NL_MEANS_DARBON = 7,
-    ALWAN_DENOISE_NL_MEANS_BUADES = 8
+    ALWAN_DENOISE_NL_MEANS_BUADES = 8,
+    ALWAN_DENOISE_DCT_OPENCV = 9
 } alwan_denoise_method;
 
 /* The orthogonal wavelets of ALWAN_DENOISE_WAVELET: Daubechies and symlets. */
@@ -2582,12 +2591,12 @@ typedef struct {
     double alpha;           /* ANISOTROPIC_DIFFUSION: step, 0.1 to 0.2 keeps it stable; 0 reads as 0.15 */
     double k;               /* ANISOTROPIC_DIFFUSION: edge threshold, a fraction of full scale per channel;
                              * 0 reads as 0.05 */
-    double sigma;           /* DCT, WAVELET, NL_MEANS_DARBON, _BUADES: the noise's standard deviation in the
-                             * data's units (0..255 for 8-bit). DCT: 0 reads as 10 for 8-bit data, 10 / 255
-                             * for floats. WAVELET: 0 estimates it from the finest diagonal sub-band.
+    double sigma;           /* DCT, DCT_OPENCV, WAVELET, NL_MEANS_DARBON, _BUADES: the noise's standard
+                             * deviation in the data's units (0..255 for 8-bit). DCT, DCT_OPENCV: 0 reads as
+                             * 10 for 8-bit data, 10 / 255 for floats. WAVELET: 0 estimates it from the finest diagonal sub-band.
                              * NL means: 0 subtracts nothing */
-    size_t block_size;      /* DCT: the side of the DCT block, 2 to 64, at most the image's sides;
-                             * 0 reads as 16 */
+    size_t block_size;      /* DCT: the side of the DCT block, 2 to 64, at most the image's sides.
+                             * DCT_OPENCV: even, 2 to 64, under the image's sides. 0 reads as 16 */
     int wavelet;            /* WAVELET: an alwan_wavelet; 0 is ALWAN_WAVELET_DB1 (Haar), scikit-image's
                              * default */
     size_t wavelet_levels;  /* WAVELET: decomposition levels; 0 reads as the maximum minus 3, at least 1.
@@ -3147,6 +3156,15 @@ alwan_status alwan_gradient_edit(unsigned char *out, size_t out_row_stride,
  *                                            sigma_s 60, sigma_r 0.07, shade_factor 0.02
  *   ALWAN_STYLIZE_PENCIL_SKETCH_COLOR        pencilSketch's colour drawing: the grey drawing
  *                                            as the Y of the image's YCrCb
+ *   ALWAN_STYLIZE_OIL_PAINTING               xphoto::oilPainting (opencv_contrib 5.0.0,
+ *                                            Apache-2.0; Holzmann 1988): each pixel the mean
+ *                                            colour of the most frequent luminance, quantised
+ *                                            by oil_dyn_ratio, in the (2 oil_size + 1)^2
+ *                                            window; oil_size 10, oil_dyn_ratio 1 (OpenCV's
+ *                                            sample). Channels 1, 3 or 4; the luminance is
+ *                                            OpenCV's BGR2GRAY (its default conversion code,
+ *                                            the only one ported); one channel truncates the
+ *                                            mean, as OpenCV does, three round it
  *
  * Images are 8-bit, channels 3 (RGB) or 4 (RGBA, the fourth copied through), row-major with
  * row strides in bytes; out has src's size and channels, one channel for the grey sketch,
@@ -3156,8 +3174,9 @@ alwan_status alwan_gradient_edit(unsigned char *out, size_t out_row_stride,
  * to 8 bits. OpenCV computes in BGR; alwan hands it BGR, which matters because the
  * normalised convolution's index arithmetic is not symmetric in the channels.
  *
- * ALWAN_E_INVALID for a NULL image, a size under 2 x 2 or over 46340, a stride too small,
- * a channel count other than 3 or 4, an unknown method or a negative or NaN parameter;
+ * ALWAN_E_INVALID for a NULL image, a size under 2 x 2 or over 46340 (1 x 1 for the oil
+ * painting), a stride too small, a channel count other than 3 or 4 (1, 3 or 4 for the oil
+ * painting), an unknown method, a negative or NaN parameter, or oil_dyn_ratio over 127;
  * ALWAN_E_NOMEM when the buffers (about 60 bytes a pixel) do not fit. */
 typedef enum {
     ALWAN_STYLIZE_EDGE_PRESERVING_RECURSIVE = 0,
@@ -3165,7 +3184,8 @@ typedef enum {
     ALWAN_STYLIZE_DETAIL_ENHANCE = 2,
     ALWAN_STYLIZE_STYLIZATION = 3,
     ALWAN_STYLIZE_PENCIL_SKETCH_GREY = 4,
-    ALWAN_STYLIZE_PENCIL_SKETCH_COLOR = 5
+    ALWAN_STYLIZE_PENCIL_SKETCH_COLOR = 5,
+    ALWAN_STYLIZE_OIL_PAINTING = 6
 } alwan_stylize_method;
 
 /* Each method reads its own fields; a zero field is its default (the method's own, listed
@@ -3174,6 +3194,8 @@ typedef struct {
     alwan_f64 sigma_s;       /* the spatial extent, in pixels */
     alwan_f64 sigma_r;       /* the range extent, in the [0, 1] colour units */
     alwan_f64 shade_factor;  /* PENCIL_SKETCH_*: the drawing's darkness, 0.02 */
+    size_t oil_size;         /* OIL_PAINTING: the window's half side, 10 */
+    size_t oil_dyn_ratio;    /* OIL_PAINTING: the luminance's quantisation step, 1 to 127, 1 */
 } alwan_stylize_params;
 
 alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,

@@ -85,6 +85,33 @@ alwan_status alwan__inpaint_opencv(void *out, size_t out_rs, void const *src, si
                                    size_t ch, size_t w, size_t h, unsigned char const *mask, size_t mask_rs,
                                    alwan_inpaint_method method, alwan_inpaint_params const *params);
 
+/* OpenCV 5.0.0's float DFT and DCT (core/src/dxt.cpp), api/alwan_cv_dxt.c. A complex row
+ * plan for cv::dft (alwan_gradient_edit's sine transform): forward, or inverse scaled by
+ * 1 / n. A square-block plan for cv::dct / cv::idct (ALWAN_DENOISE_DCT_OPENCV): n even,
+ * rows then columns, row strides in floats, dst may be src. */
+typedef struct {
+    float re, im;
+} alwan__cv_cf;
+typedef struct {
+    int n;
+    int nf;
+    int factors[34];
+    int *itab;
+    alwan__cv_cf *wave;
+    alwan__cv_cf *scratch;
+} alwan__cv_dft_plan;
+int alwan__cv_dft_plan_create(alwan__cv_dft_plan *p, int n);
+void alwan__cv_dft_plan_free(alwan__cv_dft_plan *p);
+void alwan__cv_dft_row(alwan__cv_dft_plan const *p, alwan__cv_cf const *src, alwan__cv_cf *dst, int inv);
+typedef struct alwan__cv_dct_plan alwan__cv_dct_plan;
+alwan_status alwan__cv_dct_plan_create(alwan__cv_dct_plan **out, int n, int inverse);
+void alwan__cv_dct_plan_destroy(alwan__cv_dct_plan *p);
+void alwan__cv_dct2d(alwan__cv_dct_plan const *p, float const *src, size_t src_stride, float *dst, size_t dst_stride);
+/* xphoto::dctDenoising (opencv_contrib 5.0.0), behind ALWAN_DENOISE_DCT_OPENCV; kind 0 f64,
+ * 1 f32, 2 u8. api/alwan_dct_denoise_opencv.c. */
+alwan_status alwan__dct_denoise_opencv(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch,
+                                       size_t w, size_t h, double sigma, size_t ps, int kind);
+
 typedef struct alwan__fft alwan__fft;
 alwan__fft *alwan__fft_create(size_t n);
 void alwan__fft_destroy(alwan__fft *f);

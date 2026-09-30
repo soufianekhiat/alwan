@@ -1095,6 +1095,10 @@ static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const 
     case ALWAN_DENOISE_DCT:
         return alwan_dct_run(out, out_row_stride, src, src_row_stride, channels, width, height,
                              alwan_dn_or(p->sigma, 10.0 / 255.0), p->block_size == 0 ? 16 : p->block_size, is_f32 ? 1 : 0);
+    case ALWAN_DENOISE_DCT_OPENCV:
+        return alwan__dct_denoise_opencv(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                         alwan_dn_or(p->sigma, 10.0 / 255.0), p->block_size == 0 ? 16 : p->block_size,
+                                         is_f32 ? 1 : 0);
     case ALWAN_DENOISE_WAVELET:
         return alwan_wv_run(out, out_row_stride, src, src_row_stride, channels, width, height, p, is_f32 ? 1 : 0);
     case ALWAN_DENOISE_MEDIAN: {
@@ -1135,6 +1139,9 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
     case ALWAN_DENOISE_DCT:
         return alwan_dct_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->sigma, 10.0),
                              p->block_size == 0 ? 16 : p->block_size, 2);
+    case ALWAN_DENOISE_DCT_OPENCV:
+        return alwan__dct_denoise_opencv(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                         alwan_dn_or(p->sigma, 10.0), p->block_size == 0 ? 16 : p->block_size, 2);
     case ALWAN_DENOISE_WAVELET:
         return alwan_wv_run(out, out_row_stride, src, src_row_stride, channels, width, height, p, 2);
     case ALWAN_DENOISE_MEDIAN: {

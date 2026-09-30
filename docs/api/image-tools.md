@@ -349,7 +349,8 @@ typedef enum {
     ALWAN_DENOISE_MEDIAN = 5,
     ALWAN_DENOISE_TV_BREGMAN = 6,
     ALWAN_DENOISE_NL_MEANS_DARBON = 7,
-    ALWAN_DENOISE_NL_MEANS_BUADES = 8
+    ALWAN_DENOISE_NL_MEANS_BUADES = 8,
+    ALWAN_DENOISE_DCT_OPENCV = 9
 } alwan_denoise_method;
 
 alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -363,7 +364,7 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
 ```
 
 Classic denoisers that fail in different ways (plate 89 of the v3 plates shows them on
-one portrait). `alwan_denoise_u8` runs all nine; `alwan_denoise_{T}` runs every method
+one portrait). `alwan_denoise_u8` runs all ten; `alwan_denoise_{T}` runs every method
 but `NL_MEANS` and `ANISOTROPIC_DIFFUSION`, and returns `ALWAN_E_INVALID` for those two,
 whose references work on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
 
@@ -375,8 +376,8 @@ whose references work on 8-bit data. 1 to 4 channels; `out` may alias `src` exce
 | `h` | `NL_MEANS` / `NL_MEANS_DARBON`, `_BUADES` | 10, in 0..255 units / 0.1 in the data's units (25.5 on 8-bit) |
 | `template_window`, `search_window` | `NL_MEANS` / `NL_MEANS_DARBON`, `_BUADES` | 7, 21 / 7, 23 |
 | `alpha`, `k` | `ANISOTROPIC_DIFFUSION` | 0.15, 0.05 |
-| `sigma` | `DCT` / `WAVELET` / `NL_MEANS_DARBON`, `_BUADES` | 10 for 8-bit data, 10 / 255 for floats / estimated from the image / 0 |
-| `block_size` | `DCT` | 16 |
+| `sigma` | `DCT`, `DCT_OPENCV` / `WAVELET` / `NL_MEANS_DARBON`, `_BUADES` | 10 for 8-bit data, 10 / 255 for floats / estimated from the image / 0 |
+| `block_size` | `DCT`, `DCT_OPENCV` | 16 |
 | `wavelet` | `WAVELET` | `ALWAN_WAVELET_DB1` (Haar) |
 | `wavelet_levels` | `WAVELET` | the most the image holds, less 3, at least 1 |
 | `wavelet_visushrink`, `wavelet_hard` | `WAVELET` | BayesShrink, soft |
@@ -439,6 +440,38 @@ as the paper's own code does, so every pixel is covered. Suite 204 compares the 
 than one block from the right and bottom edges, where the two agree to 5e-7 in float and
 exactly in 8-bit but for one value in one case, a coefficient within rounding of the
 threshold; a constant image is unchanged at the border too.
+
+### `DCT_OPENCV`
+
+OpenCV's `xphoto::dctDenoising` itself, ported from opencv_contrib 5.0.0's
+`xphoto/src/dct_image_denoising.cpp` (Intel's BSD-style licence for OpenCV, its notice kept
+in `api/alwan_dct_denoise_opencv.c`) so that the result is OpenCV's to the bit: the same
+algorithm as `DCT`, in OpenCV's single precision and with its border. Its steps:
+
+- the image converted to float; three channels (in OpenCV's B, G, R order) turned by
+  `cv::transform` with the float opponent matrix, whose AVX2 build takes two pixels at a
+  time as `fma(v0, m0, fma(v1, m1, v2 m2))` and the last pixel or two unfused;
+- every `block_size` square at `x < width - block_size`, `y < height - block_size` through
+  `cv::dct`, coefficients with `|c| > 3 sigma` kept and the rest multiplied by 0,
+  `cv::idct`; the estimates summed in float in block order and divided by the float count;
+- three channels turned back by the float inverse of the matrix (`Matx33f::inv`), the
+  result converted to the output type, 8 bits rounding half to even.
+
+`cv::dct` is ported in `api/alwan_cv_dxt.c` from OpenCV's `core/src/dxt.cpp`: the DCT
+through a real DFT of the even-odd reordered row (`RealDFT`, `CCSIDFT`), the mixed-radix
+DFT beneath it (the SSE3 radix-4 pass in scalar code, the radix-3, -5 and odd-factor
+passes, and the inverse permutation table the inverse DCT asks for when a length has more
+than one kind of factor), rows then columns. `alwan_gradient_edit`'s sine transform runs on
+the same file.
+
+OpenCV's border is kept: the last row and column are covered by no block, and come out 0 on
+8-bit data and NaN on floats. 1 or 3 channels; `block_size` even, 2 to 64 and smaller than
+both sides (OpenCV rejects odd sizes). Suite 279 compares 16 cases against cv2 with IPP off,
+`block_size` 2 to 16 (the powers of two and the lengths whose DFT runs through the radix-3,
+-5 and -7 passes), from 8-bit, float and double data: every value equal, NaN where
+OpenCV's is, in the ordinary and the deterministic build. With IPP on, as the pip wheel
+ships, cv2's DCT is IPP's and differs: a coefficient near `3 sigma` can land on the other
+side, and 8-bit results move by up to 8 levels.
 
 ### `WAVELET`
 
@@ -928,7 +961,8 @@ typedef enum {
     ALWAN_STYLIZE_DETAIL_ENHANCE = 2,
     ALWAN_STYLIZE_STYLIZATION = 3,
     ALWAN_STYLIZE_PENCIL_SKETCH_GREY = 4,
-    ALWAN_STYLIZE_PENCIL_SKETCH_COLOR = 5
+    ALWAN_STYLIZE_PENCIL_SKETCH_COLOR = 5,
+    ALWAN_STYLIZE_OIL_PAINTING = 6
 } alwan_stylize_method;
 
 alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,
@@ -952,14 +986,15 @@ shrinking by half each pass.
 | `STYLIZATION` | `stylization` | the normalised convolution, darkened by 1 - the summed Sobel magnitude of its channels | 60, 0.45 |
 | `PENCIL_SKETCH_GREY` | `pencilSketch`, first output | shade_factor times the widths of the domain boxes; one channel out | 60, 0.07 |
 | `PENCIL_SKETCH_COLOR` | `pencilSketch`, second output | the grey drawing as the Y of the image's YCrCb | 60, 0.07 |
+| `OIL_PAINTING` | `xphoto::oilPainting` | each pixel the mean colour of its window's most frequent luminance | see below |
 
 `alwan_stylize_params` holds `sigma_s` (the spatial extent, in pixels), `sigma_r` (the range
 extent, in [0, 1] colour units) and `shade_factor` (the pencil drawing's darkness, 0.02).
 A zero field reads as the method's default above; the values go to float, as OpenCV takes
 them.
 
-Images are 8-bit, channels 3 (RGB) or 4 (RGBA, the fourth copied through); the grey sketch
-writes one channel. Row strides are in bytes, and out may be src. OpenCV computes in BGR,
+Images are 8-bit, channels 3 (RGB) or 4 (RGBA, the fourth copied through), and 1 as well for
+the oil painting; the grey sketch writes one channel. Row strides are in bytes, and out may be src. OpenCV computes in BGR,
 and alwan hands the port BGR: the normalised convolution decodes flat indices in a way that
 is not symmetric in the channels.
 
@@ -980,6 +1015,26 @@ the transformed domain than the normalised convolution's radius (a flat run of f
 about 91 pixels at the defaults), OpenCV's index decoding reads one float past its table
 and divides by zero, the non-finite value spreads through the running sums, and every pixel
 it reaches comes out 0. alwan reads 0 at that index and gets the same result.
+
+### `OIL_PAINTING`
+
+opencv_contrib 5.0.0's `xphoto::oilPainting` (`xphoto/src/oilpainting.cpp`, Apache-2.0;
+after the histogram method in Holzmann, "Beyond Photography", 1988). The luminance is
+OpenCV's 8-bit BGR2GRAY, `(b 3735 + g 19235 + r 9798 + 2^14) >> 15`, divided by
+`oil_dyn_ratio` and rounded (`cvRound`, ties to even); for each pixel the window of side
+`2 oil_size + 1`, clipped at the image's edges, is histogrammed by that quantised luminance,
+and the pixel becomes the mean colour of the most frequent bin (the first, on a tie). The
+histogram and the float colour sums slide along each row. The mean is the float sum times
+`1 / count` in double, rounded to float; three channels round it to 8 bits half to even,
+one channel truncates it, as OpenCV's `static_cast` does.
+
+`oil_size` 0 reads as 10 and `oil_dyn_ratio` 0 as 1, the values of OpenCV's sample;
+`oil_dyn_ratio` goes to 127, as OpenCV's does. Channels 1, 3 or 4 (the fourth copied
+through), any size from 1 x 1, out may be src. The luminance is OpenCV's default
+conversion; its other `cvtColor` codes are not ported. OpenCV requantises a copy of its
+result by `dynRatio` after handing the result back, which has no effect; the output here is
+the same. Suite 279 compares eight cases against cv2 (one and three channels, sizes 1 to
+25, windows past every edge, `dynRatio` 1 to 127): every byte equal, with IPP off and on.
 
 Suite 274 holds it to cv2 5.0.0 with IPP off on procedural images, eight sizes from 2 x 2
 (one with flat black rows and columns that take the path above), every method at its

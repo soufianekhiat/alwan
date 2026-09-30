@@ -929,6 +929,25 @@
 
 ### Added
 
+- **OpenCV's oil painting and DCT denoising: `ALWAN_STYLIZE_OIL_PAINTING` and
+  `ALWAN_DENOISE_DCT_OPENCV`.** Ports of opencv_contrib 5.0.0's xphoto `oilPainting`
+  (`oilpainting.cpp`, Apache-2.0, Copyright the OpenCV authors; after Holzmann 1988) and
+  `dctDenoising` (`dct_image_denoising.cpp`, the Intel License Agreement for Open Source
+  Computer Vision Library, Copyright Intel Corporation and Willow Garage; after Yu and
+  Sapiro, IPOL 2011), each notice kept in its source (`api/alwan_stylize.c`,
+  `api/alwan_dct_denoise_opencv.c`). The oil painting is a new method of `alwan_stylize`
+  with the fields `oil_size` (10) and `oil_dyn_ratio` (1), on 1, 3 or 4 channels. The
+  denoiser is `DCT`'s algorithm as OpenCV computes it: single precision, its `cv::dct`,
+  its AVX2 opponent transform and its border, whose last row and column are covered by no
+  block and come out 0 on 8-bit data and NaN on floats; `DCT` stays as it was. `cv::dct`
+  is ported from OpenCV's `core/src/dxt.cpp` in the new `api/alwan_cv_dxt.c`, which now
+  also holds the DFT `alwan_gradient_edit` ported (suite 272 unchanged). Against cv2 with
+  IPP off (suite 279): 8 oil paintings and 16 denoisings, block sizes 2 to 16 from 8-bit,
+  float and double data, every value equal in the ordinary and the deterministic build;
+  the oil painting also with IPP on, where cv2's DCT is IPP's and moves 8-bit results by
+  up to 8 levels. The full Release and Release_Det suites have not been run on this
+  change.
+
 - **Two more edge-aware filters in `alwan_edge_filter_{T}`: the adaptive manifold filter
   (Gastal and Oliveira 2012) and the weighted median filter (Zhang, Xu and Jia 2014).**
   `ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD` and `ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN`, with
