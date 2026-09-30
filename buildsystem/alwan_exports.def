@@ -94,8 +94,6 @@ EXPORTS
     alwan_agx_f64_map_interleave
     alwan_agx_f64_map_planar
     alwan_agx_map_interleave_ex
-    alwan_apca_contrast_f32
-    alwan_apca_contrast_f64
     alwan_approximate_polygon
     alwan_astm_e2022_weights_f32
     alwan_astm_e2022_weights_f64

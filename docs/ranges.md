@@ -269,7 +269,6 @@ rule 2 covers them: they are native, with no normalization macro.
 |----------|--------------------|----------------------------------------|
 | `alwan_hke_object_nayatani1997_*` | a multiplier on luminance, exactly `1` when the stimulus sits on the adapting field; about `[0.77, 1.40]` across a wide sweep, with no fixed bound | unchanged; no normalization macro |
 | `alwan_hke_luminous_nayatani1997_*` | `0.4462 (object + 0.3086)^3`, about `[0.56, 2.24]` across the same sweep | unchanged; no normalization macro |
-| `alwan_apca_contrast_*` | signed perceptual contrast, positive for dark on light | unchanged |
 | `alwan_csf_*`, the Barten 1999 family | sensitivities, luminances, diameters and angles in their own physical units | unchanged |
 
 Normalizing the Helmholtz-Kohlrausch multipliers would be actively harmful: `1.0` means

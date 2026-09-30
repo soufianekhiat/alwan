@@ -363,65 +363,6 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_wcag_contrast_ratio)(ALWAN_COR
 }
 
 /* ================================================================
- * APCA (Advanced Perceptual Contrast Algorithm)
- * ================================================================ */
-
-ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_apca_contrast)(ALWAN_CORE_RGB srgb_text,
-                                                  ALWAN_CORE_RGB srgb_bg) {
-    /* APCA-W3 0.1.9 (constants 0.0.98G-4g), APCAcontrast(sRGBtoY(text), sRGBtoY(bg)) step
-     * for step. A negative channel makes apca-w3's pow NaN and its answer 0; a luminance
-     * outside [0, 1.1] (its input clamp) gives 0; so do two luminances within deltaYmin
-     * of each other after the black soft clamp. */
-    const ALWAN_CORE_T mainTRC = ALWAN_CORE_LITERAL(2.4);
-    const ALWAN_CORE_T Rco = ALWAN_CORE_LITERAL(0.2126729);
-    const ALWAN_CORE_T Gco = ALWAN_CORE_LITERAL(0.7151522);
-    const ALWAN_CORE_T Bco = ALWAN_CORE_LITERAL(0.0721750);
-    const ALWAN_CORE_T blkThrs = ALWAN_CORE_LITERAL(0.022);
-    const ALWAN_CORE_T blkClmp = ALWAN_CORE_LITERAL(1.414);
-    const ALWAN_CORE_T deltaYmin = ALWAN_CORE_LITERAL(0.0005);
-    const ALWAN_CORE_T normBG = ALWAN_CORE_LITERAL(0.56);
-    const ALWAN_CORE_T normTXT = ALWAN_CORE_LITERAL(0.57);
-    const ALWAN_CORE_T revBG = ALWAN_CORE_LITERAL(0.65);
-    const ALWAN_CORE_T revTXT = ALWAN_CORE_LITERAL(0.62);
-    const ALWAN_CORE_T scaleBoW = ALWAN_CORE_LITERAL(1.14);
-    const ALWAN_CORE_T scaleWoB = ALWAN_CORE_LITERAL(1.14);
-    const ALWAN_CORE_T loClip = ALWAN_CORE_LITERAL(0.1);
-    const ALWAN_CORE_T loBoWoffset = ALWAN_CORE_LITERAL(0.027);
-    const ALWAN_CORE_T loWoBoffset = ALWAN_CORE_LITERAL(0.027);
-    const ALWAN_CORE_T yMax = ALWAN_CORE_LITERAL(1.1);
-
-    int valid = srgb_text.r >= ALWAN_CORE_ZERO && srgb_text.g >= ALWAN_CORE_ZERO && srgb_text.b >= ALWAN_CORE_ZERO &&
-                srgb_bg.r >= ALWAN_CORE_ZERO && srgb_bg.g >= ALWAN_CORE_ZERO && srgb_bg.b >= ALWAN_CORE_ZERO;
-    ALWAN_CORE_T tr = ALWAN_CORE_SELECT(srgb_text.r > ALWAN_CORE_ZERO, srgb_text.r, ALWAN_CORE_ZERO);
-    ALWAN_CORE_T tg = ALWAN_CORE_SELECT(srgb_text.g > ALWAN_CORE_ZERO, srgb_text.g, ALWAN_CORE_ZERO);
-    ALWAN_CORE_T tb = ALWAN_CORE_SELECT(srgb_text.b > ALWAN_CORE_ZERO, srgb_text.b, ALWAN_CORE_ZERO);
-    ALWAN_CORE_T br = ALWAN_CORE_SELECT(srgb_bg.r > ALWAN_CORE_ZERO, srgb_bg.r, ALWAN_CORE_ZERO);
-    ALWAN_CORE_T bgc = ALWAN_CORE_SELECT(srgb_bg.g > ALWAN_CORE_ZERO, srgb_bg.g, ALWAN_CORE_ZERO);
-    ALWAN_CORE_T bb = ALWAN_CORE_SELECT(srgb_bg.b > ALWAN_CORE_ZERO, srgb_bg.b, ALWAN_CORE_ZERO);
-
-    ALWAN_CORE_T Ytxt = Rco * ALWAN_CORE_POW(tr, mainTRC) + Gco * ALWAN_CORE_POW(tg, mainTRC) + Bco * ALWAN_CORE_POW(tb, mainTRC);
-    ALWAN_CORE_T Ybg = Rco * ALWAN_CORE_POW(br, mainTRC) + Gco * ALWAN_CORE_POW(bgc, mainTRC) + Bco * ALWAN_CORE_POW(bb, mainTRC);
-    valid = valid && Ytxt <= yMax && Ybg <= yMax;
-
-    ALWAN_CORE_T dTxt = ALWAN_CORE_SELECT(Ytxt > blkThrs, ALWAN_CORE_ZERO, blkThrs - Ytxt);
-    ALWAN_CORE_T dBg = ALWAN_CORE_SELECT(Ybg > blkThrs, ALWAN_CORE_ZERO, blkThrs - Ybg);
-    Ytxt = ALWAN_CORE_SELECT(Ytxt > blkThrs, Ytxt, Ytxt + ALWAN_CORE_POW(dTxt, blkClmp));
-    Ybg = ALWAN_CORE_SELECT(Ybg > blkThrs, Ybg, Ybg + ALWAN_CORE_POW(dBg, blkClmp));
-
-    ALWAN_CORE_T dY = Ybg - Ytxt;
-    ALWAN_CORE_T adY = ALWAN_CORE_SELECT(dY < ALWAN_CORE_ZERO, -dY, dY);
-
-    ALWAN_CORE_T s_bow = (ALWAN_CORE_POW(Ybg, normBG) - ALWAN_CORE_POW(Ytxt, normTXT)) * scaleBoW;
-    ALWAN_CORE_T s_wob = (ALWAN_CORE_POW(Ybg, revBG) - ALWAN_CORE_POW(Ytxt, revTXT)) * scaleWoB;
-    ALWAN_CORE_T o_bow = ALWAN_CORE_SELECT(s_bow < loClip, ALWAN_CORE_ZERO, s_bow - loBoWoffset);
-    ALWAN_CORE_T o_wob = ALWAN_CORE_SELECT(s_wob > -loClip, ALWAN_CORE_ZERO, s_wob + loWoBoffset);
-    ALWAN_CORE_T res = ALWAN_CORE_SELECT(Ybg > Ytxt, o_bow, o_wob);
-    res = ALWAN_CORE_SELECT(adY < deltaYmin, ALWAN_CORE_ZERO, res);
-    res = ALWAN_CORE_SELECT(valid, res, ALWAN_CORE_ZERO);
-    return res * ALWAN_CORE_LITERAL(100.0);
-}
-
-/* ================================================================
  * Helmholtz-Kohlrausch effect (Nayatani 1997)
  *
  * How much brighter a chromatic stimulus looks than an achromatic one of the

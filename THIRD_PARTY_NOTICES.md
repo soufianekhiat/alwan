@@ -11,9 +11,6 @@ color-matcher, MATLAB toolboxes, the Jp-DRT DCTL run as a reference, and others 
 `alwan_dev/gendata/datasets.py`), carry no notice here, because nothing of theirs ships.
 GPL code is never ported into alwan.
 
-Items that need the owner's decision before a release are collected at the end, under
-"Open licence questions".
-
 ---
 
 ## OpenCV and opencv_contrib
@@ -228,26 +225,43 @@ What alwan takes: `src/alwan/data/cmyk/fogra39.inc`, FOGRA39.txt byte for byte.
 
 ---
 
-## Open licence questions
+## AgX (EaryChow, Troy Sobotka, Jed Smith)
 
-These ship in alwan today without a licence grant on record. They are listed so the owner
-can decide before a release; nothing has been removed.
+What alwan takes: `src/alwan/data/agx_blender_lut3d.csv` (EaryChow's AgX,
+https://github.com/EaryChow/AgX), `agx_default_contrast_lut.csv` (Troy Sobotka,
+https://github.com/sobotka/AgX) and `agx_sb2383_contrast_lut.csv`
+(https://github.com/sobotka/SB2383-Configuration-Generation), and the AgX core's sigmoid
+(`src/alwan/core/alwan_agx_core.inc`), which follows Jed Smith's `calculate_sigmoid` from
+AgXLib in Sobotka's repository.
 
-1. **AgX look tables and sigmoid.** `src/alwan/data/agx_blender_lut3d.csv` (EaryChow's AgX,
-   https://github.com/EaryChow/AgX), `agx_default_contrast_lut.csv` (Troy Sobotka,
-   https://github.com/sobotka/AgX) and `agx_sb2383_contrast_lut.csv`
-   (https://github.com/sobotka/SB2383-Configuration-Generation). None of the three
-   repositories states a licence. The AgX core's sigmoid (`src/alwan/core/alwan_agx_core.inc`)
-   follows Jed Smith's `calculate_sigmoid` from AgXLib in Sobotka's repository, which has none
-   either. `src/alwan/data/SOURCE.txt` already records the gap for the tables.
-2. **JP2499.** `src/alwan/core/alwan_agx_jp2499_core.inc` ports the picture formation of
-   https://github.com/jedypod/JP2499 (Jp-DRT.dctl), a repository with no licence.
-   `alwan_dev/gendata/datasets.py` records that the author's permission covers the port; that
-   permission is not recorded in alwan itself.
-3. **APCA.** alwan implements APCA contrast (`alwan_apca_contrast`, constants from apca-w3).
-   apca-w3 (https://github.com/Myndex/apca-w3) is "All Rights Reserved", licensed to the W3C
-   for WCAG use only, and its licence calls a non-compliant implementation a copyright
-   violation; it also mentions patents pending.
-4. **Freetone palette.** `src/alwan/data/palettes/freetone.inc` (Stuart Semple) carries no
-   licence; it is vendored on the owner's decision, as `src/alwan/data/palettes/SOURCE.txt`
-   records.
+Licence: none of these repositories states a licence. The authors approved alwan's use of
+this material; the owner checked the approval before the 3.0.0 release.
+
+---
+
+## JP2499 (Juan Pablo Zambrano)
+
+What alwan takes: `src/alwan/core/alwan_agx_jp2499_core.inc` ports the picture formation of
+Jp-DRT.dctl, https://github.com/jedypod/JP2499 (reference commit
+e6fb981cc95af0544a3a24a659ccaad3fce73ed7).
+
+Licence: the repository states no licence. The author's permission covers alwan's port (not
+the DCTL file itself, which alwan does not ship); the owner checked it before the 3.0.0
+release, and `alwan_dev/gendata/datasets.py` records it on the `jp2499` source.
+
+---
+
+## Freetone palette (Stuart Semple)
+
+What alwan takes: `src/alwan/data/palettes/freetone.inc`.
+
+Licence: the palette carries no licence. It is vendored on the owner's decision, as
+`src/alwan/data/palettes/SOURCE.txt` records.
+
+---
+
+## Removed for licence reasons
+
+APCA (apca-w3, https://github.com/Myndex/apca-w3) is "All Rights Reserved" and licensed to
+the W3C for WCAG use only, with patents noted as pending. alwan's APCA contrast
+(`alwan_apca_contrast`) was removed for 3.0.0 so that nothing under those terms ships.

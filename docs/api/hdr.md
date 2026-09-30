@@ -150,43 +150,14 @@ luminances** in `[0, 1]`, not sRGB code values. The result runs `[1, 21]`, and
 the order of the two arguments does not matter. The published thresholds are
 `>= 4.5` for AA and `>= 7.0` for AAA on body text.
 
-### alwan_apca_contrast_{T}
+WCAG takes **luminance**, not sRGB code values. Feeding sRGB code values to
+`alwan_wcag_contrast_ratio_{T}` returns a number in the right range that is
+simply wrong, with nothing to signal it. Convert with the sRGB EOTF and a
+luminance weighting first; see [color-spaces.md](color-spaces.md).
 
-```c
-alwan_status alwan_apca_contrast_{T}(alwan_{T} *Lc_out,
-                                      alwan_rgb_{T} const *srgb_text,
-                                      alwan_rgb_{T} const *srgb_bg);
-```
-
-APCA / SAPC, the algorithm drafted for WCAG 3.0 (Myndex APCA-W3 0.1.9, constants
-0.0.98G-4g). It takes **sRGB-encoded** colours, `[0, 1]` per channel, and does its own
-decoding. It equals the apca-w3 package's `APCAcontrast(sRGBtoY(text), sRGBtoY(bg))`
-to 1e-13 (suite 260), including its input check: a negative channel or a luminance
-above 1.1 returns `0`, as apca-w3 does.
-
-Three things differ from WCAG and all three bite:
-
-- **The arguments are ordered.** Text first, background second. Swapping them
-  does not give the same number: APCA uses one pair of exponents when the
-  background is lighter than the text and a different pair when it is darker, so
-  polarity is built into the result rather than removed from it.
-- **The result is signed and scaled by 100.** Positive means dark text on a light
-  background, negative means light on dark, and the contrast level is the
-  **magnitude** on APCA's `Lc` scale, not a ratio. Take `fabs` before comparing
-  against a threshold, and keep the sign if you care which way round the pair is.
-- **Very low contrast returns exactly zero.** Below APCA's clip the result is
-  snapped to `0` rather than reported as a small number, so `Lc == 0` means "under
-  the floor", not "identical colours".
-
-It decodes with a plain `2.4` power on each channel, which is APCA's own
-definition and not the piecewise sRGB EOTF. Do not linearise the colours
-yourself before the call.
-
-> **These two are not interchangeable and do not share an input.** WCAG takes
-> luminance, APCA takes encoded sRGB. Feeding sRGB code values to
-> `alwan_wcag_contrast_ratio_{T}` returns a number in the right range that is
-> simply wrong, with nothing to signal it. Convert with the sRGB EOTF and a
-> luminance weighting first; see [color-spaces.md](color-spaces.md).
+APCA (the WCAG 3.0 draft contrast) is not provided: apca-w3 is "All Rights
+Reserved" and licensed to the W3C for WCAG use only, which alwan's MIT licence
+cannot carry. It was removed in 3.0.0.
 
 ---
 

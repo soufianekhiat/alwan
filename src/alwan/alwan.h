@@ -11325,19 +11325,6 @@ alwan_status alwan_michelson_contrast_f32(alwan_f32 *result, alwan_f32 L_max, al
 alwan_status alwan_wcag_contrast_ratio_f32(alwan_f32 *result, alwan_f32 Y1, alwan_f32 Y2);
 alwan_status alwan_wcag_contrast_ratio_f64(alwan_f64 *result, alwan_f64 Y1, alwan_f64 Y2);
 
-/* APCA / SAPC (Advanced Perceptual Contrast Algorithm -- WCAG 3.0 draft)
- * Reference: Myndex APCA-W3 0.1.9, https://github.com/Myndex/apca-w3 (equal to it, suite 260)
- * srgb_text, srgb_bg: sRGB-encoded colors (0..1 per channel); as APCA-W3, 0 when a channel
- * is negative or a luminance is above 1.1
- * Lc_out: perceptual contrast value (positive = dark on light,
- *         negative = light on dark; magnitude is contrast level) */
-alwan_status alwan_apca_contrast_f32(alwan_f32 *Lc_out,
-                         alwan_rgb_f32 const *srgb_text,
-                         alwan_rgb_f32 const *srgb_bg);
-alwan_status alwan_apca_contrast_f64(alwan_f64 *Lc_out,
-                         alwan_rgb_f64 const *srgb_text,
-                         alwan_rgb_f64 const *srgb_bg);
-
 /* ----------------------------------------------------------------
  * HDR Ecosystem: BT.2446 Methods B & C, BT.2390 EETF
  * ---------------------------------------------------------------- */

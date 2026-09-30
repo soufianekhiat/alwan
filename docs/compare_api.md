@@ -149,7 +149,7 @@ column with the concrete methods, standards, and models shipped in
 | Gamut mapping | 8 methods incl. Adaptive-L0/Cusp, Chroma-Compress, SGCK, HPMINDE, Lightness-Preserve; CSS Oklch gamut map; hue-preserving |
 | HDR tone mapping | ACES 1.x + ACES 2.0 output transforms, AgX (+Punchy/Golden/SB2383/Blender), JP2499 DRT, BT.2446 B/C, BT.2390 EETF, Reinhard calibrated, HLG OOTF |
 | HDR metadata | MaxCLL/MaxFALL, ST.2086 init, PQ peak normalize, content-light-level compute |
-| Accessibility / contrast | WCAG 2.x contrast ratio, APCA (WCAG 3.0 draft), Weber, Michelson |
+| Accessibility / contrast | WCAG 2.x contrast ratio, Weber, Michelson |
 | Light-quality metrics | CRI Ra, CQS, TM-30 Rf, CIE 224 Rf, SSI, metamerism index, whiteness (ASTM E313, CIE 2004), yellowness (ASTM E313) |
 | Vision / Barten | Barten 1999 CSF (pupil diameter, retinal illuminance, optical MTF, sigma, max angular size), photopic/scotopic/mesopic luminance, simplified CSF |
 | CCT estimation | McCamy, Robertson, Hernandez xy; Kang forward/inverse; Duv optimize (f32 entry points currently link-broken) |

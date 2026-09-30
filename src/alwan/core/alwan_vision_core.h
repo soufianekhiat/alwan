@@ -293,45 +293,6 @@ ALWAN_INLINE alwan_scalar alwan_wcag_contrast_ratio_v(alwan_scalar Y1, alwan_sca
     return (L1 + ALWAN_LITERAL(0.05)) / (L2 + ALWAN_LITERAL(0.05));
 }
 
-ALWAN_INLINE alwan_scalar alwan_apca_contrast_v(alwan_rgb srgb_text, alwan_rgb srgb_bg) {
-    /* APCA-W3 0.1.9 step for step; see the .inc. */
-    const alwan_scalar mainTRC = ALWAN_LITERAL(2.4);
-    const alwan_scalar Rco = ALWAN_LITERAL(0.2126729); const alwan_scalar Gco = ALWAN_LITERAL(0.7151522); const alwan_scalar Bco = ALWAN_LITERAL(0.0721750);
-    const alwan_scalar blkThrs = ALWAN_LITERAL(0.022); const alwan_scalar blkClmp = ALWAN_LITERAL(1.414);
-    const alwan_scalar deltaYmin = ALWAN_LITERAL(0.0005);
-    const alwan_scalar normBG = ALWAN_LITERAL(0.56); const alwan_scalar normTXT = ALWAN_LITERAL(0.57);
-    const alwan_scalar revBG = ALWAN_LITERAL(0.65); const alwan_scalar revTXT = ALWAN_LITERAL(0.62);
-    const alwan_scalar scaleBoW = ALWAN_LITERAL(1.14); const alwan_scalar scaleWoB = ALWAN_LITERAL(1.14);
-    const alwan_scalar loClip = ALWAN_LITERAL(0.1);
-    const alwan_scalar loBoWoffset = ALWAN_LITERAL(0.027); const alwan_scalar loWoBoffset = ALWAN_LITERAL(0.027);
-    const alwan_scalar yMax = ALWAN_LITERAL(1.1);
-    int valid = srgb_text.r >= ALWAN_ZERO && srgb_text.g >= ALWAN_ZERO && srgb_text.b >= ALWAN_ZERO &&
-                srgb_bg.r >= ALWAN_ZERO && srgb_bg.g >= ALWAN_ZERO && srgb_bg.b >= ALWAN_ZERO;
-    alwan_scalar tr = ALWAN_SELECT(srgb_text.r > ALWAN_ZERO, srgb_text.r, ALWAN_ZERO);
-    alwan_scalar tg = ALWAN_SELECT(srgb_text.g > ALWAN_ZERO, srgb_text.g, ALWAN_ZERO);
-    alwan_scalar tb = ALWAN_SELECT(srgb_text.b > ALWAN_ZERO, srgb_text.b, ALWAN_ZERO);
-    alwan_scalar br = ALWAN_SELECT(srgb_bg.r > ALWAN_ZERO, srgb_bg.r, ALWAN_ZERO);
-    alwan_scalar bgc = ALWAN_SELECT(srgb_bg.g > ALWAN_ZERO, srgb_bg.g, ALWAN_ZERO);
-    alwan_scalar bb = ALWAN_SELECT(srgb_bg.b > ALWAN_ZERO, srgb_bg.b, ALWAN_ZERO);
-    alwan_scalar Ytxt = Rco * ALWAN_POW(tr, mainTRC) + Gco * ALWAN_POW(tg, mainTRC) + Bco * ALWAN_POW(tb, mainTRC);
-    alwan_scalar Ybg = Rco * ALWAN_POW(br, mainTRC) + Gco * ALWAN_POW(bgc, mainTRC) + Bco * ALWAN_POW(bb, mainTRC);
-    valid = valid && Ytxt <= yMax && Ybg <= yMax;
-    alwan_scalar dTxt = ALWAN_SELECT(Ytxt > blkThrs, ALWAN_ZERO, blkThrs - Ytxt);
-    alwan_scalar dBg = ALWAN_SELECT(Ybg > blkThrs, ALWAN_ZERO, blkThrs - Ybg);
-    Ytxt = ALWAN_SELECT(Ytxt > blkThrs, Ytxt, Ytxt + ALWAN_POW(dTxt, blkClmp));
-    Ybg = ALWAN_SELECT(Ybg > blkThrs, Ybg, Ybg + ALWAN_POW(dBg, blkClmp));
-    alwan_scalar dY = Ybg - Ytxt;
-    alwan_scalar adY = ALWAN_SELECT(dY < ALWAN_ZERO, -dY, dY);
-    alwan_scalar s_bow = (ALWAN_POW(Ybg, normBG) - ALWAN_POW(Ytxt, normTXT)) * scaleBoW;
-    alwan_scalar s_wob = (ALWAN_POW(Ybg, revBG) - ALWAN_POW(Ytxt, revTXT)) * scaleWoB;
-    alwan_scalar o_bow = ALWAN_SELECT(s_bow < loClip, ALWAN_ZERO, s_bow - loBoWoffset);
-    alwan_scalar o_wob = ALWAN_SELECT(s_wob > -loClip, ALWAN_ZERO, s_wob + loWoBoffset);
-    alwan_scalar res = ALWAN_SELECT(Ybg > Ytxt, o_bow, o_wob);
-    res = ALWAN_SELECT(adY < deltaYmin, ALWAN_ZERO, res);
-    res = ALWAN_SELECT(valid, res, ALWAN_ZERO);
-    return res * ALWAN_LITERAL(100.0);
-}
-
 /* ================================================================
  * Helmholtz-Kohlrausch effect (Nayatani 1997)
  *

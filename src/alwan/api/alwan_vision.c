@@ -85,7 +85,6 @@ ALWAN_DIAG_POP
 
 /* SPD-based luminance functions (alwan_photopic_luminance_*, etc.)
  * are templatized in alwan_vision_impl.inc. */
-/* alwan_apca_contrast_f32 / alwan_apca_contrast_f64 generated via alwan_vision_impl.inc */
 
 /* ----------------------------------------------------------------
  * Gamut-safe CVD simulation variants

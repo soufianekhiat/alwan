@@ -737,6 +737,14 @@
   colour-science over 35 illuminants goes from 0.530 mean and 1.990 max to
   0.0010 and 0.0058, which closes the item listed as known in 2.0.0.
 
+### Removed
+
+- **`alwan_apca_contrast_{f32,f64}` (APCA / SAPC, the WCAG 3.0 draft contrast) is gone.**
+  Its reference and constants are apca-w3's, which is "All Rights Reserved" and licensed
+  to the W3C for WCAG use only, with patents noted as pending; alwan's MIT licence cannot
+  pass that on to its users. The core function `alwan_apca_contrast_v` and suite 260's
+  APCA cases went with it. WCAG 2.x `alwan_wcag_contrast_ratio_{T}` stays.
+
 ### Breaking
 
 - **`alwan_bt2446a_forward_{f32,f64}_v` and `alwan_bt2446a_inverse_{f32,f64}_v` take and
@@ -934,8 +942,8 @@
   colour-hdri, colour-checker-detection, scikit-image, Pillow, Ottosson's Oklab code,
   rgb2spec, PyWavelets, DaltonLens, ColorAide, spectral_film_lut, utility-dctls, Tony
   McMapface, rawtoaces-data, ACES, Fogra), with the copyright lines and the full licence
-  texts. It also records four items shipped without a licence grant on record (the AgX
-  tables and sigmoid, JP2499, APCA, the Freetone palette) for a decision before release.
+  texts. The AgX tables and sigmoid and the JP2499 port ship with their authors'
+  approval, the Freetone palette on the owner's decision; APCA was removed (see Removed).
 
 - **OpenCV's oil painting and DCT denoising: `ALWAN_STYLIZE_OIL_PAINTING` and
   `ALWAN_DENOISE_DCT_OPENCV`.** Ports of opencv_contrib 5.0.0's xphoto `oilPainting`
