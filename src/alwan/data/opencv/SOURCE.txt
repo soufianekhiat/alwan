@@ -7,3 +7,15 @@ nodes, blue outermost then green then red, each L * 16384 / 100, (a + 128) * 64 
 (b + 128) * 64. Read back from cv2 5.0.0 at the nodes, where the interpolation returns them
 exactly, by alwan_dev/gendata/data/decolor_lab_lut.py, which checks every node reproduces
 cvtColor to the bit. alwan_decolor (ALWAN_DECOLOR_LU2012) reads it.
+
+opencv_contrib 5.0.0, the OpenCV authors, Apache License 2.0 (LICENSE-opencv_contrib.txt
+beside this file)
+https://github.com/opencv/opencv_contrib, commit 755e50675d97db9b7d449d8bd6b09888646f6c6e
+(tag 5.0.0)
+
+lbwb_feature_idx.csv, lbwb_thresh_vals.csv, lbwb_leaf_vals.csv: the trained model of
+xphoto::LearningBasedWB (modules/xphoto/src/learning_based_color_balance_model.hpp), 20
+trees for each of four features, depth 4, for the r and g chromaticity of the light;
+copied verbatim, the float literals as OpenCV wrote them, by
+alwan_dev/gendata/data/learning_wb_model.py. alwan_white_balance
+(ALWAN_WHITE_BALANCE_LEARNING_BASED) reads them.

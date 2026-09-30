@@ -2094,6 +2094,7 @@ EXPORTS
     alwan_wcag_contrast_ratio_f64
     alwan_weber_contrast_f32
     alwan_weber_contrast_f64
+    alwan_white_balance
     alwan_white_balance_apply_f32
     alwan_white_balance_apply_f32_map_interleave
     alwan_white_balance_apply_f32_map_planar

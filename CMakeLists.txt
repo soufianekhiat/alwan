@@ -102,6 +102,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_camera.c
   src/alwan/api/alwan_decolor.c
   src/alwan/api/alwan_gradient_edit.c
+  src/alwan/api/alwan_white_balance.c
   src/alwan/api/alwan_dng.c
   src/alwan/api/alwan_exposure.c
   src/alwan/api/alwan_crf.c

@@ -2174,6 +2174,82 @@ alwan_status alwan_illuminant_estimate_f64(alwan_f64 illuminant_out[3], alwan_f6
 alwan_status alwan_illuminant_correct_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const illuminant[3]);
 alwan_status alwan_illuminant_correct_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const illuminant[3]);
 
+/* White balance as OpenCV's xphoto module does it, a port of opencv_contrib 5.0.0
+ * (Apache-2.0): the image is balanced in its own encoding, 8-bit, 16-bit or float, and
+ * the result is xphoto's to the bit (suite 273 against cv2 5.0.0, IPP off).
+ *
+ *   ALWAN_WHITE_BALANCE_SIMPLE          SimpleWB: each channel on its own, the p percent
+ *                                       darkest and p percent brightest values found in a
+ *                                       histogram (256 bins for U8, 4096 for F32) and the
+ *                                       range between them stretched onto
+ *                                       [output_min, output_max]. U8 or F32, 1 to 4
+ *                                       channels, every channel (alpha too, as xphoto).
+ *   ALWAN_WHITE_BALANCE_GRAYWORLD       GrayworldWB: channel gains from the channel sums
+ *                                       over the pixels whose saturation (max - min) / max
+ *                                       is at most saturation_threshold. That exclusion is
+ *                                       xphoto's; alwan_illuminant_estimate's grey world
+ *                                       excludes clipped pixels instead.
+ *   ALWAN_WHITE_BALANCE_LEARNING_BASED  LearningBasedWB, after Cheng, Price, Cohen and Brown,
+ *                                       "Effective learning-based illuminant estimation using
+ *                                       simple features", CVPR 2015: four chromaticity
+ *                                       features (the mean, the brightest pixel, the
+ *                                       dominant histogram bin and the mode of the 300
+ *                                       commonest bins) fed to OpenCV's trained forest of
+ *                                       regression trees (data/opencv/lbwb_*.csv, Apache-2.0)
+ *                                       for the light's chromaticity, and gains from it.
+ *                                       Pixels whose largest channel reaches
+ *                                       saturation_threshold * range_max are left out.
+ *
+ * GRAYWORLD and LEARNING_BASED take U8 or U16, 3 or 4 channels (R, G, B, and an alpha copied
+ * through), and apply the gains as xphoto's applyChannelGains does: scaled so the largest is
+ * 1, then in fixed point, (v * round(gain * 2^8)) >> 8 for U8 and >> 16 for U16. Where
+ * xphoto's 16-bit tail loop overflows a signed int (the last few pixels when the count is
+ * not a multiple of 8), alwan keeps the unsigned result its vector loop computes.
+ * gains_out, when not NULL, receives those normalised gains, R, G, B, before the fixed-point
+ * rounding; out may be NULL to estimate only. SIMPLE leaves gains_out untouched.
+ *
+ * Rows row_stride bytes apart; out may be src. SIMPLE's final affine step is computed as
+ * OpenCV's AVX2 convertTo computes it: a fused multiply-add on each whole block of 16
+ * values, plain multiply and add on the rest, so a machine whose OpenCV takes another
+ * vector width can differ in the last place of an F32 result (and, at a rounding tie, by
+ * one 8-bit level). LEARNING_BASED reads xphoto's defaults at 8 bits; at 16 bits xphoto's
+ * range_max stays 255, which leaves out nearly every pixel, and alwan's zero default is
+ * 65535 instead. Where fewer than 300 bins are occupied xphoto reads past its palette;
+ * alwan takes the mode over the bins there are. Where SIMPLE's p asks for more values than
+ * fall inside [input_min, input_max], xphoto's search walks off its histogram; alwan stops
+ * at the histogram's ends.
+ *
+ * ALWAN_E_INVALID for a NULL src, a NULL out with no gains_out (or a NULL out for SIMPLE), a
+ * zero size, a stride too small, a format or channel count the method does not take, an
+ * unknown method, a non-finite parameter or F32 pixel, input_max below input_min, a
+ * saturation_threshold outside [0, 1], a range_max outside 1 to the format's top or a
+ * hist_bin_num outside 1 to 256. ALWAN_E_RANGE when LEARNING_BASED has no pixel under the
+ * threshold (xphoto divides by zero) or more than INT_MAX pixels; ALWAN_E_NOMEM when its
+ * histogram (4 bytes a bin, 64^3 by default) does not fit. */
+typedef enum {
+    ALWAN_WHITE_BALANCE_SIMPLE = 0,
+    ALWAN_WHITE_BALANCE_GRAYWORLD = 1,
+    ALWAN_WHITE_BALANCE_LEARNING_BASED = 2
+} alwan_white_balance_method;
+
+/* Each method reads its own fields; a zero field is its default. */
+typedef struct {
+    alwan_f64 p;                    /* SIMPLE: the percentage cut at each end, 2; a negative p
+                                     * cuts nothing, as xphoto's p = 0 */
+    alwan_f64 input_min;            /* SIMPLE: 0 */
+    alwan_f64 input_max;            /* SIMPLE: the format's top, 255 or 1.0 for F32 */
+    alwan_f64 output_min;           /* SIMPLE: 0 */
+    alwan_f64 output_max;           /* SIMPLE: the format's top, 255 or 1.0 for F32 */
+    alwan_f64 saturation_threshold; /* GRAYWORLD: 0.9; LEARNING_BASED: 0.98 */
+    int range_max;                  /* LEARNING_BASED: the format's top, 255 or 65535 */
+    int hist_bin_num;               /* LEARNING_BASED: bins per channel, 64 */
+} alwan_white_balance_params;
+
+alwan_status alwan_white_balance(void *out, size_t out_row_stride, void const *src, size_t src_row_stride,
+                                 alwan_pixel_format format, size_t channels, size_t width, size_t height,
+                                 alwan_white_balance_method method, alwan_white_balance_params const *params,
+                                 alwan_f64 gains_out[3]);
+
 /* Flat artwork as a palette. A rendered pattern, a chart or any flat design is a
  * handful of colours, and a conversion that is expensive per pixel (the CMYK
  * inverse, a spectral upsampling) is cheap per colour: extract the palette,

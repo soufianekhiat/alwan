@@ -929,6 +929,20 @@
 
 ### Added
 
+- **`alwan_white_balance`: OpenCV xphoto's white balancers.** A port of opencv_contrib 5.0.0's
+  xphoto module (opencv_contrib, Apache-2.0): `SimpleWB` (per-channel percentile stretch, 8-bit
+  and float), `GrayworldWB` (grey world over the pixels that are not too colourful, 8- and
+  16-bit) and `LearningBasedWB` (Cheng, Price, Cohen and Brown 2015: four chromaticity features
+  and OpenCV's trained forest, whose model ships verbatim with its licence in `data/opencv/`),
+  with the OpenCV operations they call reproduced from OpenCV 5.0.0's sources (calcHist's
+  binning, the MatExpr and AVX2 convertTo of SimpleWB's last step, xphoto's vector-lane
+  brightest pixel and MSVC's heap order for the palette). One function, a method enum and
+  zero-default parameters; the balanced image and, optionally, the normalised gains. Equal to
+  cv2's (IPP off) on every value of suite 273, ordinary and deterministic builds, and on the
+  164 SRIC photographs for all three methods except where xphoto's own SimpleWB search reads
+  past its histogram. xphoto's GrayworldWB excludes colourful pixels, which
+  `alwan_illuminant_estimate`'s grey world does not; both are kept.
+
 - **`alwan_gradient_edit`: gradient-domain editing, Poisson image editing (Perez, Gangnet and
   Blake 2003) and its relatives.** A port of OpenCV 5.0.0's photo module (OpenCV, Apache-2.0):
   `seamlessClone` (normal, mixed and monochrome, with the `*_WIDE` placement), `colorChange`,
