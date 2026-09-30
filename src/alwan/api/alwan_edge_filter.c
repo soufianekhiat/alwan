@@ -5,8 +5,8 @@
  *
  * alwan_edge_filter_{T}: the edge-aware smoothing filters behind one entry point. Each
  * method's worker lives with its own references in api/alwan_guided_filter.c,
- * alwan_bilateral.c, alwan_domain_transform.c, alwan_fast_global_smoother.c and
- * alwan_l0_smooth.c; this file
+ * alwan_bilateral.c, alwan_domain_transform.c, alwan_fast_global_smoother.c,
+ * alwan_l0_smooth.c, alwan_am_filter.c and alwan_wmf.c; this file
  * resolves the defaults of alwan_edge_filter_params_{T} and routes.
  */
 
@@ -17,7 +17,7 @@
 typedef struct {
     size_t radius, iterations;
     double eps, sigma_color, sigma_space, lambda, attenuation, kappa;
-    int start_from_source;
+    int start_from_source, adjust_outliers, weight_type;
 } alwan_ef_resolved;
 
 static double alwan_ef_or(double v, double def) {
@@ -58,6 +58,12 @@ static alwan_status alwan_ef_route(void *out, size_t out_rs, void const *src, si
     case ALWAN_EDGE_FILTER_L0_SMOOTH: /* the guide is not used */
         return alwan__l0_run(out, out_rs, src, src_rs, sch, w, h, alwan_ef_or(p->lambda, 0.02), alwan_ef_or(p->kappa, 2.0),
                              is_f32);
+    case ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD:
+        return alwan__amf_run(out, out_rs, src, src_rs, sch, guide, guide_rs, gch, w, h, alwan_ef_or(p->sigma_space, 16.0),
+                              alwan_ef_or(p->sigma_color, 0.2), p->adjust_outliers, is_f32);
+    case ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN:
+        return alwan__wmf_run(out, out_rs, src, src_rs, sch, guide, guide_rs, gch, w, h, p->radius == 0 ? 5 : p->radius,
+                              alwan_ef_or(p->sigma_color, 0.1), (alwan_wmf_weight)p->weight_type, is_f32);
     default:
         return ALWAN_E_INVALID;
     }
@@ -79,6 +85,8 @@ alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_
         r.attenuation = (double)params->lambda_attenuation;
         r.start_from_source = params->start_from_source;
         r.kappa = (double)params->kappa;
+        r.adjust_outliers = params->adjust_outliers;
+        r.weight_type = params->weight_type;
     }
     return alwan_ef_route(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
                           guide_channels, width, height, method, &r, 0);
@@ -101,6 +109,8 @@ alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_
         r.attenuation = (double)params->lambda_attenuation;
         r.start_from_source = params->start_from_source;
         r.kappa = (double)params->kappa;
+        r.adjust_outliers = params->adjust_outliers;
+        r.weight_type = params->weight_type;
     }
     return alwan_ef_route(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
                           guide_channels, width, height, method, &r, 1);

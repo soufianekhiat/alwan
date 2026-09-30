@@ -929,6 +929,20 @@
 
 ### Added
 
+- **Two more edge-aware filters in `alwan_edge_filter_{T}`: the adaptive manifold filter
+  (Gastal and Oliveira 2012) and the weighted median filter (Zhang, Xu and Jia 2014).**
+  `ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD` and `ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN`, with
+  `alwan_wmf_weight` for the median's six weightings and the parameter fields
+  `adjust_outliers` and `weight_type`. Both are ports of OpenCV's opencv_contrib 5.0.0
+  ximgproc code (`adaptive_manifold_filter_n.cpp`, `weighted_median_filter.cpp` and the
+  domain transform and row helpers they call), BSD-3-Clause, the notices kept in
+  `api/alwan_am_filter.c` and `api/alwan_wmf.c`. They equal `cv2.ximgproc.amFilter` and
+  `weightedMedianFilter` bit for bit (suite 278), OpenCV run with IPP off and on one thread:
+  amFilter's own output changes from call to call with three threads or more. The median
+  takes a one-channel guide (OpenCV's three-channel joint uses a randomly seeded k-means, not
+  ported). The fast bilateral solver of the same module has no reference here: the installed
+  cv2 is built without Eigen, where it is not implemented.
+
 - **`alwan_ocio_fixed_function_{T}`: OCIO's HSY, gamma-log and double-log fixed functions.**
   OCIO 2.5's `RGB_TO_HSY_LOG`, `_LIN` and `_VID` (the space its hue curves work in, with
   magenta at hue 0; not `alwan_rgb_to_hsy`, which is chilliant.com's HCY),

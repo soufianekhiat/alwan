@@ -56,6 +56,14 @@ alwan_status alwan__dt_run(void *out, size_t out_row_stride, void const *src, si
 alwan_status alwan__fgs_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
                             void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
                             double lambda, double sigma_color, double attenuation, size_t iterations, int is_f32);
+/* alwan_am_filter.c: ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD */
+alwan_status alwan__amf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
+                            void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
+                            double sigma_s, double sigma_r, int adjust_outliers, int is_f32);
+/* alwan_wmf.c: ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN */
+alwan_status alwan__wmf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
+                            void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
+                            size_t radius, double sigma, alwan_wmf_weight type, int is_f32);
 /* alwan_l0_smooth.c: ALWAN_EDGE_FILTER_L0_SMOOTH */
 alwan_status alwan__l0_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                            double lambda, double kappa, int is_f32);

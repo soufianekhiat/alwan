@@ -17,8 +17,15 @@ typedef enum {
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_NC = 3,
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_RF = 4,
     ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5,
-    ALWAN_EDGE_FILTER_L0_SMOOTH = 6
+    ALWAN_EDGE_FILTER_L0_SMOOTH = 6,
+    ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD = 7,
+    ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN = 8
 } alwan_edge_filter_method;
+
+typedef enum {
+    ALWAN_WMF_EXP = 0, ALWAN_WMF_IV1 = 1, ALWAN_WMF_IV2 = 2,
+    ALWAN_WMF_COS = 3, ALWAN_WMF_JAC = 4, ALWAN_WMF_OFF = 5
+} alwan_wmf_weight;
 
 alwan_status alwan_edge_filter_{T}(alwan_{T} *out, size_t out_row_stride,
                                    alwan_{T} const *src, size_t src_row_stride, size_t src_channels,
@@ -31,20 +38,22 @@ alwan_status alwan_edge_filter_{T}(alwan_{T} *out, size_t out_row_stride,
 Each method smooths `src` while keeping the edges of a guide image: the base layer of a
 base-and-detail edit, a matte or mask snapped to a picture's edges, or a no-flash photograph
 denoised along a flash photograph's edges. `guide` NULL uses `src` as its own guide.
-`src` has 1 to 4 channels and the guide 1 to 4 (1 or 3 for `GUIDED`); `out` has `src`'s
-layout and may be `src`.
+`src` has 1 to 4 channels and the guide 1 to 4 (1 or 3 for `GUIDED`, 1 for
+`WEIGHTED_MEDIAN`); `out` has `src`'s layout and may be `src`.
 
 | Field of `alwan_edge_filter_params_{T}` | Methods | 0 reads as |
 |---|---|---|
-| `radius` | `GUIDED`, `JOINT_BILATERAL`, `ROLLING_GUIDANCE` | 4 for `GUIDED`, `round(1.5 sigma_space)` for the others |
+| `radius` | `GUIDED`, `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `WEIGHTED_MEDIAN` | 4 for `GUIDED`, `round(1.5 sigma_space)` for the next two / 5 |
 | `eps` | `GUIDED` | 0.01 |
-| `sigma_color` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` / `FAST_GLOBAL_SMOOTHER` | 0.1 / 0.4 / 0.03 |
-| `sigma_space` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` | 3 / 60 |
+| `sigma_color` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` / `FAST_GLOBAL_SMOOTHER` / `ADAPTIVE_MANIFOLD` / `WEIGHTED_MEDIAN` | 0.1 / 0.4 / 0.03 / 0.2 / 0.1 |
+| `sigma_space` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` / `ADAPTIVE_MANIFOLD` | 3 / 60 / 16 |
 | `lambda` | `FAST_GLOBAL_SMOOTHER` / `L0_SMOOTH` | 900 / 0.02 |
 | `lambda_attenuation` | `FAST_GLOBAL_SMOOTHER` | 0.25 |
 | `iterations` | `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*`, `FAST_GLOBAL_SMOOTHER` | 4 / 3 |
 | `start_from_source` | `ROLLING_GUIDANCE` | 0: start from the source's Gaussian (the paper) |
 | `kappa` | `L0_SMOOTH` | 2 (above 1) |
+| `adjust_outliers` | `ADAPTIVE_MANIFOLD` | 0: off |
+| `weight_type` | `WEIGHTED_MEDIAN` | `ALWAN_WMF_EXP` |
 
 The defaults are each paper's settings for values in 0..1.
 
@@ -156,6 +165,56 @@ values past 1, and agrees to 3.3e-12. OpenCV's `ximgproc::l0Smooth` solves the s
 system but takes the gradients with replicated and reflected borders that do not match it,
 and works in float32, where a hard threshold can decide a region differently; it is not the
 reference here.
+
+### `ADAPTIVE_MANIFOLD`
+
+Gastal and Oliveira (SIGGRAPH 2012): a high-dimensional Gaussian filter over position and
+the guide's values, computed on a tree of manifolds. The first manifold is the guide blurred;
+each is sampled at `w_k = exp(-|eta - guide|^2 / sigma_r^2)`, the source weighted by `w_k`
+is splatted onto it at a lower resolution, blurred there by the recursive domain transform
+and sliced back, and the pixels are split between two child manifolds by the sign of their
+projection on the first principal direction of `guide - eta`. `sigma_space` is `sigma_s`
+(at least 1, in pixels), `sigma_color` is `sigma_r` (in (0, 1], in guide units), and
+`adjust_outliers` blends each result back towards the source by its distance to the nearest
+manifold. The tree's height is OpenCV's `max(2, ceil((floor(log2 sigma_s) - 1)(1 - sigma_r)))`
+and the resolution drops by `2^floor(log2 min(sigma_s / 4, 256 sigma_r))`.
+
+This is a port of OpenCV's `ximgproc::amFilter` (opencv_contrib 5.0.0, BSD-3-Clause, the
+notice in `api/alwan_am_filter.c`), kept to its float arithmetic: `cv::resize` bilinear and
+its fast 2x2 area average, `cv::exp` (the C runtime's `expf` in OpenCV's MSVC build), the
+recursive domain transform, and `cv::RNG`'s generator seeded from the guide's centre value for
+the first principal direction's random start. Suite 278 agrees with `cv2.ximgproc.amFilter`
+bit for bit on 24 cases (three channel layouts, resize ratios 1, 2, 4 and 8, `adjust_outliers`
+off and on); the det build, whose `expf` is a polynomial, to 3.4e-7. The reference runs
+OpenCV on one thread: with three or more its result changes from call to call by about 1e-7,
+a race in its parallel code. It computes in float; the `_f64` form rounds its input to float
+and widens the result.
+
+### `WEIGHTED_MEDIAN`
+
+Zhang, Xu and Jia (CVPR 2014): each output is the weighted median of the source over a
+`(2 radius + 1)`-square window, each pixel weighted by how alike its guide value is to the
+centre's, which keeps edges and removes speckle, and on a disparity or flow field fills its
+holes along the picture's edges. `weight_type` is the likeness: `EXP` `exp(-d^2 / (2 s^2))`,
+`IV1` `1 / (d + s)`, `IV2` `1 / (d^2 + s^2)`, `COS` and `OFF` 1 (the plain median), `JAC`
+`min / max` of the two values, `d` the difference of two 8-bit guide values and
+`s = 255 sigma_color`.
+
+This is a port of OpenCV's `ximgproc::weightedMedianFilter` (opencv_contrib 5.0.0,
+BSD-3-Clause, the notice in `api/alwan_wmf.c`): each source channel is quantised to at most
+256 levels by OpenCV's adaptive rule (a binary search on the error bound over the sorted
+values, each level the median of its run) and filtered with the joint histogram and the
+balance counting box in OpenCV's order, so the float sums are OpenCV's. The guide is one
+channel read as 8 bits, `clamp(g, 0, 1) x 255` rounded half up (OpenCV takes an 8-bit
+joint). OpenCV's three-channel joint clusters the colours with a randomly seeded k-means and
+is not ported: a guide of other than one channel is `ALWAN_E_INVALID`. With `guide` NULL the
+source is its own guide, read as 8 bits (OpenCV runs `medianBlur` instead). Suite 278 agrees
+with `cv2.ximgproc.weightedMedianFilter` on every value of 48 cases (one and three source
+channels, radius 1 and 3, `sigma` 25.5 and 60 of 255, every weight type), in both builds.
+
+OpenCV's `ximgproc::fastBilateralSolverFilter` (Barron and Poole 2016) is not in this family:
+the installed cv2 5.0.0 is built without Eigen, where that function raises "not implemented",
+so there is no reference to hold a port to.
 
 ## Linear filters
 

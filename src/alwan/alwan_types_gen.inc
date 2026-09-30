@@ -172,13 +172,17 @@ typedef struct {
  * paper's settings for values in 0..1. */
 typedef struct {
     size_t radius;               /* GUIDED, JOINT_BILATERAL, ROLLING_GUIDANCE: window radius in pixels;
-                                  * 0 reads as 4 for GUIDED, round(1.5 sigma_space) for the others */
+                                  * 0 reads as 4 for GUIDED, round(1.5 sigma_space) for the others.
+                                  * WEIGHTED_MEDIAN: window radius, 0 reads as 5 */
     ALWAN_T eps;                 /* GUIDED: regularisation, squared data units; 0 reads as 0.01 */
     ALWAN_T sigma_color;         /* range sigma in guide units. JOINT_BILATERAL, ROLLING_GUIDANCE (L1 over the
                                   * channels): 0 reads as 0.1. DOMAIN_TRANSFORM_*: 0 reads as 0.4.
-                                  * FAST_GLOBAL_SMOOTHER (Euclidean): 0 reads as 0.03 */
+                                  * FAST_GLOBAL_SMOOTHER (Euclidean): 0 reads as 0.03.
+                                  * ADAPTIVE_MANIFOLD: sigma_r, in (0, 1], 0 reads as 0.2.
+                                  * WEIGHTED_MEDIAN: 0 reads as 0.1 (OpenCV's 25.5 of 255) */
     ALWAN_T sigma_space;         /* JOINT_BILATERAL, ROLLING_GUIDANCE: spatial sigma, 0 reads as 3.
-                                  * DOMAIN_TRANSFORM_*: 0 reads as 60 */
+                                  * DOMAIN_TRANSFORM_*: 0 reads as 60. ADAPTIVE_MANIFOLD: sigma_s, at
+                                  * least 1, 0 reads as 16 */
     ALWAN_T lambda;              /* FAST_GLOBAL_SMOOTHER: smoothness weight; 0 reads as 900.
                                   * L0_SMOOTH: the price of a gradient, squared data units; 0 reads as 0.02 */
     ALWAN_T lambda_attenuation;  /* FAST_GLOBAL_SMOOTHER: lambda's factor per iteration; 0 reads as 0.25 */
@@ -187,6 +191,9 @@ typedef struct {
     int start_from_source;       /* ROLLING_GUIDANCE: non-zero starts from the source (OpenCV's
                                   * rollingGuidanceFilter); 0 from its Gaussian (the paper) */
     ALWAN_T kappa;               /* L0_SMOOTH: beta's factor per round, above 1; 0 reads as 2 */
+    int adjust_outliers;         /* ADAPTIVE_MANIFOLD: non-zero blends each result back towards the source
+                                  * by its distance to the nearest manifold (OpenCV's adjust_outliers) */
+    int weight_type;             /* WEIGHTED_MEDIAN: an alwan_wmf_weight; 0 is ALWAN_WMF_EXP */
 } ALWAN_TN(alwan_edge_filter_params);
 
 /* Parameters of the local tone mapping operators. A zero field is its default. */

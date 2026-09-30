@@ -2360,6 +2360,18 @@ alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_
  *                                          steps between them; the image treated as
  *                                          periodic, solved by 2D DFTs; the guide is not
  *                                          used (the authors' MATLAB code, suite 213)
+ *   ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD    Gastal and Oliveira, SIGGRAPH 2012: a tree of
+ *                                          manifolds through the guide's colour space,
+ *                                          each blurred by the recursive domain transform
+ *                                          at a lower resolution and sliced back, with the
+ *                                          random PCA splits seeded as OpenCV seeds them
+ *                                          (ximgproc::amFilter, ported, in float)
+ *   ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN      Zhang, Xu and Jia, CVPR 2014: the median of the
+ *                                          window with each pixel weighted by its guide
+ *                                          value's likeness to the centre's, the source
+ *                                          quantised to 256 levels as OpenCV does; guide 1
+ *                                          channel, read as 8 bits (ximgproc::
+ *                                          weightedMedianFilter, ported)
  *
  * src has src_channels (1 to 4) values a pixel and the guide guide_channels (1 to 4; 1 or
  * 3 for GUIDED), rows at the given byte strides; out has src's layout and may be src.
@@ -2369,6 +2381,13 @@ alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_
  * ROLLING_GUIDANCE (from the source) to 7.7e-7 (suite 194), DOMAIN_TRANSFORM to 1.9e-6 (NC)
  * and 1.5e-7 (RF) (suite 195), FAST_GLOBAL_SMOOTHER to 7.8e-6, its guide in any units where
  * OpenCV takes 8 bits (suite 196), L0_SMOOTH to the authors' code in double (suite 213).
+ * ADAPTIVE_MANIFOLD and WEIGHTED_MEDIAN are ports of OpenCV's code (BSD-3-Clause, notices in
+ * api/alwan_am_filter.c and api/alwan_wmf.c) and equal it value for value in float (suite
+ * 278); both compute in float, so an f64 call rounds its input to float and widens the
+ * result. ADAPTIVE_MANIFOLD equals OpenCV run on one thread: OpenCV's own result changes from
+ * call to call with three threads or more. WEIGHTED_MEDIAN refuses a guide of other than one
+ * channel (OpenCV's three-channel joint clusters colours with a randomly seeded k-means, not
+ * ported); its guide is read as clamp(g, 0, 1) x 255 rounded half up, as 8 bits.
  * ALWAN_E_INVALID for a NULL, a zero size, a channel count
  * out of range, a stride too small, a non-finite value or an unknown method; ALWAN_E_RANGE
  * for a parameter out of its method's range. */
@@ -2379,8 +2398,24 @@ typedef enum {
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_NC = 3,
     ALWAN_EDGE_FILTER_DOMAIN_TRANSFORM_RF = 4,
     ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5,
-    ALWAN_EDGE_FILTER_L0_SMOOTH = 6
+    ALWAN_EDGE_FILTER_L0_SMOOTH = 6,
+    ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD = 7,
+    ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN = 8
 } alwan_edge_filter_method;
+
+/* The weight between two guide values in ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN, OpenCV's WMF_*
+ * set, d the difference of the two 8-bit values and s = sigma_color x 255:
+ * EXP exp(-d^2 / (2 s^2)) (the default), IV1 1 / (d + s), IV2 1 / (d^2 + s^2), COS 1 (for
+ * one channel), JAC min / max of the two values (0 / 0 is NaN at a pair of zeros, as in
+ * OpenCV), OFF 1 (the unweighted median). */
+typedef enum {
+    ALWAN_WMF_EXP = 0,
+    ALWAN_WMF_IV1 = 1,
+    ALWAN_WMF_IV2 = 2,
+    ALWAN_WMF_COS = 3,
+    ALWAN_WMF_JAC = 4,
+    ALWAN_WMF_OFF = 5
+} alwan_wmf_weight;
 
 alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t src_channels, alwan_f32 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f32 const *params);
 alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t src_channels, alwan_f64 const *guide, size_t guide_row_stride, size_t guide_channels, size_t width, size_t height, alwan_edge_filter_method method, alwan_edge_filter_params_f64 const *params);
