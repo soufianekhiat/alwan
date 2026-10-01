@@ -172,6 +172,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_thin_film.c
   src/alwan/api/alwan_refractive.c
   src/alwan/api/alwan_skin.c
+  src/alwan/api/alwan_fluorescence.c
   src/alwan/api/alwan_sky.c
   src/alwan/api/alwan_corresponding.c
   src/alwan/api/alwan_gradient.c

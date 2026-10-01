@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+### Added: fluorescence
+
+- **`alwan_fluorescent_*`**: fluorescent materials as bispectral reradiation, so their colour
+  can be computed under any illuminant. A material is a Donaldson matrix on a wavelength grid
+  (300 to 830 nm at 1 nm by default): given as measured (`MATRIX`), or built (`PARAMETRIC`)
+  from a separable model of an absorption band, an emission band and a quantum yield over a
+  substrate reflectance, the form diffuse fluorescent BRDFs for rendering use (e.g. Jung,
+  Hanika, Marschner and Dachsbacher 2019); bands are Gaussians in wavenumber, emission cut
+  below the incident wavelength (Stokes) unless `ALWAN_FLUORESCENT_ANTI_STOKES`. alwan's own
+  code; no spectra ship. Functions: create/destroy, get_info (grid, worst photon balance),
+  matrix, radiance (L, beta_T and its fluorescent part under a standard illuminant or an SPD),
+  rgb (any space and observer, normalised to a perfect diffuser under the same light), sample
+  and pdf for a spectral path tracer in either direction (event then bin, weight = row sum),
+  get_layout_f32 and `core/alwan_fluorescence_reader.inc` for shaders (dxc and fxc), two
+  example materials (a paper whitener, a highlighter). Suite 290: plain reflectance exactly
+  when nothing is off the diagonal, each column's photon yield R(1 - a) + Q a to 2e-15,
+  fluorescence linear in the UV level, the whitener 0.070 bluer in Z under D65 than plain
+  paper against 0.010 under F11 (no UV in its table), the sampler's histogram to 3.7e-6 and
+  its path estimate to 2.4e-6 of the matrix product. `docs/api/fluorescence.md`.
+
 ### Added: spectral skin model
 
 - **`alwan_skin_*`**: the diffuse spectral reflectance of skin from its chromophores and its

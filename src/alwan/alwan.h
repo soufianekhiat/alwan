@@ -11628,6 +11628,176 @@ alwan_status alwan_skin_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyz_f32 *xyz_out, 
  * the residual says how far this one is from it. Errors as alwan_skin_reflectance. */
 alwan_status alwan_skin_fit_f64(alwan_skin_params *params, double *rms_out, double const *reflectance, double const *wavelengths_nm, size_t count, unsigned fit);
 alwan_status alwan_skin_fit_f32(alwan_skin_params *params, float *rms_out, float const *reflectance, float const *wavelengths_nm, size_t count, unsigned fit);
+/* ----------------------------------------------------------------
+ * Fluorescence: bispectral reradiation. A fluorescent material absorbs light at one
+ * wavelength and emits part of it at a longer one, so its colour depends on the light's
+ * spectrum outside the band it reflects: a paper whitener turns ultraviolet into blue, a
+ * highlighter turns blue into green. The material is a Donaldson matrix D on a wavelength
+ * grid of `count` samples from lambda_min to lambda_max (step h): D[o][i] is the radiance
+ * factor at emitted sample o per unit irradiance in the bin of incident sample i (each bin
+ * h wide, centred on its sample), the diagonal holding the ordinary reflectance. Under an
+ * illuminant E the material sends back
+ *     L(o) = sum_i D[o][i] E(i)          (relative to a perfect white diffuser),
+ * and its total radiance factor is beta_T(o) = L(o) / E(o), which is the reflectance only
+ * when D is diagonal.
+ *
+ * PARAMETRIC builds D from a separable model, the form diffuse fluorescent BRDFs for
+ * rendering use (e.g. Jung, Hanika, Marschner and Dachsbacher 2019, "A Simple Diffuse
+ * Fluorescent BBRRDF Model"): an absorption band a(i), the peak fraction of incident
+ * photons the fluorophore takes, an emission band e(o) normalised as photons per nm, and a
+ * quantum yield Q, photons emitted per photon absorbed:
+ *     D[o][i] = Q a(i) e(o) h lambda_i / lambda_o   (o != i; lambda_i / lambda_o turns
+ *                                                    photons into energy)
+ *     D[i][i] = R_base(i) (1 - a(i)) + Q a(i) e(i) h
+ * Both bands are Gaussians in wavenumber (in energy), centred on a peak and as wide as a
+ * full width at half maximum given in nm at the peak; the shapes are alwan's, not the
+ * paper's. By default a photon is only emitted at its own wavelength or longer (Stokes):
+ * the emission band is cut below the incident sample and renormalised, so the yield stays
+ * Q a(i); a band that lies wholly below the incident sample emits nothing.
+ * ALWAN_FLUORESCENT_ANTI_STOKES keeps the uncut band (Kasha's rule taken literally).
+ * MATRIX takes D as given, row o = emitted, column i = incident, diagonal included.
+ *
+ * Photons: each column must give back no more photons than it receives,
+ *     sum_o D[o][i] lambda_o / lambda_i <= 1;
+ * PARAMETRIC holds it by construction (R_base (1 - a) + Q a <= 1), and get_info reports
+ * the worst column of either kind (a measured matrix may be slightly over 1).
+ * The grid is 300 to 830 nm at 1 nm when lambda_min, lambda_max and count are 0: the
+ * excitation of most whiteners lies below 400 nm, and an illuminant tabulated only from
+ * 380 nm (the CIE F-series) carries no ultraviolet into it. Suite 290.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_FLUORESCENT_PARAMETRIC = 0,
+    ALWAN_FLUORESCENT_MATRIX = 1
+} alwan_fluorescent_method;
+
+#define ALWAN_FLUORESCENT_ANTI_STOKES 1u   /* PARAMETRIC: keep emission below the incident wavelength */
+
+/* Zero is the default for the grid and for interpolation (LINEAR); a zeroed PARAMETRIC
+ * struct is a black, non-fluorescent material. The band shapes are needed only when
+ * absorptance and quantum_yield are both above 0. */
+typedef struct {
+    alwan_fluorescent_method method;
+    alwan_f64 lambda_min, lambda_max;   /* nm; both 0 for 300 and 830 */
+    size_t count;                       /* grid samples; 0 for 1 nm steps */
+    /* PARAMETRIC */
+    alwan_f64 excitation_peak_nm, excitation_fwhm_nm;
+    alwan_f64 absorptance;              /* 0..1 at the excitation peak */
+    alwan_f64 emission_peak_nm, emission_fwhm_nm;
+    alwan_f64 quantum_yield;            /* 0..1 */
+    alwan_f64 base_reflectance;         /* 0..1, used when reflectance is NULL */
+    alwan_f64 const *reflectance;       /* the substrate's reflectance, uniform samples */
+    size_t reflectance_count, reflectance_stride;   /* stride in bytes, 0 for packed */
+    alwan_f64 reflectance_min, reflectance_max;     /* nm; held at its ends outside */
+    alwan_interp_method interpolation;  /* how reflectance is read; 0 = LINEAR */
+    unsigned flags;
+    /* MATRIX */
+    alwan_f64 const *matrix;            /* count x count, row = emitted, column = incident */
+    size_t matrix_row_stride;           /* bytes, 0 for packed */
+} alwan_fluorescent_params;
+
+/* Example materials (PARAMETRIC on the default grid), parameters, not measurements:
+ * WHITENER  a stilbene-like optical brightener on paper: absorbs around 350 nm (FWHM
+ *           50 nm, peak 0.9), emits around 435 nm (FWHM 60 nm), yield 0.8, over a
+ *           substrate of reflectance 0.85.
+ * HIGHLIGHTER  a pyranine-like yellow-green ink: absorbs around 455 nm (FWHM 70 nm, peak
+ *           0.95), emits around 515 nm (FWHM 40 nm), yield 0.9, over the same paper. */
+typedef enum {
+    ALWAN_FLUORESCENT_EXAMPLE_WHITENER = 0,
+    ALWAN_FLUORESCENT_EXAMPLE_HIGHLIGHTER = 1
+} alwan_fluorescent_example;
+alwan_status alwan_fluorescent_params_example(alwan_fluorescent_params *params, alwan_fluorescent_example example);
+
+typedef struct alwan_fluorescent_s alwan_fluorescent;
+
+/* Builds the matrix and the sampling tables. ALWAN_E_INVALID for a NULL, an unknown
+ * method or flag, a grid that is not increasing or has fewer than 2 samples, a fraction
+ * outside [0, 1], a band with a peak or width that is not positive and finite (or a width
+ * of twice its peak or more), a reflectance table that is not usable, or a MATRIX entry
+ * that is negative or not finite; ALWAN_E_NOMEM. ctx may be NULL. */
+alwan_status alwan_fluorescent_create(alwan_fluorescent **out, alwan_fluorescent_params const *params, alwan_ctx *ctx);
+void alwan_fluorescent_destroy(alwan_fluorescent *material, alwan_ctx *ctx);
+
+typedef struct {
+    alwan_f64 lambda_min, lambda_max, step;  /* the grid */
+    size_t count;
+    alwan_f64 photon_balance_max;            /* max over columns of sum_o D[o][i] lambda_o / lambda_i */
+    alwan_f64 fluorescent_max;               /* the largest off-diagonal column sum */
+} alwan_fluorescent_info;
+alwan_status alwan_fluorescent_get_info(alwan_fluorescent_info *info, alwan_fluorescent const *material);
+
+/* The matrix, row o = emitted, column i = incident, rows row_stride bytes apart (0 for
+ * packed). */
+alwan_status alwan_fluorescent_matrix_f64(double *out, size_t row_stride, alwan_fluorescent const *material);
+alwan_status alwan_fluorescent_matrix_f32(float *out, size_t row_stride, alwan_fluorescent const *material);
+
+/* What the material sends back under an illuminant, at each grid sample: radiance_out
+ * the total L (same units as the illuminant, relative to a perfect diffuser), total_out
+ * beta_T = L / E and fluorescent_out the off-diagonal part of it (both 0 where E is 0).
+ * The illuminant is illuminant_spd when not NULL, else the standard `illuminant`; it is
+ * read linearly at the grid's samples and is 0 outside its table. Any output may be NULL. */
+alwan_status alwan_fluorescent_radiance_f64(double *radiance_out, double *total_out, double *fluorescent_out,
+                                            alwan_fluorescent const *material, alwan_spd_f64 const *illuminant_spd,
+                                            alwan_illuminant illuminant, alwan_ctx *ctx);
+alwan_status alwan_fluorescent_radiance_f32(float *radiance_out, float *total_out, float *fluorescent_out,
+                                            alwan_fluorescent const *material, alwan_spd_f32 const *illuminant_spd,
+                                            alwan_illuminant illuminant, alwan_ctx *ctx);
+
+/* The material's colour under an illuminant: L integrated with the observer and divided by
+ * the Y of a perfect diffuser under the same light (so a non-fluorescent white of
+ * reflectance 1 is Y = 1 and a fluorescent one can pass it), adapted by Bradford from the
+ * illuminant's white to the space's, as linear RGB. The same material has a different
+ * colour under D65 (whose table reaches 300 nm), A (little ultraviolet) and F11 (none in
+ * its table): that is the point. xyz_out (normalised, unadapted) may be NULL. */
+alwan_status alwan_fluorescent_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_xyz_f64 *xyz_out, alwan_fluorescent const *material,
+                                       alwan_spd_f64 const *illuminant_spd, alwan_illuminant illuminant,
+                                       alwan_rgb_space space, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_fluorescent_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyz_f32 *xyz_out, alwan_fluorescent const *material,
+                                       alwan_spd_f32 const *illuminant_spd, alwan_illuminant illuminant,
+                                       alwan_rgb_space space, alwan_observer_type observer, alwan_ctx *ctx);
+
+/* Sampling for a spectral path tracer. OUTGOING: a path from the camera arrives carrying
+ * wavelength lambda (the emitted side) and asks which incident wavelength to continue
+ * with: lambda_out is drawn from row o of D. INCOMING: a path from a light carries the
+ * incident wavelength and asks which wavelength leaves: column i. Either way the event is
+ * first chosen, plain reflection (same wavelength) with probability D's diagonal over the
+ * row's (column's) sum T, reradiation otherwise, then for reradiation a bin in proportion
+ * to its entry, uniform inside the bin. weight_out is T in every case, so weight times the
+ * radiance (power) at lambda_out is an unbiased estimate of sum_j D L(j). pdf_out is the
+ * probability of the event times, for reradiation, the density per nm of lambda_out;
+ * reradiated_out says which (may be NULL, as may pdf_out). A row whose sum is 0 gives
+ * weight 0. lambda outside the grid's bins is ALWAN_E_RANGE, u outside [0, 1] too. */
+typedef enum {
+    ALWAN_FLUORESCENT_OUTGOING = 0,
+    ALWAN_FLUORESCENT_INCOMING = 1
+} alwan_fluorescent_direction;
+
+alwan_status alwan_fluorescent_sample_f64(double *lambda_out, double *pdf_out, double *weight_out, int *reradiated_out,
+                                          double lambda, double u_event, double u_lambda,
+                                          alwan_fluorescent_direction direction, alwan_fluorescent const *material);
+alwan_status alwan_fluorescent_sample_f32(float *lambda_out, float *pdf_out, float *weight_out, int *reradiated_out,
+                                          float lambda, float u_event, float u_lambda,
+                                          alwan_fluorescent_direction direction, alwan_fluorescent const *material);
+
+/* The density sample gives a reradiated lambda_sampled from lambda (per nm, the event's
+ * probability included), for multiple importance sampling; 0 inside lambda's own bin and
+ * outside the grid. */
+alwan_status alwan_fluorescent_pdf_f64(double *pdf_out, double lambda, double lambda_sampled,
+                                       alwan_fluorescent_direction direction, alwan_fluorescent const *material);
+alwan_status alwan_fluorescent_pdf_f32(float *pdf_out, float lambda, float lambda_sampled,
+                                       alwan_fluorescent_direction direction, alwan_fluorescent const *material);
+
+/* The sampling tables for a shader: row r of the OUTGOING half starts at
+ * r * (count + 3) and holds the sum T, the reradiation probability and the count + 1
+ * values of the CDF over the row's off-diagonal bins; the INCOMING half follows at
+ * incoming_base. core/alwan_fluorescence_reader.inc reads them. */
+typedef struct {
+    alwan_f32 const *table;
+    size_t table_count, incoming_base, row_stride;
+    size_t count;
+    alwan_f32 lambda_min, step;
+} alwan_fluorescent_layout_f32;
+alwan_status alwan_fluorescent_get_layout_f32(alwan_fluorescent_layout_f32 *layout, alwan_fluorescent const *material);
 
 /* ----------------------------------------------------------------
  * Thin-film iridescence for rendering (Belcour and Barla 2017, "A Practical Extension to

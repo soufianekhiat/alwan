@@ -78,6 +78,7 @@ Key entry points:
 - [`docs/api/dithering.md`](api/dithering.md)
 - [`docs/api/iridescence.md`](api/iridescence.md)
 - [`docs/api/skin.md`](api/skin.md)
+- [`docs/api/fluorescence.md`](api/fluorescence.md)
 - [`docs/api/ibl.md`](api/ibl.md)
 - [`docs/api/spectral-rendering.md`](api/spectral-rendering.md)
 - [`docs/api/chromatic-adaptation.md`](api/chromatic-adaptation.md)

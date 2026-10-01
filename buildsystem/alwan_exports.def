@@ -761,6 +761,21 @@ EXPORTS
     alwan_float_to_half
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64
+    alwan_fluorescent_create
+    alwan_fluorescent_destroy
+    alwan_fluorescent_get_info
+    alwan_fluorescent_get_layout_f32
+    alwan_fluorescent_matrix_f32
+    alwan_fluorescent_matrix_f64
+    alwan_fluorescent_params_example
+    alwan_fluorescent_pdf_f32
+    alwan_fluorescent_pdf_f64
+    alwan_fluorescent_radiance_f32
+    alwan_fluorescent_radiance_f64
+    alwan_fluorescent_rgb_f32
+    alwan_fluorescent_rgb_f64
+    alwan_fluorescent_sample_f32
+    alwan_fluorescent_sample_f64
     alwan_focal_plane_exposure_f32
     alwan_focal_plane_exposure_f64
     alwan_fresnel_f32
