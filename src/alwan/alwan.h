@@ -11016,6 +11016,163 @@ alwan_status alwan_water_refractive_index_f64(double *n_out, double wavelength_n
 alwan_status alwan_water_refractive_index_f32(float *n_out, float wavelength_nm, float temperature_k, float density_kg_m3);
 
 /* ----------------------------------------------------------------
+ * Refractive-index database: the refractiveindex.info database (M. N. Polyanskiy, CC0 1.0),
+ * every page of its n,k catalogue: 3,576 measurements and fits of metals, semiconductors,
+ * dielectrics, glasses (with the makers' catalogues), liquids, gases and organic
+ * materials. Built in unless ALWAN_WITH_REFRACTIVE_DATA is 0, when the count is 0 and every
+ * function that names an entry returns ALWAN_E_NODATA (a caller's own alwan_refractive_table
+ * still works). docs/api/refractive-index.md.
+ * ---------------------------------------------------------------- */
+
+/* One page: one source's n and k for one material. A page with no k has k = 0 at every
+ * wavelength (the database's convention for a transparent material); a page with no n
+ * (a few absorption-only pages) samples n as NaN. Ranges are in nm and are where the page
+ * has data; outside them the caller's extrapolation mode decides. Strings are UTF-8 and
+ * live as long as the library. */
+typedef struct {
+    char const *id;          /* "shelf/book/page", e.g. "main/Au/Johnson" */
+    char const *shelf;       /* "main", "organic", "glass", "other", "specs", "3d", ... */
+    char const *book;        /* the material, e.g. "Au" */
+    char const *page;        /* the source, e.g. "Johnson" */
+    char const *material;    /* the book's display name, e.g. "Au (Gold)" */
+    char const *name;        /* the page's display name, e.g. "Johnson and Christy 1972: n,k 0.188-1.94 um" */
+    char const *reference;   /* the publication, plain text */
+    int has_n, has_k;
+    int n_formula;           /* 0: tabulated; 1..9: the database's dispersion formula for n */
+    double n_min_nm, n_max_nm, k_min_nm, k_max_nm;   /* 0 for an absent quantity */
+} alwan_refractive_index_info;
+
+/* The number of pages, 0 when the data is not built in. Indices run 0 .. count - 1 in the
+ * database's own catalogue order. */
+size_t alwan_refractive_index_count(void);
+
+/* Look a page up by id. "shelf/book/page" names one page; "book" or "shelf/book" names
+ * the book's first page, the one the database lists first for that material (Johnson and
+ * Christy for gold, silver and copper, Rakic for aluminium); a bare book is looked for on
+ * the main shelf first. ALWAN_E_RANGE when nothing matches, ALWAN_E_NODATA without the data. */
+alwan_status alwan_refractive_index_find(size_t *index_out, char const *id);
+alwan_status alwan_refractive_index_get_info(alwan_refractive_index_info *out, size_t index);
+
+/* n and k of a page at a wavelength in nm.
+ *
+ * Between the samples of a tabulated page, interpolation is any alwan_interp_method, 0
+ * (ALWAN_INTERP_LINEAR) the default. LINEAR never overshoots and needs nothing of the
+ * grid; most of the database's tables are non-uniformly spaced (Johnson and Christy is
+ * uniform in photon energy), and a cubic can overshoot k at an absorption edge. PCHIP is
+ * the smooth choice that does not overshoot; CUBIC (Catmull-Rom on the sample index),
+ * AKIMA and LAGRANGE pass through the samples on any grid. SPRAGUE and LANCZOS assume a
+ * uniform grid and are ALWAN_E_INVALID where the samples around the wavelength are not
+ * evenly spaced (to 1e-3). Each method reads the 8 samples on either side of the
+ * wavelength, which every one of them needs at most (Akima's test for a vanishing weight
+ * reads those 16 rather than the whole table). A dispersion formula is evaluated exactly,
+ * whatever the interpolation, as the database defines it (wavelength in um); a formula
+ * whose n^2 comes out negative is ALWAN_E_RANGE.
+ *
+ * Outside a quantity's range the extrapolation mode applies to n and to k separately:
+ * ALWAN_EXTRAPOLATE_CONSTANT holds the edge value, LINEAR continues the edge slope,
+ * LINEAR_CLAMP_ZERO continues it and stops at 0, ZERO gives 0 (for n that is not an index:
+ * it marks "no data"). k_out may be NULL. The spectrum form fills count values from a list
+ * of wavelengths. */
+alwan_status alwan_refractive_index_sample_f64(double *n_out, double *k_out, size_t index, double wavelength_nm, alwan_interp_method interpolation, alwan_extrapolate_mode extrapolate);
+alwan_status alwan_refractive_index_sample_f32(float *n_out, float *k_out, size_t index, float wavelength_nm, alwan_interp_method interpolation, alwan_extrapolate_mode extrapolate);
+alwan_status alwan_refractive_index_spectrum_f64(double *n_out, double *k_out, double const *wavelengths_nm, size_t count, size_t index, alwan_interp_method interpolation, alwan_extrapolate_mode extrapolate);
+alwan_status alwan_refractive_index_spectrum_f32(float *n_out, float *k_out, float const *wavelengths_nm, size_t count, size_t index, alwan_interp_method interpolation, alwan_extrapolate_mode extrapolate);
+
+/* A caller's own optical constants: n and k (k NULL for none) tabulated at count
+ * wavelengths in nm, strictly ascending, read with the same interpolation as the database's
+ * tables and their edge values held outside. Use one in a stack or a slab in place of a
+ * page; it works without the refractive data. */
+typedef struct {
+    double const *wavelengths_nm;
+    double const *n;
+    double const *k;
+    size_t count;
+} alwan_refractive_table;
+
+/* Vacuum (n = 1, k = 0) as a medium: air differs from it by 3e-4 in n. */
+#define ALWAN_REFRACTIVE_VACUUM ((size_t)-1)
+
+typedef enum {
+    ALWAN_POLARIZATION_UNPOLARIZED = 0,   /* the mean of s and p */
+    ALWAN_POLARIZATION_S = 1,
+    ALWAN_POLARIZATION_P = 2
+} alwan_polarization;
+
+/* A layer: a database page, or the caller's table when table is not NULL, and its
+ * thickness in nm. */
+typedef struct {
+    size_t material;
+    double thickness_nm;
+    alwan_refractive_table const *table;
+} alwan_refractive_layer;
+
+/* A stack: light comes from the ambient (lossless: vacuum, air, water, glass), crosses the
+ * layers in order and enters the substrate, which is semi-infinite. A free-standing film
+ * has ALWAN_REFRACTIVE_VACUUM as its substrate; a bare surface has no layers. ambient_table
+ * and substrate_table, when not NULL, replace the ambient and substrate pages. Every layer
+ * is coherent (thin-film interference), so a layer thick enough to matter optically (a
+ * micrometre of glass) shows fringes finer than a colour can resolve; the colour functions
+ * sample at 1 nm and integrate over them. For a thick slab use alwan_refractive_slab.
+ * Indices outside a page's or a table's data hold their edge values; between its samples
+ * they are read with `interpolation` (0, LINEAR, the default; see
+ * alwan_refractive_index_sample). */
+typedef struct {
+    size_t ambient;
+    alwan_refractive_layer const *layers;
+    size_t layer_count;
+    size_t substrate;
+    double theta_degrees;              /* the angle in the ambient, 0 to below 90 */
+    alwan_polarization polarization;
+    alwan_interp_method interpolation;
+    alwan_refractive_table const *ambient_table;
+    alwan_refractive_table const *substrate_table;
+} alwan_refractive_stack;
+
+/* The reflectance and transmittance of a stack, one value of each per wavelength (nm), by
+ * alwan_multilayer_tmm on the media's indices. T is the power that enters the substrate;
+ * with an absorbing substrate it is absorbed there. R + T + absorption in the layers = 1.
+ * ctx may be NULL. ALWAN_E_NODATA for a page without the data, ALWAN_E_RANGE for an index
+ * out of the database, an absorbing ambient, a page with no n, or an angle out of range;
+ * ALWAN_E_INVALID for a table that is not ascending or an interpolation the samples do not
+ * allow. */
+alwan_status alwan_refractive_stack_f64(double *R_out, double *T_out, double const *wavelengths_nm, size_t count, alwan_refractive_stack const *stack, alwan_ctx *ctx);
+alwan_status alwan_refractive_stack_f32(float *R_out, float *T_out, float const *wavelengths_nm, size_t count, alwan_refractive_stack const *stack, alwan_ctx *ctx);
+
+/* A thick slab of one material (a page, or table when not NULL) with the ambient on both
+ * sides, incoherent: the reflections inside it add in power, not in amplitude, as they do
+ * in a pane of glass or a bulk crystal. With R1 the reflectance of the face and
+ * A = exp(-4 pi Im(n cos theta_t) d / lambda) the single-pass transmission,
+ * R = R1 + (1 - R1)^2 R1 A^2 / (1 - R1^2 A^2) and T = (1 - R1)^2 A / (1 - R1^2 A^2), per
+ * polarisation. interpolation as in alwan_refractive_stack. */
+alwan_status alwan_refractive_slab_f64(double *R_out, double *T_out, double const *wavelengths_nm, size_t count, size_t material, alwan_refractive_table const *table, double thickness_nm, size_t ambient, double theta_degrees, alwan_polarization polarization, alwan_interp_method interpolation);
+alwan_status alwan_refractive_slab_f32(float *R_out, float *T_out, float const *wavelengths_nm, size_t count, size_t material, alwan_refractive_table const *table, float thickness_nm, size_t ambient, float theta_degrees, alwan_polarization polarization, alwan_interp_method interpolation);
+
+/* The colour of a reflectance or transmittance spectrum: the spectrum lit by an illuminant,
+ * integrated with an observer, normalised so that a perfect diffuser under the same light
+ * has Y = 1, adapted by Bradford from the illuminant's white to the space's white (skipped
+ * when they are the same white), and expressed as linear RGB in the space. A spectrum of 1
+ * everywhere comes out (1, 1, 1). For a renderer this is F0, the albedo or the filter colour
+ * in its working space. Between the spectrum's samples it is read with `interpolation`:
+ * 0 (LINEAR) integrates it as given; any other method first resamples it at 1 nm over its
+ * range with that method (SPRAGUE and LANCZOS suit its uniform grid). xyz_out (the
+ * normalised, unadapted XYZ) may be NULL; ctx may be NULL. Works on any spectrum, without
+ * the refractive data. */
+alwan_status alwan_reflectance_to_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_xyz_f64 *xyz_out, alwan_spd_f64 const *spectrum, alwan_interp_method interpolation, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_reflectance_to_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyz_f32 *xyz_out, alwan_spd_f32 const *spectrum, alwan_interp_method interpolation, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+
+/* The reflected and transmitted colours of a stack, or of a thick slab of one material
+ * (thickness in nm, normal incidence, vacuum around it), sampled 360-830 nm at 1 nm with
+ * the media read by the stack's (or the given) interpolation, and passed through
+ * alwan_reflectance_to_rgb. Either output may be NULL. Gold, bare:
+ * stack { VACUUM, NULL, 0, gold }; 2 nm of gold on copper: one layer { gold, 2 } on a copper
+ * substrate; 10 nm of gold on glass seen through: transmit_rgb of { VACUUM, {gold, 10}, 1,
+ * glass }. */
+alwan_status alwan_refractive_stack_rgb_f64(alwan_rgb_f64 *reflect_rgb, alwan_rgb_f64 *transmit_rgb, alwan_refractive_stack const *stack, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_refractive_stack_rgb_f32(alwan_rgb_f32 *reflect_rgb, alwan_rgb_f32 *transmit_rgb, alwan_refractive_stack const *stack, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_refractive_slab_rgb_f64(alwan_rgb_f64 *reflect_rgb, alwan_rgb_f64 *transmit_rgb, size_t material, alwan_refractive_table const *table, double thickness_nm, alwan_interp_method interpolation, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_refractive_slab_rgb_f32(alwan_rgb_f32 *reflect_rgb, alwan_rgb_f32 *transmit_rgb, size_t material, alwan_refractive_table const *table, float thickness_nm, alwan_interp_method interpolation, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+
+/* ----------------------------------------------------------------
  * ACES Fixed Functions (RRT Components)
  * Reference: OpenColorIO, Academy Color Encoding System
  * ---------------------------------------------------------------- */

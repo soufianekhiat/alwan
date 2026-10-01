@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+### Added: refractive-index database, layer stacks and spectral colour
+
+- **The refractiveindex.info database (Polyanskiy, CC0 1.0), every page of its n,k
+  catalogue**: 3,576 measurements and fits, 1,154,853 tabulated samples and 20,593
+  dispersion-formula coefficients, built in unless `ALWAN_WITH_REFRACTIVE_DATA` is 0.
+  `alwan_refractive_index_find`, `_get_info`, `_count`, and `_sample_{T}` /
+  `_spectrum_{T}` for n and k at any wavelength, read between a page's samples with any
+  `alwan_interp_method` (LINEAR by default; SPRAGUE and LANCZOS only on uniform grids; formula
+  pages exact whatever the method) and outside them with the `alwan_extrapolate_mode` rules.
+  `alwan_refractive_table` puts a caller's own n, k in place of a page.
+- **`alwan_refractive_stack_{T}`**: reflectance and transmittance of coherent layers on a
+  substrate from database pages (transfer-matrix method), any angle and polarisation;
+  **`alwan_refractive_slab_{T}`**: a thick incoherent slab.
+- **`alwan_reflectance_to_rgb_{T}`**: the colour of a reflectance or transmittance spectrum
+  in any RGB space, under any illuminant, for any observer, normalised to a perfect diffuser
+  and Bradford-adapted to the space's white. **`alwan_refractive_stack_rgb_{T}`** and
+  **`alwan_refractive_slab_rgb_{T}`**: F0 and transmitted colour of a material or a stack,
+  such as 2 nm of gold on copper. docs/api/refractive-index.md; suite 283.
+
 ### Fixed: output differs
 
 - **`alwan_lut3d_invert_{T}` stalled outside the forward cube's image.** Its Newton step

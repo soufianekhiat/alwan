@@ -1603,6 +1603,23 @@ EXPORTS
     alwan_reconstruct_f32
     alwan_reconstruct_f64
     alwan_reconstruct_u8
+    alwan_reflectance_to_rgb_f32
+    alwan_reflectance_to_rgb_f64
+    alwan_refractive_index_count
+    alwan_refractive_index_find
+    alwan_refractive_index_get_info
+    alwan_refractive_index_sample_f32
+    alwan_refractive_index_sample_f64
+    alwan_refractive_index_spectrum_f32
+    alwan_refractive_index_spectrum_f64
+    alwan_refractive_slab_f32
+    alwan_refractive_slab_f64
+    alwan_refractive_slab_rgb_f32
+    alwan_refractive_slab_rgb_f64
+    alwan_refractive_stack_f32
+    alwan_refractive_stack_f64
+    alwan_refractive_stack_rgb_f32
+    alwan_refractive_stack_rgb_f64
     alwan_region_props_f32
     alwan_region_props_f64
     alwan_region_props_u8

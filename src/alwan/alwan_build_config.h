@@ -72,6 +72,18 @@
 #define ALWAN_WITH_F64_FACADE 1
 
 /* ----------------------------------------------------------------
+ * Refractive-index data
+ * ----------------------------------------------------------------
+ * The refractiveindex.info database (3,576 pages, about 35 MB of CSV source and about
+ * 14 MB in the binary) is compiled in by default. Define ALWAN_WITH_REFRACTIVE_DATA to 0
+ * to leave it out: alwan_refractive_index_count is then 0, every function that names a
+ * database entry returns ALWAN_E_NODATA, and the functions that take the caller's own
+ * indices (alwan_multilayer_tmm, alwan_reflectance_to_rgb) are unaffected. */
+#ifndef ALWAN_WITH_REFRACTIVE_DATA
+#  define ALWAN_WITH_REFRACTIVE_DATA 1
+#endif
+
+/* ----------------------------------------------------------------
  * Keep the default `alwan_scalar` precision consistent with the build.
  * A single-precision build forces the matching default scalar so that
  * `alwan_scalar` always names a precision that is actually compiled in.

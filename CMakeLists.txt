@@ -27,6 +27,7 @@ option(ALWAN_DISABLE_STRICT_ALIASING "Compile with -fno-strict-aliasing on GCC/C
 set(ALWAN_SIMD_ARCH "" CACHE STRING "SIMD instruction set: SSE2, AVX, AVX2, or native (empty = compiler default)")
 option(ALWAN_INSTALL "Enable install rules" ON)
 option(ALWAN_INSTALL_PKGCONFIG "Install pkg-config .pc file" ON)
+option(ALWAN_WITH_REFRACTIVE_DATA "Compile in the refractiveindex.info database (about 14 MB): alwan_refractive_index_*" ON)
 option(ALWAN_DETERMINISTIC "Use bit-exact polynomial math (no libm transcendentals, no FMA fusion). Trades ~20% perf for cross-platform reproducibility. See docs/determinism.md." OFF)
 
 # Numeric precision selection. "both" (default) compiles the f32 and f64 APIs
@@ -165,6 +166,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_light_probe.c
   src/alwan/api/alwan_spectrum_meng2015.c
   src/alwan/api/alwan_thin_film.c
+  src/alwan/api/alwan_refractive.c
   src/alwan/api/alwan_corresponding.c
   src/alwan/api/alwan_gradient.c
   src/alwan/api/alwan_edge_detect.c
@@ -283,6 +285,8 @@ src/alwan/api/alwan_nn.c
   src/alwan/data/alwan_data_tables_cubes.c
   src/alwan/data/alwan_data_tables_spectral.c
   src/alwan/data/alwan_data_tables_api.c
+  # The refractiveindex.info database: read by binary search, not part of the registry above.
+  src/alwan/data/alwan_data_refractive.c
 )
 
 add_library(alwan ${ALWAN_SOURCES})
@@ -318,6 +322,10 @@ target_compile_definitions(
   PUBLIC
     ALWAN_EMBED_DATA=${_ALWAN_EMBED_DATA_VALUE}
 )
+
+if(NOT ALWAN_WITH_REFRACTIVE_DATA)
+  target_compile_definitions(alwan PUBLIC ALWAN_WITH_REFRACTIVE_DATA=0)
+endif()
 
 # Precision gating: define ALWAN_BUILD_ONLY_F32/F64 (PUBLIC so consumers see the
 # same available API surface as the compiled library).
