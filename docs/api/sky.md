@@ -35,6 +35,31 @@ limits; it is fitted for turbidity 2-6 and is known to misbehave at a low sun wi
 turbidity (Zotti, Wilkie and Purgathofer 2007), where it can return negative values: alwan
 returns what the equations give.
 
+### Why the three disagree in level
+
+`turbidity` drives Preetham and Hosek-Wilkie only. Bruneton reads its aerosol from
+`alwan_sky_atmosphere` (`mie_angstrom_beta`, `mie_angstrom_alpha`), and the default is his demo's,
+an aerosol optical depth of 0.0053 at every wavelength: air almost free of haze. Turbidity 3 is an
+optical depth near 0.2 at 550 nm. So with the defaults Bruneton's sky is dark and its sun strong.
+Horizontal illuminance at a sun 60 degrees up, ground albedo 0.1, in lux, from `683 Y` of
+`alwan_sky_irradiance_xyz` (plate-size Bruneton tables, 16 wavelengths):
+
+| Model and aerosol | Sky | Sun |
+|---|---|---|
+| Preetham, turbidity 2 / 3 | 24,400 / 31,500 | 77,900 / 69,500 |
+| Hosek-Wilkie, turbidity 2 / 3 | 14,000 / 16,300 | 70,500 / 69,200 |
+| Bruneton, default (optical depth 0.0053) | 7,800 | 98,000 |
+| Bruneton, Angstrom beta 0.046 / 0.092, alpha 1.3 (Preetham's turbidity 2 / 3: beta = 0.04608 T - 0.04586) | 18,600 / 31,200 | 87,900 / 78,400 |
+
+Bruneton's default sun, about 128,000 lx outside the atmosphere times sin 60 degrees times a
+transmittance of 0.88, is what near-clean air gives, which also confirms the luminance
+conversion. For the IESNA clear-sky fit, 0.8 + 15.5 (sin a)^0.5 klx, a 60-degree sun gives
+15,200 lx: Hosek-Wilkie lands on it at turbidity 3; Preetham's sky is brighter than measured,
+its known weakness; Bruneton with turbidity-3 aerosol is brighter too, since its Mie layer
+(1.2 km scale height, single-scattering albedo 0.9, g 0.8) is the demo's, not fitted to sky
+measurements. To compare the three on one haze, give Bruneton the Angstrom pair from the
+formula above.
+
 ## Bruneton's precomputation
 
 ```c
