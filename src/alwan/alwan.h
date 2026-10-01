@@ -3557,6 +3557,105 @@ alwan_status alwan_env_product_sampler_get_layout_f32(alwan_env_product_sampler_
 alwan_status alwan_env_product_sampler_get_layout_f64(alwan_env_product_sampler_layout_f64 *out,
                                                       alwan_env_product_sampler_f64 const *sampler);
 
+/* Image-based lighting for equirectangular maps (the convention above: +Y up, row 0
+ * the zenith, x = phi / 2 pi). Suite 286; docs/api/ibl.md.
+ *
+ * SPHERICAL HARMONICS. Real and orthonormal, without the Condon-Shortley phase, the polar
+ * axis +Y: Y_1,-1 = c d.z, Y_1,0 = c d.y, Y_1,1 = c d.x with c = sqrt(3 / (4 pi)).
+ * Coefficient (l, m) is at index l^2 + l + m, and a table of coefficients for `channels`
+ * channels is coefficient-major: coefficient k of channel c at k * channels + c. Bands 0
+ * to ALWAN_SH_MAX_BAND, 1 to 16 channels.
+ *   project_equirect   the coefficients of a map: each pixel's value times the basis at
+ *                      its centre times its exact solid angle, (2 pi / width)
+ *                      (cos theta_top - cos theta_bottom), summed in double
+ *   evaluate           the expansion at a direction (any non-zero length)
+ *   render_equirect    the expansion at every pixel centre of a map
+ *   irradiance_coefficients  Ramamoorthi and Hanrahan 2001: E_l,m = A_l w_l L_l,m with A_l
+ *                      the clamped cosine's (A_0 = pi, A_1 = 2 pi / 3, A_2 = pi / 4) and
+ *                      w_l the window; evaluate them for the irradiance. out may be coeffs.
+ *   irradiance_matrix  their eq. 12: per channel a symmetric 4 x 4 M, row-major, 16
+ *                      values a channel, with E(n) = (n, 1)^T M (n, 1) for a unit n in
+ *                      alwan's frame. Reads coefficients 0 to 8 of a band >= 2 table.
+ * window_width 0 is band + 1 (3 for the matrix). Windows tame the ringing of a truncated
+ * expansion (Sloan 2008): Hanning 0.5 (1 + cos(pi l / width)), Lanczos sinc(l / width). */
+#define ALWAN_SH_MAX_BAND 8
+
+typedef enum {
+    ALWAN_SH_WINDOW_NONE = 0,
+    ALWAN_SH_WINDOW_HANNING = 1,
+    ALWAN_SH_WINDOW_LANCZOS = 2
+} alwan_sh_window;
+
+/* (band + 1)^2, 0 for a band outside 0 to ALWAN_SH_MAX_BAND. No precision, no suffix. */
+size_t alwan_sh_coefficient_count(int band);
+
+alwan_status alwan_sh_project_equirect_f32(alwan_f32 *coeffs_out, int band, alwan_f32 const *map, size_t row_stride,
+                                           size_t width, size_t height, size_t channels);
+alwan_status alwan_sh_project_equirect_f64(alwan_f64 *coeffs_out, int band, alwan_f64 const *map, size_t row_stride,
+                                           size_t width, size_t height, size_t channels);
+alwan_status alwan_sh_evaluate_f32(alwan_f32 *out, alwan_vec3_f32 const *dir, alwan_f32 const *coeffs, int band,
+                                   size_t channels);
+alwan_status alwan_sh_evaluate_f64(alwan_f64 *out, alwan_vec3_f64 const *dir, alwan_f64 const *coeffs, int band,
+                                   size_t channels);
+alwan_status alwan_sh_render_equirect_f32(alwan_f32 *map_out, size_t row_stride, size_t width, size_t height,
+                                          alwan_f32 const *coeffs, int band, size_t channels);
+alwan_status alwan_sh_render_equirect_f64(alwan_f64 *map_out, size_t row_stride, size_t width, size_t height,
+                                          alwan_f64 const *coeffs, int band, size_t channels);
+alwan_status alwan_sh_irradiance_coefficients_f32(alwan_f32 *out, alwan_f32 const *coeffs, int band, size_t channels,
+                                                  alwan_sh_window window, alwan_f32 window_width);
+alwan_status alwan_sh_irradiance_coefficients_f64(alwan_f64 *out, alwan_f64 const *coeffs, int band, size_t channels,
+                                                  alwan_sh_window window, alwan_f64 window_width);
+alwan_status alwan_sh_irradiance_matrix_f32(alwan_f32 *out, alwan_f32 const *coeffs, size_t channels,
+                                            alwan_sh_window window, alwan_f32 window_width);
+alwan_status alwan_sh_irradiance_matrix_f64(alwan_f64 *out, alwan_f64 const *coeffs, size_t channels,
+                                            alwan_sh_window window, alwan_f64 window_width);
+
+/* GGX PREFILTERING (Karis 2013's split sum, with n = v = r). Each texel of out, a map of
+ * any size, is the map weighed around the texel's direction n by the GGX lobe of
+ * perceptual roughness r (alpha = r^2) as Karis's prefilter weighs it:
+ *     sum over l of L(l) D(h) (n . l) / sum of D(h) (n . l),   h = normalize(n + l)
+ * estimated with sample_count (0: 256) Hammersley half vectors drawn with density
+ * D(h)(n . h). By default each sample reads a box pyramid of the map at the level whose
+ * texels cover the sample's solid angle, 0.5 log2(omega_sample / omega_texel) + 1
+ * (Colbert and Krivanek 2007, Karis 2013): no fireflies at few samples, at the cost of
+ * a small blur, the box pyramid not weighing texels by their solid angle near the poles.
+ * no_mip_filtering reads the map itself. Roughness 0 is the map resampled bilinearly.
+ * x wraps round the map; reads do not cross a pole. 1 to 16 channels.
+ *
+ * THE SPLIT-SUM TABLE. brdf_integrate gives, for one (n . v in (0, 1], roughness), the
+ * scale and bias of F0 in the specular integral with Schlick's Fresnel,
+ *     integral of f_GGX (n . l) dl = F0 scale + bias,
+ * the height-correlated Smith term (Heitz 2014) for the shadowing, from sample_count (0:
+ * 1024) Hammersley samples. brdf_lut fills a table, two values a texel, width texels of
+ * n . v by height of roughness at the texel centres ((i + 0.5) / width, (j + 0.5) /
+ * height), as core/alwan_ibl_reader.inc reads it. energy_average gives per roughness
+ * row E_avg = 2 integral E(mu) mu dmu with E = scale + bias, the directional albedo of
+ * a white metal: Kulla and Conty 2017's multiple-scattering lobe is
+ * (1 - E(mu_o))(1 - E(mu_i)) / (pi (1 - E_avg)). */
+typedef struct {
+    size_t sample_count;   /* 0: 256 */
+    int no_mip_filtering;  /* 0: filtered importance sampling */
+} alwan_ibl_prefilter_params;
+
+alwan_status alwan_ibl_prefilter_ggx_f32(alwan_f32 *out, size_t out_row_stride, size_t out_width, size_t out_height,
+                                         alwan_f32 roughness, alwan_f32 const *map, size_t row_stride, size_t width,
+                                         size_t height, size_t channels, alwan_ibl_prefilter_params const *params,
+                                         alwan_ctx *ctx);
+alwan_status alwan_ibl_prefilter_ggx_f64(alwan_f64 *out, size_t out_row_stride, size_t out_width, size_t out_height,
+                                         alwan_f64 roughness, alwan_f64 const *map, size_t row_stride, size_t width,
+                                         size_t height, size_t channels, alwan_ibl_prefilter_params const *params,
+                                         alwan_ctx *ctx);
+alwan_status alwan_ibl_brdf_integrate_f32(alwan_f32 *scale_out, alwan_f32 *bias_out, alwan_f32 nov, alwan_f32 roughness,
+                                          size_t sample_count);
+alwan_status alwan_ibl_brdf_integrate_f64(alwan_f64 *scale_out, alwan_f64 *bias_out, alwan_f64 nov, alwan_f64 roughness,
+                                          size_t sample_count);
+alwan_status alwan_ibl_brdf_lut_f32(alwan_f32 *out, size_t row_stride, size_t width, size_t height, size_t sample_count);
+alwan_status alwan_ibl_brdf_lut_f64(alwan_f64 *out, size_t row_stride, size_t width, size_t height, size_t sample_count);
+alwan_status alwan_ibl_energy_average_f32(alwan_f32 *out, alwan_f32 const *lut, size_t row_stride, size_t width,
+                                          size_t height);
+alwan_status alwan_ibl_energy_average_f64(alwan_f64 *out, alwan_f64 const *lut, size_t row_stride, size_t width,
+                                          size_t height);
+
 /* Morphology: grey-level erosion and dilation and their composites, for cleaning a
  * selection mask or a matte, and for pulling out detail smaller than a shape. Each of 1 to
  * 4 channels on its own; out may be src.

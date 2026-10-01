@@ -108,6 +108,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_importance_sampling.c
   src/alwan/api/alwan_summed_area_table.c
   src/alwan/api/alwan_env_sampling.c
+  src/alwan/api/alwan_ibl.c
   src/alwan/api/alwan_cv_dxt.c
   src/alwan/api/alwan_dct_denoise_opencv.c
   src/alwan/api/alwan_white_balance.c

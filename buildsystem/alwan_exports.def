@@ -1003,6 +1003,14 @@ EXPORTS
     alwan_hwb_to_rgb_f64_map_planar
     alwan_hwb_to_rgb_map_interleave_ex
     alwan_hwb_to_rgb_map_planar_ex
+    alwan_ibl_brdf_integrate_f32
+    alwan_ibl_brdf_integrate_f64
+    alwan_ibl_brdf_lut_f32
+    alwan_ibl_brdf_lut_f64
+    alwan_ibl_energy_average_f32
+    alwan_ibl_energy_average_f64
+    alwan_ibl_prefilter_ggx_f32
+    alwan_ibl_prefilter_ggx_f64
     alwan_icacb_to_xyz_f32
     alwan_icacb_to_xyz_f32_map_interleave
     alwan_icacb_to_xyz_f32_map_planar
@@ -1869,6 +1877,17 @@ EXPORTS
     alwan_select_qualifier_f32
     alwan_select_qualifier_f64
     alwan_select_qualifier_params_init
+    alwan_sh_coefficient_count
+    alwan_sh_evaluate_f32
+    alwan_sh_evaluate_f64
+    alwan_sh_irradiance_coefficients_f32
+    alwan_sh_irradiance_coefficients_f64
+    alwan_sh_irradiance_matrix_f32
+    alwan_sh_irradiance_matrix_f64
+    alwan_sh_project_equirect_f32
+    alwan_sh_project_equirect_f64
+    alwan_sh_render_equirect_f32
+    alwan_sh_render_equirect_f64
     alwan_sharpen_f32
     alwan_sharpen_f64
     alwan_sharpen_u8

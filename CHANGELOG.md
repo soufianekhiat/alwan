@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+### Added: image-based lighting for equirectangular maps
+
+- **Spherical harmonics (`alwan_sh_*_{T}`), bands 0 to 8, 1 to 16 channels.** Projection of
+  an equirectangular map with each pixel's exact solid angle, evaluation at a direction or
+  over a map, and the irradiance of Ramamoorthi and Hanrahan 2001: as coefficients (the
+  clamped cosine's A_l, with an optional Hanning or Lanczos window against ringing) and as
+  their per-channel 4 x 4 quadratic form. Real orthonormal basis without the
+  Condon-Shortley phase, polar axis +Y, the map's own angles (docs/api/ibl.md).
+- **GGX prefiltering (`alwan_ibl_prefilter_ggx_{T}`)**, Karis 2013's split sum with
+  n = v = r, Hammersley samples and filtered importance sampling from a box pyramid
+  (Colbert and Krivanek 2007), roughness 0 the map itself.
+- **The split-sum table (`alwan_ibl_brdf_lut_{T}`, `alwan_ibl_brdf_integrate_{T}`)** with
+  the height-correlated Smith term (Heitz 2014), exactly Schlick's Fresnel at roughness 0,
+  and **`alwan_ibl_energy_average_{T}`**, the E_avg of Kulla and Conty's 2017
+  multiple-scattering compensation.
+- **In shaders:** `core/alwan_ibl_core.h` (basis, A_l, windows, GGX D, Smith G2, half-vector
+  sampling) and `core/alwan_ibl_reader.inc` (coefficient and split-sum table readers
+  through an accessor), compiling under dxc and fxc.
+- Suite 286 checks against ground truths only: the closed A_l, a constant map, the clamped
+  cosine by Funk-Hecke, orthonormality, a linear map's exact irradiance, brute-force cosine
+  and GGX sums over every pixel, a converged quadrature of the split-sum integral.
+
 ### Added: dithering for quantisation and blue noise masks
 
 - **`alwan_dither_quantize_{T}`: an encoded float image to U8 or U16 codes, dithered.** Round
