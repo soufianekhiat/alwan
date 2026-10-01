@@ -937,6 +937,28 @@
 
 ### Added
 
+- **Summed-area tables** (Crow 1984), `alwan_summed_area_table_*`: built once from a 1- to
+  4-channel image in any pixel format, the sum or mean over any axis-aligned rectangle in
+  four reads, the exact integral over continuous bounds (partial pixels by their covered
+  area), and a box mean at any radius for the same cost. The table is double: 8- and
+  16-bit images sum their codes exactly; float images have each channel's mean (to 1/256)
+  taken off first, which brings small rectangles far from the origin from 2.9e-10 to
+  2.2e-15 on a 2048 x 2048 image. The queries run in a shader through
+  `core/alwan_summed_area_reader.inc`. Suite 281, `docs/api/summed-area-table.md`.
+- **ALIAS mode for 2D importance sampling**, `ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS`: Walker's
+  alias table in Vose's construction over all the pixels, O(1) a sample and exact, the
+  table's implied distribution the image's to 2e-15 and its pdf SEARCH's bit for bit. Not
+  monotone in `u`, so no stratification kept and no inverse. Suite 280.
+- **Environment-map sampling**, `alwan_env_*`: equirectangular map positions and
+  directions; per-normal weights for `alwan_importance_sampling_2d` with a cosine or Phong
+  lobe folded in (the lobe's mean over each pixel, floored at a fraction of its bound so
+  every reachable pixel keeps a positive weight); and a hierarchical product sampler after
+  Clarberg et al. (2005, 2008) that samples light x lobe for any lobe in O(log pixels),
+  with an exact pdf and unbiased estimates. On suite 282's overcast sky it brings the
+  error at 1024 random points from 4.8% to 0.42% for a horizontal surface; the
+  per-normal weights reach 0.14% at the cost of a prepare per normal. Suite 282,
+  `docs/api/importance-sampling.md`.
+
 - **2D importance sampling of a greyscale image** (`alwan_importance_sampling_2d_*`,
   docs/api/importance-sampling.md, suite 280). `prepare` builds a sampler holding the
   marginal (over the rows' sums) and every row's conditional distribution; `sample` turns

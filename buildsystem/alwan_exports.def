@@ -662,6 +662,22 @@ EXPORTS
     alwan_ellipse_general_f64
     alwan_ellipse_points_f32
     alwan_ellipse_points_f64
+    alwan_env_equirect_direction_f32
+    alwan_env_equirect_direction_f64
+    alwan_env_equirect_position_f32
+    alwan_env_equirect_position_f64
+    alwan_env_product_sampler_destroy_f32
+    alwan_env_product_sampler_destroy_f64
+    alwan_env_product_sampler_get_layout_f32
+    alwan_env_product_sampler_get_layout_f64
+    alwan_env_product_sampler_pdf_f32
+    alwan_env_product_sampler_pdf_f64
+    alwan_env_product_sampler_prepare_f32
+    alwan_env_product_sampler_prepare_f64
+    alwan_env_product_sampler_sample_f32
+    alwan_env_product_sampler_sample_f64
+    alwan_env_weight_equirect_f32
+    alwan_env_weight_equirect_f64
     alwan_eotf_apply_f32
     alwan_eotf_apply_f64
     alwan_excitation_purity_f32
@@ -2000,6 +2016,14 @@ EXPORTS
     alwan_stylize
     alwan_sucs_to_xyz_f32
     alwan_sucs_to_xyz_f64
+    alwan_summed_area_table_box_mean_f32
+    alwan_summed_area_table_box_mean_f64
+    alwan_summed_area_table_create
+    alwan_summed_area_table_destroy
+    alwan_summed_area_table_get_layout
+    alwan_summed_area_table_integrate
+    alwan_summed_area_table_mean
+    alwan_summed_area_table_sum
     alwan_table1d_mat3_sample_f32
     alwan_table1d_mat3_sample_f64
     alwan_table1d_sample_f32

@@ -214,6 +214,68 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_IS2D_FN_(alwan_is2d_pdf_2d_direct)(ALWAN_IS2D_PA
     return ALWAN_IS2D_FN_(alwan_is2d_direct_pdf_1d)(ALWAN_IS2D_ARGS_ iv * (ru + 1), ru, tx, x1 - x0) * py;
 }
 
+/* ----------------------------------------------------------------
+ * ALIAS (Walker 1977, Vose 1991): one table over all n = nu x nv cells. u1
+ * picks a slot k = floor(u1 n); the fraction f left over is compared with the
+ * slot's threshold: f < prob[k] keeps cell k, else the slot's alias. What is
+ * left of f after that comparison, rescaled to [0, 1], is the point's place
+ * down its row (fewer bits than u1 had: n's worth went to the slot); u0 is its
+ * place across. The density is the image's, as SEARCH's.
+ * ---------------------------------------------------------------- */
+
+/* The cell u1 picks (as a value) and the fraction left for the row. */
+ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_IS2D_FN_(alwan_is2d_alias_pick)(ALWAN_IS2D_PARAMS_ int n, ALWAN_CORE_T u1) {
+    ALWAN_CORE_VEC2 r;
+    const ALWAN_CORE_T s = u1 * (ALWAN_CORE_T)n;
+    const int k = ALWAN_CORE_FNVLIT(alwan_is2d_cell)(s, n);
+    const ALWAN_CORE_T p = ALWAN_IS2D_READ(ALWAN_CORE_FNVLIT(alwan_is2d_off_aprob)(n) + k);
+    ALWAN_DET_PRECISE ALWAN_CORE_T f = s - (ALWAN_CORE_T)k;
+    ALWAN_DET_PRECISE ALWAN_CORE_T t;
+    if (f > ALWAN_CORE_LITERAL(1.0)) f = ALWAN_CORE_LITERAL(1.0);
+    if (f < p) {
+        r.v[0] = (ALWAN_CORE_T)k;
+        t = f / p;
+    } else {
+        r.v[0] = ALWAN_IS2D_READ(ALWAN_CORE_FNVLIT(alwan_is2d_off_aidx)(n) + k);
+        t = p < ALWAN_CORE_LITERAL(1.0) ? (f - p) / (ALWAN_CORE_LITERAL(1.0) - p) : ALWAN_CORE_LITERAL(0.0);
+    }
+    if (t < ALWAN_CORE_LITERAL(0.0)) t = ALWAN_CORE_LITERAL(0.0);
+    if (t > ALWAN_CORE_LITERAL(1.0)) t = ALWAN_CORE_LITERAL(1.0);
+    r.v[1] = t;
+    return r;
+}
+
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_IS2D_FN_(alwan_is2d_sample_2d_alias)(ALWAN_IS2D_PARAMS_ int nu, int nv,
+                                                                        ALWAN_CORE_T x0, ALWAN_CORE_T y0,
+                                                                        ALWAN_CORE_T x1, ALWAN_CORE_T y1,
+                                                                        ALWAN_CORE_T u0, ALWAN_CORE_T u1) {
+    ALWAN_CORE_VEC3 out;
+    const int n = nu * nv;
+    const ALWAN_CORE_VEC2 pick = ALWAN_IS2D_FN_(alwan_is2d_alias_pick)(ALWAN_IS2D_ARGS_ n, u1);
+    const int c = ALWAN_CORE_FNVLIT(alwan_is2d_cell)(pick.v[0], n);
+    const int iv = c / nu;
+    const int iu = c - iv * nu;
+    out.v[0] = x0 + (((ALWAN_CORE_T)iu + u0) / (ALWAN_CORE_T)nu) * (x1 - x0);
+    out.v[1] = y0 + (((ALWAN_CORE_T)iv + pick.v[1]) / (ALWAN_CORE_T)nv) * (y1 - y0);
+    out.v[2] = ALWAN_IS2D_READ(c) * ALWAN_IS2D_READ(ALWAN_CORE_FNVLIT(alwan_is2d_off_anorm)(n));
+    return out;
+}
+
+/* ALIAS: the image's density at (x, y), 0 outside the domain. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_IS2D_FN_(alwan_is2d_pdf_2d_alias)(ALWAN_IS2D_PARAMS_ int nu, int nv,
+                                                                  ALWAN_CORE_T x0, ALWAN_CORE_T y0,
+                                                                  ALWAN_CORE_T x1, ALWAN_CORE_T y1,
+                                                                  ALWAN_CORE_T x, ALWAN_CORE_T y) {
+    const ALWAN_CORE_T tx = (x - x0) / (x1 - x0);
+    const ALWAN_CORE_T ty = (y - y0) / (y1 - y0);
+    int iu, iv;
+    if (!(tx >= ALWAN_CORE_LITERAL(0.0) && tx <= ALWAN_CORE_LITERAL(1.0) &&
+          ty >= ALWAN_CORE_LITERAL(0.0) && ty <= ALWAN_CORE_LITERAL(1.0))) return ALWAN_CORE_LITERAL(0.0);
+    iu = ALWAN_CORE_FNVLIT(alwan_is2d_cell)(tx * (ALWAN_CORE_T)nu, nu);
+    iv = ALWAN_CORE_FNVLIT(alwan_is2d_cell)(ty * (ALWAN_CORE_T)nv, nv);
+    return ALWAN_IS2D_READ(iv * nu + iu) * ALWAN_IS2D_READ(ALWAN_CORE_FNVLIT(alwan_is2d_off_anorm)(nu * nv));
+}
+
 /* The (u0, u1) that turns into (x, y), or (-1, -1) outside the domain. */
 ALWAN_INLINE ALWAN_CORE_VEC2 ALWAN_IS2D_FN_(alwan_is2d_invert_2d_search)(ALWAN_IS2D_PARAMS_ int nu, int nv,
                                                                          ALWAN_CORE_T x0, ALWAN_CORE_T y0,

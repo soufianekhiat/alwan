@@ -48,6 +48,40 @@ static void ALWAN_CORE_FNLIT(alwan__is2d_inverse)(ALWAN_CORE_T *dst, ALWAN_CORE_
     }
 }
 
+/* Vose's alias table over the n weights at w (sum total), in double whatever the
+ * precision: q_i = w_i n / total; each small q_i (below 1) is topped up from a large
+ * one, which it names as its alias. What is left once one list empties is 1 up to
+ * rounding and keeps its own cell. prob and idx are written as values. */
+static alwan_status ALWAN_CORE_FNLIT(alwan__is2d_alias)(ALWAN_CORE_T *prob, ALWAN_CORE_T *idx, ALWAN_CORE_T const *w,
+                                                        int n) {
+    double *q = (double *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n, sizeof(double)), sizeof(double));
+    int *small = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n, sizeof(int)), sizeof(int));
+    int *large = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n, sizeof(int)), sizeof(int));
+    double total = 0.0;
+    int ns = 0, nl = 0, i;
+    if (!q || !small || !large) {
+        ALWAN_FREE(q); ALWAN_FREE(small); ALWAN_FREE(large);
+        return ALWAN_E_NOMEM;
+    }
+    for (i = 0; i < n; i++) total += (double)w[i];
+    for (i = 0; i < n; i++) {
+        q[i] = (double)w[i] * (double)n / total;
+        if (q[i] < 1.0) small[ns++] = i; else large[nl++] = i;
+    }
+    while (ns > 0 && nl > 0) {
+        int const l = small[--ns];
+        int const g = large[--nl];
+        prob[l] = (ALWAN_CORE_T)q[l];
+        idx[l] = (ALWAN_CORE_T)g;
+        q[g] = (q[g] + q[l]) - 1.0;
+        if (q[g] < 1.0) small[ns++] = g; else large[nl++] = g;
+    }
+    while (nl > 0) { int const g = large[--nl]; prob[g] = ALWAN_CORE_LITERAL(1.0); idx[g] = (ALWAN_CORE_T)g; }
+    while (ns > 0) { int const l = small[--ns]; prob[l] = ALWAN_CORE_LITERAL(1.0); idx[l] = (ALWAN_CORE_T)l; }
+    ALWAN_FREE(q); ALWAN_FREE(small); ALWAN_FREE(large);
+    return ALWAN_OK;
+}
+
 alwan_status ALWAN_CORE_FNLIT(alwan_importance_sampling_2d_prepare)(ALWAN_CORE_FNLIT(alwan_importance_sampling_2d) **out,
                                                                    ALWAN_CORE_T const *image, size_t row_stride,
                                                                    size_t width, size_t height,
@@ -64,7 +98,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_importance_sampling_2d_prepare)(ALWAN_CORE_F
     if (!out) return ALWAN_E_INVALID;
     *out = NULL;
     if (!image || width == 0 || height == 0) return ALWAN_E_INVALID;
-    if (mode != ALWAN_IMPORTANCE_SAMPLING_2D_DIRECT && mode != ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH) return ALWAN_E_INVALID;
+    if (mode != ALWAN_IMPORTANCE_SAMPLING_2D_DIRECT && mode != ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH &&
+        mode != ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS) return ALWAN_E_INVALID;
     if (width > 0x7fffffffu / sizeof(ALWAN_CORE_T)) return ALWAN_E_RANGE;
     if (row_stride == 0) row_stride = width * sizeof(ALWAN_CORE_T);
     if (row_stride < width * sizeof(ALWAN_CORE_T)) return ALWAN_E_INVALID;
@@ -92,6 +127,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_importance_sampling_2d_prepare)(ALWAN_CORE_F
         if ((ru + 1) > 0x7fffffffu / height) return ALWAN_E_RANGE;
         count = height * (ru + 1) + rv + 1;
         if (count > 0x7fffffffu) return ALWAN_E_RANGE;
+    } else if (mode == ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS) {
+        /* the alias of a cell is held as a value: exact below 2^24 in single precision */
+        if (width * height > (sizeof(ALWAN_CORE_T) == 4 ? 16777216u : 0x7fffffffu / 3u)) return ALWAN_E_RANGE;
+        count = 3 * width * height + 1;
     } else {
         count = search_count;
     }
@@ -151,6 +190,25 @@ alwan_status ALWAN_CORE_FNLIT(alwan_importance_sampling_2d_prepare)(ALWAN_CORE_F
     s->count = count;
     if (mode == ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH) {
         s->table = work;
+    } else if (mode == ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS) {
+        int const n = nu * nv;
+        alwan_status st;
+        s->table = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(count, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+        if (!s->table) {
+            ALWAN_FREE(work);
+            ALWAN_FREE(s);
+            return ALWAN_E_NOMEM;
+        }
+        memcpy(s->table, work, (size_t)n * sizeof(ALWAN_CORE_T));
+        s->table[ALWAN_CORE_FNVLIT(alwan_is2d_off_anorm)(n)] = work[ALWAN_CORE_FNVLIT(alwan_is2d_off_norm)(nu, nv)];
+        st = ALWAN_CORE_FNLIT(alwan__is2d_alias)(s->table + ALWAN_CORE_FNVLIT(alwan_is2d_off_aprob)(n),
+                                                 s->table + ALWAN_CORE_FNVLIT(alwan_is2d_off_aidx)(n), work, n);
+        ALWAN_FREE(work);
+        if (st != ALWAN_OK) {
+            ALWAN_FREE(s->table);
+            ALWAN_FREE(s);
+            return st;
+        }
     } else {
         int const c_off = ALWAN_CORE_FNVLIT(alwan_is2d_off_cdf)(nu, nv);
         int r;
@@ -186,6 +244,19 @@ void ALWAN_CORE_FNLIT(alwan_importance_sampling_2d_destroy)(ALWAN_CORE_FNLIT(alw
 static void ALWAN_CORE_FNLIT(alwan__is2d_sample_one)(ALWAN_CORE_T *x, ALWAN_CORE_T *y, ALWAN_CORE_T *pdf, size_t *off,
                                                      ALWAN_IS2D_S const *s, ALWAN_CORE_T u0, ALWAN_CORE_T u1) {
     ALWAN_CORE_VEC3 r;
+    if (s->mode == ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS) {
+        r = ALWAN_CORE_FNVLIT(alwan_is2d_sample_2d_alias)(s->table, s->nu, s->nv, s->x0, s->y0, s->x1, s->y1, u0, u1);
+        if (off) {
+            ALWAN_CORE_VEC2 const pick = ALWAN_CORE_FNVLIT(alwan_is2d_alias_pick)(s->table, s->nu * s->nv, u1);
+            int const c = ALWAN_CORE_FNVLIT(alwan_is2d_cell)(pick.v[0], s->nu * s->nv);
+            off[0] = (size_t)(c % s->nu);
+            off[1] = (size_t)(c / s->nu);
+        }
+        *x = r.v[0];
+        *y = r.v[1];
+        *pdf = r.v[2];
+        return;
+    }
     if (s->mode == ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH) {
         r = ALWAN_CORE_FNVLIT(alwan_is2d_sample_2d_search)(s->table, s->nu, s->nv, s->x0, s->y0, s->x1, s->y1, u0, u1);
     } else {
@@ -255,7 +326,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_importance_sampling_2d_pdf)(ALWAN_CORE_T *pd
                                                                ALWAN_CORE_FNLIT(alwan_importance_sampling_2d) const *sampler) {
     ALWAN_IS2D_S const *s = (ALWAN_IS2D_S const *)sampler;
     if (!pdf_out || !xy || !s) return ALWAN_E_INVALID;
-    if (s->mode == ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH) {
+    if (s->mode == ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS) {
+        *pdf_out = ALWAN_CORE_FNVLIT(alwan_is2d_pdf_2d_alias)(s->table, s->nu, s->nv, s->x0, s->y0, s->x1, s->y1,
+                                                              xy->v[0], xy->v[1]);
+    } else if (s->mode == ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH) {
         *pdf_out = ALWAN_CORE_FNVLIT(alwan_is2d_pdf_2d_search)(s->table, s->nu, s->nv, s->x0, s->y0, s->x1, s->y1,
                                                                xy->v[0], xy->v[1]);
     } else {
@@ -270,6 +344,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_importance_sampling_2d_invert)(ALWAN_CORE_VE
     ALWAN_IS2D_S const *s = (ALWAN_IS2D_S const *)sampler;
     ALWAN_CORE_VEC2 r;
     if (!u_out || !xy || !s) return ALWAN_E_INVALID;
+    /* the alias map scatters u: no monotone inverse to give */
+    if (s->mode == ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS) return ALWAN_E_INVALID;
     if (s->mode == ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH) {
         r = ALWAN_CORE_FNVLIT(alwan_is2d_invert_2d_search)(s->table, s->nu, s->nv, s->x0, s->y0, s->x1, s->y1,
                                                            xy->v[0], xy->v[1]);

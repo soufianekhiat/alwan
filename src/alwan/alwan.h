@@ -3222,6 +3222,17 @@ alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,
  *   ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH  the CDFs, each inverted by bisection: O(log n) a
  *                                        sample, exact, every point inside a pixel of non-zero
  *                                        weight, pdf = pixel / (sum of pixels x pixel area).
+ *   ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS   an alias table over all the pixels (Walker 1977,
+ *                                        Vose 1991): O(1) a sample and exact like SEARCH, the
+ *                                        same pdf to the bit. u1 picks the pixel and what is
+ *                                        left of it after the pick places the point down the
+ *                                        pixel (log2(width x height) fewer bits than u1 had);
+ *                                        u0 places it across. The map from u to the point is
+ *                                        not monotone, so a stratified or low-discrepancy u
+ *                                        does not stay stratified, and invert is
+ *                                        ALWAN_E_INVALID. At most 2^24 pixels in single
+ *                                        precision (the alias is held as a value), else
+ *                                        ALWAN_E_RANGE.
  *
  * The image: width x height non-negative finite weights, row_stride bytes apart (0 for
  * packed); a negative or non-finite weight, or an image whose weights are all 0, is
@@ -3229,13 +3240,14 @@ alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,
  * at y0. The tables hold fewer than 2^31 elements, else ALWAN_E_RANGE.
  *
  * Determinism: only + - * / and comparisons, so the det build is the ordinary one bit for
- * bit. Memory: SEARCH keeps about 2 width x height elements, DIRECT height x
+ * bit. Memory: SEARCH keeps about 2 width x height elements, ALIAS 3, DIRECT height x
  * (resolution_x + 1). alwan_importance_sampling_2d_get_layout_{T} hands back the table and
  * its dimensions for a shader, which samples it with the same functions through the accessor
  * of core/alwan_importance_sampling_reader.inc. Suite 280. */
 typedef enum {
     ALWAN_IMPORTANCE_SAMPLING_2D_DIRECT = 0,
-    ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH = 1
+    ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH = 1,
+    ALWAN_IMPORTANCE_SAMPLING_2D_ALIAS = 2
 } alwan_importance_sampling_2d_mode;
 
 typedef struct {
@@ -3318,6 +3330,154 @@ alwan_status alwan_importance_sampling_2d_get_layout_f32(alwan_importance_sampli
                                                      alwan_importance_sampling_2d_f32 const *sampler);
 alwan_status alwan_importance_sampling_2d_get_layout_f64(alwan_importance_sampling_2d_layout_f64 *out,
                                                      alwan_importance_sampling_2d_f64 const *sampler);
+
+/* Summed-area table (Crow 1984): built once from an image, it gives the sum of
+ * any axis-aligned rectangle in O(1), four reads, whatever the rectangle's size.
+ *
+ * create: width x height pixels of 1 to 4 channels in any pixel format, row_stride bytes
+ * apart (0 for packed). The table is double. U8 and U16 are summed as their integer
+ * codes, exactly while a sum stays below 2^53, and reported in the format's [0, 1]
+ * units (code / 255, code / 65535). F16, F32 and F64 have each channel's mean,
+ * rounded to a multiple of 1/256, taken off before summing, so a rectangle's four
+ * reads cancel less (suite 281 measures how much) and an image holding integers is
+ * still summed exactly. A non-finite value is ALWAN_E_INVALID; a table of 2^31
+ * elements or more ALWAN_E_RANGE.
+ *
+ * sum / mean:  the pixels [x0, x1) x [y0, y1], one value per channel; 0 <= x0 <= x1 <= width
+ *              and 0 <= y0 <= y1 <= height, else ALWAN_E_RANGE; mean of an empty rectangle
+ *              is ALWAN_E_RANGE.
+ * integrate:   continuous bounds in pixel units, the image constant on each pixel: the
+ *              integral over [x0, x1] x [y0, y1], partial pixels counted by the area they
+ *              cover. Exact up to rounding (the table blended bilinearly between corners
+ *              is the image's integral). Bounds outside [0, width] x [0, height] or
+ *              reversed are ALWAN_E_RANGE.
+ * box_mean:    every pixel the mean over the (2 radius_x + 1) x (2 radius_y + 1) window
+ *              around it, cut at the image's edges: a box filter at any radius in O(1) a
+ *              pixel. out holds width x height x channels values, out_row_stride bytes
+ *              apart (0 for packed).
+ * get_layout:  the table for a shader, which queries it with the functions of
+ *              core/alwan_summed_area_reader.inc: corner (x, y), channel c at
+ *              ((y (width + 1)) + x) channels + c, then channels offsets and a divisor
+ *              (core/alwan_summed_area_core.inc). Suite 281. */
+typedef struct alwan_summed_area_table_s alwan_summed_area_table;
+
+typedef struct {
+    alwan_f64 const *table;
+    size_t table_count;
+    int width, height, channels;
+} alwan_summed_area_table_layout;
+
+alwan_status alwan_summed_area_table_create(alwan_summed_area_table **out, void const *image, size_t row_stride,
+                                            size_t width, size_t height, size_t channels, alwan_pixel_format format,
+                                            alwan_ctx *ctx);
+void alwan_summed_area_table_destroy(alwan_summed_area_table *table, alwan_ctx *ctx);
+alwan_status alwan_summed_area_table_sum(alwan_f64 *sum_out, size_t x0, size_t y0, size_t x1, size_t y1,
+                                         alwan_summed_area_table const *table);
+alwan_status alwan_summed_area_table_mean(alwan_f64 *mean_out, size_t x0, size_t y0, size_t x1, size_t y1,
+                                          alwan_summed_area_table const *table);
+alwan_status alwan_summed_area_table_integrate(alwan_f64 *integral_out, alwan_f64 x0, alwan_f64 y0, alwan_f64 x1,
+                                               alwan_f64 y1, alwan_summed_area_table const *table);
+alwan_status alwan_summed_area_table_box_mean_f32(alwan_f32 *out, size_t out_row_stride, size_t radius_x, size_t radius_y,
+                                                  alwan_summed_area_table const *table);
+alwan_status alwan_summed_area_table_box_mean_f64(alwan_f64 *out, size_t out_row_stride, size_t radius_x, size_t radius_y,
+                                                  alwan_summed_area_table const *table);
+alwan_status alwan_summed_area_table_get_layout(alwan_summed_area_table_layout *out, alwan_summed_area_table const *table);
+
+/* Environment maps, equirectangular. A map position (x, y) in [0, 1]^2 is the direction
+ * at azimuth phi = 2 pi x and polar angle theta = pi y from +Y:
+ *     (sin theta cos phi, cos theta, sin theta sin phi)
+ * so the map's top row looks up (+Y). A density p over the map's area is the solid-angle
+ * density p / (2 pi^2 sin theta).
+ *
+ * A lobe is what light is weighed by at a surface: COSINE, max(0, axis . w) (axis the
+ * normal: irradiance); PHONG, max(0, axis . w)^exponent (exponent 0 for 1). The axis
+ * need not be unit length but must not be 0. Suite 282. */
+typedef enum {
+    ALWAN_ENV_LOBE_COSINE = 0,
+    ALWAN_ENV_LOBE_PHONG = 1
+} alwan_env_lobe_kind;
+
+typedef struct {
+    alwan_env_lobe_kind kind;
+    alwan_f32 axis_x, axis_y, axis_z;
+    alwan_f32 exponent;
+} alwan_env_lobe_f32;
+typedef struct {
+    alwan_env_lobe_kind kind;
+    alwan_f64 axis_x, axis_y, axis_z;
+    alwan_f64 exponent;
+} alwan_env_lobe_f64;
+
+/* The direction of a map position (x, y in [0, 1], else ALWAN_E_RANGE), and the map
+ * position of a direction (any non-zero length). */
+alwan_status alwan_env_equirect_direction_f32(alwan_vec3_f32 *dir_out, alwan_vec2_f32 const *xy);
+alwan_status alwan_env_equirect_direction_f64(alwan_vec3_f64 *dir_out, alwan_vec2_f64 const *xy);
+alwan_status alwan_env_equirect_position_f32(alwan_vec2_f32 *xy_out, alwan_vec3_f32 const *dir);
+alwan_status alwan_env_equirect_position_f64(alwan_vec2_f64 *xy_out, alwan_vec3_f64 const *dir);
+
+/* The weights to hand alwan_importance_sampling_2d_prepare for a map: each pixel's
+ * luminance x sin theta at its centre (the solid angle it covers), times, with a lobe,
+ * the lobe's mean over the pixel (a 3 x 3 midpoint rule by solid angle) floored at 1/64
+ * of an upper bound of the lobe there. The floor, so that a pixel the lobe reaches
+ * anywhere keeps a positive weight and estimates stay unbiased. Product sampling at pixel
+ * resolution: one prepare per normal, O(pixels), the lowest variance (suite 282). lobe
+ * NULL gives the light's own weights. luminance non-negative and finite. */
+alwan_status alwan_env_weight_equirect_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *luminance,
+                                           size_t row_stride, size_t width, size_t height, alwan_env_lobe_f32 const *lobe);
+alwan_status alwan_env_weight_equirect_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *luminance,
+                                           size_t row_stride, size_t width, size_t height, alwan_env_lobe_f64 const *lobe);
+
+/* The hierarchical product sampler: prepared once per map, it samples light x lobe for
+ * any lobe in O(log pixels) a sample, after Clarberg, Jarosz, Akenine-Moller and Jensen
+ * (2005) and Clarberg and Akenine-Moller (2008). prepare sums the map's weights
+ * (luminance x sin theta) into a pyramid, the map padded with zeros to powers of two.
+ * sample walks down it, weighing the children of each cell by their sum times the lobe's
+ * mean over the child's cell, floored at 1/64 of an upper bound of the lobe there, u0
+ * choosing across and u1 down, and returns the direction, its map position (xy_out may
+ * be NULL) and its density against solid angle: the product of the choices'
+ * probabilities, exact. The weights shape where samples go but never enter the density,
+ * and they are positive wherever the lobe is, so estimates are unbiased. A coarse level
+ * weighs a cell as if its light were spread evenly, so a bright source the lobe cannot
+ * see sharing a cell with dim light it can costs variance, not bias. A sample can come back empty, pdf 0, when a coarse level's
+ * bound saw light that no finer cell both holds and faces: it is a lost sample, not a
+ * bias (suite 282 counts them). lobe NULL samples the light alone. pdf gives the density
+ * the sampler draws a direction with, for multiple importance sampling. At most 32768 x
+ * 32768 pixels. get_layout hands the pyramid to a shader, which samples it with
+ * core/alwan_env_sampling_reader.inc. */
+typedef struct alwan_env_product_sampler_f32_s alwan_env_product_sampler_f32;
+typedef struct alwan_env_product_sampler_f64_s alwan_env_product_sampler_f64;
+
+typedef struct {
+    alwan_f32 const *table;
+    size_t table_count;
+    int width, height, log2_width, log2_height;
+} alwan_env_product_sampler_layout_f32;
+typedef struct {
+    alwan_f64 const *table;
+    size_t table_count;
+    int width, height, log2_width, log2_height;
+} alwan_env_product_sampler_layout_f64;
+
+alwan_status alwan_env_product_sampler_prepare_f32(alwan_env_product_sampler_f32 **out, alwan_f32 const *luminance,
+                                                   size_t row_stride, size_t width, size_t height, alwan_ctx *ctx);
+alwan_status alwan_env_product_sampler_prepare_f64(alwan_env_product_sampler_f64 **out, alwan_f64 const *luminance,
+                                                   size_t row_stride, size_t width, size_t height, alwan_ctx *ctx);
+void alwan_env_product_sampler_destroy_f32(alwan_env_product_sampler_f32 *sampler, alwan_ctx *ctx);
+void alwan_env_product_sampler_destroy_f64(alwan_env_product_sampler_f64 *sampler, alwan_ctx *ctx);
+alwan_status alwan_env_product_sampler_sample_f32(alwan_vec3_f32 *dir_out, alwan_vec2_f32 *xy_out, alwan_f32 *pdf_out,
+                                                  alwan_vec2_f32 const *u, alwan_env_lobe_f32 const *lobe,
+                                                  alwan_env_product_sampler_f32 const *sampler);
+alwan_status alwan_env_product_sampler_sample_f64(alwan_vec3_f64 *dir_out, alwan_vec2_f64 *xy_out, alwan_f64 *pdf_out,
+                                                  alwan_vec2_f64 const *u, alwan_env_lobe_f64 const *lobe,
+                                                  alwan_env_product_sampler_f64 const *sampler);
+alwan_status alwan_env_product_sampler_pdf_f32(alwan_f32 *pdf_out, alwan_vec3_f32 const *dir, alwan_env_lobe_f32 const *lobe,
+                                               alwan_env_product_sampler_f32 const *sampler);
+alwan_status alwan_env_product_sampler_pdf_f64(alwan_f64 *pdf_out, alwan_vec3_f64 const *dir, alwan_env_lobe_f64 const *lobe,
+                                               alwan_env_product_sampler_f64 const *sampler);
+alwan_status alwan_env_product_sampler_get_layout_f32(alwan_env_product_sampler_layout_f32 *out,
+                                                      alwan_env_product_sampler_f32 const *sampler);
+alwan_status alwan_env_product_sampler_get_layout_f64(alwan_env_product_sampler_layout_f64 *out,
+                                                      alwan_env_product_sampler_f64 const *sampler);
 
 /* Morphology: grey-level erosion and dilation and their composites, for cleaning a
  * selection mask or a matte, and for pulling out detail smaller than a shape. Each of 1 to
