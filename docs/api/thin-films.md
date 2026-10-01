@@ -88,3 +88,4 @@ film is mostly water, so this is its index.
 
 - [Spectral](spectral.md): SPDs and their integration
 - [Atmospheric Optics](atmosphere.md): Rayleigh scattering
+- [Thin-film iridescence](iridescence.md): the colour of a film as a microfacet Fresnel term, without spectral sampling

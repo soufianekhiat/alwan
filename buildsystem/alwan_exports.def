@@ -1125,6 +1125,21 @@ EXPORTS
     alwan_iptch_to_ipt_f64
     alwan_iptch_to_ipt_f64_map_interleave
     alwan_iptch_to_ipt_f64_map_planar
+    alwan_iridescence_create
+    alwan_iridescence_destroy
+    alwan_iridescence_fresnel_rgb_f32
+    alwan_iridescence_fresnel_rgb_f64
+    alwan_iridescence_get_info
+    alwan_iridescence_ggx_f32
+    alwan_iridescence_ggx_f64
+    alwan_iridescence_reflectance_f32
+    alwan_iridescence_reflectance_f64
+    alwan_iridescence_sensitivity_f32
+    alwan_iridescence_sensitivity_f64
+    alwan_iridescence_table_f32
+    alwan_iridescence_table_f64
+    alwan_iridescent_film_from_materials
+    alwan_iridescent_films_from_materials
     alwan_is_within_pointer_gamut_f32
     alwan_is_within_pointer_gamut_f64
     alwan_is_within_pointer_gamut_lab_f32

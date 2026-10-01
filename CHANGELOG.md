@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### Added: thin-film iridescence for rendering
+
+- **`alwan_iridescence_*`**: the colour of a lossless film over a dielectric or conducting
+  base (soap on water, oil on asphalt, the oxide on titanium, a lens coating) as the Fresnel
+  term of a microfacet BRDF, after Belcour and Barla 2017 ("A Practical Extension to
+  Microfacet Theory for the Modeling of Varying Iridescence"). The Airy reflectance is
+  expanded as a Fourier series in the film's phase and each term integrated against the
+  CMFs in closed form, so the colour needs no spectral sampling and does not alias on a
+  thick film (a 6 um film: within 8.4e-7 of the spectral integral at 0.02 nm, where a 10 nm
+  sampling is 1.2e-2 off). alwan's own code from the paper's equations: in place of their
+  Gaussian fit, the exact Fourier transform of the CMFs times the illuminant, tabulated per
+  space, illuminant and observer (`alwan_iridescence_create`).
+- **Spectral bands** (`bands` in the parameters), an extension of the paper: the spectrum
+  split into bands of equal colour weight, each with its own table and its own indices, so
+  a dispersive film keeps its colour. 120 nm of TiO2 on titanium: 0.16 off the exact
+  dispersive colour with one band, 0.0005 with 16.
+- The exact Airy spectrum, s, p or unpolarised, evanescent films included
+  (`alwan_iridescence_reflectance_{T}`); the colour (`alwan_iridescence_fresnel_rgb_{T}`);
+  a GGX BRDF with the iridescent Fresnel term (`alwan_iridescence_ggx_{T}`); a 2D
+  cosine-by-thickness table for real time (`alwan_iridescence_table_{T}`); the films' indices
+  from the refractive database (`alwan_iridescent_film(s)_from_materials`). The series and
+  the table lookup are in `core/alwan_iridescence_reader.inc` behind an accessor, so a
+  shader evaluates the same arithmetic (dxc and fxc). Suite 288.
+
 ### Added: wavelength sampling and a spectral film for spectral rendering
 
 - **Wavelength samplers (`alwan_wavelength_sampler_*_{T}`)** over any range (360 to 830 nm

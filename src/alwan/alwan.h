@@ -11559,6 +11559,148 @@ alwan_status alwan_refractive_slab_rgb_f64(alwan_rgb_f64 *reflect_rgb, alwan_rgb
 alwan_status alwan_refractive_slab_rgb_f32(alwan_rgb_f32 *reflect_rgb, alwan_rgb_f32 *transmit_rgb, size_t material, alwan_refractive_table const *table, float thickness_nm, alwan_interp_method interpolation, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
+ * Thin-film iridescence for rendering (Belcour and Barla 2017, "A Practical Extension to
+ * Microfacet Theory for the Modeling of Varying Iridescence"): the colour of a dielectric
+ * film over a dielectric or conducting base, soap on water, oil on asphalt, the oxide on
+ * titanium or a camera lens's coating, as the Fresnel term of a microfacet BRDF. The Airy
+ * reflectance of the film is a Fourier series in its round-trip phase; each term is
+ * integrated against the colour matching functions in closed form through a table of their
+ * Fourier transform, so the colour needs no spectral sampling and does not alias on a thick
+ * film, where a spectrum sampled every few nanometres does. docs/api/iridescence.md.
+ * ---------------------------------------------------------------- */
+
+/* The film: light comes from the ambient (real index, 0 for 1), crosses a lossless film of
+ * index film_n and thickness_nm, and reflects off the base, base_n + i base_k (k 0 for a
+ * dielectric). Within a spectral band the indices are constant: the paper's model (one
+ * band), and what lets the series be integrated in closed form. A table of several bands
+ * takes one film per band, each with that band's indices and all of one thickness, so a
+ * dispersive film keeps its colour; alwan_iridescent_films_from_materials fills them from
+ * the refractive database at the bands' wavelengths. The exact dispersive spectrum of a
+ * film of database materials is alwan_refractive_stack with one layer. */
+typedef struct {
+    double ambient_n;
+    double film_n;
+    double thickness_nm;
+    double base_n;
+    double base_k;
+} alwan_iridescent_film;
+
+/* The sensitivity table, built once per space, illuminant and observer: the Fourier
+ * transform in wavenumber of the three colour weights (the CMFs times the illuminant,
+ * normalised so a reflectance of 1 has Y = 1, adapted by Bradford to the space's white as
+ * alwan_reflectance_to_rgb does, then in the space's linear RGB), at optical path
+ * differences 0, opd_step_nm, ... up to opd_max_nm, and 0 past it. The CMFs times the
+ * illuminant are taken as piecewise linear in wavenumber between the CMFs' 1 nm samples
+ * and integrated exactly on each segment, so a term at a large path difference averages
+ * to its true, small value rather than the aliased value of a sampled sum. Zero fields
+ * take the defaults. */
+typedef struct {
+    double opd_max_nm;     /* 0: 40000 (the first term of a 15 um film of index 1.33 at normal incidence) */
+    double opd_step_nm;    /* 0: 2 */
+    int max_terms;         /* 0: 64, at most 256: terms of the series */
+    double tolerance;      /* 0: 1e-7: the series stops at the first term whose amplitude is below it */
+    int bands;             /* 0: 1, at most ALWAN_IRIDESCENCE_MAX_BANDS: spectral bands of equal colour weight
+                            * (x + y + z under the illuminant), each with its own table and its own indices */
+} alwan_iridescence_params;
+
+#define ALWAN_IRIDESCENCE_MAX_BANDS 32
+
+typedef struct alwan_iridescence_s alwan_iridescence;
+
+/* What a shader needs to read the table with core/alwan_iridescence_reader.inc. */
+typedef struct {
+    size_t count;          /* entries per band */
+    size_t bands;
+    double opd_step_nm;
+    int max_terms;
+    double tolerance;
+    double nu[ALWAN_IRIDESCENCE_MAX_BANDS];             /* each band's demodulation wavenumber (1 / nm), its weighted mean */
+    double wavelength_nm[ALWAN_IRIDESCENCE_MAX_BANDS];  /* 1 / nu: where a band's indices are sampled */
+    double white_xyz[3];   /* the illuminant's white, Y = 1 */
+    double white_rgb[3];   /* the same in the space: (1, 1, 1) to rounding */
+} alwan_iridescence_info;
+
+/* ALWAN_E_INVALID for a NULL or a parameter out of range, ALWAN_E_RANGE for a table past
+ * 2,000,001 entries; the space, illuminant and observer's own errors. ctx may be NULL. */
+alwan_status alwan_iridescence_create(alwan_iridescence **out, alwan_rgb_space space, alwan_illuminant illuminant,
+                                      alwan_observer_type observer, alwan_iridescence_params const *params, alwan_ctx *ctx);
+void alwan_iridescence_destroy(alwan_iridescence *s, alwan_ctx *ctx);
+alwan_status alwan_iridescence_get_info(alwan_iridescence_info *info, alwan_iridescence const *s);
+
+/* The table for a shader: bands * count * 6 values, band b's entry j at (b * count + j) * 6,
+ * Re, Im of channel 0, 1, 2, stored demodulated by the band's nu
+ * (core/alwan_iridescence_reader.inc). xyz 0: the space's RGB; non-zero: XYZ, unadapted.
+ * ALWAN_E_RANGE when capacity is below bands * count * 6. */
+alwan_status alwan_iridescence_sensitivity_f32(alwan_f32 *out, size_t capacity, int xyz, alwan_iridescence const *s);
+alwan_status alwan_iridescence_sensitivity_f64(alwan_f64 *out, size_t capacity, int xyz, alwan_iridescence const *s);
+
+/* One film's Airy reflectance at each wavelength (nm) at the incidence cosine cos_theta in
+ * [0, 1], exact, constant indices: the spectrum the colour functions integrate. Past total
+ * reflection at the film's top the wave in the film is evanescent and a thin film still
+ * lets light through to the base (frustrated total internal reflection), which this
+ * includes. ALWAN_E_INVALID for a NULL, a NaN or an index that is not positive;
+ * ALWAN_E_RANGE for a cosine outside [0, 1] or a wavelength that is not positive. */
+alwan_status alwan_iridescence_reflectance_f32(alwan_f32 *R_out, alwan_f32 const *wavelengths_nm, size_t count, alwan_f32 cos_theta,
+                                               alwan_iridescent_film const *film, alwan_polarization polarization);
+alwan_status alwan_iridescence_reflectance_f64(alwan_f64 *R_out, alwan_f64 const *wavelengths_nm, size_t count, alwan_f64 cos_theta,
+                                               alwan_iridescent_film const *film, alwan_polarization polarization);
+
+/* The film's reflected colour at the incidence cosine, unpolarised: the iridescent Fresnel
+ * term F, in the table's space (rgb_out) and as XYZ before adaptation (xyz_out); either may
+ * be NULL. film holds one film per band of the table (one for a one-band table), all of
+ * one thickness (ALWAN_E_INVALID otherwise). A film of zero thickness is the bare base's
+ * Fresnel reflectance. The series adds terms until one falls below the table's tolerance.
+ * Past total reflection at the film's top nothing oscillates and the series does not
+ * apply: each band's share is the exact Airy reflectance at the band's wavelength times
+ * the band's white. */
+alwan_status alwan_iridescence_fresnel_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyz_f32 *xyz_out, alwan_f32 cos_theta,
+                                               alwan_iridescent_film const *film, alwan_iridescence const *s);
+alwan_status alwan_iridescence_fresnel_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_xyz_f64 *xyz_out, alwan_f64 cos_theta,
+                                               alwan_iridescent_film const *film, alwan_iridescence const *s);
+
+/* A GGX microfacet BRDF with the iridescent Fresnel term (film: one per band):
+ * F(h . v) D(n . h) G2(n . v, n . l) / (4 (n . v)(n . l)), with D the GGX distribution and
+ * G2 the height-correlated Smith term of the image-based-lighting functions (alpha the GGX
+ * width, the square of perceptual roughness). 0 when n . v, n . l or h . v is not
+ * positive. */
+alwan_status alwan_iridescence_ggx_f32(alwan_rgb_f32 *out, alwan_f32 nov, alwan_f32 nol, alwan_f32 noh, alwan_f32 voh, alwan_f32 alpha,
+                                       alwan_iridescent_film const *film, alwan_iridescence const *s);
+alwan_status alwan_iridescence_ggx_f64(alwan_rgb_f64 *out, alwan_f64 nov, alwan_f64 nol, alwan_f64 noh, alwan_f64 voh, alwan_f64 alpha,
+                                       alwan_iridescent_film const *film, alwan_iridescence const *s);
+
+/* A table of the Fresnel term for real time: cos_count texels of the incidence cosine by
+ * thickness_count texels of film thickness over [thickness_min_nm, thickness_max_nm] (the
+ * films' own thickness is ignored; one film per band), three values a texel, row j at
+ * out + j * row_stride bytes, texel centres at (i + 0.5) / cos_count and
+ * thickness_min + (j + 0.5) / thickness_count of the range, as
+ * alwan_iridescence_table_lookup in core/alwan_iridescence_reader.inc reads it with
+ * t = (thickness - min) / (max - min). */
+alwan_status alwan_iridescence_table_f32(alwan_f32 *out, size_t row_stride, size_t cos_count, size_t thickness_count,
+                                         alwan_f32 thickness_min_nm, alwan_f32 thickness_max_nm, alwan_iridescent_film const *film,
+                                         alwan_iridescence const *s);
+alwan_status alwan_iridescence_table_f64(alwan_f64 *out, size_t row_stride, size_t cos_count, size_t thickness_count,
+                                         alwan_f64 thickness_min_nm, alwan_f64 thickness_max_nm, alwan_iridescent_film const *film,
+                                         alwan_iridescence const *s);
+
+/* A film's indices from the refractive database (or a caller's table when not NULL) at one
+ * wavelength (nm, 0 for 550), read with `interpolation`, edge values held outside a page's
+ * data. ALWAN_REFRACTIVE_VACUUM for an ambient of 1. ALWAN_E_RANGE when the ambient or the
+ * film absorbs (k above 0.01; a smaller k is dropped) or an index is not positive;
+ * ALWAN_E_NODATA without the database. */
+alwan_status alwan_iridescent_film_from_materials(alwan_iridescent_film *out, size_t ambient, alwan_refractive_table const *ambient_table,
+                                                  size_t film_material, alwan_refractive_table const *film_table, double thickness_nm,
+                                                  size_t base, alwan_refractive_table const *base_table, double wavelength_nm,
+                                                  alwan_interp_method interpolation);
+
+/* One film per band of the table, each at its band's wavelength (alwan_iridescence_info's
+ * wavelength_nm): the input alwan_iridescence_fresnel_rgb takes for a dispersive film.
+ * ALWAN_E_RANGE when capacity is below the table's band count. */
+alwan_status alwan_iridescent_films_from_materials(alwan_iridescent_film *out, size_t capacity, alwan_iridescence const *s, size_t ambient,
+                                                   alwan_refractive_table const *ambient_table, size_t film_material,
+                                                   alwan_refractive_table const *film_table, double thickness_nm, size_t base,
+                                                   alwan_refractive_table const *base_table, alwan_interp_method interpolation);
+
+/* ----------------------------------------------------------------
  * ACES Fixed Functions (RRT Components)
  * Reference: OpenColorIO, Academy Color Encoding System
  * ---------------------------------------------------------------- */

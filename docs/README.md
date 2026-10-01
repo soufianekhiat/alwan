@@ -76,6 +76,7 @@ Key entry points:
 - [`docs/api/refractive-index.md`](api/refractive-index.md)
 - [`docs/api/sky.md`](api/sky.md)
 - [`docs/api/dithering.md`](api/dithering.md)
+- [`docs/api/iridescence.md`](api/iridescence.md)
 - [`docs/api/ibl.md`](api/ibl.md)
 - [`docs/api/spectral-rendering.md`](api/spectral-rendering.md)
 - [`docs/api/chromatic-adaptation.md`](api/chromatic-adaptation.md)
