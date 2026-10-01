@@ -5819,6 +5819,215 @@ alwan_status alwan_spd_idt_training_f32(alwan_spd_f32 *out, size_t patch_index, 
 alwan_status alwan_spd_iso7589_tungsten_f64(alwan_spd_f64 *out, alwan_ctx *ctx);
 alwan_status alwan_spd_iso7589_tungsten_f32(alwan_spd_f32 *out, alwan_ctx *ctx);
 
+/* ASTM G173-03 reference solar spectral irradiance (NREL, SMARTS 2.9.2), W m^-2 nm^-1:
+ * the sun at the top of the atmosphere, global irradiance on a 37 degree tilted surface
+ * and direct plus circumsolar irradiance, both at AM1.5. Tabulated from 280 to 4000 nm
+ * every 0.5 nm to 400, 1 nm to 1700 and 5 nm beyond; out takes count samples from
+ * wavelength_min to wavelength_max, read linearly between the table's own (a 0.5 nm
+ * feature is lost on a coarser grid). ALWAN_E_RANGE outside 280-4000 nm. */
+typedef enum {
+    ALWAN_ASTM_G173_EXTRATERRESTRIAL = 0,
+    ALWAN_ASTM_G173_GLOBAL_TILT = 1,
+    ALWAN_ASTM_G173_DIRECT_CIRCUMSOLAR = 2
+} alwan_astm_g173_column;
+
+alwan_status alwan_spd_astm_g173_f64(alwan_spd_f64 *out, alwan_astm_g173_column column, alwan_f64 wavelength_min,
+                                     alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx);
+alwan_status alwan_spd_astm_g173_f32(alwan_spd_f32 *out, alwan_astm_g173_column column, alwan_f32 wavelength_min,
+                                     alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx);
+
+/* ----------------------------------------------------------------
+ * Physical skies: spectral sky and sun radiance for a sun position
+ *
+ * Three models, chosen when the sky is made:
+ *   ALWAN_SKY_PREETHAM      Preetham, Shirley and Smits 1999: the Perez distribution of
+ *                           luminance and chromaticity for a turbidity, made spectral with
+ *                           the CIE daylight basis; the sun is the paper's extraterrestrial
+ *                           spectrum through its Appendix A.1 transmittances (Rayleigh,
+ *                           aerosol, 0.0035 m of ozone, mixed gases, 0.02 m of water vapour,
+ *                           with Table 2's coefficients per metre). Sky 360-830 nm, sun
+ *                           380-750 nm.
+ *   ALWAN_SKY_HOSEK_WILKIE  Hosek and Wilkie 2012 with the 2013 solar radiance function,
+ *                           a port of their reference implementation 1.4a (BSD-3-Clause,
+ *                           THIRD_PARTY_NOTICES.md): eleven bands 320-720 nm, interpolated
+ *                           as the reference does (fading to 0 between 720 and 760 nm), for
+ *                           turbidity 1-10, a ground albedo and a sun elevation 0-90 degrees.
+ *                           Radiance in W m^-2 sr^-1 nm^-1.
+ *   ALWAN_SKY_BRUNETON      Bruneton 2017, Precomputed Atmospheric Scattering: a New
+ *                           Implementation, ported (BSD-3-Clause, THIRD_PARTY_NOTICES.md):
+ *                           transmittance, single and multiple scattering and irradiance
+ *                           precomputed for an atmosphere of Rayleigh, Mie and ozone layers
+ *                           over a spherical ground, at several wavelengths, then read for
+ *                           any view, sun and altitude, below the horizon too. The solar
+ *                           spectrum is ASTM G173's extraterrestrial column averaged over
+ *                           10 nm bins, as Bruneton's demo has it.
+ *
+ * Directions are the environment maps' (alwan_env_*): +Y is the zenith, a map position
+ * (x, y) looks along azimuth 2 pi x and polar angle pi y. The sun is at elevation e above
+ * the horizon and map azimuth phi: (cos e cos phi, sin e, cos e sin phi).
+ *
+ * XYZ is the radiance integrated against the observer's CMFs, unscaled: 683 Y is the
+ * luminance in cd/m^2 (as Hosek-Wilkie's XYZ data is defined). Preetham and Hosek-Wilkie
+ * have no ground: a direction below the horizon has no sky radiance (0).
+ *
+ * Bruneton's precomputation is the expensive part, done once in create on the CPU in
+ * double precision, single-threaded: at the paper's table sizes (the default) a few
+ * minutes for 15 wavelengths; smaller tables are proportionally faster. Its tables are
+ * kept either as XYZ (the default: 3 channels, enough for sky radiance, sun radiance and
+ * irradiance, which are linear in each wavelength) or as SPECTRAL channels, one per
+ * precomputed wavelength (needed for spectral output, transmittance and aerial
+ * perspective; memory grows with the wavelength count, about 8.4 MB a wavelength at the
+ * default sizes in single precision). alwan_sky_get_layout hands the tables to a shader,
+ * which reads them with core/alwan_sky_atmosphere_reader.inc. Suite 284.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_SKY_PREETHAM = 0,
+    ALWAN_SKY_HOSEK_WILKIE = 1,
+    ALWAN_SKY_BRUNETON = 2
+} alwan_sky_model;
+
+typedef enum {
+    ALWAN_SKY_TABLES_XYZ = 0,
+    ALWAN_SKY_TABLES_SPECTRAL = 1
+} alwan_sky_tables;
+
+/* Bruneton's atmosphere and tables. Zero picks the value in brackets, which are
+ * Bruneton's demo Earth and his table sizes; a field marked "as given" is taken as it is,
+ * zero included. */
+typedef struct {
+    alwan_f64 bottom_radius;        /* m [6360e3] */
+    alwan_f64 top_radius;           /* m [6420e3] */
+    alwan_f64 rayleigh_scattering;  /* per m at 1 um, times lambda_um^-4 [1.24062e-6] */
+    alwan_f64 rayleigh_scale_height;/* m [8000] */
+    alwan_f64 mie_scale_height;     /* m [1200] */
+    alwan_f64 mie_angstrom_alpha;   /* as given (Bruneton 0) */
+    alwan_f64 mie_angstrom_beta;    /* [5.328e-3]: extinction beta / scale height x lambda_um^-alpha */
+    alwan_f64 mie_single_scattering_albedo; /* [0.9] */
+    alwan_f64 mie_phase_g;          /* [0.8] */
+    alwan_f64 ozone_dobson;         /* [300]; negative for no ozone. A 10-25-40 km tent profile */
+    alwan_f64 max_sun_zenith_angle; /* rad [120 degrees] */
+    alwan_f64 observer_altitude;    /* m above the ground, as given */
+    int scattering_orders;          /* [4] */
+    int transmittance_width, transmittance_height;               /* [256, 64] */
+    int scattering_r, scattering_mu, scattering_mu_s, scattering_nu; /* [32, 128, 32, 8]; mu even */
+    int irradiance_width, irradiance_height;                     /* [64, 16] */
+    alwan_sky_tables tables;        /* [XYZ] */
+    size_t wavelength_count;        /* [15] */
+    alwan_f64 const *wavelengths;   /* nm, rising, 360-830; NULL [the count spread evenly:
+                                     * 360 + (i + 0.5) 470 / count] */
+} alwan_sky_atmosphere;
+
+/* A sky. Zero picks the value in brackets. */
+typedef struct {
+    alwan_f64 sun_elevation;        /* rad above the horizon, as given; Preetham and Hosek-Wilkie
+                                     * need 0 to pi/2 */
+    alwan_f64 sun_azimuth;          /* rad, the map azimuth of the sun, as given */
+    alwan_f64 turbidity;            /* Preetham and Hosek-Wilkie [3]: 1-10 */
+    alwan_f64 ground_albedo;        /* Hosek-Wilkie and Bruneton, 0-1, as given */
+    alwan_f64 sun_angular_radius;   /* rad [Preetham, Hosek-Wilkie 0.255 degrees; Bruneton 0.004675] */
+    alwan_observer_type observer;   /* for XYZ [CIE 1931 2 degree] */
+    alwan_sky_atmosphere const *atmosphere; /* Bruneton only; NULL [the demo Earth above] */
+} alwan_sky_params;
+
+typedef struct alwan_sky_f32_s alwan_sky_f32;
+typedef struct alwan_sky_f64_s alwan_sky_f64;
+
+/* Make a sky (NULL params: all defaults) and free it. ALWAN_E_RANGE for parameters
+ * outside a model's range, ALWAN_E_INVALID for a malformed atmosphere. */
+alwan_status alwan_sky_create_f32(alwan_sky_f32 **out, alwan_sky_model model, alwan_sky_params const *params,
+                                  alwan_ctx *ctx);
+alwan_status alwan_sky_create_f64(alwan_sky_f64 **out, alwan_sky_model model, alwan_sky_params const *params,
+                                  alwan_ctx *ctx);
+void alwan_sky_destroy_f32(alwan_sky_f32 *sky, alwan_ctx *ctx);
+void alwan_sky_destroy_f64(alwan_sky_f64 *sky, alwan_ctx *ctx);
+
+/* Move the sun (elevation and azimuth as in alwan_sky_params), and, for Bruneton, the
+ * observer's altitude (metres above the ground, below the top of the atmosphere), without
+ * making the sky again: Bruneton's tables depend on neither, so a sunrise is many reads of
+ * one precomputation. set_altitude is ALWAN_E_INVALID for the analytic models. */
+alwan_status alwan_sky_set_sun_f32(alwan_sky_f32 *sky, alwan_f64 elevation, alwan_f64 azimuth);
+alwan_status alwan_sky_set_sun_f64(alwan_sky_f64 *sky, alwan_f64 elevation, alwan_f64 azimuth);
+alwan_status alwan_sky_set_altitude_f32(alwan_sky_f32 *sky, alwan_f64 altitude);
+alwan_status alwan_sky_set_altitude_f64(alwan_sky_f64 *sky, alwan_f64 altitude);
+
+/* The unit vector toward the sun. */
+alwan_status alwan_sky_sun_direction_f32(alwan_vec3_f32 *out, alwan_sky_f32 const *sky);
+alwan_status alwan_sky_sun_direction_f64(alwan_vec3_f64 *out, alwan_sky_f64 const *sky);
+
+/* Spectral radiance (W m^-2 sr^-1 nm^-1) seen along dir (any non-zero length) at count
+ * wavelengths, the solar disc added when include_sun is non-zero and dir points into
+ * it. Out of a model's range a wavelength gives 0. Bruneton needs SPECTRAL tables and
+ * reads between its precomputed wavelengths linearly, the first and last held out to 360
+ * and 830 nm (ALWAN_E_NODATA with XYZ tables). */
+alwan_status alwan_sky_spectral_radiance_f32(alwan_f32 *out, alwan_f32 const *wavelength_nm, size_t count,
+                                             alwan_vec3_f32 const *dir, int include_sun, alwan_sky_f32 const *sky);
+alwan_status alwan_sky_spectral_radiance_f64(alwan_f64 *out, alwan_f64 const *wavelength_nm, size_t count,
+                                             alwan_vec3_f64 const *dir, int include_sun, alwan_sky_f64 const *sky);
+
+/* XYZ of the radiance along dir, as above. */
+alwan_status alwan_sky_xyz_f32(alwan_xyz_f32 *out, alwan_vec3_f32 const *dir, int include_sun, alwan_sky_f32 const *sky);
+alwan_status alwan_sky_xyz_f64(alwan_xyz_f64 *out, alwan_vec3_f64 const *dir, int include_sun, alwan_sky_f64 const *sky);
+
+/* XYZ of the irradiance on a surface with the given normal: from the sun (direct,
+ * through the atmosphere) and from the sky. Bruneton reads its irradiance table (the
+ * paper's approximation for a tilted surface); Preetham and Hosek-Wilkie integrate their
+ * radiance over the hemisphere numerically (128 x 512 directions) and the sun's disc. */
+alwan_status alwan_sky_irradiance_xyz_f32(alwan_xyz_f32 *sun_out, alwan_xyz_f32 *sky_out, alwan_vec3_f32 const *normal,
+                                          alwan_sky_f32 const *sky);
+alwan_status alwan_sky_irradiance_xyz_f64(alwan_xyz_f64 *sun_out, alwan_xyz_f64 *sky_out, alwan_vec3_f64 const *normal,
+                                          alwan_sky_f64 const *sky);
+
+/* An equirectangular map of the sky, row by row from the zenith (+Y) down, ready for
+ * alwan_env_weight_equirect / alwan_importance_sampling_2d_prepare:
+ *   ALWAN_SKY_BAKE_XYZ       3 channels
+ *   ALWAN_SKY_BAKE_RGB       3 channels, linear, in the RGB space (XYZ through the space's
+ *                            matrix, no chromatic adaptation: the sky's white is its own)
+ *   ALWAN_SKY_BAKE_SPECTRAL  wavelength_count channels at the given wavelengths
+ * Each pixel is the mean over samples x samples points spread inside it ([1]). With
+ * include_sun the solar disc is drawn where it falls; at 1024 x 512 a pixel is wider than
+ * the disc, so add samples or put the sun in separately for a faithful sun. */
+typedef enum {
+    ALWAN_SKY_BAKE_XYZ = 0,
+    ALWAN_SKY_BAKE_RGB = 1,
+    ALWAN_SKY_BAKE_SPECTRAL = 2
+} alwan_sky_bake_format;
+
+typedef struct {
+    alwan_sky_bake_format format;
+    alwan_rgb_space space;          /* RGB */
+    size_t wavelength_count;        /* SPECTRAL */
+    alwan_f64 const *wavelengths;   /* SPECTRAL, nm */
+    int include_sun;
+    int samples;                    /* per pixel and axis [1] */
+} alwan_sky_bake_params;
+
+alwan_status alwan_sky_bake_equirect_f32(alwan_f32 *out, size_t row_stride, size_t width, size_t height,
+                                         alwan_sky_bake_params const *params, alwan_sky_f32 const *sky, alwan_ctx *ctx);
+alwan_status alwan_sky_bake_equirect_f64(alwan_f64 *out, size_t row_stride, size_t width, size_t height,
+                                         alwan_sky_bake_params const *params, alwan_sky_f64 const *sky, alwan_ctx *ctx);
+
+/* Bruneton: the tables, laid out as core/alwan_sky_atmosphere_reader.inc reads them (a
+ * 16-value header, then transmittance (SPECTRAL only), sun, scattering, single Mie and
+ * irradiance, channel fastest), and the precomputed wavelengths. ALWAN_E_INVALID for the
+ * analytic models. The pointers stay the sky's. */
+typedef struct {
+    alwan_f32 const *table;
+    size_t count;
+    size_t channels;
+    alwan_f64 const *wavelengths;   /* the precomputed wavelengths, nm */
+    size_t wavelength_count;
+} alwan_sky_layout_f32;
+typedef struct {
+    alwan_f64 const *table;
+    size_t count;
+    size_t channels;
+    alwan_f64 const *wavelengths;
+    size_t wavelength_count;
+} alwan_sky_layout_f64;
+
+alwan_status alwan_sky_get_layout_f32(alwan_sky_layout_f32 *out, alwan_sky_f32 const *sky);
+alwan_status alwan_sky_get_layout_f64(alwan_sky_layout_f64 *out, alwan_sky_f64 const *sky);
+
 /* White balance multipliers of a camera under an illuminant:
  * 1 / sum(sensitivity * illuminant) per channel, scaled so the smallest is 1. The
  * three sensitivities must share one grid; the illuminant is read on it. */

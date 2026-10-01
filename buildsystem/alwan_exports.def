@@ -1918,8 +1918,30 @@ EXPORTS
     alwan_simulate_tritanopia_f64_map_planar
     alwan_simulate_tritanopia_map_interleave_ex
     alwan_simulate_tritanopia_map_planar_ex
+    alwan_sky_bake_equirect_f32
+    alwan_sky_bake_equirect_f64
+    alwan_sky_create_f32
+    alwan_sky_create_f64
+    alwan_sky_destroy_f32
+    alwan_sky_destroy_f64
+    alwan_sky_get_layout_f32
+    alwan_sky_get_layout_f64
+    alwan_sky_irradiance_xyz_f32
+    alwan_sky_irradiance_xyz_f64
+    alwan_sky_set_altitude_f32
+    alwan_sky_set_altitude_f64
+    alwan_sky_set_sun_f32
+    alwan_sky_set_sun_f64
+    alwan_sky_spectral_radiance_f32
+    alwan_sky_spectral_radiance_f64
+    alwan_sky_sun_direction_f32
+    alwan_sky_sun_direction_f64
+    alwan_sky_xyz_f32
+    alwan_sky_xyz_f64
     alwan_spd_analyze_shape_f32
     alwan_spd_analyze_shape_f64
+    alwan_spd_astm_g173_f32
+    alwan_spd_astm_g173_f64
     alwan_spd_blackbody_f32
     alwan_spd_blackbody_f64
     alwan_spd_cie_daylight_f32

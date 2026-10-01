@@ -1,0 +1,8 @@
+Written by alwan_dev/gendata/data/sky_models.py.
+hosek_wilkie_*.csv: Hosek-Wilkie sky model 1.4a, ArHosekSkyModelData_Spectral.h, BSD-3-Clause,
+  Copyright (c) 2012 - 2013, Lukas Hosek and Alexander Wilkie (licenses/hosek-wilkie-BSD-3-Clause.txt).
+preetham_table2.csv: Preetham, Shirley, Smits, A Practical Analytic Model for Daylight,
+  SIGGRAPH 1999, Table 2 (published data).
+astm_g173.csv: ASTM G173-03 reference spectra, NREL (SMARTS 2.9.2), as pvlib 0.16.1 ships them.
+bruneton_ozone.csv: Bruneton, precomputed_atmospheric_scattering, atmosphere/demo/demo.cc,
+  BSD-3-Clause, Copyright (c) 2017 Eric Bruneton (licenses/bruneton-BSD-3-Clause.txt).

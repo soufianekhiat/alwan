@@ -167,6 +167,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_spectrum_meng2015.c
   src/alwan/api/alwan_thin_film.c
   src/alwan/api/alwan_refractive.c
+  src/alwan/api/alwan_sky.c
   src/alwan/api/alwan_corresponding.c
   src/alwan/api/alwan_gradient.c
   src/alwan/api/alwan_edge_detect.c
@@ -287,6 +288,8 @@ src/alwan/api/alwan_nn.c
   src/alwan/data/alwan_data_tables_api.c
   # The refractiveindex.info database: read by binary search, not part of the registry above.
   src/alwan/data/alwan_data_refractive.c
+  # The physical sky models' data (Hosek-Wilkie, Preetham Table 2, ASTM G173, Bruneton ozone).
+  src/alwan/data/alwan_data_sky.c
 )
 
 add_library(alwan ${ALWAN_SOURCES})

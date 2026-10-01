@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+### Added: physical skies (Preetham, Hosek-Wilkie, Bruneton) and the ASTM G173 spectra
+
+- **`alwan_sky_*`: spectral sky and sun radiance for a sun position, three models.**
+  Preetham, Shirley and Smits 1999 (the Perez distribution made spectral through the CIE
+  daylight basis; the sun through the paper's Appendix A.1 transmittances); Hosek and Wilkie
+  2012 with the 2013 solar radiance function, a port of their reference implementation 1.4a
+  (BSD-3-Clause, Copyright (c) 2012 - 2013 Lukas Hosek and Alexander Wilkie); and Bruneton
+  2017's precomputed atmospheric scattering, a port of atmosphere/functions.glsl and the
+  reference model's precomputation (BSD-3-Clause, Copyright (c) 2017 Eric Bruneton), with
+  Rayleigh, Mie and ozone layers, any sun and observer altitude, ground included. Spectral
+  radiance at any wavelength, XYZ for any observer, sun and sky irradiance on any surface,
+  equirectangular maps baked as XYZ, linear RGB in any space or spectral channels (ready for
+  `alwan_env_*` and `alwan_importance_sampling_2d`), and `alwan_sky_set_sun` /
+  `_set_altitude` to move the sun and observer without recomputing. Bruneton's tables are kept
+  as XYZ (exact for sky, sun and irradiance) or one channel per wavelength, and
+  `alwan_sky_get_layout` hands them to a shader through
+  `core/alwan_sky_atmosphere_reader.inc`. Against Hosek-Wilkie's own C run at 4050 points:
+  5.4e-16; against Bruneton's reference CPU model at 47 wavelengths: 4.5e-13 of each
+  spectrum's peak; against the Preetham paper's equations transcribed apart: 2.5e-15. Bruneton's
+  precomputation runs on one core: the plate's tables (16 x 64 x 16 x 8 scattering, 16
+  wavelengths, 4 orders) take 91 to 128 s, and the default sizes hold eight times the
+  texels (suite 284).
+- **`alwan_spd_astm_g173_{T}`**: the ASTM G173-03 reference solar spectra (NREL, SMARTS
+  2.9.2): extraterrestrial, global tilt and direct plus circumsolar, 280-4000 nm.
+
 ### Added: refractive-index database, layer stacks and spectral colour
 
 - **The refractiveindex.info database (Polyanskiy, CC0 1.0), every page of its n,k
