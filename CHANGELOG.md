@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Added: dithering for quantisation and blue noise masks
+
+- **`alwan_dither_quantize_{T}`: an encoded float image to U8 or U16 codes, dithered.** Round
+  to nearest, ordered dithering with a Bayer matrix (side 2 to 256) or a blue noise mask (RPDF
+  or TPDF, offset per channel and per frame along the R2 sequence), or error diffusion by
+  Floyd-Steinberg, Jarvis-Judice-Ninke or Stucki, plain or serpentine; 1 to 16 bits, codes
+  scaled to the format or stored as they are. `alwan_image_convert_dithered_{T}` is
+  `alwan_image_convert` with the same choice, row by row, error carried down the image.
+- **`alwan_blue_noise_mask_generate`: Ulichney's void-and-cluster method (1993)**, tileable
+  masks up to 65536 pixels from a seed, every build ranking the same mask (the Gaussian
+  energy read from a table). `alwan_blue_noise_mask_builtin` gives the shipped 64 x 64 and
+  128 x 128 masks; below 0.1 cycles per pixel the 64's power is 1.3e-5 per bin against white
+  noise's 0.083.
+- **`core/alwan_dither_core.h`**: the Bayer rank, the threshold, the TPDF remap and the step,
+  for shaders (dxc and fxc). docs/api/dithering.md, suite 285, plate 150.
+
 ### Added: physical skies (Preetham, Hosek-Wilkie, Bruneton) and the ASTM G173 spectra
 
 - **`alwan_sky_*`: spectral sky and sun radiance for a sun position, three models.**

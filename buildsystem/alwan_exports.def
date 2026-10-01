@@ -120,6 +120,8 @@ EXPORTS
     alwan_bake_3dlut_view_f64
     alwan_best_illuminant_f32
     alwan_best_illuminant_f64
+    alwan_blue_noise_mask_builtin
+    alwan_blue_noise_mask_generate
     alwan_bt2390_eetf_f32
     alwan_bt2390_eetf_f64
     alwan_bt2390_eetf_luminance_f32
@@ -637,6 +639,8 @@ EXPORTS
     alwan_distance_transform_f32
     alwan_distance_transform_f64
     alwan_distance_transform_u8
+    alwan_dither_quantize_f32
+    alwan_dither_quantize_f64
     alwan_dng_camera_neutral_to_xy_f32
     alwan_dng_camera_neutral_to_xy_f64
     alwan_dng_camera_to_xyz_matrix_f32
@@ -1055,6 +1059,8 @@ EXPORTS
     alwan_illuminant_white_point_f64
     alwan_image_convert_data_f32
     alwan_image_convert_data_f64
+    alwan_image_convert_dithered_f32
+    alwan_image_convert_dithered_f64
     alwan_image_convert_f32
     alwan_image_convert_f64
     alwan_image_convert_rgba_f32

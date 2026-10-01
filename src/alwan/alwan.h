@@ -886,6 +886,84 @@ alwan_status alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_
 alwan_status alwan_image_convert_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_ctx *ctx);
 alwan_status alwan_image_convert_f32(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_ctx *ctx);
 
+/* ----------------------------------------------------------------
+ * Dithering for quantisation (docs/api/dithering.md, suite 285)
+ *
+ * A float image quantised to 8 or 16 bit codes bands where the signal changes slowly, and
+ * a view transform's smooth gradients show it first. Dithering adds a pattern or diffuses
+ * the rounding error so the bands break up while the local mean stays the signal's. These
+ * work on the ENCODED values (after the view transform or the OETF), in [0, 1].
+ *
+ *   ALWAN_DITHER_NONE                 round to nearest, floor(v L + 0.5), as alwan_image_convert
+ *   ALWAN_DITHER_ORDERED_BAYER        floor(v L + t), t the Bayer matrix's threshold
+ *                                     (rank + 0.5) / side^2, side 2^bayer_log2_size [8]
+ *   ALWAN_DITHER_ORDERED_BLUE_NOISE   the same with a blue noise mask's threshold: the built-in
+ *                                     64 x 64 mask, or a caller's rank mask
+ *   ALWAN_DITHER_FLOYD_STEINBERG      error diffusion, 7 3 5 1 / 16 (Floyd and Steinberg 1976)
+ *   ALWAN_DITHER_JARVIS_JUDICE_NINKE  error diffusion over two rows, / 48 (1976)
+ *   ALWAN_DITHER_STUCKI               error diffusion over two rows, / 42 (Stucki 1981)
+ *
+ * L = 2^bits - 1 steps. The ordered methods take tpdf (triangular noise of two steps, the
+ * error independent of the signal; plain is uniform, one step), decorrelate_channels (each
+ * channel reads the mask at its own R2 offset, so the noise is not grey) and frame (a new R2
+ * offset per frame, for animation). Error diffusion takes serpentine (each odd row scanned
+ * right to left with the kernel mirrored); error that falls off the image is dropped.
+ * The ordered threshold, the TPDF remap and the step are core/alwan_dither_core.h, so a
+ * shader reading the same mask from a texture dithers the same way.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_DITHER_NONE = 0,
+    ALWAN_DITHER_ORDERED_BAYER = 1,
+    ALWAN_DITHER_ORDERED_BLUE_NOISE = 2,
+    ALWAN_DITHER_FLOYD_STEINBERG = 3,
+    ALWAN_DITHER_JARVIS_JUDICE_NINKE = 4,
+    ALWAN_DITHER_STUCKI = 5
+} alwan_dither_method;
+
+/* A zero field is its default; NULL params is all defaults. */
+typedef struct {
+    int bits;                   /* output bits per channel, 1 to the format's: [8 for U8, 16 for U16] */
+    int store_codes;            /* [0]: the code scaled to the format's range, round(code (2^fmt - 1) / L),
+                                 * so 6-bit codes in U8 read as 0, 4, 8 ... 255; non-zero: the code itself */
+    int bayer_log2_size;        /* ORDERED_BAYER: side 2^n, 1 to 8 [3, an 8 x 8 matrix] */
+    uint32_t const *mask;       /* ORDERED_BLUE_NOISE: ranks 0..w h - 1, row-major, tiled; [NULL: built-in 64] */
+    size_t mask_width, mask_height;
+    int tpdf;                   /* ordered methods: triangular noise instead of uniform [0] */
+    int decorrelate_channels;   /* ordered methods: an R2 offset of the mask per channel [0] */
+    uint32_t frame;             /* ordered methods: an R2 offset of the mask per frame [0] */
+    int serpentine;             /* error diffusion: odd rows right to left [0] */
+} alwan_dither_params;
+
+/* src: width x height pixels of `channels` (1 to 4) interleaved encoded values, src_row_stride
+ * bytes apart; dst: U8 or U16 codes, dst_row_stride bytes apart. ALWAN_E_INVALID for a NULL,
+ * a zero size, a stride too small, a dst format other than U8 or U16, bits outside 1 to the
+ * format's, bayer_log2_size outside 1 to 8, a mask with a zero side, an unknown method or a
+ * value that is NaN or infinite (rows before it are written); ALWAN_E_NOMEM when error
+ * diffusion's three rows of carried error do not fit. Values below 0 and above 1 clamp. */
+alwan_status alwan_dither_quantize_f64(void *dst, size_t dst_row_stride, alwan_pixel_format dst_fmt, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_dither_method method, alwan_dither_params const *params);
+alwan_status alwan_dither_quantize_f32(void *dst, size_t dst_row_stride, alwan_pixel_format dst_fmt, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_dither_method method, alwan_dither_params const *params);
+
+/* alwan_image_convert with a dither: each row converted to float in dst_space's encoding and
+ * then quantised to dst_fmt (U8 or U16) by alwan_dither_quantize's rules at its own row index,
+ * so masks tile and error diffusion carries down the image. ALWAN_DITHER_NONE gives
+ * alwan_image_convert's codes. */
+alwan_status alwan_image_convert_dithered_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_dither_method method, alwan_dither_params const *params, alwan_ctx *ctx);
+alwan_status alwan_image_convert_dithered_f32(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_dither_method method, alwan_dither_params const *params, alwan_ctx *ctx);
+
+/* A blue noise mask by Ulichney's void-and-cluster method (Proc. SPIE 1913, 1993): every
+ * rank 0..w h - 1 exactly once, row-major, tileable (the energy is measured round the
+ * torus), the low-frequency part of its spectrum suppressed. Gaussian energy of sigma 1.5
+ * (Ulichney's value) over a window of radius 8, read from a table so every build ranks the
+ * same mask from the same seed; the initial pattern is a tenth of the pixels, drawn by
+ * splitmix64 from seed. Width and height 4 or more, at most 65536 pixels (the method is
+ * quadratic in the pixel count: 128 x 128 takes about 0.4 s). ALWAN_E_INVALID for a NULL
+ * or a side under 4, ALWAN_E_RANGE above 65536 pixels, ALWAN_E_NOMEM. */
+alwan_status alwan_blue_noise_mask_generate(uint32_t *ranks_out, size_t width, size_t height, uint64_t seed);
+
+/* The built-in masks, side 64 or 128 (alwan_blue_noise_mask_generate at seed 0, shipped as
+ * data), copied into ranks_out (side x side values). ALWAN_E_RANGE for another side. */
+alwan_status alwan_blue_noise_mask_builtin(uint32_t *ranks_out, size_t side);
+
 /* Convert a 2D RGBA image between RGB color spaces with format conversion.
  * Same pipeline as alwan_image_convert_f64 but with 4-channel (RGBA) pixels.
  * The alpha channel is preserved through the conversion:
