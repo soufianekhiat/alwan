@@ -1043,6 +1043,20 @@ EXPORTS
     alwan_image_convert_f64
     alwan_image_convert_rgba_f32
     alwan_image_convert_rgba_f64
+    alwan_importance_sampling_2d_destroy_f32
+    alwan_importance_sampling_2d_destroy_f64
+    alwan_importance_sampling_2d_get_layout_f32
+    alwan_importance_sampling_2d_get_layout_f64
+    alwan_importance_sampling_2d_invert_f32
+    alwan_importance_sampling_2d_invert_f64
+    alwan_importance_sampling_2d_pdf_f32
+    alwan_importance_sampling_2d_pdf_f64
+    alwan_importance_sampling_2d_prepare_f32
+    alwan_importance_sampling_2d_prepare_f64
+    alwan_importance_sampling_2d_sample_f32
+    alwan_importance_sampling_2d_sample_f32_map_interleave
+    alwan_importance_sampling_2d_sample_f64
+    alwan_importance_sampling_2d_sample_f64_map_interleave
     alwan_index_stress_f32
     alwan_index_stress_f64
     alwan_inertia_tensor

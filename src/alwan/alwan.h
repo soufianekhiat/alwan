@@ -3203,6 +3203,122 @@ alwan_status alwan_stylize(unsigned char *out, size_t out_row_stride,
                            size_t width, size_t height, size_t channels,
                            alwan_stylize_method method, alwan_stylize_params const *params);
 
+/* 2D importance sampling: draw points distributed like a greyscale image. The image is a
+ * density over a rectangle, constant on each pixel. prepare builds, once, a sampler that holds
+ * the marginal (the distribution over the rows, from each row's sum) and every row's
+ * conditional distribution, in the form its mode reads; sample then turns two uniform numbers
+ * u = (u0, u1) in [0, 1] into a point (x, y) and its pdf, a row from u1 and a column of that
+ * row from u0, the point uniform inside the pixel it picks.
+ *
+ *   ALWAN_IMPORTANCE_SAMPLING_2D_DIRECT  each distribution's inverse CDF, tabulated at
+ *                                        u = k / r and read with one index and a linear blend:
+ *                                        O(1) a sample. Where a CDF breakpoint falls between two
+ *                                        nodes the blend is not the exact inverse, so the
+ *                                        points follow the image a little less closely, and
+ *                                        where a row has empty pixels between lit ones a few
+ *                                        land in the gap. The pdf returned is the density this
+ *                                        sampler draws from, so estimates stay unbiased. The
+ *                                        row is the pixel row the sampled y lands in.
+ *   ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH  the CDFs, each inverted by bisection: O(log n) a
+ *                                        sample, exact, every point inside a pixel of non-zero
+ *                                        weight, pdf = pixel / (sum of pixels x pixel area).
+ *
+ * The image: width x height non-negative finite weights, row_stride bytes apart (0 for
+ * packed); a negative or non-finite weight, or an image whose weights are all 0, is
+ * ALWAN_E_INVALID. Pixel (i, j) covers [x0 + i dx, x0 + (i+1) dx] x [y0 + j dy, ...], row 0
+ * at y0. The tables hold fewer than 2^31 elements, else ALWAN_E_RANGE.
+ *
+ * Determinism: only + - * / and comparisons, so the det build is the ordinary one bit for
+ * bit. Memory: SEARCH keeps about 2 width x height elements, DIRECT height x
+ * (resolution_x + 1). alwan_importance_sampling_2d_get_layout_{T} hands back the table and
+ * its dimensions for a shader, which samples it with the same functions through the accessor
+ * of core/alwan_importance_sampling_reader.inc. Suite 280. */
+typedef enum {
+    ALWAN_IMPORTANCE_SAMPLING_2D_DIRECT = 0,
+    ALWAN_IMPORTANCE_SAMPLING_2D_SEARCH = 1
+} alwan_importance_sampling_2d_mode;
+
+typedef struct {
+    /* the domain [x0, x1] x [y0, y1]; all four 0 for [0, 1] x [0, 1], else x1 > x0, y1 > y0 */
+    alwan_f32 domain_min_x, domain_min_y, domain_max_x, domain_max_y;
+    /* DIRECT: the intervals of each row's inverse table and of the marginal's; 0 for width and height */
+    size_t resolution_x, resolution_y;
+} alwan_importance_sampling_2d_params_f32;
+typedef struct {
+    alwan_f64 domain_min_x, domain_min_y, domain_max_x, domain_max_y;
+    size_t resolution_x, resolution_y;
+} alwan_importance_sampling_2d_params_f64;
+
+typedef struct alwan_importance_sampling_2d_f32_s alwan_importance_sampling_2d_f32;
+typedef struct alwan_importance_sampling_2d_f64_s alwan_importance_sampling_2d_f64;
+
+alwan_status alwan_importance_sampling_2d_prepare_f32(alwan_importance_sampling_2d_f32 **out, alwan_f32 const *image,
+                                                      size_t row_stride, size_t width, size_t height,
+                                                      alwan_importance_sampling_2d_mode mode,
+                                                      alwan_importance_sampling_2d_params_f32 const *params, alwan_ctx *ctx);
+alwan_status alwan_importance_sampling_2d_prepare_f64(alwan_importance_sampling_2d_f64 **out, alwan_f64 const *image,
+                                                      size_t row_stride, size_t width, size_t height,
+                                                      alwan_importance_sampling_2d_mode mode,
+                                                      alwan_importance_sampling_2d_params_f64 const *params, alwan_ctx *ctx);
+void alwan_importance_sampling_2d_destroy_f32(alwan_importance_sampling_2d_f32 *sampler, alwan_ctx *ctx);
+void alwan_importance_sampling_2d_destroy_f64(alwan_importance_sampling_2d_f64 *sampler, alwan_ctx *ctx);
+
+/* One sample: xy_out the point, pdf_out its density against the domain's area (may be
+ * NULL), offset_out the pixel (column, row) it fell in (may be NULL). u outside [0, 1] or
+ * NaN is ALWAN_E_RANGE. */
+alwan_status alwan_importance_sampling_2d_sample_f32(alwan_vec2_f32 *xy_out, alwan_f32 *pdf_out, size_t *offset_out,
+                                                     alwan_vec2_f32 const *u, alwan_importance_sampling_2d_f32 const *sampler);
+alwan_status alwan_importance_sampling_2d_sample_f64(alwan_vec2_f64 *xy_out, alwan_f64 *pdf_out, size_t *offset_out,
+                                                     alwan_vec2_f64 const *u, alwan_importance_sampling_2d_f64 const *sampler);
+
+/* Many samples: in holds (u0, u1) per sample, out (x, y, pdf), both strided in bytes (0
+ * for packed). Stops at the first u outside [0, 1] with ALWAN_E_RANGE, the earlier samples
+ * written. */
+alwan_status alwan_importance_sampling_2d_sample_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in,
+                                                                    size_t in_stride, size_t count,
+                                                                    alwan_importance_sampling_2d_f32 const *sampler);
+alwan_status alwan_importance_sampling_2d_sample_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in,
+                                                                    size_t in_stride, size_t count,
+                                                                    alwan_importance_sampling_2d_f64 const *sampler);
+
+/* The density at a point as the sampler draws: SEARCH's is the image's, the pixel over the
+ * integral; DIRECT's is its own sampler's. 0 outside the domain in both. */
+alwan_status alwan_importance_sampling_2d_pdf_f32(alwan_f32 *pdf_out, alwan_vec2_f32 const *xy,
+                                                  alwan_importance_sampling_2d_f32 const *sampler);
+alwan_status alwan_importance_sampling_2d_pdf_f64(alwan_f64 *pdf_out, alwan_vec2_f64 const *xy,
+                                                  alwan_importance_sampling_2d_f64 const *sampler);
+
+/* The u that the sampler turns into a point; a point outside the domain is ALWAN_E_RANGE. */
+alwan_status alwan_importance_sampling_2d_invert_f32(alwan_vec2_f32 *u_out, alwan_vec2_f32 const *xy,
+                                                     alwan_importance_sampling_2d_f32 const *sampler);
+alwan_status alwan_importance_sampling_2d_invert_f64(alwan_vec2_f64 *u_out, alwan_vec2_f64 const *xy,
+                                                     alwan_importance_sampling_2d_f64 const *sampler);
+
+/* The prepared table for a shader: its elements (laid out per mode as
+ * core/alwan_importance_sampling_core.inc describes), its dimensions, the domain and the
+ * image's integral (sum of pixels x pixel area). The table belongs to the sampler. */
+typedef struct {
+    alwan_f32 const *table;
+    size_t table_count;
+    int width, height, resolution_x, resolution_y;
+    alwan_importance_sampling_2d_mode mode;
+    alwan_f32 domain_min_x, domain_min_y, domain_max_x, domain_max_y;
+    alwan_f32 integral;
+} alwan_importance_sampling_2d_layout_f32;
+typedef struct {
+    alwan_f64 const *table;
+    size_t table_count;
+    int width, height, resolution_x, resolution_y;
+    alwan_importance_sampling_2d_mode mode;
+    alwan_f64 domain_min_x, domain_min_y, domain_max_x, domain_max_y;
+    alwan_f64 integral;
+} alwan_importance_sampling_2d_layout_f64;
+
+alwan_status alwan_importance_sampling_2d_get_layout_f32(alwan_importance_sampling_2d_layout_f32 *out,
+                                                     alwan_importance_sampling_2d_f32 const *sampler);
+alwan_status alwan_importance_sampling_2d_get_layout_f64(alwan_importance_sampling_2d_layout_f64 *out,
+                                                     alwan_importance_sampling_2d_f64 const *sampler);
+
 /* Morphology: grey-level erosion and dilation and their composites, for cleaning a
  * selection mask or a matte, and for pulling out detail smaller than a shape. Each of 1 to
  * 4 channels on its own; out may be src.

@@ -937,6 +937,20 @@
 
 ### Added
 
+- **2D importance sampling of a greyscale image** (`alwan_importance_sampling_2d_*`,
+  docs/api/importance-sampling.md, suite 280). `prepare` builds a sampler holding the
+  marginal (over the rows' sums) and every row's conditional distribution; `sample` turns
+  `u` in `[0, 1]^2` into a point and its pdf, with `pdf`, `invert` and a buffer form beside
+  it. Two modes: `DIRECT` tabulates each inverse CDF and samples in O(1), its pdf the
+  density it actually draws from, so estimates stay unbiased; `SEARCH` keeps the CDFs and
+  bisects, exact. The sampling is a GPU-portable core read through an accessor, compiled
+  with dxc and fxc, and the det build draws the same bits as the ordinary one. Held to
+  analytic ground truth: a constant map over the sphere integrates to 2 pi to 4.8e-11,
+  every point of a one-rectangle image lands inside it with pdf 1 / its area, a disc's
+  area and centroid are recovered, and two discs of weights 1 and 4 split the points by
+  their weighted areas. DIRECT's histogram is 0.055 from SEARCH's (total variation) on a
+  sky with a sun at the default table resolution, halving with each doubling of it.
+
 - **THIRD_PARTY_NOTICES.md and `licenses/`.** One place that lists every project alwan ports
   code from or generates shipped data with (OpenCV, OpenColorIO and Imath, colour-science,
   colour-hdri, colour-checker-detection, scikit-image, Pillow, Ottosson's Oklab code,
