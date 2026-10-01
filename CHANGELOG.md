@@ -1,5 +1,25 @@
 ## [Unreleased]
 
+### Added: wavelength sampling and a spectral film for spectral rendering
+
+- **Wavelength samplers (`alwan_wavelength_sampler_*_{T}`)** over any range (360 to 830 nm
+  by default): uniform; the visible-importance density of Radziszewski, Boryczko and Alda
+  2009, proportional to sech^2(0.0072 (lambda - 538)), with its exact tanh inverse CDF; and
+  a tabulated density from any weights, drawn with the 2D sampler's SEARCH, DIRECT or ALIAS.
+  sample, pdf, invert and a buffer form. `alwan_wavelength_weights_{T}` builds weights from
+  an observer's CMFs (x + y + z or y alone) times an illuminant.
+- **Hero wavelengths (`alwan_wavelength_sample_hero_{T}`)**, Wilkie et al. 2014: the hero
+  and its rotations with each one's pdf and balance-heuristic weight (the weights sum to 1).
+- **Spectral film (`alwan_spectral_film_*`)**: sums paths of (wavelength, radiance, weight)
+  into XYZ through any observer's CMFs read with any `alwan_interp_method`, optionally
+  normalised to an illuminant so a perfect diffuser is its white, resolved to XYZ or to RGB
+  in any space with optional Bradford adaptation, with optional per-pixel variance.
+- Held to ground truth (suite 287): every estimate of 29 spectra (illuminants, a laser
+  line, the 24 ColorChecker patches) inside 3 standard errors of the exact CMF integral at
+  16384 paths; a perfect diffuser resolves to (1, 1, 1) within 5e-8 in sRGB, BT.2020 and
+  ACEScg. The closed-form densities and the hero rotation are in
+  `core/alwan_wavelength_sampling_core.h` for shaders (docs/api/spectral-rendering.md).
+
 ### Added: image-based lighting for equirectangular maps
 
 - **Spherical harmonics (`alwan_sh_*_{T}`), bands 0 to 8, 1 to 16 channels.** Projection of

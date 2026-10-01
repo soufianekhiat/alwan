@@ -12837,6 +12837,206 @@ alwan_status alwan_hero_wavelength_batch_f32(alwan_f32 *lambda_out,
                                  alwan_f32 seed);
 
 /* ----------------------------------------------------------------
+ * Spectral rendering: wavelength sampling and a spectral film
+ * ---------------------------------------------------------------- */
+
+/* A wavelength sampler: a density over [lambda_min, lambda_max] (nm) drawn from with an
+ * exact inverse CDF, and its pdf. Three densities:
+ *
+ *   ALWAN_WAVELENGTH_PDF_UNIFORM    1 / (lambda_max - lambda_min).
+ *   ALWAN_WAVELENGTH_PDF_VISIBLE    Radziszewski, Boryczko and Alda 2009 ("An improved
+ *                                   technique for full spectral rendering", Journal of
+ *                                   WSCG 17): proportional to 1 / cosh^2(a (lambda - b)),
+ *                                   a = 0.0072 / nm and b = 538 nm, a smooth bump that
+ *                                   covers the CMFs. Its CDF is a tanh, inverted exactly.
+ *   ALWAN_WAVELENGTH_PDF_TABULATED  proportional to the caller's weights, constant over
+ *                                   weight_count bins of equal width between lambda_min
+ *                                   and lambda_max (alwan_wavelength_weights_{T} makes
+ *                                   them from an observer and an illuminant). Built on
+ *                                   alwan_importance_sampling_2d, drawn with its
+ *                                   tabulated_mode: SEARCH and ALIAS exact, DIRECT a
+ *                                   tabulated inverse (tabulated_resolution intervals,
+ *                                   0 for weight_count) whose pdf is the density it draws.
+ *
+ * Every field 0 is the default: lambda_min = lambda_max = 0 for 360 to 830 nm, a = 0 and
+ * b = 0 for the paper's 0.0072 and 538. params may be NULL. ALWAN_E_INVALID for an
+ * unknown density, a range that is not finite or not increasing, a negative or non-finite
+ * a, or (TABULATED) missing weights or weights the 2D sampler refuses (negative, not
+ * finite, all 0). ctx may be NULL. Suite 287. */
+typedef enum {
+    ALWAN_WAVELENGTH_PDF_UNIFORM = 0,
+    ALWAN_WAVELENGTH_PDF_VISIBLE = 1,
+    ALWAN_WAVELENGTH_PDF_TABULATED = 2
+} alwan_wavelength_pdf;
+
+typedef struct {
+    alwan_f32 lambda_min, lambda_max;          /* nm; both 0 for 360 to 830 */
+    alwan_f32 visible_a, visible_b;            /* VISIBLE: 1/nm and nm; 0 for 0.0072 and 538 */
+    alwan_f32 const *weights;                  /* TABULATED: weight_count bins */
+    size_t weight_count, weight_stride;        /* stride in bytes, 0 for packed */
+    alwan_importance_sampling_2d_mode tabulated_mode;
+    size_t tabulated_resolution;               /* DIRECT: 0 for weight_count */
+} alwan_wavelength_sampler_params_f32;
+typedef struct {
+    alwan_f64 lambda_min, lambda_max;
+    alwan_f64 visible_a, visible_b;
+    alwan_f64 const *weights;
+    size_t weight_count, weight_stride;
+    alwan_importance_sampling_2d_mode tabulated_mode;
+    size_t tabulated_resolution;
+} alwan_wavelength_sampler_params_f64;
+
+typedef struct alwan_wavelength_sampler_f32_s alwan_wavelength_sampler_f32;
+typedef struct alwan_wavelength_sampler_f64_s alwan_wavelength_sampler_f64;
+
+alwan_status alwan_wavelength_sampler_create_f32(alwan_wavelength_sampler_f32 **out, alwan_wavelength_pdf pdf,
+                                                 alwan_wavelength_sampler_params_f32 const *params, alwan_ctx *ctx);
+alwan_status alwan_wavelength_sampler_create_f64(alwan_wavelength_sampler_f64 **out, alwan_wavelength_pdf pdf,
+                                                 alwan_wavelength_sampler_params_f64 const *params, alwan_ctx *ctx);
+void alwan_wavelength_sampler_destroy_f32(alwan_wavelength_sampler_f32 *sampler, alwan_ctx *ctx);
+void alwan_wavelength_sampler_destroy_f64(alwan_wavelength_sampler_f64 *sampler, alwan_ctx *ctx);
+
+/* One wavelength from u in [0, 1] and its density (per nm; pdf_out may be NULL). u outside
+ * [0, 1] or NaN is ALWAN_E_RANGE. */
+alwan_status alwan_wavelength_sample_f32(alwan_f32 *lambda_out, alwan_f32 *pdf_out, alwan_f32 u, alwan_wavelength_sampler_f32 const *sampler);
+alwan_status alwan_wavelength_sample_f64(alwan_f64 *lambda_out, alwan_f64 *pdf_out, alwan_f64 u, alwan_wavelength_sampler_f64 const *sampler);
+
+/* Many: in holds one u per sample, out (lambda, pdf) per sample, both strided in bytes (0
+ * for packed). Stops at the first u outside [0, 1] with ALWAN_E_RANGE, the earlier
+ * samples written. */
+alwan_status alwan_wavelength_sample_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride,
+                                                        size_t count, alwan_wavelength_sampler_f32 const *sampler);
+alwan_status alwan_wavelength_sample_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride,
+                                                        size_t count, alwan_wavelength_sampler_f64 const *sampler);
+
+/* The density at lambda (per nm), 0 outside the range. */
+alwan_status alwan_wavelength_pdf_f32(alwan_f32 *pdf_out, alwan_f32 lambda, alwan_wavelength_sampler_f32 const *sampler);
+alwan_status alwan_wavelength_pdf_f64(alwan_f64 *pdf_out, alwan_f64 lambda, alwan_wavelength_sampler_f64 const *sampler);
+
+/* The u that sample turns into lambda; outside the range is ALWAN_E_RANGE, and a TABULATED
+ * sampler drawing with ALIAS (whose map is not monotone) is ALWAN_E_INVALID. */
+alwan_status alwan_wavelength_invert_f32(alwan_f32 *u_out, alwan_f32 lambda, alwan_wavelength_sampler_f32 const *sampler);
+alwan_status alwan_wavelength_invert_f64(alwan_f64 *u_out, alwan_f64 lambda, alwan_wavelength_sampler_f64 const *sampler);
+
+/* Hero wavelength sampling (Wilkie, Nawaz, Droske, Weidlich and Hanika 2014): the hero
+ * drawn from u, and count - 1 more, the hero rotated by j / count of the range and
+ * wrapped. pdf_out[j] is the sampler's density at wavelength j, mis_out[j] its balance
+ * heuristic weight across the set, pdf_j / (pdf_0 + ... + pdf_{count-1}): every rotation
+ * of the set is the same set, so one sum serves all and the weights sum to 1. A path
+ * carrying radiance f_j at the count wavelengths estimates an integral of f as
+ * sum_j f_j mis_j / pdf_j = sum_j f_j / (pdf_0 + ... + pdf_{count-1}). pdf_out and
+ * mis_out may be NULL. count 0 is ALWAN_E_INVALID; u as in sample. */
+alwan_status alwan_wavelength_sample_hero_f32(alwan_f32 *lambda_out, alwan_f32 *pdf_out, alwan_f32 *mis_out, size_t count,
+                                              alwan_f32 u, alwan_wavelength_sampler_f32 const *sampler);
+alwan_status alwan_wavelength_sample_hero_f64(alwan_f64 *lambda_out, alwan_f64 *pdf_out, alwan_f64 *mis_out, size_t count,
+                                              alwan_f64 u, alwan_wavelength_sampler_f64 const *sampler);
+
+/* Weights for a TABULATED sampler: count bins of equal width over [lambda_min,
+ * lambda_max], each the mean over its bin of an observer's x-bar + y-bar + z-bar
+ * (ALWAN_WAVELENGTH_WEIGHT_XYZ) or y-bar alone (ALWAN_WAVELENGTH_WEIGHT_Y), times the
+ * illuminant's SPD (ALWAN_ILLUMINANT_E for the CMFs alone). The CMFs and the SPD are read
+ * linearly and are 0 outside their tables. The mean is taken at 16 points a bin. ctx may
+ * be NULL. */
+typedef enum {
+    ALWAN_WAVELENGTH_WEIGHT_XYZ = 0,
+    ALWAN_WAVELENGTH_WEIGHT_Y = 1
+} alwan_wavelength_weight;
+
+alwan_status alwan_wavelength_weights_f32(alwan_f32 *weights_out, size_t count, alwan_f32 lambda_min, alwan_f32 lambda_max,
+                                          alwan_wavelength_weight weight, alwan_observer_type observer,
+                                          alwan_illuminant illuminant, alwan_ctx *ctx);
+alwan_status alwan_wavelength_weights_f64(alwan_f64 *weights_out, size_t count, alwan_f64 lambda_min, alwan_f64 lambda_max,
+                                          alwan_wavelength_weight weight, alwan_observer_type observer,
+                                          alwan_illuminant illuminant, alwan_ctx *ctx);
+
+/* A spectral film: a width x height image that sums Monte Carlo samples of spectral
+ * radiance into XYZ, then resolves them to XYZ or to RGB in any space.
+ *
+ * Each call to add is one path through one pixel: count wavelengths, the radiance the path
+ * carries at each, and each one's weight, which is 1 / pdf for a single wavelength or
+ * mis / pdf for hero sampling (alwan_wavelength_sample_hero). The path's contribution is
+ * sum_j radiance_j weight_j cmf(lambda_j), with cmf the observer's three functions read
+ * between their 1 nm samples with `interpolation` and 0 outside 360 to 830 nm; the
+ * pixel's XYZ is the mean contribution over its paths, which converges to the integral of
+ * radiance times the CMFs. Accumulation is in double whatever the inputs.
+ *
+ *   normalize = ALWAN_SPECTRAL_FILM_NORMALIZE_NONE        the integral as it is.
+ *   normalize = ALWAN_SPECTRAL_FILM_NORMALIZE_ILLUMINANT  divided by the integral of the
+ *                                                         illuminant's SPD times y-bar, so
+ *                                                         a path whose radiance is that SPD
+ *                                                         (a perfect diffuser under it)
+ *                                                         resolves to its white, Y = 1.
+ *
+ * resolve_rgb adapts by Bradford from the film's white (the illuminant's, or the observer's
+ * equal-energy white for NONE) to the space's when adapt is non-zero and the two differ;
+ * so with ILLUMINANT and adapt, a perfect diffuser is (1, 1, 1) in any space. Each
+ * integral is taken on the film's own reading of the CMFs, at 0.05 nm.
+ *
+ * track_variance keeps Welford's running variance per pixel and channel, and
+ * resolve_variance writes the variance of each pixel's mean (the sample variance over its
+ * path count), 0 for a pixel with fewer than two paths.
+ *
+ * Every field 0 is the default: the CIE 1931 2 deg observer, LINEAR, no normalisation;
+ * params may be NULL. ALWAN_E_INVALID for an unknown observer, normalisation or
+ * interpolation the CMF grid does not allow; ALWAN_E_NODATA when the observer's table was
+ * compiled out. Suite 287. */
+typedef enum {
+    ALWAN_SPECTRAL_FILM_NORMALIZE_NONE = 0,
+    ALWAN_SPECTRAL_FILM_NORMALIZE_ILLUMINANT = 1
+} alwan_spectral_film_normalize;
+
+typedef struct {
+    alwan_observer_type observer;
+    alwan_interp_method interpolation;
+    alwan_spectral_film_normalize normalize;
+    alwan_illuminant illuminant;               /* NORMALIZE_ILLUMINANT */
+    int track_variance;
+} alwan_spectral_film_params;
+
+typedef struct alwan_spectral_film_s alwan_spectral_film;
+
+alwan_status alwan_spectral_film_create(alwan_spectral_film **out, size_t width, size_t height,
+                                        alwan_spectral_film_params const *params, alwan_ctx *ctx);
+void alwan_spectral_film_destroy(alwan_spectral_film *film, alwan_ctx *ctx);
+/* Every pixel back to no paths. */
+alwan_status alwan_spectral_film_clear(alwan_spectral_film *film);
+
+/* One path into pixel (x, y): count wavelengths (nm), radiance and weight at each. weight
+ * may be NULL for all 1. A pixel outside the film is ALWAN_E_RANGE; a non-finite
+ * wavelength, radiance or weight is ALWAN_E_INVALID and adds nothing. */
+alwan_status alwan_spectral_film_add_f32(alwan_spectral_film *film, size_t x, size_t y, alwan_f32 const *lambda,
+                                         alwan_f32 const *radiance, alwan_f32 const *weight, size_t count);
+alwan_status alwan_spectral_film_add_f64(alwan_spectral_film *film, size_t x, size_t y, alwan_f64 const *lambda,
+                                         alwan_f64 const *radiance, alwan_f64 const *weight, size_t count);
+
+/* One path into every pixel: lambda, radiance and weight each hold count values a pixel,
+ * pixels row by row (width x height x count, packed); weight may be NULL. Stops at the
+ * first invalid path with ALWAN_E_INVALID, the pixels before it added. */
+alwan_status alwan_spectral_film_add_image_f32(alwan_spectral_film *film, alwan_f32 const *lambda, alwan_f32 const *radiance,
+                                               alwan_f32 const *weight, size_t count);
+alwan_status alwan_spectral_film_add_image_f64(alwan_spectral_film *film, alwan_f64 const *lambda, alwan_f64 const *radiance,
+                                               alwan_f64 const *weight, size_t count);
+
+/* The film as XYZ, three values a pixel, rows row_stride bytes apart (0 for packed). A
+ * pixel with no paths is 0. */
+alwan_status alwan_spectral_film_resolve_xyz_f32(alwan_f32 *out, size_t row_stride, alwan_spectral_film const *film);
+alwan_status alwan_spectral_film_resolve_xyz_f64(alwan_f64 *out, size_t row_stride, alwan_spectral_film const *film);
+
+/* The film as linear RGB in space, adapted as above when adapt is non-zero. */
+alwan_status alwan_spectral_film_resolve_rgb_f32(alwan_f32 *out, size_t row_stride, alwan_spectral_film const *film,
+                                                 alwan_rgb_space space, int adapt, alwan_ctx *ctx);
+alwan_status alwan_spectral_film_resolve_rgb_f64(alwan_f64 *out, size_t row_stride, alwan_spectral_film const *film,
+                                                 alwan_rgb_space space, int adapt, alwan_ctx *ctx);
+
+/* The variance of each pixel's XYZ mean, three values a pixel; ALWAN_E_INVALID for a film
+ * made without track_variance. */
+alwan_status alwan_spectral_film_resolve_variance_f32(alwan_f32 *out, size_t row_stride, alwan_spectral_film const *film);
+alwan_status alwan_spectral_film_resolve_variance_f64(alwan_f64 *out, size_t row_stride, alwan_spectral_film const *film);
+
+/* The number of paths added to pixel (x, y); a pixel outside the film is ALWAN_E_RANGE. */
+alwan_status alwan_spectral_film_path_count(size_t *count_out, alwan_spectral_film const *film, size_t x, size_t y);
+
+/* ----------------------------------------------------------------
  * CAM18sl - Color Appearance Model for Self-Luminous Stimuli
  * Reference: Hermans, Smet and Hanselaer (2018), JOSA A 35(12), with the corrections of
  * luxpy's cam18sl (equal to it, suite 260). Field of view 10 deg.

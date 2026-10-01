@@ -2007,6 +2007,20 @@ EXPORTS
     alwan_spd_resample_f64
     alwan_spd_to_aces2065_1_f32
     alwan_spd_to_aces2065_1_f64
+    alwan_spectral_film_add_f32
+    alwan_spectral_film_add_f64
+    alwan_spectral_film_add_image_f32
+    alwan_spectral_film_add_image_f64
+    alwan_spectral_film_clear
+    alwan_spectral_film_create
+    alwan_spectral_film_destroy
+    alwan_spectral_film_path_count
+    alwan_spectral_film_resolve_rgb_f32
+    alwan_spectral_film_resolve_rgb_f64
+    alwan_spectral_film_resolve_variance_f32
+    alwan_spectral_film_resolve_variance_f64
+    alwan_spectral_film_resolve_xyz_f32
+    alwan_spectral_film_resolve_xyz_f64
     alwan_spectral_locus_xy_f32
     alwan_spectral_locus_xy_f64
     alwan_spectral_to_tristimulus_f32_map_interleave
@@ -2199,6 +2213,22 @@ EXPORTS
     alwan_warp_u8
     alwan_water_refractive_index_f32
     alwan_water_refractive_index_f64
+    alwan_wavelength_invert_f32
+    alwan_wavelength_invert_f64
+    alwan_wavelength_pdf_f32
+    alwan_wavelength_pdf_f64
+    alwan_wavelength_sample_f32
+    alwan_wavelength_sample_f32_map_interleave
+    alwan_wavelength_sample_f64
+    alwan_wavelength_sample_f64_map_interleave
+    alwan_wavelength_sample_hero_f32
+    alwan_wavelength_sample_hero_f64
+    alwan_wavelength_sampler_create_f32
+    alwan_wavelength_sampler_create_f64
+    alwan_wavelength_sampler_destroy_f32
+    alwan_wavelength_sampler_destroy_f64
+    alwan_wavelength_weights_f32
+    alwan_wavelength_weights_f64
     alwan_wcag_contrast_ratio_f32
     alwan_wcag_contrast_ratio_f64
     alwan_weber_contrast_f32
