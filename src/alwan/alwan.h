@@ -11559,6 +11559,77 @@ alwan_status alwan_refractive_slab_rgb_f64(alwan_rgb_f64 *reflect_rgb, alwan_rgb
 alwan_status alwan_refractive_slab_rgb_f32(alwan_rgb_f32 *reflect_rgb, alwan_rgb_f32 *transmit_rgb, size_t material, alwan_refractive_table const *table, float thickness_nm, alwan_interp_method interpolation, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
 
 /* ----------------------------------------------------------------
+ * Skin: the diffuse spectral reflectance of skin from its chromophores, for a renderer's
+ * albedo and for colour science. Two layers by Kubelka-Munk (after Doi and Tominaga 2003):
+ * an epidermis of finite thickness holding melanin over a semi-infinite dermis holding
+ * blood. Absorption: eumelanin 6.6e10 lambda^-3.33 and pheomelanin 2.9e14 lambda^-4.75
+ * mm^-1 (Donner and Jensen 2006), the bloodless tissue baseline
+ * 0.0244 + 8.53 exp(-(lambda - 154) / 66.2) mm^-1 (Jacques 2013), haemoglobin from its
+ * decadic molar extinction (Prahl's values, data/skin/haemoglobin.csv) as
+ * ln(10) eps c. Reduced scattering a (lambda / 500 nm)^-b in both layers (Jacques 2013,
+ * skin: 4.6 mm^-1, 1.421), K = 2 mu_a and S = 3/4 mu_s' - 1/4 mu_a (Star et al. 1988).
+ * The result is the body reflectance under diffuse light, without the surface's specular
+ * reflection (about 2.8 % for an index of 1.4: add it in the BRDF). It is a model with
+ * published coefficients, not a measurement; docs/api/skin.md gives its limits.
+ * Wavelengths 350 to 850 nm.
+ * ---------------------------------------------------------------- */
+
+typedef enum {
+    ALWAN_SKIN_KUBELKA_MUNK_2LAYER = 0   /* the model above */
+} alwan_skin_model;
+
+/* The chromophore fractions are taken as given (0 is none: a zeroed struct is bloodless,
+ * unpigmented tissue); the remaining fields read 0 as their default.
+ * alwan_skin_params_default fills a lightly pigmented example. */
+typedef struct {
+    alwan_skin_model model;
+    alwan_f64 melanin_fraction;        /* epidermis volume fraction of melanosomes, 0..1 */
+    alwan_f64 eumelanin_ratio;         /* eumelanin's share of the melanin, 0..1; the rest pheomelanin */
+    alwan_f64 blood_fraction;          /* dermis volume fraction of blood, 0..1 */
+    alwan_f64 oxygenation;             /* oxyhaemoglobin's share of the haemoglobin, 0..1 */
+    alwan_f64 epidermis_thickness_mm;  /* 0 = 0.1 mm */
+    alwan_f64 haemoglobin_g_per_l;     /* in whole blood; 0 = 150 g/L */
+    alwan_f64 scattering_per_mm;       /* reduced scattering at 500 nm; 0 = 4.6 mm^-1 */
+    alwan_f64 scattering_power;        /* b; 0 = 1.421 */
+    alwan_interp_method interpolation; /* how the haemoglobin table is read; 0 = LINEAR */
+} alwan_skin_params;
+
+/* melanin 0.03 (70 % eumelanin), blood 0.02 at 75 % oxygenation, the other fields 0 */
+void alwan_skin_params_default(alwan_skin_params *params);
+
+/* The absorption of each layer and the reduced scattering, mm^-1, at each wavelength (nm).
+ * Any output may be NULL; params NULL is alwan_skin_params_default. ALWAN_E_RANGE for a
+ * wavelength outside 350-850 nm, ALWAN_E_INVALID for a fraction outside [0, 1], a negative
+ * or non-finite field, or an interpolation the table does not allow. */
+alwan_status alwan_skin_absorption_f64(double *mua_epidermis, double *mua_dermis, double *musp, double const *wavelengths_nm, size_t count, alwan_skin_params const *params);
+alwan_status alwan_skin_absorption_f32(float *mua_epidermis, float *mua_dermis, float *musp, float const *wavelengths_nm, size_t count, alwan_skin_params const *params);
+
+/* The diffuse reflectance at each wavelength (nm), in [0, 1]. Errors as above. */
+alwan_status alwan_skin_reflectance_f64(double *reflectance_out, double const *wavelengths_nm, size_t count, alwan_skin_params const *params);
+alwan_status alwan_skin_reflectance_f32(float *reflectance_out, float const *wavelengths_nm, size_t count, alwan_skin_params const *params);
+
+/* The skin's colour: its reflectance from 360 to 830 nm at 1 nm through
+ * alwan_reflectance_to_rgb (normalised to a perfect diffuser under the illuminant, adapted
+ * to the space's white). The model's table starts at 350 nm and ends at 850, so the whole
+ * visible range is covered. xyz_out may be NULL; ctx may be NULL. */
+alwan_status alwan_skin_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_xyz_f64 *xyz_out, alwan_skin_params const *params, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+alwan_status alwan_skin_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyz_f32 *xyz_out, alwan_skin_params const *params, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
+
+/* Which fractions alwan_skin_fit adjusts; 0 is melanin, blood and oxygenation. */
+#define ALWAN_SKIN_FIT_MELANIN     1u
+#define ALWAN_SKIN_FIT_BLOOD       2u
+#define ALWAN_SKIN_FIT_OXYGENATION 4u
+#define ALWAN_SKIN_FIT_EUMELANIN   8u
+
+/* The fractions that bring the model closest to a measured reflectance in least squares:
+ * Levenberg-Marquardt from params' values (a reasonable start matters: begin from
+ * alwan_skin_params_default), each fraction held in [0, 1], the fields not fitted kept.
+ * rms_out (may be NULL) is the root mean square residual. The model is not every skin:
+ * the residual says how far this one is from it. Errors as alwan_skin_reflectance. */
+alwan_status alwan_skin_fit_f64(alwan_skin_params *params, double *rms_out, double const *reflectance, double const *wavelengths_nm, size_t count, unsigned fit);
+alwan_status alwan_skin_fit_f32(alwan_skin_params *params, float *rms_out, float const *reflectance, float const *wavelengths_nm, size_t count, unsigned fit);
+
+/* ----------------------------------------------------------------
  * Thin-film iridescence for rendering (Belcour and Barla 2017, "A Practical Extension to
  * Microfacet Theory for the Modeling of Varying Iridescence"): the colour of a dielectric
  * film over a dielectric or conducting base, soap on water, oil on asphalt, the oxide on

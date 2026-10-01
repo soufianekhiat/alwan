@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+### Added: spectral skin model
+
+- **`alwan_skin_*`**: the diffuse spectral reflectance of skin from its chromophores and its
+  colour in any space, observer and illuminant, for a renderer's albedo and for colour
+  science. A two-layer Kubelka-Munk model (after Doi and Tominaga 2003): an epidermis of
+  given thickness holding melanin (a eumelanin and pheomelanin blend, Donner and Jensen
+  2006's absorption laws) over a semi-infinite dermis holding blood (haemoglobin from its
+  measured molar extinction, oxygenated and deoxygenated in a given share), the bloodless
+  tissue baseline and the reduced scattering of skin from Jacques 2013, and Star et al.
+  1988's link from absorption and scattering to the Kubelka-Munk coefficients. Functions:
+  `alwan_skin_params_default`, `alwan_skin_absorption_{T}`, `alwan_skin_reflectance_{T}`,
+  `alwan_skin_rgb_{T}` and `alwan_skin_fit_{T}` (Levenberg-Marquardt for the melanin,
+  blood, oxygenation and eumelanin fractions that match a measured reflectance). The
+  haemoglobin table is read with the caller's interpolation. alwan's own code from the
+  published formulas. The haemoglobin spectra are Scott Prahl's values as the Virtual
+  Tissue Simulator distributes them under MIT (THIRD_PARTY_NOTICES.md). Checked in suite
+  289 against the formulas' values at fixed points, the layering identities (to 3e-16),
+  the haemoglobin Q-band shape, bounds, the colour pipeline and a fit round trip.
+
 ### Added: thin-film iridescence for rendering
 
 - **`alwan_iridescence_*`**: the colour of a lossless film over a dielectric or conducting

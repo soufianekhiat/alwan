@@ -1958,6 +1958,15 @@ EXPORTS
     alwan_simulate_tritanopia_f64_map_planar
     alwan_simulate_tritanopia_map_interleave_ex
     alwan_simulate_tritanopia_map_planar_ex
+    alwan_skin_absorption_f32
+    alwan_skin_absorption_f64
+    alwan_skin_fit_f32
+    alwan_skin_fit_f64
+    alwan_skin_params_default
+    alwan_skin_reflectance_f32
+    alwan_skin_reflectance_f64
+    alwan_skin_rgb_f32
+    alwan_skin_rgb_f64
     alwan_sky_bake_equirect_f32
     alwan_sky_bake_equirect_f64
     alwan_sky_create_f32
