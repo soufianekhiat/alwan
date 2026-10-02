@@ -334,3 +334,81 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_lottes_default)(ALWAN_CORE_
         ALWAN_CORE_LITERAL(0.267));      /* mid_out   */
 }
 
+/* ----------------------------------------------------------------
+ * Game-engine filmic curves, per channel, each from its published formula.
+ * ---------------------------------------------------------------- */
+
+/* Hable 2010 ("Filmic Tonemapping Operators", filmicworlds.com), the Uncharted 2 curve:
+ * f(x) = ((x (A x + C B) + D E) / (x (A x + B) + D F)) - E / F, applied as
+ * f(bias x) / f(W) with A..F = 0.15, 0.50, 0.10, 0.20, 0.02, 0.30, W = 11.2, bias = 2. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hable_curve)(ALWAN_CORE_T x) {
+    const ALWAN_CORE_T A = ALWAN_CORE_LITERAL(0.15), B = ALWAN_CORE_LITERAL(0.50), C = ALWAN_CORE_LITERAL(0.10);
+    const ALWAN_CORE_T D = ALWAN_CORE_LITERAL(0.20), E = ALWAN_CORE_LITERAL(0.02), F = ALWAN_CORE_LITERAL(0.30);
+    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hable_filmic)(ALWAN_CORE_T x) {
+    return ALWAN_CORE_FNVLIT(alwan_hable_curve)(ALWAN_CORE_LITERAL(2.0) * x)
+         / ALWAN_CORE_FNVLIT(alwan_hable_curve)(ALWAN_CORE_LITERAL(11.2));
+}
+
+/* Narkowicz 2016 ("ACES Filmic Tone Mapping Curve"): (x (2.51 x + 0.03)) / (x (2.43 x + 0.59) + 0.14),
+ * as published, input pre-exposed so 1 maps to about 0.8. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_narkowicz_aces)(ALWAN_CORE_T x) {
+    return (x * (ALWAN_CORE_LITERAL(2.51) * x + ALWAN_CORE_LITERAL(0.03)))
+         / (x * (ALWAN_CORE_LITERAL(2.43) * x + ALWAN_CORE_LITERAL(0.59)) + ALWAN_CORE_LITERAL(0.14));
+}
+
+/* Stephen Hill's fit of the ACES RRT + sRGB ODT (BakingLab ACES.hlsl, MIT): linear
+ * Rec.709 in, an input matrix (sRGB to AP1 with the RRT's saturation), the rational
+ * RRTAndODTFit per channel, the output matrix back to linear Rec.709. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hill_rrt_odt_fit)(ALWAN_CORE_T v) {
+    ALWAN_CORE_T a = v * (v + ALWAN_CORE_LITERAL(0.0245786)) - ALWAN_CORE_LITERAL(0.000090537);
+    ALWAN_CORE_T b = v * (ALWAN_CORE_LITERAL(0.983729) * v + ALWAN_CORE_LITERAL(0.4329510)) + ALWAN_CORE_LITERAL(0.238081);
+    return a / b;
+}
+
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_CORE_FNVLIT(alwan_hill_aces)(ALWAN_CORE_VEC3 rgb) {
+    ALWAN_CORE_T r = ALWAN_CORE_LITERAL(0.59719) * rgb.v[0] + ALWAN_CORE_LITERAL(0.35458) * rgb.v[1] + ALWAN_CORE_LITERAL(0.04823) * rgb.v[2];
+    ALWAN_CORE_T g = ALWAN_CORE_LITERAL(0.07600) * rgb.v[0] + ALWAN_CORE_LITERAL(0.90834) * rgb.v[1] + ALWAN_CORE_LITERAL(0.01566) * rgb.v[2];
+    ALWAN_CORE_T b = ALWAN_CORE_LITERAL(0.02840) * rgb.v[0] + ALWAN_CORE_LITERAL(0.13383) * rgb.v[1] + ALWAN_CORE_LITERAL(0.83777) * rgb.v[2];
+    ALWAN_CORE_VEC3 res;
+    r = ALWAN_CORE_FNVLIT(alwan_hill_rrt_odt_fit)(r);
+    g = ALWAN_CORE_FNVLIT(alwan_hill_rrt_odt_fit)(g);
+    b = ALWAN_CORE_FNVLIT(alwan_hill_rrt_odt_fit)(b);
+    res.v[0] = ALWAN_CORE_LITERAL(1.60475) * r - ALWAN_CORE_LITERAL(0.53108) * g - ALWAN_CORE_LITERAL(0.07367) * b;
+    res.v[1] = ALWAN_CORE_LITERAL(-0.10208) * r + ALWAN_CORE_LITERAL(1.10813) * g - ALWAN_CORE_LITERAL(0.00605) * b;
+    res.v[2] = ALWAN_CORE_LITERAL(-0.00327) * r - ALWAN_CORE_LITERAL(0.07276) * g + ALWAN_CORE_LITERAL(1.07602) * b;
+    return res;
+}
+
+/* Hejl and Burgess-Dawson (Hable 2010): x = max(0, x - 0.004),
+ * (x (6.2 x + 0.5)) / (x (6.2 x + 1.7) + 0.06). Its output is DISPLAY-ENCODED: the
+ * 1/2.2 gamma is folded into the fit, so no OETF follows it. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_hejl_burgess_dawson)(ALWAN_CORE_T x) {
+    ALWAN_CORE_T y = ALWAN_CORE_MAX(x - ALWAN_CORE_LITERAL(0.004), ALWAN_CORE_ZERO);
+    return (y * (ALWAN_CORE_LITERAL(6.2) * y + ALWAN_CORE_LITERAL(0.5)))
+         / (y * (ALWAN_CORE_LITERAL(6.2) * y + ALWAN_CORE_LITERAL(1.7)) + ALWAN_CORE_LITERAL(0.06));
+}
+
+/* Day 2012 (Insomniac Games, "An efficient and user-friendly tone mapping operator"):
+ * a toe and a shoulder joined at the cross-over c with matching value and slope,
+ *   x <  c: k (1 - t)(x - b) / (c - (1 - t) b - t x)
+ *   x >= c: (1 - k)(x - c) / (s x + (1 - s) w - c) + k
+ *   k = (1 - t)(c - b) / ((1 - s)(w - c) + (1 - t)(c - b))
+ * w white point (maps to 1), b black point (maps to 0), t toe and s shoulder strength. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_day_filmic)(ALWAN_CORE_T x, ALWAN_CORE_T w, ALWAN_CORE_T b,
+                                                            ALWAN_CORE_T t, ALWAN_CORE_T s, ALWAN_CORE_T c) {
+    ALWAN_CORE_T k = (ALWAN_CORE_ONE - t) * (c - b) / ((ALWAN_CORE_ONE - s) * (w - c) + (ALWAN_CORE_ONE - t) * (c - b));
+    ALWAN_CORE_T toe = k * (ALWAN_CORE_ONE - t) * (x - b) / (c - (ALWAN_CORE_ONE - t) * b - t * x);
+    ALWAN_CORE_T shoulder = (ALWAN_CORE_ONE - k) * (x - c) / (s * x + (ALWAN_CORE_ONE - s) * w - c) + k;
+    return ALWAN_CORE_SELECT(x < c, toe, shoulder);
+}
+
+/* The view's defaults: tizian/tonemapper's w 10, b 0.1, t 0.7, s 0.8, c 2 on the input divided by
+ * 0.18, mid grey standing in for the image mean luminance that tool divides by. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_day_filmic_default)(ALWAN_CORE_T x) {
+    return ALWAN_CORE_FNVLIT(alwan_day_filmic)(x / ALWAN_CORE_LITERAL(0.18),
+        ALWAN_CORE_LITERAL(10.0), ALWAN_CORE_LITERAL(0.1), ALWAN_CORE_LITERAL(0.7),
+        ALWAN_CORE_LITERAL(0.8), ALWAN_CORE_LITERAL(2.0));
+}

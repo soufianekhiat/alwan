@@ -181,7 +181,7 @@ static alwan_status dq_prepare(dq_setup *s, alwan_pixel_format fmt, size_t chann
     if (fmt == ALWAN_PIXEL_U8) fmt_bits = 8;
     else if (fmt == ALWAN_PIXEL_U16) fmt_bits = 16;
     else return ALWAN_E_INVALID;
-    if ((int)method < (int)ALWAN_DITHER_NONE || (int)method > (int)ALWAN_DITHER_STUCKI) return ALWAN_E_INVALID;
+    if ((int)method < (int)ALWAN_DITHER_NONE || (int)method > (int)ALWAN_DITHER_OSTROMOUKHOV) return ALWAN_E_INVALID;
     memset(s, 0, sizeof *s);
     s->method = method;
     s->bits = p.bits ? p.bits : fmt_bits;
@@ -261,6 +261,49 @@ static double dq_ordered_offset(dq_setup const *s, size_t x, size_t y, size_t c)
 static int const ed_fs[3][5] = {{0, 0, 0, 7, 0}, {0, 3, 5, 1, 0}, {0, 0, 0, 0, 0}};
 static int const ed_jjn[3][5] = {{0, 0, 0, 7, 5}, {3, 5, 7, 5, 3}, {1, 3, 5, 3, 1}};
 static int const ed_stucki[3][5] = {{0, 0, 0, 8, 4}, {2, 4, 8, 4, 2}, {1, 2, 4, 2, 1}};
+static int const ed_atkinson[3][5] = {{0, 0, 0, 1, 1}, {0, 1, 1, 1, 0}, {0, 0, 1, 0, 0}};      /* / 8: 6/8 passed on */
+static int const ed_burkes[3][5] = {{0, 0, 0, 8, 4}, {2, 4, 8, 4, 2}, {0, 0, 0, 0, 0}};        /* / 32 */
+static int const ed_sierra[3][5] = {{0, 0, 0, 5, 3}, {2, 4, 5, 4, 2}, {0, 2, 3, 2, 0}};        /* / 32 */
+static int const ed_sierra2[3][5] = {{0, 0, 0, 4, 3}, {1, 2, 3, 2, 1}, {0, 0, 0, 0, 0}};       /* / 16 */
+static int const ed_sierra_lite[3][5] = {{0, 0, 0, 2, 0}, {0, 1, 1, 0, 0}, {0, 0, 0, 0, 0}};   /* / 4 */
+
+/* Ostromoukhov 2001, "A Simple and Efficient Error-Diffusion Algorithm" (SIGGRAPH 2001),
+ * Appendix I: for input levels 0..127 the weights to the right, down-left and down
+ * neighbours, each divided by their sum; level i above 127 reads 255 - i. */
+static int const ed_ostromoukhov[128][3] = {
+    {13, 0, 5}, {13, 0, 5}, {21, 0, 10}, {7, 0, 4},
+    {8, 0, 5}, {47, 3, 28}, {23, 3, 13}, {15, 3, 8},
+    {22, 6, 11}, {43, 15, 20}, {7, 3, 3}, {501, 224, 211},
+    {249, 116, 103}, {165, 80, 67}, {123, 62, 49}, {489, 256, 191},
+    {81, 44, 31}, {483, 272, 181}, {60, 35, 22}, {53, 32, 19},
+    {237, 148, 83}, {471, 304, 161}, {3, 2, 1}, {481, 314, 185},
+    {354, 226, 155}, {1389, 866, 685}, {227, 138, 125}, {267, 158, 163},
+    {327, 188, 220}, {61, 34, 45}, {627, 338, 505}, {1227, 638, 1075},
+    {20, 10, 19}, {1937, 1000, 1767}, {977, 520, 855}, {657, 360, 551},
+    {71, 40, 57}, {2005, 1160, 1539}, {337, 200, 247}, {2039, 1240, 1425},
+    {257, 160, 171}, {691, 440, 437}, {1045, 680, 627}, {301, 200, 171},
+    {177, 120, 95}, {2141, 1480, 1083}, {1079, 760, 513}, {725, 520, 323},
+    {137, 100, 57}, {2209, 1640, 855}, {53, 40, 19}, {2243, 1720, 741},
+    {565, 440, 171}, {759, 600, 209}, {1147, 920, 285}, {2311, 1880, 513},
+    {97, 80, 19}, {335, 280, 57}, {1181, 1000, 171}, {793, 680, 95},
+    {599, 520, 57}, {2413, 2120, 171}, {405, 360, 19}, {2447, 2200, 57},
+    {11, 10, 0}, {158, 151, 3}, {178, 179, 7}, {1030, 1091, 63},
+    {248, 277, 21}, {318, 375, 35}, {458, 571, 63}, {878, 1159, 147},
+    {5, 7, 1}, {172, 181, 37}, {97, 76, 22}, {72, 41, 17},
+    {119, 47, 29}, {4, 1, 1}, {4, 1, 1}, {4, 1, 1},
+    {4, 1, 1}, {4, 1, 1}, {4, 1, 1}, {4, 1, 1},
+    {4, 1, 1}, {4, 1, 1}, {65, 18, 17}, {95, 29, 26},
+    {185, 62, 53}, {30, 11, 9}, {35, 14, 11}, {85, 37, 28},
+    {55, 26, 19}, {80, 41, 29}, {155, 86, 59}, {5, 3, 2},
+    {5, 3, 2}, {5, 3, 2}, {5, 3, 2}, {5, 3, 2},
+    {5, 3, 2}, {5, 3, 2}, {5, 3, 2}, {5, 3, 2},
+    {5, 3, 2}, {5, 3, 2}, {5, 3, 2}, {5, 3, 2},
+    {305, 176, 119}, {155, 86, 59}, {105, 56, 39}, {80, 41, 29},
+    {65, 32, 23}, {55, 26, 19}, {335, 152, 113}, {85, 37, 28},
+    {115, 48, 37}, {35, 14, 11}, {355, 136, 109}, {30, 11, 9},
+    {365, 128, 107}, {185, 62, 53}, {25, 8, 7}, {95, 29, 26},
+    {385, 112, 103}, {65, 18, 17}, {395, 104, 101}, {4, 1, 1},
+};
 
 /* A quantiser fed one row at a time, in order: the setup, the carried error of the current
  * row and the two below it (two columns of margin each side), and the row's index. */
@@ -303,10 +346,21 @@ static alwan_status dq_row(dq_state *q, void *out, double const *in, size_t y) {
         }
         return ALWAN_OK;
     } else {
-        int const (*k)[5] = s->method == ALWAN_DITHER_FLOYD_STEINBERG ? ed_fs
-                          : s->method == ALWAN_DITHER_JARVIS_JUDICE_NINKE ? ed_jjn : ed_stucki;
-        double const div = s->method == ALWAN_DITHER_FLOYD_STEINBERG ? 16.0
-                         : s->method == ALWAN_DITHER_JARVIS_JUDICE_NINKE ? 48.0 : 42.0;
+        int const (*k)[5];
+        double div;
+        int kv[3][5];                                         /* Ostromoukhov's, per pixel */
+        switch (s->method) {
+            case ALWAN_DITHER_FLOYD_STEINBERG:    k = ed_fs; div = 16.0; break;
+            case ALWAN_DITHER_JARVIS_JUDICE_NINKE: k = ed_jjn; div = 48.0; break;
+            case ALWAN_DITHER_STUCKI:             k = ed_stucki; div = 42.0; break;
+            case ALWAN_DITHER_ATKINSON:           k = ed_atkinson; div = 8.0; break;
+            case ALWAN_DITHER_BURKES:             k = ed_burkes; div = 32.0; break;
+            case ALWAN_DITHER_SIERRA:             k = ed_sierra; div = 32.0; break;
+            case ALWAN_DITHER_SIERRA_TWO_ROW:     k = ed_sierra2; div = 16.0; break;
+            case ALWAN_DITHER_SIERRA_LITE:        k = ed_sierra_lite; div = 4.0; break;
+            default:                              k = (int const (*)[5])kv; div = 1.0; break;
+        }
+        memset(kv, 0, sizeof kv);
         size_t const rw = (w + 4) * ch;
         double *rows[3];
         int const rev = s->serpentine && (y & 1);
@@ -324,6 +378,22 @@ static alwan_status dq_row(dq_state *q, void *out, double const *in, size_t y) {
                 if (qv > s->levels) qv = s->levels;
                 e = t - qv;
                 dq_store(out, q->fmt, x * ch + c, qv, s);
+                if (s->method == ALWAN_DITHER_OSTROMOUKHOV) {
+                    /* the level is the input's place inside its quantisation step, 0..255,
+                     * which for one bit is the 8-bit input level the paper indexes by */
+                    double const v = in[x * ch + c] * s->levels;
+                    double fr = v - ALWAN_FLOOR_F64(v);
+                    int lvl;
+                    if (v >= s->levels) fr = 1.0;
+                    lvl = (int)ALWAN_FLOOR_F64(fr * 255.0 + 0.5);
+                    if (lvl < 0) lvl = 0;
+                    if (lvl > 255) lvl = 255;
+                    if (lvl > 127) lvl = 255 - lvl;
+                    kv[0][3] = ed_ostromoukhov[lvl][0];
+                    kv[1][1] = ed_ostromoukhov[lvl][1];
+                    kv[1][2] = ed_ostromoukhov[lvl][2];
+                    div = (double)(kv[0][3] + kv[1][1] + kv[1][2]);
+                }
                 for (dy = 0; dy < 3; dy++) {
                     for (dx = -2; dx <= 2; dx++) {
                         int const wgt = k[dy][dx + 2];

@@ -772,7 +772,12 @@ typedef enum {
     ALWAN_VIEW_BT2446C_HDR_TO_SDR = 14, /* BT.2446-1 Method C: HLG R'G'B' (1000 cd/m2) to SDR R'G'B', alpha 0 */
     ALWAN_VIEW_BT2390_HDR_TO_SDR = 15, /* BT.2390 EETF (BT.2408-8 Annex 5) per PQ channel, 10000 to 100 cd/m2 */
     ALWAN_VIEW_REINHARD_CALIBRATED = 16, /* Reinhard calibrated (key-based, Reinhard 2002) */
-    ALWAN_VIEW_EXPOSURE = 17 /* Exposure-based with shoulder compression */
+    ALWAN_VIEW_EXPOSURE = 17, /* Exposure-based with shoulder compression */
+    ALWAN_VIEW_HABLE_UNCHARTED2 = 18, /* Hable 2010 Uncharted 2 filmic, per channel, linear out */
+    ALWAN_VIEW_ACES_NARKOWICZ = 19, /* Narkowicz 2016 fit of the ACES curve, per channel, linear out */
+    ALWAN_VIEW_ACES_HILL = 20, /* Stephen Hill's RRT + ODT fit (BakingLab), linear Rec.709 in and out */
+    ALWAN_VIEW_HEJL_BURGESS_DAWSON = 21, /* Hejl and Burgess-Dawson filmic: output is DISPLAY-ENCODED */
+    ALWAN_VIEW_DAY_FILMIC = 22 /* Day 2012 (Insomniac) toe and shoulder, per channel, linear out */
 } alwan_view_transform;
 
 /* Alpha handling mode for RGBA image conversion */
@@ -902,6 +907,18 @@ alwan_status alwan_image_convert_f32(void *dst, size_t dst_row_stride, void cons
  *   ALWAN_DITHER_FLOYD_STEINBERG      error diffusion, 7 3 5 1 / 16 (Floyd and Steinberg 1976)
  *   ALWAN_DITHER_JARVIS_JUDICE_NINKE  error diffusion over two rows, / 48 (1976)
  *   ALWAN_DITHER_STUCKI               error diffusion over two rows, / 42 (Stucki 1981)
+ *   ALWAN_DITHER_ATKINSON             1 1 / 1 1 1 / 1, / 8: only 6/8 of the error passes on
+ *                                     (Bill Atkinson, MacPaint 1984)
+ *   ALWAN_DITHER_BURKES               8 4 / 2 4 8 4 2, / 32 (Burkes 1988)
+ *   ALWAN_DITHER_SIERRA               5 3 / 2 4 5 4 2 / 2 3 2, / 32 (Sierra 1989)
+ *   ALWAN_DITHER_SIERRA_TWO_ROW       4 3 / 1 2 3 2 1, / 16
+ *   ALWAN_DITHER_SIERRA_LITE          2 / 1 1, / 4
+ *   ALWAN_DITHER_OSTROMOUKHOV         variable coefficients to the right, down-left and down
+ *                                     neighbours from the table of Ostromoukhov 2001
+ *                                     (Appendix I), indexed by the input's place inside its
+ *                                     quantisation step as a level 0..255 (the 8-bit input
+ *                                     level at one bit, as the paper); the paper scans in
+ *                                     serpentine order, so set serpentine for its results
  *
  * L = 2^bits - 1 steps. The ordered methods take tpdf (triangular noise of two steps, the
  * error independent of the signal; plain is uniform, one step), decorrelate_channels (each
@@ -917,7 +934,13 @@ typedef enum {
     ALWAN_DITHER_ORDERED_BLUE_NOISE = 2,
     ALWAN_DITHER_FLOYD_STEINBERG = 3,
     ALWAN_DITHER_JARVIS_JUDICE_NINKE = 4,
-    ALWAN_DITHER_STUCKI = 5
+    ALWAN_DITHER_STUCKI = 5,
+    ALWAN_DITHER_ATKINSON = 6,
+    ALWAN_DITHER_BURKES = 7,
+    ALWAN_DITHER_SIERRA = 8,
+    ALWAN_DITHER_SIERRA_TWO_ROW = 9,
+    ALWAN_DITHER_SIERRA_LITE = 10,
+    ALWAN_DITHER_OSTROMOUKHOV = 11
 } alwan_dither_method;
 
 /* A zero field is its default; NULL params is all defaults. */
@@ -1333,7 +1356,30 @@ alwan_status alwan_view_transform_apply_f32(alwan_f32 *rgb_out, size_t out_strid
  * operator output -- no display [0,1] clamp, out-of-gamut chroma preserved
  * (numerical pow-domain guards are retained where the math requires).
  * Transforms whose [0,1] output is definitional (AgX, ACES, BT.2446/2390,
- * PBR Neutral, TONY_MCMAPFACE) return identical results through both entry points. */
+ * PBR Neutral, TONY_MCMAPFACE) return identical results through both entry points.
+ *
+ * The five game-engine curves, each from its published formula, take scene-linear
+ * Rec.709/sRGB primaries, clamp a negative channel to 0 (the rationals have poles
+ * below 0) and, through the clamped entry, saturate to [0, 1]; the unclamped entry
+ * returns the curve's own value (DAY_FILMIC exceeds 1 past its white point and goes
+ * below 0 under its black point; ACES_HILL can leave [0, 1] through its matrices):
+ *   HABLE_UNCHARTED2      f(2 x) / f(11.2), f Hable's A..F rational (filmicworlds.com
+ *                         2010); linear display values: encode with the display OETF
+ *                         (Hable's post follows it with pow(1/2.2)).
+ *   ACES_NARKOWICZ        (x (2.51 x + 0.03)) / (x (2.43 x + 0.59) + 0.14), as published
+ *                         (input pre-exposed: 1 maps to about 0.8; the post says to
+ *                         scale the input by 0.6 for the original ACES curve); linear.
+ *   ACES_HILL             Hill's input matrix, RRTAndODTFit, output matrix (BakingLab
+ *                         ACES.hlsl, MIT); linear Rec.709 in and out.
+ *   HEJL_BURGESS_DAWSON   x' = max(0, x - 0.004), (x'(6.2 x' + 0.5)) / (x'(6.2 x' + 1.7)
+ *                         + 0.06): the 1/2.2 gamma is inside the fit, so the output is
+ *                         DISPLAY-ENCODED; apply no OETF after it.
+ *   DAY_FILMIC            Day 2012's toe and shoulder joined with matching value and
+ *                         slope at the cross-over, w 10, b 0.1, t 0.7, s 0.8, c 2 (the
+ *                         defaults of tizian/tonemapper, MIT) on x / 0.18: mid grey stands
+ *                         in for the image mean luminance that tool divides by; linear.
+ * Unreal Engine 4's filmic curve is not offered: its formula is published only in the
+ * engine's shader source, under the Unreal Engine EULA. */
 alwan_status alwan_view_transform_apply_unclamped_f64(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 alwan_status alwan_view_transform_apply_unclamped_f32(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx);
 /* Bulk (map) variants of the view transform. The view workers are scalar, so

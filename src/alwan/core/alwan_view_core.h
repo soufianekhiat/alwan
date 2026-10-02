@@ -291,6 +291,61 @@ ALWAN_INLINE alwan_vec3 alwan_lottes_default_v(alwan_vec3 rgb) {
         ALWAN_LITERAL(8.0), ALWAN_LITERAL(0.18), ALWAN_LITERAL(0.267));
 }
 
+ALWAN_INLINE alwan_scalar alwan_hable_curve_v(alwan_scalar x) {
+    const alwan_scalar A = ALWAN_LITERAL(0.15), B = ALWAN_LITERAL(0.50), C = ALWAN_LITERAL(0.10);
+    const alwan_scalar D = ALWAN_LITERAL(0.20), E = ALWAN_LITERAL(0.02), F = ALWAN_LITERAL(0.30);
+    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+
+ALWAN_INLINE alwan_scalar alwan_hable_filmic_v(alwan_scalar x) {
+    return alwan_hable_curve_v(ALWAN_LITERAL(2.0) * x) / alwan_hable_curve_v(ALWAN_LITERAL(11.2));
+}
+
+ALWAN_INLINE alwan_scalar alwan_narkowicz_aces_v(alwan_scalar x) {
+    return (x * (ALWAN_LITERAL(2.51) * x + ALWAN_LITERAL(0.03)))
+         / (x * (ALWAN_LITERAL(2.43) * x + ALWAN_LITERAL(0.59)) + ALWAN_LITERAL(0.14));
+}
+
+ALWAN_INLINE alwan_scalar alwan_hill_rrt_odt_fit_v(alwan_scalar v) {
+    alwan_scalar a = v * (v + ALWAN_LITERAL(0.0245786)) - ALWAN_LITERAL(0.000090537);
+    alwan_scalar b = v * (ALWAN_LITERAL(0.983729) * v + ALWAN_LITERAL(0.4329510)) + ALWAN_LITERAL(0.238081);
+    return a / b;
+}
+
+ALWAN_INLINE alwan_vec3 alwan_hill_aces_v(alwan_vec3 rgb) {
+    alwan_scalar r = ALWAN_LITERAL(0.59719) * rgb.v[0] + ALWAN_LITERAL(0.35458) * rgb.v[1] + ALWAN_LITERAL(0.04823) * rgb.v[2];
+    alwan_scalar g = ALWAN_LITERAL(0.07600) * rgb.v[0] + ALWAN_LITERAL(0.90834) * rgb.v[1] + ALWAN_LITERAL(0.01566) * rgb.v[2];
+    alwan_scalar b = ALWAN_LITERAL(0.02840) * rgb.v[0] + ALWAN_LITERAL(0.13383) * rgb.v[1] + ALWAN_LITERAL(0.83777) * rgb.v[2];
+    alwan_vec3 res;
+    r = alwan_hill_rrt_odt_fit_v(r);
+    g = alwan_hill_rrt_odt_fit_v(g);
+    b = alwan_hill_rrt_odt_fit_v(b);
+    res.v[0] = ALWAN_LITERAL(1.60475) * r - ALWAN_LITERAL(0.53108) * g - ALWAN_LITERAL(0.07367) * b;
+    res.v[1] = ALWAN_LITERAL(-0.10208) * r + ALWAN_LITERAL(1.10813) * g - ALWAN_LITERAL(0.00605) * b;
+    res.v[2] = ALWAN_LITERAL(-0.00327) * r - ALWAN_LITERAL(0.07276) * g + ALWAN_LITERAL(1.07602) * b;
+    return res;
+}
+
+ALWAN_INLINE alwan_scalar alwan_hejl_burgess_dawson_v(alwan_scalar x) {
+    alwan_scalar y = alwan_max(x - ALWAN_LITERAL(0.004), ALWAN_ZERO);
+    return (y * (ALWAN_LITERAL(6.2) * y + ALWAN_LITERAL(0.5)))
+         / (y * (ALWAN_LITERAL(6.2) * y + ALWAN_LITERAL(1.7)) + ALWAN_LITERAL(0.06));
+}
+
+ALWAN_INLINE alwan_scalar alwan_day_filmic_v(alwan_scalar x, alwan_scalar w, alwan_scalar b,
+                                              alwan_scalar t, alwan_scalar s, alwan_scalar c) {
+    alwan_scalar k = (ALWAN_ONE - t) * (c - b) / ((ALWAN_ONE - s) * (w - c) + (ALWAN_ONE - t) * (c - b));
+    alwan_scalar toe = k * (ALWAN_ONE - t) * (x - b) / (c - (ALWAN_ONE - t) * b - t * x);
+    alwan_scalar shoulder = (ALWAN_ONE - k) * (x - c) / (s * x + (ALWAN_ONE - s) * w - c) + k;
+    return ALWAN_SELECT(x < c, toe, shoulder);
+}
+
+ALWAN_INLINE alwan_scalar alwan_day_filmic_default_v(alwan_scalar x) {
+    return alwan_day_filmic_v(x / ALWAN_LITERAL(0.18),
+        ALWAN_LITERAL(10.0), ALWAN_LITERAL(0.1), ALWAN_LITERAL(0.7),
+        ALWAN_LITERAL(0.8), ALWAN_LITERAL(2.0));
+}
+
 #endif
 
 #endif /* ALWAN_VIEW_CORE_H */

@@ -261,6 +261,24 @@ the experimental halation model.
 
 What alwan takes: the 48^3 display transform cube, `src/alwan/data/tony_mcmapface_lut3d.csv`.
 
+## BakingLab (MJP), Stephen Hill's ACES fit
+
+- Upstream: https://github.com/TheRealMJP/BakingLab, BakingLab/ACES.hlsl (the fit by Stephen Hill).
+- Copyright (c) 2016 MJP.
+- Licence: MIT, `licenses/BakingLab-MIT.txt`.
+
+What alwan takes: the input and output matrices and the RRTAndODTFit coefficients of
+`ALWAN_VIEW_ACES_HILL`, in `src/alwan/core/alwan_view_core.inc` and `.h`.
+
+## tonemapper (Tizian Zeltner)
+
+- Upstream: https://github.com/tizian/tonemapper, src/operators/DayFilmicOperator.cpp.
+- Copyright (c) 2022 Tizian Zeltner.
+- Licence: MIT, `licenses/tonemapper-MIT.txt`.
+
+What alwan takes: the default parameters of `ALWAN_VIEW_DAY_FILMIC` (w 10, b 0.1, t 0.7,
+s 0.8, c 2) and its written form of Day 2012's curve.
+
 ## rawtoaces-data
 
 - Upstream: https://github.com/AcademySoftwareFoundation/rawtoaces-data.

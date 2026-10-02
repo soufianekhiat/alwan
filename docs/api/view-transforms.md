@@ -88,11 +88,16 @@ typedef enum {
     ALWAN_VIEW_BT2446C_HDR_TO_SDR = 14,
     ALWAN_VIEW_BT2390_HDR_TO_SDR = 15,   /* BT.2390 EETF, Hermite spline */
     ALWAN_VIEW_REINHARD_CALIBRATED = 16,
-    ALWAN_VIEW_EXPOSURE = 17             /* Exposure with shoulder compression */
+    ALWAN_VIEW_EXPOSURE = 17,            /* Exposure with shoulder compression */
+    ALWAN_VIEW_HABLE_UNCHARTED2 = 18,    /* Hable 2010, Uncharted 2 filmic */
+    ALWAN_VIEW_ACES_NARKOWICZ = 19,      /* Narkowicz 2016 fit of the ACES curve */
+    ALWAN_VIEW_ACES_HILL = 20,           /* Stephen Hill's RRT + ODT fit (BakingLab) */
+    ALWAN_VIEW_HEJL_BURGESS_DAWSON = 21, /* Hejl and Burgess-Dawson: DISPLAY-ENCODED output */
+    ALWAN_VIEW_DAY_FILMIC = 22           /* Day 2012 (Insomniac) toe and shoulder */
 } alwan_view_transform;
 ```
 
-Valid range is `0..17`. Anything outside it returns `ALWAN_E_INVALID` from the apply
+Valid range is `0..22`. Anything outside it returns `ALWAN_E_INVALID` from the apply
 entry points, and is silently accepted by the typed `_ex` tile paths (see
 [`alwan_view_transform_map_interleave_ex`](#alwan_view_transform_map_interleave_ex)).
 
@@ -194,6 +199,27 @@ through the unclamped entry point only for the two in the first row.
 
 The other thirteen `vt` values resolve to the identical function pointer, so both entry
 points return bit-identical bytes for them.
+
+### The game-engine filmic curves (18 to 22)
+
+Five per-channel curves from real-time rendering, each from its publication, with no
+parameters: the published constants are the curve. Each takes scene-linear Rec.709/sRGB
+primaries, clamps a negative channel to 0 in both entry points (every one is a rational with
+poles below 0), and saturates to `[0, 1]` in the clamped entry only. Suite 10 holds each to
+its formula written out in `gendata/tests/filmic_curves_reference.py`, 250 rows, f64 and f32.
+
+| `vt` | Formula and source | Output | 0.18 maps to |
+|---|---|---|---|
+| `HABLE_UNCHARTED2` | f(2 x) / f(11.2), f = ((x(Ax + CB) + DE) / (x(Ax + B) + DF)) - E/F, A..F = 0.15 0.50 0.10 0.20 0.02 0.30 (Hable 2010, filmicworlds.com; the bias sits inside f, as the post) | linear | 0.128 |
+| `ACES_NARKOWICZ` | (x(2.51x + 0.03)) / (x(2.43x + 0.59) + 0.14) (Narkowicz 2016), as published: the input is pre-exposed so 1 maps to about 0.8; the post scales x by 0.6 to reproduce the original ACES curve | linear | 0.267 |
+| `ACES_HILL` | input matrix, RRTAndODTFit, output matrix (Stephen Hill, BakingLab ACES.hlsl, MIT) | linear Rec.709 | 0.106 |
+| `HEJL_BURGESS_DAWSON` | x' = max(0, x - 0.004), (x'(6.2x' + 0.5)) / (x'(6.2x' + 1.7) + 0.06) (Hable 2010) | DISPLAY-ENCODED: the 1/2.2 gamma is inside the fit; apply no OETF | 0.508 |
+| `DAY_FILMIC` | Day 2012's toe and shoulder, joined with one value and one slope at the cross-over: w 10, b 0.1, t 0.7, s 0.8, c 2 (tizian/tonemapper's defaults, MIT) on x / 0.18, mid grey standing in for the image mean that tool divides by | linear; above 1 past the white point and below 0 under the black point in the unclamped entry | 0.056 |
+
+The unclamped entry returns the curve's own value: `DAY_FILMIC` crosses 1 and 0, `ACES_HILL`
+can leave `[0, 1]` through its matrices, the others stay inside it. Unreal Engine 4's filmic
+curve is not offered: its formula is published only in the engine's shader source, under
+the Unreal Engine EULA.
 
 There is no unclamped bulk or typed entry point. `alwan_view_transform_{T}_map_interleave`
 and `alwan_view_transform_map_interleave_ex` both route to the clamped apply.

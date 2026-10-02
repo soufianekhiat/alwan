@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+### Added: filmic view curves and error-diffusion kernels
+
+- **Five game-engine filmic view curves** in `alwan_view_transform`: `HABLE_UNCHARTED2`
+  (Hable 2010), `ACES_NARKOWICZ` (Narkowicz 2016), `ACES_HILL` (Stephen Hill's RRT + ODT fit,
+  BakingLab, MIT), `HEJL_BURGESS_DAWSON` (display-encoded output) and `DAY_FILMIC` (Day 2012,
+  with tizian/tonemapper's defaults, MIT), each from its published formula, clamped and
+  unclamped entries, also in the core header for shaders (suite 10). UE4's filmic curve is
+  not offered: its formula exists only in the engine source under the Unreal EULA.
+- **Six error-diffusion kernels** in `alwan_dither_quantize`: Atkinson, Burkes, Sierra,
+  Two-Row Sierra, Sierra Lite and Ostromoukhov 2001's variable coefficients (its Appendix I
+  table), each plain and serpentine (suite 285).
+
 ### Added: fluorescence
 
 - **`alwan_fluorescent_*`**: fluorescent materials as bispectral reradiation, so their colour

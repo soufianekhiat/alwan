@@ -13,7 +13,13 @@ typedef enum {
     ALWAN_DITHER_ORDERED_BLUE_NOISE = 2,   /* floor(v L + t), t from a blue noise mask */
     ALWAN_DITHER_FLOYD_STEINBERG = 3,      /* 7 3 5 1 / 16 */
     ALWAN_DITHER_JARVIS_JUDICE_NINKE = 4,  /* two rows, / 48 */
-    ALWAN_DITHER_STUCKI = 5                /* two rows, / 42 */
+    ALWAN_DITHER_STUCKI = 5,               /* two rows, / 42 */
+    ALWAN_DITHER_ATKINSON = 6,             /* 1 1 / 1 1 1 / 1, / 8: 6/8 of the error passes on */
+    ALWAN_DITHER_BURKES = 7,               /* 8 4 / 2 4 8 4 2, / 32 */
+    ALWAN_DITHER_SIERRA = 8,               /* 5 3 / 2 4 5 4 2 / 2 3 2, / 32 */
+    ALWAN_DITHER_SIERRA_TWO_ROW = 9,       /* 4 3 / 1 2 3 2 1, / 16 */
+    ALWAN_DITHER_SIERRA_LITE = 10,         /* 2 / 1 1, / 4 */
+    ALWAN_DITHER_OSTROMOUKHOV = 11         /* Ostromoukhov 2001, variable coefficients */
 } alwan_dither_method;
 
 typedef struct {
@@ -123,3 +129,20 @@ Floyd-Steinberg, Jarvis-Judice-Ninke and Stucki, plain and serpentine, every cod
 slow ramp quantised to 6 bits, the mean over 16-column blocks follows the ramp to 2.2e-4 (Bayer),
 1.3e-4 (blue noise), 2.1e-4 (Floyd-Steinberg) and 2.6e-4 (Stucki) of full range, where
 rounding is 7.5e-3 off.
+
+## The added error-diffusion kernels
+
+Atkinson (MacPaint, 1984) passes on only 6/8 of each pixel's error, which keeps highlights
+and shadows clean at the cost of the mean: on a constant 128 x 128 image at 4 bits the
+mean of its codes strays by up to 8.3e-3 of full scale, where Burkes, the three Sierra
+kernels and Ostromoukhov stay within 3.1e-4 (suite 285).
+
+Ostromoukhov 2001 ("A Simple and Efficient Error-Diffusion Algorithm", SIGGRAPH 2001)
+sends the error to three neighbours, right, down-left and down, with weights from the
+paper's Appendix I table, chosen per input level 0..127 and mirrored above (level i reads
+255 - i). The paper dithers 8-bit input to one bit; alwan indexes the table by the input's
+place inside its quantisation step, scaled to 0..255, which is the paper's level at one
+bit. The paper scans in serpentine order: set `serpentine` for its results.
+
+Every kernel is checked code for code against its definition written out in
+`gendata/tests/dither_reference.py`, plain and serpentine.

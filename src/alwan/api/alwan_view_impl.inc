@@ -373,6 +373,47 @@ static void ALWAN_CORE_FN(exposure_transform_unclamped)(ALWAN_CORE_T const *rgb_
 }
 
 /* ----------------------------------------------------------------
+ * Game-engine filmic curves (Hable, Narkowicz, Hill, Hejl and Burgess-Dawson, Day).
+ * A negative channel is clamped to 0 in both entries: the rationals have poles below 0.
+ * ---------------------------------------------------------------- */
+static void ALWAN_CORE_FN(alwan__filmic_apply)(ALWAN_CORE_T const *rgb_in, ALWAN_CORE_T *rgb_out,
+                                               alwan_view_transform vt, int clamp_out) {
+    ALWAN_CORE_VEC3 in_v = {{
+        ALWAN_CORE_MAX(rgb_in[0], ALWAN_CORE_ZERO),
+        ALWAN_CORE_MAX(rgb_in[1], ALWAN_CORE_ZERO),
+        ALWAN_CORE_MAX(rgb_in[2], ALWAN_CORE_ZERO)
+    }};
+    ALWAN_CORE_VEC3 o;
+    int c;
+    if (vt == ALWAN_VIEW_ACES_HILL) {
+        o = ALWAN_CORE_FNVLIT(alwan_hill_aces)(in_v);
+    } else {
+        for (c = 0; c < 3; c++) {
+            ALWAN_CORE_T x = in_v.v[c];
+            switch (vt) {
+                case ALWAN_VIEW_HABLE_UNCHARTED2:    o.v[c] = ALWAN_CORE_FNVLIT(alwan_hable_filmic)(x); break;
+                case ALWAN_VIEW_ACES_NARKOWICZ:      o.v[c] = ALWAN_CORE_FNVLIT(alwan_narkowicz_aces)(x); break;
+                case ALWAN_VIEW_HEJL_BURGESS_DAWSON: o.v[c] = ALWAN_CORE_FNVLIT(alwan_hejl_burgess_dawson)(x); break;
+                default:                             o.v[c] = ALWAN_CORE_FNVLIT(alwan_day_filmic_default)(x); break;
+            }
+        }
+    }
+    for (c = 0; c < 3; c++) {
+        rgb_out[c] = clamp_out ? ALWAN_CORE_SATURATE(o.v[c]) : o.v[c];
+    }
+}
+
+#define ALWAN__FILMIC_PAIR(NAME, VT) \
+    static void ALWAN_CORE_FN(NAME)(ALWAN_CORE_T const *i, ALWAN_CORE_T *o) { ALWAN_CORE_FN(alwan__filmic_apply)(i, o, VT, 1); } \
+    static void ALWAN_CORE_FN(NAME##_unclamped)(ALWAN_CORE_T const *i, ALWAN_CORE_T *o) { ALWAN_CORE_FN(alwan__filmic_apply)(i, o, VT, 0); }
+ALWAN__FILMIC_PAIR(hable_transform, ALWAN_VIEW_HABLE_UNCHARTED2)
+ALWAN__FILMIC_PAIR(narkowicz_transform, ALWAN_VIEW_ACES_NARKOWICZ)
+ALWAN__FILMIC_PAIR(hill_transform, ALWAN_VIEW_ACES_HILL)
+ALWAN__FILMIC_PAIR(hejl_transform, ALWAN_VIEW_HEJL_BURGESS_DAWSON)
+ALWAN__FILMIC_PAIR(day_transform, ALWAN_VIEW_DAY_FILMIC)
+#undef ALWAN__FILMIC_PAIR
+
+/* ----------------------------------------------------------------
  * View Transform API (native per-precision dispatch + bulk loop)
  * ---------------------------------------------------------------- */
 static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t out_stride, ALWAN_CORE_T const *rgb_in, size_t in_stride, size_t count, alwan_view_transform vt, alwan_ctx *ctx, int unclamped) {
@@ -433,6 +474,11 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
         case ALWAN_VIEW_BT2390_HDR_TO_SDR:  transform_fn = ALWAN_CORE_FN(bt2390_hdr_to_sdr_transform); break;
         case ALWAN_VIEW_REINHARD_CALIBRATED: transform_fn = ALWAN_CORE_FN(reinhard_calibrated_transform); break;
         case ALWAN_VIEW_EXPOSURE:           transform_fn = ALWAN_CORE_FN(exposure_transform); break;
+        case ALWAN_VIEW_HABLE_UNCHARTED2:   transform_fn = ALWAN_CORE_FN(hable_transform); break;
+        case ALWAN_VIEW_ACES_NARKOWICZ:     transform_fn = ALWAN_CORE_FN(narkowicz_transform); break;
+        case ALWAN_VIEW_ACES_HILL:          transform_fn = ALWAN_CORE_FN(hill_transform); break;
+        case ALWAN_VIEW_HEJL_BURGESS_DAWSON: transform_fn = ALWAN_CORE_FN(hejl_transform); break;
+        case ALWAN_VIEW_DAY_FILMIC:         transform_fn = ALWAN_CORE_FN(day_transform); break;
         default:
             return ALWAN_E_INVALID;
     }
@@ -452,6 +498,11 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
             case ALWAN_VIEW_LOTTES:              transform_fn = ALWAN_CORE_FN(lottes_transform_unclamped); break;
             case ALWAN_VIEW_REINHARD_CALIBRATED: transform_fn = ALWAN_CORE_FN(reinhard_calibrated_transform_unclamped); break;
             case ALWAN_VIEW_EXPOSURE:            transform_fn = ALWAN_CORE_FN(exposure_transform_unclamped); break;
+            case ALWAN_VIEW_HABLE_UNCHARTED2:    transform_fn = ALWAN_CORE_FN(hable_transform_unclamped); break;
+            case ALWAN_VIEW_ACES_NARKOWICZ:      transform_fn = ALWAN_CORE_FN(narkowicz_transform_unclamped); break;
+            case ALWAN_VIEW_ACES_HILL:           transform_fn = ALWAN_CORE_FN(hill_transform_unclamped); break;
+            case ALWAN_VIEW_HEJL_BURGESS_DAWSON: transform_fn = ALWAN_CORE_FN(hejl_transform_unclamped); break;
+            case ALWAN_VIEW_DAY_FILMIC:          transform_fn = ALWAN_CORE_FN(day_transform_unclamped); break;
             default: break;
         }
     }
