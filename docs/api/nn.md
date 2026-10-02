@@ -61,6 +61,24 @@ The saturating activations go through exp alone: tanh is
 `approximate='tanh'`; the erf form is not offered because the core has no
 erf, and the reference asks torch for the tanh form explicitly.
 
+The other activations follow torch.nn.functional's own definitions:
+
+| Kind | Value | `alpha` |
+|------|-------|---------|
+| `SILU` | `x / (1 + exp(-x))` (swish-1) | unused |
+| `ELU` | `x` above zero, `alpha expm1(x)` below | alpha, 0 meaning torch's 1 |
+| `MISH` | `x tanh(log1p(exp(x)))`, `x` above 20 (the tanh is 1 to the bit there) | unused |
+| `SOFTPLUS` | `log1p(exp(beta x)) / beta`, `x` once `beta x > 20` (torch's fixed threshold) | beta, 0 meaning 1 |
+| `HARDSWISH` | `x relu6(x + 3) / 6` | unused |
+| `HARDSIGMOID` | `relu6(x + 3) / 6` | unused |
+
+`expm1` and `log1p` are built from exp and log2 with Kahan's and Goldberg's correction,
+so a deterministic build reaches them through its committed polynomials and they keep their
+digits where `exp(x) - 1` and `log(1 + y)` lose them: at `x = -40` Mish is `-1.7e-16`,
+not 0. Suite 176 holds all six to torch float64 on a sweep from -12 to 12 plus `x = -800`,
+`-40`, `-1e-10`, `1e-7`, the Softplus threshold and `x = 800`, and the f32 path to torch's
+own float32 results.
+
 A shader binds the kernels itself, once per set of tensors, and the tensor
 parameters disappear:
 
@@ -125,7 +143,7 @@ alwan_status alwan_nn_concat_channels_{T}(alwan_{T} *out, alwan_{T} const *a, in
   `ALWAN_E_RANGE` if the padded image is smaller than the kernel,
   `ALWAN_E_INVALID` if `groups` does not divide.
 - **activation**: elementwise, `out` may be `in`; `alpha` is read by
-  `ALWAN_NN_ACTIVATION_LEAKY_RELU` only.
+  `ALWAN_NN_ACTIVATION_LEAKY_RELU` (the slope), `ELU` (alpha) and `SOFTPLUS` (beta) only.
 - **pool2d**: max or average over `k x k` at one stride with zero padding,
   output `((H + 2 pad - k) / stride + 1)` squared `x C`. An average divides by
   `k * k`, padded positions included (PyTorch's `count_include_pad` default);
@@ -194,7 +212,8 @@ What the converter does with the model, once, at conversion time:
   `forward` of its own is walked through its children, which must be
   sequential). Accepted: `Conv2d` (equal stride and padding on both axes,
   groups, optional bias), `BatchNorm2d` and `BatchNorm1d`, `ReLU`, `LeakyReLU`,
-  `Sigmoid`, `Tanh`, `GELU(approximate='tanh')`, `MaxPool2d`, `AvgPool2d`
+  `Sigmoid`, `Tanh`, `GELU(approximate='tanh')`, `SiLU`, `ELU` (alpha not 0), `Mish`,
+  `Softplus` (threshold 20), `Hardswish`, `Hardsigmoid`, `MaxPool2d`, `AvgPool2d`
   (`count_include_pad=True`, PyTorch's default), `AdaptiveAvgPool2d((1, 1))`,
   `Flatten`, `Linear`, `Softmax`, `Upsample` (integer factor, nearest or
   bilinear with `align_corners=False`), `Identity` and `Dropout`. Anything

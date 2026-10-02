@@ -188,7 +188,35 @@ CAM16 UCS coordinates.
 alwan_{T} alwan_delta_e_zcam_{T}(alwan_jzazbz_{T} const *jab1, alwan_jzazbz_{T} const *jab2);
 ```
 
-ZCAM-based color difference: Euclidean distance in ZCAM UCS (Jzazbz) space.
+ZCAM-based color difference: Euclidean distance in ZCAM UCS (Jzazbz) space. This is also
+Safdar et al. 2017's dE_z, `sqrt(dJz^2 + dCz^2 + dHz^2)` with `dHz = 2 sqrt(Cz1 Cz2)
+sin(dhz / 2)`: `dCz^2 + dHz^2 = daz^2 + dbz^2` exactly.
+
+---
+
+### alwan_delta_e_{T}: every formula by one enum
+
+```c
+alwan_status alwan_delta_e_{T}(alwan_{T} *out, alwan_delta_e_method method,
+                               alwan_{T} const a[3], alwan_{T} const b[3],
+                               alwan_delta_e_params_{T} const *params);
+```
+
+The colours are three numbers each in the method's own space, and the result is the named
+function's to the bit (suite 30):
+
+| `method` | Space of `a`, `b` | Same as |
+|----------|-------------------|---------|
+| `CIE1976`, `CIE1994`, `CIEDE2000`, `CMC`, `HYAB`, `HYCH` | CIELAB | `alwan_delta_e_76`, `_94`, `_2000`, `_cmc`, `_hyab`, `_hych` |
+| `DIN99` | DIN99 L99, a99, b99 | `alwan_delta_e_din99` |
+| `CAM02_LCD`, `CAM02_SCD`, `CAM02_UCS`, `CAM16_LCD`, `CAM16_SCD`, `CAM16_UCS` | the CAM's J', a', b' | `alwan_delta_e_cam02_lcd` ... `_cam16_ucs` |
+| `ITP` | ICtCp | `alwan_delta_e_itp` |
+| `OKLAB` | Oklab | `alwan_delta_e_ok` |
+| `JZAZBZ` | Jzazbz | `alwan_delta_e_zcam` (Safdar 2017 dE_z) |
+
+`params` may be NULL; a zero field takes the formula's default: `cmc_l` 2 and `cmc_c` 1,
+`hych_textiles` off (k_L = 1), `itp_scalar` 720. `ALWAN_E_INVALID` for a NULL or an
+unknown method.
 
 ---
 

@@ -57,8 +57,33 @@ ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_H2) = {{
 ALWAN_CONSTEXPR ALWAN_CORE_VEC3 ALWAN_CORE_FNLIT(CVD_BRETTEL_TRITAN_N) = {{
 #include "../data/matrices/cvd_brettel_tritan_n.csv"
 }};
+/* Vienot, Brettel and Mollon 1999: one plane, so one linear-sRGB matrix per deficiency
+ * (DaltonLens's Simulator_Vienot1999 on the same LMS model). The tritan matrix is the
+ * red-cyan plane DaltonLens builds; the paper does not cover tritanopia. */
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_VIENOT_PROTAN) = {{
+#include "../data/matrices/cvd_vienot_protan.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_VIENOT_DEUTAN) = {{
+#include "../data/matrices/cvd_vienot_deutan.csv"
+}};
+ALWAN_CONSTEXPR ALWAN_CORE_MAT3X3 ALWAN_CORE_FNLIT(CVD_VIENOT_TRITAN) = {{
+#include "../data/matrices/cvd_vienot_tritan.csv"
+}};
 
 ALWAN_DIAG_POP
+
+/* Vienot 1999: the one matrix, then mixed back by severity as Brettel is. */
+ALWAN_INLINE ALWAN_CORE_RGB ALWAN_CORE_FNVLIT(alwan_simulate_cvd_vienot)(ALWAN_CORE_RGB rgb, ALWAN_CORE_MAT3X3 M,
+                                                                       ALWAN_CORE_T severity) {
+    ALWAN_CORE_RGB result;
+    ALWAN_CORE_VEC3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
+    ALWAN_CORE_VEC3 cvd = ALWAN_CORE_FNVLIT(alwan_mat3_mulv)(M, rgb_v);
+    severity = ALWAN_CORE_CLAMP(severity, ALWAN_CORE_LITERAL(0.0), ALWAN_CORE_LITERAL(1.0));
+    result.r = cvd.v[0] * severity + rgb.r * (ALWAN_CORE_ONE - severity);
+    result.g = cvd.v[1] * severity + rgb.g * (ALWAN_CORE_ONE - severity);
+    result.b = cvd.v[2] * severity + rgb.b * (ALWAN_CORE_ONE - severity);
+    return result;
+}
 
 /* Brettel's two-plane dichromat simulation of linear sRGB, then mixed back with the input
  * by severity (DaltonLens's anomalous-trichromacy rule, linear in linear sRGB). Raw: a

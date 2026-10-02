@@ -82,8 +82,29 @@ ALWAN_CONSTEXPR alwan_mat3x3 CVD_BRETTEL_TRITAN_H2 = {{
 ALWAN_CONSTEXPR alwan_vec3 CVD_BRETTEL_TRITAN_N = {{
 #include "../data/matrices/cvd_brettel_tritan_n.csv"
 }};
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_VIENOT_PROTAN = {{
+#include "../data/matrices/cvd_vienot_protan.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_VIENOT_DEUTAN = {{
+#include "../data/matrices/cvd_vienot_deutan.csv"
+}};
+ALWAN_CONSTEXPR alwan_mat3x3 CVD_VIENOT_TRITAN = {{
+#include "../data/matrices/cvd_vienot_tritan.csv"
+}};
 
 ALWAN_DIAG_POP
+
+/* Vienot 1999, one matrix; see the .inc. */
+ALWAN_INLINE alwan_rgb alwan_simulate_cvd_vienot_v(alwan_rgb rgb, alwan_mat3x3 M, alwan_scalar severity) {
+    alwan_rgb result;
+    alwan_vec3 rgb_v = {{rgb.r, rgb.g, rgb.b}};
+    alwan_vec3 cvd = alwan_mat3_mulv_v(M, rgb_v);
+    severity = alwan_clamp(severity, ALWAN_LITERAL(0.0), ALWAN_LITERAL(1.0));
+    result.r = cvd.v[0] * severity + rgb.r * (ALWAN_ONE - severity);
+    result.g = cvd.v[1] * severity + rgb.g * (ALWAN_ONE - severity);
+    result.b = cvd.v[2] * severity + rgb.b * (ALWAN_ONE - severity);
+    return result;
+}
 
 /* Brettel 1997, two half-planes; see the .inc. */
 ALWAN_INLINE alwan_rgb alwan_simulate_cvd_brettel_v(alwan_rgb rgb, alwan_mat3x3 H1, alwan_mat3x3 H2,

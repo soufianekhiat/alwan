@@ -7,12 +7,20 @@ Functions for simulating color blindness to test accessibility of visual content
 ## Overview
 
 CVD simulation transforms colors to approximate how they appear to individuals with
-color vision deficiencies. Alwan implements two complementary models, selectable per call:
+color vision deficiencies. Alwan implements three models, selectable per call:
 
 | Model | Enum | Method | Best for |
 |-------|------|--------|----------|
 | **Brettel, Vienot & Mollon (1997)** | `ALWAN_CVD_MODEL_BRETTEL` | Projection along the missing cone's axis onto one of two half-planes in LMS | Full dichromacy, tritanopia included |
 | **Machado, Oliveira & Fernandes (2009)** | `ALWAN_CVD_MODEL_MACHADO` | Cone spectral-sensitivity shift, applied as a per-severity sRGB->sRGB 3x3 matrix | Anomalous (partial) trichromacy |
+| **Vienot, Brettel & Mollon (1999)** | `ALWAN_CVD_MODEL_VIENOT` | One plane per deficiency, so one linear-sRGB 3x3 matrix; severity mixes linearly | Protanopia and deuteranopia, cheaply |
+
+Vienot 1999 is Brettel 1997's two half-planes collapsed into one plane through black, blue
+and yellow (the paper's simplification for video), as DaltonLens-Python's
+`Simulator_Vienot1999` builds it on the same Smith-Pokorny LMS model. The paper does not
+cover tritanopia; the tritan matrix is DaltonLens's plane through red and cyan, which
+DaltonLens flags as inaccurate, so use Brettel for tritans. Suite 82 holds all three
+deficiencies at severities 1, 0.6 and 0.25 to DaltonLens (f64 to rounding).
 
 The Machado model uses precomputed matrices at **11 discrete severity levels**
 (`severity = 0.0, 0.1, ... 1.0`) and linearly interpolates between them for continuous
@@ -57,7 +65,8 @@ typedef enum {
 ```c
 typedef enum {
     ALWAN_CVD_MODEL_BRETTEL = 0,    /* Brettel, Vienot & Mollon 1997 (confusion lines) */
-    ALWAN_CVD_MODEL_MACHADO = 1     /* Machado, Oliveira & Fernandes 2009 (cone shift) */
+    ALWAN_CVD_MODEL_MACHADO = 1,    /* Machado, Oliveira & Fernandes 2009 (cone shift) */
+    ALWAN_CVD_MODEL_VIENOT = 2      /* Vienot, Brettel & Mollon 1999 (one plane, one matrix) */
 } alwan_cvd_model;
 ```
 

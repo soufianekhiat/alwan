@@ -581,7 +581,14 @@ static size_t alwan_wv_sym(long i, long n) {
 }
 
 /* One 1D step: n samples `step` apart into m = (n + F - 1) / 2 approximation and detail
- * coefficients, `ostep` apart. */
+ * coefficients, `ostep` apart. The terms are summed in PyWavelets' order
+ * (downsampling_convolution, MODE_SYMMETRIC): ascending filter index where the output
+ * position i is inside the signal, but past its right end the mirrored terms first, filter
+ * index i - n down to 0, then the in-range ones ascending. The order decides the last bit,
+ * and the last bit decides whether a coefficient that is zero in exact arithmetic comes
+ * out as 0: an antisymmetric highpass (bior3.x) over a mirrored edge makes such
+ * coefficients, and scikit-image's noise estimate drops the exact zeros before its median,
+ * so one extra zero moved bior3.5's every threshold. */
 static void alwan_wv_dwt1(double *a, double *d, size_t ostep, double const *x, size_t step, size_t n,
                           double const *lo, double const *hi, size_t F) {
     size_t const m = (n + F - 1) / 2;
@@ -589,7 +596,17 @@ static void alwan_wv_dwt1(double *a, double *d, size_t ostep, double const *x, s
     for (o = 0; o < m; o++) {
         long const i = (long)(2 * o + 1);
         double sa = 0.0, sd = 0.0;
-        for (j = 0; j < F; j++) {
+        size_t j0 = 0;
+        if (i >= (long)n) {
+            long fi;
+            for (fi = i - (long)n; fi >= 0; fi--) {
+                double const v = x[alwan_wv_sym(i - fi, (long)n) * step];
+                sa += lo[fi] * v;
+                sd += hi[fi] * v;
+            }
+            j0 = (size_t)(i - (long)n + 1);
+        }
+        for (j = j0; j < F; j++) {
             double const v = x[alwan_wv_sym(i - (long)j, (long)n) * step];
             sa += lo[j] * v;
             sd += hi[j] * v;

@@ -2678,7 +2678,13 @@ typedef enum {
     ALWAN_DENOISE_DCT_OPENCV = 9
 } alwan_denoise_method;
 
-/* The orthogonal wavelets of ALWAN_DENOISE_WAVELET: Daubechies and symlets. */
+/* The wavelets of ALWAN_DENOISE_WAVELET: the orthogonal Daubechies, symlets and coiflets,
+ * then the biorthogonal (Cohen, Daubechies and Feauveau 1992) and reverse biorthogonal
+ * families, BIOR<Nr>_<Nd> as PyWavelets' bior<Nr>.<Nd>. Every bank is PyWavelets' own
+ * (gendata/data/wavelet_filters.py), and the transform uses the analysis and synthesis
+ * filters separately, so a biorthogonal bank reconstructs exactly. Its thresholds are
+ * the orthogonal ones: scikit-image warns that BayesShrink and VisuShrink assume an
+ * orthogonal transform, and alwan computes what scikit-image computes. */
 typedef enum {
     ALWAN_WAVELET_DB1 = 0, /* Haar */
     ALWAN_WAVELET_DB2 = 1,
@@ -2694,7 +2700,42 @@ typedef enum {
     ALWAN_WAVELET_SYM5 = 11,
     ALWAN_WAVELET_SYM6 = 12,
     ALWAN_WAVELET_SYM7 = 13,
-    ALWAN_WAVELET_SYM8 = 14
+    ALWAN_WAVELET_SYM8 = 14,
+    ALWAN_WAVELET_COIF1 = 15,
+    ALWAN_WAVELET_COIF2 = 16,
+    ALWAN_WAVELET_COIF3 = 17,
+    ALWAN_WAVELET_COIF4 = 18,
+    ALWAN_WAVELET_COIF5 = 19,
+    ALWAN_WAVELET_BIOR1_1 = 20,
+    ALWAN_WAVELET_BIOR1_3 = 21,
+    ALWAN_WAVELET_BIOR1_5 = 22,
+    ALWAN_WAVELET_BIOR2_2 = 23,
+    ALWAN_WAVELET_BIOR2_4 = 24,
+    ALWAN_WAVELET_BIOR2_6 = 25,
+    ALWAN_WAVELET_BIOR2_8 = 26,
+    ALWAN_WAVELET_BIOR3_1 = 27,
+    ALWAN_WAVELET_BIOR3_3 = 28,
+    ALWAN_WAVELET_BIOR3_5 = 29,
+    ALWAN_WAVELET_BIOR3_7 = 30,
+    ALWAN_WAVELET_BIOR3_9 = 31,
+    ALWAN_WAVELET_BIOR4_4 = 32,
+    ALWAN_WAVELET_BIOR5_5 = 33,
+    ALWAN_WAVELET_BIOR6_8 = 34,
+    ALWAN_WAVELET_RBIO1_1 = 35,
+    ALWAN_WAVELET_RBIO1_3 = 36,
+    ALWAN_WAVELET_RBIO1_5 = 37,
+    ALWAN_WAVELET_RBIO2_2 = 38,
+    ALWAN_WAVELET_RBIO2_4 = 39,
+    ALWAN_WAVELET_RBIO2_6 = 40,
+    ALWAN_WAVELET_RBIO2_8 = 41,
+    ALWAN_WAVELET_RBIO3_1 = 42,
+    ALWAN_WAVELET_RBIO3_3 = 43,
+    ALWAN_WAVELET_RBIO3_5 = 44,
+    ALWAN_WAVELET_RBIO3_7 = 45,
+    ALWAN_WAVELET_RBIO3_9 = 46,
+    ALWAN_WAVELET_RBIO4_4 = 47,
+    ALWAN_WAVELET_RBIO5_5 = 48,
+    ALWAN_WAVELET_RBIO6_8 = 49
 } alwan_wavelet;
 
 /* Each method reads its own fields; a zero field is its default. */
@@ -5691,6 +5732,43 @@ alwan_f64 alwan_delta_e_cam16_ucs_f64(alwan_cam_jab_f64 const *jab1, alwan_cam_j
 /* dE ZCAM - Euclidean distance in ZCAM UCS (Jzazbz) space */
 alwan_f32  alwan_delta_e_zcam_f32(alwan_jzazbz_f32 const *jab1, alwan_jzazbz_f32 const *jab2);
 alwan_f64 alwan_delta_e_zcam_f64(alwan_jzazbz_f64 const *jab1, alwan_jzazbz_f64 const *jab2);
+
+/* Every colour difference above by one enum. a and b are the two colours as three numbers
+ * in the method's own space: CIELAB L*, a*, b* for CIE1976 to HYCH; DIN99 L99, a99, b99;
+ * a CAM's J', a', b' for the six CAM02/CAM16 methods; ICtCp for ITP; Oklab for OKLAB;
+ * Jzazbz for JZAZBZ. The result is the named function's, to the bit (suite 30).
+ * JZAZBZ is Safdar et al. 2017's dE_z, sqrt(dJz^2 + dCz^2 + dHz^2) with
+ * dHz = 2 sqrt(Cz1 Cz2) sin(dhz / 2), which equals the Euclidean distance in Jzazbz
+ * (dCz^2 + dHz^2 = daz^2 + dbz^2 exactly), so it is alwan_delta_e_zcam.
+ * params may be NULL; a zero field takes the formula's default: CMC l = 2, c = 1;
+ * HyCH textiles off (k_L = 1); ITP scalar 720. ALWAN_E_INVALID for a NULL or an unknown
+ * method. */
+typedef enum {
+    ALWAN_DELTA_E_CIE1976 = 0,
+    ALWAN_DELTA_E_CIE1994 = 1,     /* graphic arts weights */
+    ALWAN_DELTA_E_CIEDE2000 = 2,
+    ALWAN_DELTA_E_CMC = 3,         /* l:c from params */
+    ALWAN_DELTA_E_DIN99 = 4,
+    ALWAN_DELTA_E_HYAB = 5,
+    ALWAN_DELTA_E_HYCH = 6,        /* textiles from params */
+    ALWAN_DELTA_E_CAM02_LCD = 7,
+    ALWAN_DELTA_E_CAM02_SCD = 8,
+    ALWAN_DELTA_E_CAM02_UCS = 9,
+    ALWAN_DELTA_E_CAM16_LCD = 10,
+    ALWAN_DELTA_E_CAM16_SCD = 11,
+    ALWAN_DELTA_E_CAM16_UCS = 12,
+    ALWAN_DELTA_E_ITP = 13,        /* scalar from params */
+    ALWAN_DELTA_E_OKLAB = 14,
+    ALWAN_DELTA_E_JZAZBZ = 15      /* Safdar 2017 dE_z */
+} alwan_delta_e_method;
+
+typedef struct { alwan_f32 cmc_l, cmc_c; int hych_textiles; alwan_f32 itp_scalar; } alwan_delta_e_params_f32;
+typedef struct { alwan_f64 cmc_l, cmc_c; int hych_textiles; alwan_f64 itp_scalar; } alwan_delta_e_params_f64;
+
+alwan_status alwan_delta_e_f32(alwan_f32 *out, alwan_delta_e_method method, alwan_f32 const a[3], alwan_f32 const b[3],
+                               alwan_delta_e_params_f32 const *params);
+alwan_status alwan_delta_e_f64(alwan_f64 *out, alwan_delta_e_method method, alwan_f64 const a[3], alwan_f64 const b[3],
+                               alwan_delta_e_params_f64 const *params);
 
 /* ----------------------------------------------------------------
  * Batch Color Difference (dE) Computations
@@ -9779,7 +9857,10 @@ typedef enum {
 /* CVD simulation model selection */
 typedef enum {
     ALWAN_CVD_MODEL_BRETTEL = 0,    /* Brettel, Vienot & Mollon 1997 (two half-planes, DaltonLens defaults) */
-    ALWAN_CVD_MODEL_MACHADO = 1     /* Machado, Oliveira & Fernandes 2009 (cone shift) */
+    ALWAN_CVD_MODEL_MACHADO = 1,    /* Machado, Oliveira & Fernandes 2009 (cone shift) */
+    ALWAN_CVD_MODEL_VIENOT = 2      /* Vienot, Brettel & Mollon 1999 (one plane, one matrix; DaltonLens
+                                     * Simulator_Vienot1999; tritan is DaltonLens's red-cyan plane,
+                                     * which the paper does not cover); severity mixes linearly */
 } alwan_cvd_model;
 
 /* Simulate color vision deficiency (color blindness)
@@ -10043,7 +10124,7 @@ alwan_status alwan_simulate_cvd_machado_f64(alwan_rgb_f64 *rgb_out,
                                    alwan_cvd_type cvd_type,
                                    alwan_f64 severity);
 
-/* Model-selectable CVD simulation (dispatches to Brettel or Machado) */
+/* Model-selectable CVD simulation (dispatches to Brettel, Machado or Vienot) */
 alwan_status alwan_simulate_cvd_ex_f32(alwan_rgb_f32 *rgb_out,
                               alwan_rgb_f32 const *rgb_in,
                               alwan_cvd_type cvd_type,
@@ -15255,7 +15336,13 @@ typedef enum {
     ALWAN_NN_ACTIVATION_LEAKY_RELU = 1,   /* alpha x below zero */
     ALWAN_NN_ACTIVATION_SIGMOID = 2,
     ALWAN_NN_ACTIVATION_TANH = 3,
-    ALWAN_NN_ACTIVATION_GELU = 4          /* the tanh form */
+    ALWAN_NN_ACTIVATION_GELU = 4,         /* the tanh form */
+    ALWAN_NN_ACTIVATION_SILU = 5,         /* x / (1 + exp(-x)), swish-1 */
+    ALWAN_NN_ACTIVATION_ELU = 6,          /* alpha expm1(x) below zero; alpha 0 = 1 */
+    ALWAN_NN_ACTIVATION_MISH = 7,         /* x tanh(softplus(x)) */
+    ALWAN_NN_ACTIVATION_SOFTPLUS = 8,     /* log1p(exp(beta x)) / beta, x past beta x = 20; alpha = beta, 0 = 1 */
+    ALWAN_NN_ACTIVATION_HARDSWISH = 9,    /* x relu6(x + 3) / 6 */
+    ALWAN_NN_ACTIVATION_HARDSIGMOID = 10  /* relu6(x + 3) / 6 */
 } alwan_nn_activation_kind;
 
 typedef enum { ALWAN_NN_POOL_MAX = 0, ALWAN_NN_POOL_AVG = 1 } alwan_nn_pool_kind;
@@ -15274,7 +15361,11 @@ alwan_status alwan_nn_dense_f64(alwan_f64 *out, alwan_f64 const *in, alwan_f64 c
 alwan_status alwan_nn_conv2d_f32(alwan_f32 *out, alwan_f32 const *in, int H, int W, int Cin, alwan_f32 const *w, alwan_f32 const *b, int KH, int KW, int Cout, int stride, int pad, int groups);
 alwan_status alwan_nn_conv2d_f64(alwan_f64 *out, alwan_f64 const *in, int H, int W, int Cin, alwan_f64 const *w, alwan_f64 const *b, int KH, int KW, int Cout, int stride, int pad, int groups);
 
-/* Elementwise activation; alpha is read by LEAKY_RELU only. out may be in. */
+/* Elementwise activation. alpha is read by LEAKY_RELU (the slope), ELU (alpha, 0 meaning
+ * torch's 1) and SOFTPLUS (beta, 0 meaning 1; the threshold is torch's fixed 20) only.
+ * Each matches torch.nn.functional on its own definition, expm1 and log1p included,
+ * so ELU, Softplus and Mish keep their digits for tiny and very negative inputs (suite
+ * 176). out may be in. */
 alwan_status alwan_nn_activation_f32(alwan_f32 *out, alwan_f32 const *in, size_t count, alwan_nn_activation_kind kind, alwan_f32 alpha);
 alwan_status alwan_nn_activation_f64(alwan_f64 *out, alwan_f64 const *in, size_t count, alwan_nn_activation_kind kind, alwan_f64 alpha);
 

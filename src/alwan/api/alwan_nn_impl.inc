@@ -50,7 +50,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_nn_activation)(ALWAN_CORE_T *out, ALWAN_CORE
                                                    alwan_nn_activation_kind kind, ALWAN_CORE_T alpha) {
     size_t i;
     if (!out || !in) return ALWAN_E_INVALID;
-    if ((int)kind < ALWAN_NN_ACT_RELU || (int)kind > ALWAN_NN_ACT_GELU) return ALWAN_E_INVALID;
+    if ((int)kind < ALWAN_NN_ACT_RELU || (int)kind > ALWAN_NN_ACT_HARDSIGMOID) return ALWAN_E_INVALID;
     for (i = 0; i < count; i++) {
         out[i] = ALWAN_CORE_FNVLIT(alwan_nn_activation)(in[i], (int)kind, alpha);
     }

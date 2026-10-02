@@ -479,8 +479,14 @@ Wavelet shrinkage. Each channel goes through a multilevel 2D orthogonal wavelet 
 every detail sub-band is thresholded, and the transform is inverted. Noise spreads evenly
 over the detail coefficients while an image concentrates in a few large ones, so shrinking
 the small ones toward zero removes noise and keeps edges. `wavelet` picks one of the
-Daubechies `ALWAN_WAVELET_DB1` (Haar) to `DB8` or the symlets `SYM2` to `SYM8`; longer
-filters give smoother results and ring more near edges, Haar leaves blocks.
+Daubechies `ALWAN_WAVELET_DB1` (Haar) to `DB8`, the symlets `SYM2` to `SYM8`, the coiflets
+`COIF1` to `COIF5`, or the biorthogonal `BIOR1_1` to `BIOR6_8` and reverse biorthogonal
+`RBIO1_1` to `RBIO6_8` (PyWavelets' `bior1.1` ... `rbio6.8`); longer filters give smoother
+results and ring more near edges, Haar leaves blocks. A biorthogonal bank has different
+analysis and synthesis filters and the transform uses each, so it reconstructs exactly;
+its thresholds are the orthogonal ones, which scikit-image warns assume an orthogonal
+transform (its noise in the sub-bands is coloured). alwan computes what scikit-image
+computes.
 
 The threshold is BayesShrink (Chang, Yu and Vetterli, IEEE TIP 2000) by default, one per
 sub-band, `sigma^2 / sqrt(max(mean(d^2) - sigma^2, eps))`, or VisuShrink (Donoho and

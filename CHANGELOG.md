@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+### Added: activations, Vienot 1999, one colour-difference entry point, more wavelets (batches 9, 12, 13)
+
+- **Six activations** in `alwan_nn_activation_kind`, values 5 to 10: `SILU`, `ELU` (alpha,
+  0 = torch's 1), `MISH`, `SOFTPLUS` (beta in `alpha`, 0 = 1; torch's fixed threshold of
+  20), `HARDSWISH`, `HARDSIGMOID`, in the core so shaders run them too, and in
+  `gendata/nn_convert.py` (`nn.SiLU`, `nn.ELU`, `nn.Mish`, `nn.Softplus`, `nn.Hardswish`,
+  `nn.Hardsigmoid`). `expm1` and `log1p` come from exp and log2 with Kahan's and Goldberg's
+  correction, which torch's ELU, Softplus and Mish need for tiny and very negative inputs.
+  Suite 176 holds them to torch float64 and the f32 path to torch's float32.
+- **`ALWAN_CVD_MODEL_VIENOT`** (Vienot, Brettel and Mollon 1999) in
+  `alwan_simulate_cvd_ex_{T}`: one plane per deficiency, one linear-sRGB matrix, the matrices
+  DaltonLens's `Simulator_Vienot1999` builds on the Smith-Pokorny LMS model the Brettel
+  model already uses (`data/matrices/cvd_vienot_*.csv`). Suite 82 holds it to DaltonLens.
+- **`alwan_delta_e_{T}(method, a, b, params)`**: the 16 colour differences by one enum, each
+  colour three numbers in the method's space, the result the named function's to the bit
+  (suite 30). `JZAZBZ` is Safdar 2017's dE_z, which is the Euclidean distance in Jzazbz and
+  so `alwan_delta_e_zcam`. The per-formula functions stay.
+- **Wavelets** for `ALWAN_DENOISE_WAVELET`, values 15 to 49: coiflets `COIF1` to `COIF5`,
+  biorthogonal `BIOR1_1` to `BIOR6_8` and reverse biorthogonal `RBIO1_1` to `RBIO6_8`,
+  PyWavelets' banks (MIT). Suite 206 holds each to scikit-image's `denoise_wavelet`. The
+  forward transform now sums past the right edge in PyWavelets' order: bior3.5's
+  antisymmetric highpass makes coefficients that are zero in exact arithmetic, the order
+  decides whether they round to 0, and scikit-image drops exact zeros before its noise
+  median, so bior3.5 came out 9e-2 away until then. Existing wavelets can move in the last
+  bit only.
+
 ### Added: small numerical methods (batch 8)
 
 - `alwan_interpolate_{T}`: `ALWAN_INTERP_MAKIMA`, `ALWAN_INTERP_NATURAL_SPLINE`,

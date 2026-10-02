@@ -81,6 +81,22 @@ alwan_status ALWAN_CORE_FNLIT(alwan_simulate_cvd_ex)(ALWAN_CORE_RGB *rgb_out,
             return ALWAN_CORE_FNLIT(alwan_simulate_cvd)(rgb_out, rgb_in, cvd_type, severity);
         case ALWAN_CVD_MODEL_MACHADO:
             return ALWAN_CORE_FNLIT(alwan_simulate_cvd_machado)(rgb_out, rgb_in, cvd_type, severity);
+        case ALWAN_CVD_MODEL_VIENOT: {
+            ALWAN_CORE_MAT3X3 M;
+            if (!rgb_out || !rgb_in) return ALWAN_E_INVALID;
+            switch (cvd_type) {
+                case ALWAN_CVD_PROTANOPIA: case ALWAN_CVD_PROTANOMALY:
+                    M = ALWAN_CORE_FNLIT(CVD_VIENOT_PROTAN); break;
+                case ALWAN_CVD_DEUTERANOPIA: case ALWAN_CVD_DEUTERANOMALY:
+                    M = ALWAN_CORE_FNLIT(CVD_VIENOT_DEUTAN); break;
+                case ALWAN_CVD_TRITANOPIA: case ALWAN_CVD_TRITANOMALY:
+                    M = ALWAN_CORE_FNLIT(CVD_VIENOT_TRITAN); break;
+                default:
+                    return ALWAN_E_INVALID;
+            }
+            *rgb_out = ALWAN_CORE_FNVLIT(alwan_simulate_cvd_vienot)(*rgb_in, M, severity);
+            return ALWAN_OK;
+        }
         default:
             return ALWAN_E_INVALID;
     }
