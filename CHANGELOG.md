@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+### Added: segmentation methods (Felzenszwalb, quick shift, Chan-Vese, random walker)
+
+- **Four methods for `alwan_segment_{T}` and `_u8`** (values 3 to 6, appended):
+  `ALWAN_SEGMENT_FELZENSZWALB` (Felzenszwalb and Huttenlocher 2004; `scale`, `sigma`,
+  `min_size`), `ALWAN_SEGMENT_QUICKSHIFT` (Vedaldi and Soatto 2008; `ratio`, `kernel_size`,
+  `max_dist`, `sigma`), `ALWAN_SEGMENT_CHAN_VESE` (Chan and Vese 2001 as Getreuer 2012
+  discretises it; `mu`, `lambda1`, `lambda2`, `tol`, `dt`, `max_iterations`, the starting
+  level set, and the level set and energy history as optional outputs) and
+  `ALWAN_SEGMENT_RANDOM_WALKER` (Grady 2006; seeds in `markers`, `beta`, `tol`, a
+  `DIRECT` banded Cholesky or the default `CG_JACOBI` solver, optional per-label
+  probabilities). New fields at the end of `alwan_segment_params`; a zero field is its
+  default.
+- **Against scikit-image 0.26** (suite 293): Felzenszwalb label for label over 9 cases (f64,
+  f32, 8-bit, grey and RGB, scale 1 to 300); quick shift label for label over 7 against
+  scikit-image's own code without its random tie-break, which alwan does not reproduce
+  (scikit-image adds noise of 1e-5 to the densities; alwan keeps tied maxima as roots);
+  Chan-Vese with equal iteration counts and labels, the f64 level set exact and the f32 one
+  to 2.5e-5; the random walker's `DIRECT` against mode `'bf'` with equal labels and
+  probabilities to 1.2e-13, `CG_JACOBI` against `'cg_j'` label for label. Felzenszwalb and
+  quick shift number from 1, scikit-image's label plus 1. The random walker renumbers the
+  seeds as scikit-image does (seeds 3 and 7 come back as 1 and 2).
+- Felzenszwalb and quick shift are ports of scikit-image's `_felzenszwalb_cy.pyx` and
+  `_quickshift_cy.pyx` (BSD-3-Clause, Copyright the scikit-image team; the notice is in
+  `alwan_segment_ext.c` and `THIRD_PARTY_NOTICES.md`). Full Release and Release_Det suites
+  owed.
+
 ### Added: image-analysis methods (corners, thresholds, template scores, medial axis, hulls)
 
 - **Corners:** `ALWAN_CORNER_MORAVEC` (Moravec 1980, `window_size`) and `ALWAN_CORNER_FAST`

@@ -4759,15 +4759,82 @@ alwan_status alwan_distance_transform_u8(double *out, size_t out_row_stride, uns
  *                            space the caller wants distances in). As scikit-image's
  *                            segmentation.slic with convert2lab off, label for label (suite
  *                            227).
+ *   ALWAN_SEGMENT_FELZENSZWALB Felzenszwalb and Huttenlocher 2004's graph segmentation: the
+ *                            image (8-bit read as v / 255) smoothed by a Gaussian of sigma
+ *                            (REFLECT border), the 8-neighbour edges weighted by the colour
+ *                            distance and taken in increasing order, two regions joined when
+ *                            the edge is lighter than both regions' internal difference plus
+ *                            scale / 255 over their size, then regions under min_size joined
+ *                            to a neighbour. As scikit-image's segmentation.felzenszwalb,
+ *                            label for label (suite 293).
+ *   ALWAN_SEGMENT_QUICKSHIFT Vedaldi and Soatto 2008's mode seeking: each pixel's density a
+ *                            Gaussian of kernel_size over colour (times ratio) and position
+ *                            within 3 kernel_size, each pixel linked to the nearest denser
+ *                            one, links longer than max_dist cut, the trees the regions. As
+ *                            scikit-image's segmentation.quickshift with convert2lab off and
+ *                            without its random tie-break: scikit-image adds normal noise of
+ *                            1e-5 to the densities from a seeded generator, alwan adds none,
+ *                            so a pixel whose window holds no strictly denser pixel stays a
+ *                            root. Give it Lab (or any space distances should be taken in).
+ *                            Label for label with that reference (suite 293).
+ *   ALWAN_SEGMENT_CHAN_VESE  Chan and Vese 2001's active contour without edges on one
+ *                            channel, as Getreuer 2012 discretises it and scikit-image's
+ *                            segmentation.chan_vese runs it: the image normalised to [0, 1],
+ *                            the level set iterated until its RMS change is under tol or
+ *                            max_iterations (0 reads as 500) have run; label 1 where the
+ *                            level set is positive, 0 elsewhere. The level set and the
+ *                            energy history are optional outputs (suite 293).
+ *   ALWAN_SEGMENT_RANDOM_WALKER Grady 2006's random walker from the seeds in markers (labels
+ *                            > 0; every 0 pixel is solved for): edge weights
+ *                            exp(-beta / (10 std) |grad|^2) + 1e-10 (over sqrt(channels) for
+ *                            more than one channel; 8-bit read as v / 255), one linear system
+ *                            per label, each pixel taking the label it most probably reaches
+ *                            first. As scikit-image's segmentation.random_walker, including
+ *                            its renumbering: the seeds' distinct values become 1, 2, ... in
+ *                            increasing order, so seeds 3 and 7 come back as 1 and 2 (seeds
+ *                            with no 0 pixel anywhere are returned unchanged). DIRECT agrees
+ *                            with scikit-image's mode 'bf' to rounding; CG_JACOBI stops at a
+ *                            relative residual of tol, as scikit-image's default 'cg_j' does,
+ *                            and the two runs agree to about that tolerance, not to the bit.
+ *                            The optional probabilities are 1 for a seed's own label and 0
+ *                            for the others there (suite 293).
+ *
+ * FELZENSZWALB and QUICKSHIFT label from 1 where scikit-image labels from 0: alwan's label
+ * is scikit-image's plus 1, 0 being the background in this family.
  *
  * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
  * small, a NaN, a connectivity other than 4 or 8, an unknown method, or for WATERSHED more
- * than one channel or a negative compactness; ALWAN_E_RANGE for 2^32 - 1 pixels or more. */
+ * than one channel or a negative compactness, for CHAN_VESE more than one channel or
+ * INIT_GIVEN without values, for RANDOM_WALKER no markers or none above 0; ALWAN_E_RANGE
+ * for 2^32 - 1 pixels or more, a kernel_size under 1, a negative scale, beta or dt, more
+ * labels than probabilities_capacity; ALWAN_E_NOMEM when DIRECT's band (the shorter side
+ * times the unknowns) cannot be allocated. */
 typedef enum {
     ALWAN_SEGMENT_CONNECTED = 0,
     ALWAN_SEGMENT_WATERSHED = 1,
-    ALWAN_SEGMENT_SLIC = 2
+    ALWAN_SEGMENT_SLIC = 2,
+    ALWAN_SEGMENT_FELZENSZWALB = 3,
+    ALWAN_SEGMENT_QUICKSHIFT = 4,
+    ALWAN_SEGMENT_CHAN_VESE = 5,
+    ALWAN_SEGMENT_RANDOM_WALKER = 6
 } alwan_segment_method;
+
+/* CHAN_VESE's starting level set, scikit-image's init_level_set presets */
+typedef enum {
+    ALWAN_CHAN_VESE_INIT_CHECKERBOARD = 0, /* sin(pi y / 5) sin(pi x / 5), scikit-image's default */
+    ALWAN_CHAN_VESE_INIT_DISK = 1,         /* a cone filling the shorter side, positive inside */
+    ALWAN_CHAN_VESE_INIT_SMALL_DISK = 2,   /* half the radius, a third the slope */
+    ALWAN_CHAN_VESE_INIT_GIVEN = 3         /* the caller's, in init_level_set_values */
+} alwan_chan_vese_init;
+
+/* RANDOM_WALKER's linear solver */
+typedef enum {
+    ALWAN_RANDOM_WALKER_CG_JACOBI = 0, /* conjugate gradients with a Jacobi preconditioner to a
+                                        * relative residual of tol, scikit-image's default
+                                        * mode 'cg_j' */
+    ALWAN_RANDOM_WALKER_DIRECT = 1     /* a banded Cholesky factorisation along the shorter side,
+                                        * exact to rounding, scikit-image's mode 'bf' */
+} alwan_random_walker_solver;
 
 /* A zero field is its default. */
 typedef struct {
@@ -4785,6 +4852,38 @@ typedef struct {
     int keep_disconnected;  /* SLIC: non-zero skips the merging of small and disconnected pieces */
     double min_size_factor; /* SLIC: pieces under this times the mean size merge; 0 reads as 0.5 */
     double max_size_factor; /* SLIC: the largest piece one fill grows, times the mean size; 0 reads as 3 */
+    /* FELZENSZWALB */
+    double scale;           /* the observation level, larger for larger regions; 0 reads as 1 */
+    double sigma;           /* FELZENSZWALB: the Gaussian prefilter's standard deviation in pixels,
+                             * 0 reads as 0.8, a negative value for none. QUICKSHIFT: 0 (its
+                             * default) for none */
+    size_t min_size;        /* FELZENSZWALB: regions under this many pixels are merged; 0 reads as 20 */
+    /* QUICKSHIFT */
+    double ratio;           /* the weight of colour against position; 0 reads as 1 */
+    double kernel_size;     /* the density kernel's standard deviation, at least 1; 0 reads as 5 */
+    double max_dist;        /* links longer than this are cut; 0 reads as 10 */
+    /* CHAN_VESE */
+    int chan_vese_exact;    /* non-zero reads mu, lambda1, lambda2 and tol as given, zeros included */
+    double mu;              /* the weight of the contour's length; 0 reads as 0.25 */
+    double lambda1, lambda2; /* the weights inside and outside; 0 reads as 1 */
+    double tol;             /* CHAN_VESE: the level set's RMS change that stops it, 0 reads as 1e-3.
+                             * RANDOM_WALKER, CG_JACOBI: the relative residual, 0 reads as 1e-3 */
+    double dt;              /* CHAN_VESE: the step; 0 reads as 0.5 */
+    alwan_chan_vese_init init; /* CHAN_VESE: the starting level set; 0 is the checkerboard */
+    double const *init_level_set_values; /* CHAN_VESE, INIT_GIVEN: width x height doubles */
+    size_t init_level_set_row_stride;    /* in bytes */
+    double *level_set;      /* CHAN_VESE: when not NULL receives the final level set, width x height */
+    size_t level_set_row_stride; /* in bytes */
+    double *energies;       /* CHAN_VESE: when not NULL receives the energy before each iteration */
+    size_t energies_capacity; /* how many energies fit */
+    size_t *energies_count; /* when not NULL receives the iteration count (energies written: the
+                             * smaller of it and the capacity) */
+    /* RANDOM_WALKER (the seeds are markers, as for WATERSHED) */
+    double beta;            /* the penalty on intensity differences; 0 reads as 130 */
+    alwan_random_walker_solver solver; /* 0 is CG_JACOBI */
+    double *probabilities;  /* when not NULL receives one width x height plane of doubles per label,
+                             * packed, label 1 first */
+    size_t probabilities_capacity; /* how many planes fit; ALWAN_E_RANGE when the labels are more */
 } alwan_segment_params;
 
 alwan_status alwan_segment_f32(uint32_t *labels, size_t labels_row_stride, size_t *count_out, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_segment_method method, alwan_segment_params const *params);

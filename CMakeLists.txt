@@ -165,6 +165,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_threshold.c
   src/alwan/api/alwan_threshold_local.c
   src/alwan/api/alwan_segment.c
+  src/alwan/api/alwan_segment_ext.c
   src/alwan/api/alwan_distance.c
   src/alwan/api/alwan_vignette.c
   src/alwan/api/alwan_light_probe.c

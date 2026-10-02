@@ -64,6 +64,10 @@ alwan_status alwan__amf_run(void *out, size_t out_row_stride, void const *src, s
 alwan_status alwan__wmf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
                             void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
                             size_t radius, double sigma, alwan_wmf_weight type, int is_f32);
+/* alwan_segment_ext.c: ALWAN_SEGMENT_FELZENSZWALB to _RANDOM_WALKER; v is h x w x ch doubles
+ * (the data's values, 8-bit as they come), kind 0 f64, 1 f32, 2 u8 */
+alwan_status alwan__segment_ext(uint32_t *labels, size_t labels_rs, size_t *count_out, double *v, size_t w, size_t h, size_t ch,
+                                alwan_segment_method method, alwan_segment_params const *p, int kind);
 /* alwan_l0_smooth.c: ALWAN_EDGE_FILTER_L0_SMOOTH */
 alwan_status alwan__l0_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                            double lambda, double kappa, int is_f32);

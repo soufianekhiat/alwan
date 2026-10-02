@@ -2102,7 +2102,11 @@ equal but the sampled ones, which agree to 1.8e-15.
 typedef enum {
     ALWAN_SEGMENT_CONNECTED = 0,
     ALWAN_SEGMENT_WATERSHED = 1,
-    ALWAN_SEGMENT_SLIC = 2
+    ALWAN_SEGMENT_SLIC = 2,
+    ALWAN_SEGMENT_FELZENSZWALB = 3,
+    ALWAN_SEGMENT_QUICKSHIFT = 4,
+    ALWAN_SEGMENT_CHAN_VESE = 5,
+    ALWAN_SEGMENT_RANDOM_WALKER = 6
 } alwan_segment_method;
 
 alwan_status alwan_segment_{T}(uint32_t *labels, size_t labels_row_stride, size_t *count_out,
@@ -2132,6 +2136,22 @@ may be NULL, receives the largest label: the number of regions for `CONNECTED`, 
 | `slic_zero` | `SLIC`: 0; non-zero scales each superpixel's colour distance by its largest (SLIC-zero) |
 | `keep_disconnected` | `SLIC`: 0; non-zero skips the merging of small and disconnected pieces |
 | `min_size_factor`, `max_size_factor` | `SLIC`: 0.5 and 3 times the mean superpixel size |
+| `scale` | `FELZENSZWALB`: 1 |
+| `sigma` | `FELZENSZWALB`: 0.8, a negative value for no prefilter. `QUICKSHIFT`: none |
+| `min_size` | `FELZENSZWALB`: 20 pixels |
+| `ratio`, `kernel_size`, `max_dist` | `QUICKSHIFT`: 1, 5 (at least 1), 10 |
+| `chan_vese_exact` | `CHAN_VESE`: 0; non-zero takes `mu`, `lambda1`, `lambda2` and `tol` as given, zeros included |
+| `mu`, `lambda1`, `lambda2`, `tol`, `dt` | `CHAN_VESE`: 0.25, 1, 1, 1e-3, 0.5 |
+| `max_iterations` | `CHAN_VESE`: 500 |
+| `init`, `init_level_set_values` | `CHAN_VESE`: the checkerboard; `DISK`, `SMALL_DISK` or the caller's (`INIT_GIVEN`) |
+| `level_set`, `energies`, `energies_count` | `CHAN_VESE`: NULL; optional outputs |
+| `markers` | `RANDOM_WALKER`: required, the seeds (labels above 0) |
+| `beta`, `tol` | `RANDOM_WALKER`: 130 and 1e-3 |
+| `solver` | `RANDOM_WALKER`: `CG_JACOBI`; `DIRECT` for a banded Cholesky solve |
+| `probabilities`, `probabilities_capacity` | `RANDOM_WALKER`: NULL; one plane of probabilities a label |
+
+`FELZENSZWALB` and `QUICKSHIFT` number their regions from 1 where scikit-image numbers from
+0, since 0 is the background in this family: alwan's label is scikit-image's plus 1.
 
 ### `CONNECTED`
 
@@ -2191,6 +2211,63 @@ grey and colour, 30 to 250 segments, compactness 0.05 to 10, float32, 8-bit, SLI
 the merging off, and a short run, 11 cases. It follows scikit-image's Cython: the seeds from
 its `regular_grid`, the grid step held as a C `float` in the spatial weight, the distances
 in the data's precision, and the merging's capped breadth-first fill.
+
+### `FELZENSZWALB`
+
+Felzenszwalb and Huttenlocher's graph segmentation (IJCV 2004): the image smoothed by a
+Gaussian of `sigma` (the `REFLECT` border), every pixel joined to its 8 neighbours by an edge
+weighted by their colour distance, the edges taken lightest first, and two regions merged
+when the edge is lighter than each region's largest internal edge plus `scale` / 255 over
+its size. Larger `scale` gives fewer, larger regions; a last pass merges regions under
+`min_size` pixels into a neighbour. A port of scikit-image's `_felzenszwalb_cy.pyx`: the
+edges in its order (right, down, down-right, up-right), the internal cost compared as the
+float32 the Cython declares, 8-bit read as `v * (1 / 255)` as `img_as_float64` does (a
+division can move a cost by an ulp, and on an 8-bit image those ulps decide which neighbour
+a small region joins). The edges are sorted stably where numpy's `argsort` is not; the
+partition, not the order, decides the labels (the union keeps the smaller root), and suite
+293 found no case where the two orders part.
+
+### `QUICKSHIFT`
+
+Vedaldi and Soatto's quick shift (ECCV 2008): each pixel's density is a Gaussian sum of
+standard deviation `kernel_size` over colour and position within 3 `kernel_size`, and each
+pixel is linked to the nearest denser pixel in that window; links longer than `max_dist`
+are cut and the trees are the regions. `ratio` weighs colour against position. A port of
+scikit-image's `_quickshift_cy.pyx` with `convert2lab=False` (give it Lab, as for `SLIC`),
+with one difference: scikit-image adds normal noise of scale 1e-5 from a seeded generator
+to the densities to break ties, and alwan adds none, so a pixel with no strictly denser
+pixel in its window is a root. On natural images the two agree; on flat or symmetric ones
+alwan keeps every tied maximum as its own region. Suite 293's reference is scikit-image's
+own code with the noise generator replaced by one that draws zeros.
+
+### `CHAN_VESE`
+
+Chan and Vese's active contour without edges (2001), as Getreuer (IPOL 2012) discretises it
+and scikit-image's `segmentation.chan_vese` runs it, on one channel: the image normalised to
+[0, 1], a level set evolved to separate two regions of near-constant value, with `mu`
+weighting the contour's length and `lambda1`, `lambda2` the fit inside and outside, until
+the level set's RMS change falls under `tol` or `max_iterations` have run. Label 1 where
+the level set is positive. The final level set and the energy before each iteration are
+optional outputs. Every array expression follows numpy's order of operations and its
+pairwise sums, float32 data in float32; suite 293 matches the iteration counts and every
+label, the f64 level set exactly (6.2e-14 in the det build) and the f32 one to 2.5e-5
+(numpy's float32 `sin` and `arctan` are not the C runtime's).
+
+### `RANDOM_WALKER`
+
+Grady's random walker (PAMI 2006): from seeds (the non-zero `markers`) each unlabelled
+pixel takes the label a random walker leaving it most probably reaches first, the walk
+preferring small intensity steps: edge weights `exp(-beta / (10 std) |grad|^2) + 1e-10` over
+the 4-neighbour graph (over sqrt(channels) for colour), one linear system a label. As
+scikit-image's `segmentation.random_walker`, including its renumbering: the seeds' distinct
+values become 1, 2, ... in increasing order, so seeds 3 and 7 come back as 1 and 2, and
+seeds covering every pixel are returned unchanged. `DIRECT` factors the restricted
+Laplacian once (a banded Cholesky along the shorter side: memory the unknowns times that
+side) and agrees with scikit-image's mode `'bf'` to 1.2e-13 in the probabilities; `CG_JACOBI`
+is the conjugate gradient with a Jacobi preconditioner scikit-image uses by default, stopping
+at a relative residual of `tol`, and agrees with `'cg_j'` label for label in suite 293 (the
+two stop at different iterates, so a pixel where two labels are nearly equally probable can
+differ). The optional probabilities hold one plane a label, 1 on a seed's own label.
 
 ## Label overlays
 

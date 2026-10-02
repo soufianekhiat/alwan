@@ -18,6 +18,7 @@
  *              of seeds, each pixel searched only by the seeds within two grid steps, then
  *              pieces too small merged into a neighbour. As scikit-image's
  *              segmentation.slic without its Lab conversion, label for label (suite 227).
+ *   FELZENSZWALB, QUICKSHIFT, CHAN_VESE, RANDOM_WALKER  in alwan_segment_ext.c (suite 293).
  *
  * CONNECTED is union-find over one raster pass (each pixel joined to its equal neighbours
  * already visited: left and above, and above-left and above-right when 8-connected), then
@@ -537,7 +538,7 @@ static alwan_status alwan_sg_run(uint32_t *labels, size_t labels_rs, size_t *cou
     size_t x, y, c, i, count = 0;
     if (!labels || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || labels_rs / sizeof(uint32_t) < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_SEGMENT_SLIC) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_SEGMENT_RANDOM_WALKER) return ALWAN_E_INVALID;
     if (method == ALWAN_SEGMENT_SLIC && (!(p->compactness >= 0.0) || !(p->min_size_factor >= 0.0) || !(p->max_size_factor >= 0.0) ||
                                          p->max_iterations > 100000))
         return ALWAN_E_RANGE;
@@ -566,6 +567,13 @@ static alwan_status alwan_sg_run(uint32_t *labels, size_t labels_rs, size_t *cou
             }
             v[y * w * ch + x] = s;
         }
+    }
+    if (method >= ALWAN_SEGMENT_FELZENSZWALB) {
+        alwan_status const st = alwan__segment_ext(labels, labels_rs, count_out, v, w, h, ch, method, p, kind);
+        ALWAN_FREE(v);
+        ALWAN_FREE(par);
+        ALWAN_FREE(bg);
+        return st;
     }
     if (method == ALWAN_SEGMENT_SLIC) {
         alwan_status st;

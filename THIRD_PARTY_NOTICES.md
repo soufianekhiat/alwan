@@ -115,7 +115,10 @@ passes transcribed from `_skeletonize_various_cy.pyx` and the medial axis from
 `_skeletonize.py` (`alwan_morphology.c`), the convex hull's `possible_hull` and
 `point_in_polygon` (`_convex_hull.pyx`, `_shared/geometry.pyx`; `alwan_morphology.c`), the
 Moravec and FAST corner loops (`feature/corner_cy.pyx`, `alwan_corner.c`), the multi-Otsu
-search (`filters/_multiotsu.pyx`, `alwan_threshold.c`), total
+search (`filters/_multiotsu.pyx`, `alwan_threshold.c`), Felzenszwalb's graph segmentation and
+quick shift (`segmentation/_felzenszwalb_cy.pyx`, `segmentation/_quickshift_cy.pyx`,
+`alwan_segment_ext.c`, which also follows `_chan_vese.py` and
+`random_walker_segmentation.py`), total
 variation denoising (`alwan_denoise.c`), the thresholds, and the stain and video matrices in
 `src/alwan/data/stain/` and `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
 
