@@ -3,7 +3,7 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Colour checker detection by segmentation.
+ * Colour checker detection by segmentation and by template.
  *
  * A port of colour-checker-detection 0.2.3's segmentation method
  * (detect_colour_checkers_segmentation, segmenter_default, extractor_segmentation and the
@@ -30,6 +30,14 @@
  *   - extraction: each cluster is warped (bicubic) onto a 1440 x 960 chart, 32 x 32 windows
  *     at the 24 swatch centres are averaged, and of the four corner orders the one whose
  *     swatches are nearest (mean squared) the reference ColorChecker is kept.
+ *
+ * The templated method (detect_colour_checkers_templated, segmenter_templated and
+ * extractor_templated, same package and licence) shares the steps up to the contours and
+ * the clustering, and ships the package's ColorChecker Classic template
+ * (data/colorchecker/template_classic_*.csv). Its OpenCV calls are boundingRect,
+ * perspectiveTransform and OpenCV 5's float bilinear warpPerspective; scipy's
+ * linear_sum_assignment is ported with its BSD-3-Clause notice below; DBSCAN's noise rule
+ * is written from its definition.
  */
 
 #include "../alwan.h"
@@ -1896,6 +1904,8 @@ static void ccd_warp_pixel(float out[3], float const Mf[9], int x, int y, float 
 typedef struct {
     int working_width, sh, sv, samples, count_min, count_max, bilateral_iterations, block, no_encoding;
     double aspect, aspect_min, aspect_max, area_factor, contour_scale, sigma_color, sigma_space, C;
+    double approx_factor, dbscan_eps, cost_threshold;   /* TEMPLATED */
+    int dbscan_min_samples;
     double const *reference;
 } ccd_settings;
 
@@ -1926,6 +1936,11 @@ static alwan_status ccd_settings_from(ccd_settings *s, alwan_checker_detect_para
                                            : (int)(s->working_width * 0.015) - (int)(s->working_width * 0.015) % 2 + 1;
     s->C = p->threshold_constant != 0 ? p->threshold_constant : 3;
     s->no_encoding = p->skip_srgb_encoding != 0;
+    s->approx_factor = p->contour_approximation_factor > 0 ? p->contour_approximation_factor : 0.1;
+    s->dbscan_eps = p->dbscan_eps > 0 ? p->dbscan_eps : 0.5;
+    s->dbscan_min_samples = p->dbscan_min_samples > 0 ? (int)p->dbscan_min_samples : 5;
+    s->cost_threshold = p->transformation_cost_threshold > 0 ? p->transformation_cost_threshold : 10.0;
+    if (p->dbscan_min_samples > (size_t)INT_MAX) return ALWAN_E_INVALID;
     s->reference = p->reference_values;
     if (!s->reference) {
         if (sw != 24) return ALWAN_E_INVALID;
@@ -2043,52 +2058,59 @@ static void ccd_sample(float *colours, float const *img, int w, int h, ccd_ptf c
     }
 }
 
-static alwan_status ccd_detect(alwan_checker_detection *out, size_t capacity, size_t *count, float const *in0, int w0,
-                               int h0, ccd_settings const *s) {
+/* What both methods share: the reformatted image and its contours (segmenter_default /
+ * segmenter_templated up to detect_contours). */
+typedef struct {
+    float *img;                /* W x H x 3, rotated and resized */
+    unsigned char *g8, *g8b;   /* W x H scratch */
+    ccd_polys contours;
+    int W, H, w1, h1, rotated;
+} ccd_front_t;
+
+static void ccd_front_free(ccd_front_t *f) {
+    if (f->img) ALWAN_FREE(f->img);
+    if (f->g8) ALWAN_FREE(f->g8);
+    if (f->g8b) ALWAN_FREE(f->g8b);
+    ccd_polys_free(&f->contours);
+    memset(f, 0, sizeof(*f));
+}
+
+static alwan_status ccd_front(ccd_front_t *f, float const *in0, int w0, int h0, ccd_settings const *s) {
     alwan_status st = ALWAN_OK;
-    int rotated = w0 < h0, w1 = rotated ? h0 : w0, h1 = rotated ? w0 : h0;
-    int W = s->working_width, H, x, y, i, j;
-    int nsw = s->sh * s->sv, wh;
-    float *rot = NULL, *img = NULL;
-    unsigned char *g8 = NULL, *g8b = NULL;
-    ccd_polys contours, clusters;
-    ccd_pt(*squares)[4] = NULL, (*swatches)[4] = NULL, (*rects)[4] = NULL;
-    ccd_pt *qbuf = NULL, *work = NULL, **scaled_ptrs = NULL;
-    ccd_pt(*scaled)[4] = NULL;
-    int *slo = NULL, *shi = NULL, *npts = NULL;
-    int nsq = 0, nswt = 0, nrect = 0, maxn = 0;
-    double ratio, minimum_area, maximum_area;
-    memset(&contours, 0, sizeof(contours));
-    memset(&clusters, 0, sizeof(clusters));
-    *count = 0;
-    ratio = (double)w1 / W;
-    H = (int)(h1 / ratio);
+    int W = s->working_width, H, x, y, i;
+    float *rot = NULL;
+    double ratio;
+    memset(f, 0, sizeof(*f));
+    f->rotated = w0 < h0;
+    f->w1 = f->rotated ? h0 : w0;
+    f->h1 = f->rotated ? w0 : h0;
+    ratio = (double)f->w1 / W;
+    H = (int)(f->h1 / ratio);
     if (H < 1) return ALWAN_E_RANGE;
-    wh = (int)(W / s->aspect);
-    rot = (float *)ALWAN_ALLOC(alwan_safe_array_size((size_t)w1 * (size_t)h1, 3 * sizeof(float)), 64);
-    img = (float *)ALWAN_ALLOC(alwan_safe_array_size((size_t)W * (size_t)H, 3 * sizeof(float)), 64);
-    g8 = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size((size_t)W, (size_t)H), 64);
-    g8b = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size((size_t)W, (size_t)H), 64);
-    if (!rot || !img || !g8 || !g8b) {
+    f->W = W;
+    f->H = H;
+    rot = (float *)ALWAN_ALLOC(alwan_safe_array_size((size_t)f->w1 * (size_t)f->h1, 3 * sizeof(float)), 64);
+    f->img = (float *)ALWAN_ALLOC(alwan_safe_array_size((size_t)W * (size_t)H, 3 * sizeof(float)), 64);
+    f->g8 = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size((size_t)W, (size_t)H), 64);
+    f->g8b = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size((size_t)W, (size_t)H), 64);
+    if (!rot || !f->img || !f->g8 || !f->g8b) {
         st = ALWAN_E_NOMEM;
         goto done;
     }
     /* cv::rotate ROTATE_90_CLOCKWISE when taller than wide */
-    for (y = 0; y < h1; y++) {
-        for (x = 0; x < w1; x++) {
-            float const *p = rotated ? in0 + ((size_t)(h0 - 1 - x) * w0 + y) * 3 : in0 + ((size_t)y * w0 + x) * 3;
-            float *q = rot + ((size_t)y * w1 + x) * 3;
+    for (y = 0; y < f->h1; y++) {
+        for (x = 0; x < f->w1; x++) {
+            float const *p = f->rotated ? in0 + ((size_t)(h0 - 1 - x) * w0 + y) * 3 : in0 + ((size_t)y * w0 + x) * 3;
+            float *q = rot + ((size_t)y * f->w1 + x) * 3;
             q[0] = p[0];
             q[1] = p[1];
             q[2] = p[2];
         }
     }
-    if (!ccd_resize_cubic(img, W, H, rot, w1, h1, 3)) {
+    if (!ccd_resize_cubic(f->img, W, H, rot, f->w1, f->h1, 3)) {
         st = ALWAN_E_NOMEM;
         goto done;
     }
-    ALWAN_FREE(rot);
-    rot = NULL;
 
     /* segmenter_default: sRGB encode (double), maximum channel, stretched, truncated to 8 bits */
     {
@@ -2103,7 +2125,7 @@ static alwan_status ccd_detect(alwan_checker_detection *out, size_t capacity, si
             double m = -DBL_MAX;
             int c;
             for (c = 0; c < 3; c++) {
-                double L = (double)img[k * 3 + c], V;
+                double L = (double)f->img[k * 3 + c], V;
                 if (s->no_encoding) V = L;
                 else V = L <= 0.0031308 ? L * 12.92 : 1.055 * ALWAN_POW(L, 1. / 2.4) - 0.055;
                 if (V > m) m = V;
@@ -2115,27 +2137,62 @@ static alwan_status ccd_detect(alwan_checker_detection *out, size_t capacity, si
         for (k = 0; k < n; k++) {
             double v = ((gd[k] - gmin) / (gmax - gmin)) * (1.0 - 0.0) + 0.0;
             v *= 255;
-            g8[k] = (unsigned char)(v >= 0 && v < 256 ? (int)v : 0);
+            f->g8[k] = (unsigned char)(v >= 0 && v < 256 ? (int)v : 0);
         }
         ALWAN_FREE(gd);
     }
     for (i = 0; i < s->bilateral_iterations; i++) {
-        if (!ccd_bilateral(g8b, g8, W, H, s->sigma_color, s->sigma_space)) {
+        if (!ccd_bilateral(f->g8b, f->g8, W, H, s->sigma_color, s->sigma_space)) {
             st = ALWAN_E_NOMEM;
             goto done;
         }
-        memcpy(g8, g8b, (size_t)W * H);
+        memcpy(f->g8, f->g8b, (size_t)W * H);
     }
-    if (!ccd_adaptive_threshold(g8b, g8, W, H, s->block, s->C, 255)) {
+    if (!ccd_adaptive_threshold(f->g8b, f->g8, W, H, s->block, s->C, 255)) {
         st = ALWAN_E_NOMEM;
         goto done;
     }
-    ccd_morph3(g8, g8b, W, H, 0);
-    ccd_morph3(g8b, g8, W, H, 1);
-    if (!ccd_find_contours(&contours, g8b, W, H, 1)) {
+    ccd_morph3(f->g8, f->g8b, W, H, 0);
+    ccd_morph3(f->g8b, f->g8, W, H, 1);
+    if (!ccd_find_contours(&f->contours, f->g8b, W, H, 1)) {
         st = ALWAN_E_NOMEM;
         goto done;
     }
+done:
+    if (rot) ALWAN_FREE(rot);
+    if (st != ALWAN_OK) ccd_front_free(f);
+    return st;
+}
+
+static alwan_status ccd_detect(alwan_checker_detection *out, size_t capacity, size_t *count, float const *in0, int w0,
+                               int h0, ccd_settings const *s) {
+    alwan_status st = ALWAN_OK;
+    ccd_front_t fr;
+    int W, H, w1, h1, rotated, i, j;
+    int nsw = s->sh * s->sv, wh;
+    float *img;
+    unsigned char *g8, *g8b;
+    ccd_polys contours, clusters;
+    ccd_pt(*squares)[4] = NULL, (*swatches)[4] = NULL, (*rects)[4] = NULL;
+    ccd_pt *qbuf = NULL, *work = NULL, **scaled_ptrs = NULL;
+    ccd_pt(*scaled)[4] = NULL;
+    int *slo = NULL, *shi = NULL, *npts = NULL;
+    int nsq = 0, nswt = 0, nrect = 0, maxn = 0;
+    double minimum_area, maximum_area;
+    memset(&clusters, 0, sizeof(clusters));
+    *count = 0;
+    st = ccd_front(&fr, in0, w0, h0, s);
+    if (st != ALWAN_OK) return st;
+    W = fr.W;
+    H = fr.H;
+    w1 = fr.w1;
+    h1 = fr.h1;
+    rotated = fr.rotated;
+    img = fr.img;
+    g8 = fr.g8;
+    g8b = fr.g8b;
+    contours = fr.contours;
+    wh = (int)(W / s->aspect);
 
     /* quadrilaterals: area and squareness, then their minimum-area boxes */
     minimum_area = (double)W * H / nsw / s->area_factor;
@@ -2310,10 +2367,7 @@ static alwan_status ccd_detect(alwan_checker_detection *out, size_t capacity, si
     if ((size_t)*count > capacity) st = ALWAN_E_RANGE;
 
 done:
-    if (rot) ALWAN_FREE(rot);
-    if (img) ALWAN_FREE(img);
-    if (g8) ALWAN_FREE(g8);
-    if (g8b) ALWAN_FREE(g8b);
+    ccd_front_free(&fr);
     if (squares) ALWAN_FREE(squares);
     if (swatches) ALWAN_FREE(swatches);
     if (rects) ALWAN_FREE(rects);
@@ -2323,7 +2377,653 @@ done:
     if (scaled) ALWAN_FREE(scaled);
     if (scaled_ptrs) ALWAN_FREE(scaled_ptrs);
     if (npts) ALWAN_FREE(npts);
-    ccd_polys_free(&contours);
+    ccd_polys_free(&clusters);
+    return st;
+}
+
+/* ------------------------------------------------------------------------------------ */
+/* Templated detection (detect_colour_checkers_templated)                               */
+/* ------------------------------------------------------------------------------------ */
+
+/* The package's ColorChecker Classic template (template_colorchecker_classic.npz), verbatim. */
+ALWAN_DIAG_PUSH
+ALWAN_DIAG_DISABLE_FLOAT_CONV
+static int const ccd_tpl_size[2] = {
+#include "../data/colorchecker/template_classic_size.csv"
+};
+static float const ccd_tpl_centroids[24 * 2] = {
+#include "../data/colorchecker/template_classic_centroids.csv"
+};
+static float const ccd_tpl_colours[24 * 3] = {
+#include "../data/colorchecker/template_classic_colours.csv"
+};
+static unsigned char const ccd_tpl_corr[] = {
+#include "../data/colorchecker/template_classic_correspondences.csv"
+};
+ALWAN_DIAG_POP
+
+#define CCD_TPL_N 24
+#define CCD_TPL_NCORR ((int)(sizeof(ccd_tpl_corr) / 4))
+
+/* numpy's add.reduce over a contiguous run (pairwise_sum below 128 values): sequential under
+ * eight, else eight running sums combined as ((r0+r1)+(r2+r3))+((r4+r5)+(r6+r7)) and the rest
+ * added in order. */
+static double ccd_np_sum_d(double const *a, int n) {
+    double r[8], res;
+    int i, j;
+    if (n < 8) {
+        res = 0.;
+        for (i = 0; i < n; i++) res += a[i];
+        return res;
+    }
+    for (j = 0; j < 8; j++) r[j] = a[j];
+    for (i = 8; i < n - (n % 8); i += 8)
+        for (j = 0; j < 8; j++) r[j] += a[i + j];
+    res = ((r[0] + r[1]) + (r[2] + r[3])) + ((r[4] + r[5]) + (r[6] + r[7]));
+    for (; i < n; i++) res += a[i];
+    return res;
+}
+
+static float ccd_np_sum_f(float const *a, int n) {
+    float r[8], res;
+    int i, j;
+    if (n < 8) {
+        res = 0.f;
+        for (i = 0; i < n; i++) res += a[i];
+        return res;
+    }
+    for (j = 0; j < 8; j++) r[j] = a[j];
+    for (i = 8; i < n - (n % 8); i += 8)
+        for (j = 0; j < 8; j++) r[j] += a[i + j];
+    res = ((r[0] + r[1]) + (r[2] + r[3])) + ((r[4] + r[5]) + (r[6] + r[7]));
+    for (; i < n; i++) res += a[i];
+    return res;
+}
+
+/* np.std of three float32 values (ddof 0), in float32 as numpy does it */
+static float ccd_np_std3(float const *c) {
+    float m = ccd_np_sum_f(c, 3) / 3.f, d[3];
+    int i;
+    for (i = 0; i < 3; i++) {
+        d[i] = c[i] - m;
+        d[i] = d[i] * d[i];
+    }
+    return (float)ALWAN_SQRT((double)(ccd_np_sum_f(d, 3) / 3.f));
+}
+
+/* cv::boundingRect of integer points: x, y, xmax - xmin + 1, ymax - ymin + 1 */
+static void ccd_bounding_rect(ccd_pt const *p, int n, int *bw, int *bh) {
+    int xmin = p[0].x, xmax = p[0].x, ymin = p[0].y, ymax = p[0].y, i;
+    for (i = 1; i < n; i++) {
+        if (p[i].x < xmin) xmin = p[i].x;
+        if (p[i].x > xmax) xmax = p[i].x;
+        if (p[i].y < ymin) ymin = p[i].y;
+        if (p[i].y > ymax) ymax = p[i].y;
+    }
+    *bw = xmax - xmin + 1;
+    *bh = ymax - ymin + 1;
+}
+
+/* DBSCAN's noise rule (Ester, Kriegel, Sander and Xu 1996) as scikit-learn's DBSCAN applies it
+ * to the standardised features: a point with at least min_samples points (itself included)
+ * within eps is a core point; a point is kept when it is one or lies within eps of one. The
+ * clusters themselves are not needed. scikit-learn tests the radius on squared distances (its
+ * KD-tree, used from 12 points; below that its brute-force search forms them from norms and
+ * dot products, which can differ in the last bit at exactly eps). keep[i] is 1 to keep. */
+static int ccd_dbscan_keep(unsigned char *keep, double const *f, int n, double eps, int min_samples) {
+    int *cnt = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n + 1, sizeof(int)), 16);
+    double r2 = eps * eps;
+    int i, j;
+    if (!cnt) return 0;
+    for (i = 0; i < n; i++) {
+        cnt[i] = 0;
+        for (j = 0; j < n; j++) {
+            double d0 = f[i * 3] - f[j * 3], d1 = f[i * 3 + 1] - f[j * 3 + 1], d2 = f[i * 3 + 2] - f[j * 3 + 2];
+            double s = d0 * d0;
+            s += d1 * d1;
+            s += d2 * d2;
+            if (s <= r2) cnt[i]++;
+        }
+    }
+    for (i = 0; i < n; i++) {
+        keep[i] = cnt[i] >= min_samples;
+        if (!keep[i]) {
+            for (j = 0; j < n; j++) {
+                double d0, d1, d2, s;
+                if (cnt[j] < min_samples) continue;
+                d0 = f[i * 3] - f[j * 3];
+                d1 = f[i * 3 + 1] - f[j * 3 + 1];
+                d2 = f[i * 3 + 2] - f[j * 3 + 2];
+                s = d0 * d0;
+                s += d1 * d1;
+                s += d2 * d2;
+                if (s <= r2) {
+                    keep[i] = 1;
+                    break;
+                }
+            }
+        }
+    }
+    ALWAN_FREE(cnt);
+    return 1;
+}
+
+/*
+ * The rectangular linear sum assignment, a port of SciPy's rectangular_lsap.cpp (scipy 1.16.3,
+ * scipy.optimize.linear_sum_assignment), so that ties between equally cheap assignments fall
+ * the same way. Its notice, as its licence asks:
+ *
+ *   Redistribution and use in source and binary forms, with or without modification, are
+ *   permitted provided that the following conditions are met:
+ *   1. Redistributions of source code must retain the above copyright notice, this list of
+ *      conditions and the following disclaimer.
+ *   2. Redistributions in binary form must reproduce the above copyright notice, this list of
+ *      conditions and the following disclaimer in the documentation and/or other materials
+ *      provided with the distribution.
+ *   3. Neither the name of the copyright holder nor the names of its contributors may be used
+ *      to endorse or promote products derived from this software without specific prior
+ *      written permission.
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+ *   OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ *   MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *   COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ *   EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ *   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ *   HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+ *   TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ *   (The shortest augmenting path algorithm, after DF Crouse, "On implementing 2D rectangular
+ *   assignment algorithms", IEEE TAES 52(4), 2016; author PM Larsen.)
+ *
+ * Only the case the detector needs: nr <= nc <= CCD_LSAP_MAX, minimising, no transpose. Fills
+ * col4row[i] for every row; 0 when infeasible.
+ */
+#define CCD_LSAP_MAX 64
+
+static int ccd_lsap(int nr, int nc, double const *cost, int *col4row) {
+    double u[CCD_LSAP_MAX], v[CCD_LSAP_MAX], spc[CCD_LSAP_MAX];
+    int path[CCD_LSAP_MAX], row4col[CCD_LSAP_MAX], remaining[CCD_LSAP_MAX];
+    unsigned char SR[CCD_LSAP_MAX], SC[CCD_LSAP_MAX];
+    int cur, i, j;
+    if (nr <= 0 || nc < nr || nc > CCD_LSAP_MAX) return 0;
+    for (i = 0; i < nr; i++) {
+        u[i] = 0;
+        col4row[i] = -1;
+    }
+    for (j = 0; j < nc; j++) {
+        v[j] = 0;
+        path[j] = -1;
+        row4col[j] = -1;
+    }
+    for (cur = 0; cur < nr; cur++) {
+        double minVal = 0;
+        int sink = -1, num_remaining = nc, ii = cur, it;
+        for (it = 0; it < nc; it++) remaining[it] = nc - it - 1;
+        memset(SR, 0, sizeof(SR));
+        memset(SC, 0, sizeof(SC));
+        for (j = 0; j < nc; j++) spc[j] = HUGE_VAL;
+        while (sink == -1) {
+            int index = -1;
+            double lowest = HUGE_VAL;
+            SR[ii] = 1;
+            for (it = 0; it < num_remaining; it++) {
+                double r;
+                j = remaining[it];
+                r = minVal + cost[ii * nc + j] - u[ii] - v[j];
+                if (r < spc[j]) {
+                    path[j] = ii;
+                    spc[j] = r;
+                }
+                if (spc[j] < lowest || (spc[j] == lowest && row4col[j] == -1)) {
+                    lowest = spc[j];
+                    index = it;
+                }
+            }
+            minVal = lowest;
+            if (!(minVal < HUGE_VAL) || index < 0) return 0;
+            j = remaining[index];
+            if (row4col[j] == -1) sink = j;
+            else ii = row4col[j];
+            SC[j] = 1;
+            remaining[index] = remaining[--num_remaining];
+        }
+        u[cur] += minVal;
+        for (i = 0; i < nr; i++)
+            if (SR[i] && i != cur) u[i] += minVal - spc[col4row[i]];
+        for (j = 0; j < nc; j++)
+            if (SC[j]) v[j] -= minVal - spc[j];
+        j = sink;
+        for (;;) {
+            int t;
+            i = path[j];
+            row4col[j] = i;
+            t = col4row[i];
+            col4row[i] = j;
+            j = t;
+            if (i == cur) break;
+        }
+    }
+    return 1;
+}
+
+/* cv::perspectiveTransform of float32 points (two channels): the map in double, each point
+ * rounded to float; points where |w| <= FLT_EPSILON go to 0. */
+static void ccd_persp_points(ccd_ptf *dst, ccd_ptf const *src, int n, double const m[9]) {
+    int i;
+    for (i = 0; i < n; i++) {
+        float x = src[i].x, y = src[i].y;
+        double w = x * m[6] + y * m[7] + m[8];
+        if (ALWAN_ABS(w) > (double)FLT_EPSILON) {
+            w = 1. / w;
+            dst[i].x = (float)((x * m[0] + y * m[1] + m[2]) * w);
+            dst[i].y = (float)((x * m[3] + y * m[4] + m[5]) * w);
+        } else {
+            dst[i].x = dst[i].y = 0.f;
+        }
+    }
+}
+
+/* One pixel of OpenCV 5's bilinear warpPerspective (warp_kernels.simd.hpp,
+ * warpPerspectiveLinearInvoker_32FC3, BORDER_CONSTANT 0) with Mf the float inverse map. With
+ * AVX2 the columns below dst_w rounded down to 16 take the vector kernel (coordinates and
+ * interpolation through fused multiply-adds), the rest the scalar one (plain float). */
+static void ccd_warp_linear_pixel(float out[3], float const Mf[9], int x, int y, int vec, float const *src, int sw,
+                                  int sh) {
+    float sx, sy, a, b;
+    int ix, iy, ch;
+    if (vec) {
+        float M_x = (float)y * Mf[1] + Mf[2];
+        float M_y = (float)y * Mf[4] + Mf[5];
+        float M_w = (float)y * Mf[7] + Mf[8];
+        float dx = (float)x, w = ALWAN_FMAF(Mf[6], dx, M_w);
+        sx = ALWAN_FMAF(Mf[0], dx, M_x) / w;
+        sy = ALWAN_FMAF(Mf[3], dx, M_y) / w;
+    } else {
+        float w = (float)x * Mf[6] + (float)y * Mf[7] + Mf[8];
+        sx = ((float)x * Mf[0] + (float)y * Mf[1] + Mf[2]) / w;
+        sy = ((float)x * Mf[3] + (float)y * Mf[4] + Mf[5]) / w;
+    }
+    out[0] = out[1] = out[2] = 0.f;
+    /* the floor saturates to INT_MIN for a NaN or a coordinate past int: outside either way */
+    if (!(sx > -1073741824.f && sx < 1073741824.f && sy > -1073741824.f && sy < 1073741824.f)) return;
+    ix = ccd_floor((double)sx);
+    iy = ccd_floor((double)sy);
+    a = sx - (float)ix;
+    b = sy - (float)iy;
+    if (ix + 1 < 0 || ix >= sw || iy + 1 < 0 || iy >= sh) return;
+    for (ch = 0; ch < 3; ch++) {
+        float p00 = 0.f, p01 = 0.f, p10 = 0.f, p11 = 0.f, v0, v1;
+        int in_x0 = (unsigned)ix < (unsigned)sw, in_x1 = (unsigned)(ix + 1) < (unsigned)sw;
+        int in_y0 = (unsigned)iy < (unsigned)sh, in_y1 = (unsigned)(iy + 1) < (unsigned)sh;
+        if (in_y0 && in_x0) p00 = src[((size_t)iy * sw + ix) * 3 + ch];
+        if (in_y0 && in_x1) p01 = src[((size_t)iy * sw + ix + 1) * 3 + ch];
+        if (in_y1 && in_x0) p10 = src[((size_t)(iy + 1) * sw + ix) * 3 + ch];
+        if (in_y1 && in_x1) p11 = src[((size_t)(iy + 1) * sw + ix + 1) * 3 + ch];
+        if (vec) {
+            v0 = ALWAN_FMAF(a, p01 - p00, p00);
+            v1 = ALWAN_FMAF(a, p11 - p10, p10);
+            out[ch] = ALWAN_FMAF(b, v1 - v0, v0);
+        } else {
+            v0 = p00 + a * (p01 - p00);
+            v1 = p10 + a * (p11 - p10);
+            out[ch] = v0 + b * (v1 - v0);
+        }
+    }
+}
+
+/* segmenter_templated after detect_contours, then extractor_templated. */
+static alwan_status ccd_detect_templated(alwan_checker_detection *out, size_t capacity, size_t *count, float const *in0,
+                                         int w0, int h0, ccd_settings const *s) {
+    alwan_status st = ALWAN_OK;
+    ccd_front_t fr;
+    ccd_polys clusters;
+    ccd_pt(*squares)[4] = NULL, (*kept)[4] = NULL, (*swatches)[4] = NULL, (*cbox)[4] = NULL;
+    ccd_pt(*scaled)[4] = NULL;
+    ccd_pt *qbuf = NULL, **scaled_ptrs = NULL;
+    double *feat = NULL, *cent = NULL;
+    unsigned char *keep = NULL;
+    int *slo = NULL, *shi = NULL, *npts = NULL, *member = NULL;
+    int nsq = 0, nkept = 0, nswt = 0, maxn = 0, i, j, k, nsw = CCD_TPL_N;
+    int W, H;
+    double minimum_area, maximum_area;
+    /* the clusters that hold 8 to 24 centroids: their centroids (truncated) and corner points */
+    int nf = 0, *fcount = NULL;
+    ccd_ptf(*fpts)[CCD_TPL_N] = NULL, (*fcorner)[4] = NULL;
+    double *fcost = NULL, (*fM)[9] = NULL;
+    memset(&clusters, 0, sizeof(clusters));
+    *count = 0;
+    st = ccd_front(&fr, in0, w0, h0, s);
+    if (st != ALWAN_OK) return st;
+    W = fr.W;
+    H = fr.H;
+
+    /* the four-point approximations in the area range, and their features */
+    minimum_area = (double)W * H / nsw / s->area_factor;
+    maximum_area = (double)W * H / nsw;
+    for (i = 0; i < fr.contours.n; i++)
+        if (fr.contours.v[i].n > maxn) maxn = fr.contours.v[i].n;
+    squares = (ccd_pt(*)[4])ALWAN_ALLOC(alwan_safe_array_size((size_t)fr.contours.n + 1, sizeof(*squares)), 16);
+    feat = (double *)ALWAN_ALLOC(alwan_safe_array_size((size_t)fr.contours.n + 1, 3 * sizeof(double)), 16);
+    qbuf = (ccd_pt *)ALWAN_ALLOC(alwan_safe_array_size((size_t)maxn + 4, sizeof(ccd_pt)), 16);
+    slo = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)maxn + 4, 2 * sizeof(int)), 16);
+    if (!squares || !feat || !qbuf || !slo) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+    shi = slo + maxn + 4;
+    {
+        static ccd_pt const unit[4] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+        double hu_unit[7];
+        ccd_moments mu;
+        ccd_moments_of(&mu, unit, 4);
+        ccd_hu(&mu, hu_unit);
+        for (i = 0; i < fr.contours.n; i++) {
+            ccd_poly const *c = &fr.contours.v[i];
+            double eps = s->approx_factor * ccd_arc_length_closed(c->p, c->n), area;
+            int nq = ccd_approx_poly_dp(c->p, c->n, qbuf, eps, slo, shi);
+            area = ccd_contour_area(qbuf, nq);
+            if (minimum_area < area && area < maximum_area && nq == 4) {
+                ccd_moments m;
+                double hu[7];
+                int bw, bh;
+                memcpy(squares[nsq], qbuf, sizeof(squares[0]));
+                ccd_moments_of(&m, qbuf, 4);
+                ccd_hu(&m, hu);
+                ccd_bounding_rect(qbuf, 4, &bw, &bh);
+                feat[nsq * 3] = ccd_match_shapes_i2(hu, hu_unit);
+                feat[nsq * 3 + 1] = area;
+                feat[nsq * 3 + 2] = (double)bw / bh;
+                nsq++;
+            }
+        }
+    }
+
+    /* standardise (numpy mean and std along axis 0: running sums in order), DBSCAN */
+    kept = (ccd_pt(*)[4])ALWAN_ALLOC(alwan_safe_array_size((size_t)nsq + 1, sizeof(*kept)), 16);
+    keep = (unsigned char *)ALWAN_ALLOC((size_t)nsq + 1, 16);
+    if (!kept || !keep) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+    if (nsq > 0) {
+        double mean[3], sd[3];
+        int any = 0;
+        for (k = 0; k < 3; k++) {
+            double acc = 0, acc2 = 0;
+            for (i = 0; i < nsq; i++) acc += feat[i * 3 + k];
+            mean[k] = acc / nsq;
+            for (i = 0; i < nsq; i++) {
+                double d = feat[i * 3 + k] - mean[k];
+                acc2 += d * d;
+            }
+            sd[k] = ALWAN_SQRT(acc2 / nsq);
+            if (sd[k] == 0) sd[k] = 1.0;
+        }
+        for (i = 0; i < nsq; i++)
+            for (k = 0; k < 3; k++) feat[i * 3 + k] = (feat[i * 3 + k] - mean[k]) / sd[k];
+        if (!ccd_dbscan_keep(keep, feat, nsq, s->dbscan_eps, s->dbscan_min_samples)) {
+            st = ALWAN_E_NOMEM;
+            goto done;
+        }
+        for (i = 0; i < nsq; i++) any |= keep[i];
+        for (i = 0; i < nsq; i++)
+            if (keep[i] || !any) memcpy(kept[nkept++], squares[i], sizeof(kept[0]));
+    }
+    swatches = (ccd_pt(*)[4])ALWAN_ALLOC(alwan_safe_array_size((size_t)nkept + 1, sizeof(*swatches)), 16);
+    if (!swatches) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+    nswt = ccd_remove_stacked(kept, nkept, swatches);
+    if (nswt < 0) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+
+    /* cluster_swatches, as the segmentation method */
+    memset(fr.g8, 0, (size_t)W * H);
+    scaled = (ccd_pt(*)[4])ALWAN_ALLOC(alwan_safe_array_size((size_t)nswt + 1, sizeof(*scaled)), 16);
+    scaled_ptrs = (ccd_pt **)ALWAN_ALLOC(alwan_safe_array_size((size_t)nswt + 1, sizeof(ccd_pt *)), 16);
+    npts = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)nswt + 1, sizeof(int)), 16);
+    cent = (double *)ALWAN_ALLOC(alwan_safe_array_size((size_t)nswt + 1, 2 * sizeof(double)), 16);
+    if (!scaled || !scaled_ptrs || !npts || !cent) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+    {
+        double f = (double)(float)s->contour_scale;
+        for (i = 0; i < nswt; i++) {
+            double cx, cy;
+            ccd_centroid(swatches[i], 4, &cx, &cy);
+            cent[i * 2] = cx;
+            cent[i * 2 + 1] = cy;
+            for (j = 0; j < 4; j++) {
+                double px = ((double)swatches[i][j].x - cx) * f + cx;
+                double py = ((double)swatches[i][j].y - cy) * f + cy;
+                scaled[i][j].x = ccd_trunc(px);
+                scaled[i][j].y = ccd_trunc(py);
+            }
+            scaled_ptrs[i] = scaled[i];
+            npts[i] = 4;
+        }
+    }
+    if (!ccd_fill_polys(fr.g8, W, H, (ccd_pt const *const *)scaled_ptrs, npts, nswt, 255) ||
+        !ccd_find_contours(&clusters, fr.g8, W, H, 0)) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+    cbox = (ccd_pt(*)[4])ALWAN_ALLOC(alwan_safe_array_size((size_t)clusters.n + 1, sizeof(*cbox)), 16);
+    member = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)nswt + 1, sizeof(int)), 16);
+    fcount = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)clusters.n + 1, sizeof(int)), 16);
+    fpts = (ccd_ptf(*)[CCD_TPL_N])ALWAN_ALLOC(alwan_safe_array_size((size_t)clusters.n + 1, sizeof(*fpts)), 16);
+    fcorner = (ccd_ptf(*)[4])ALWAN_ALLOC(alwan_safe_array_size((size_t)clusters.n + 1, sizeof(*fcorner)), 16);
+    fcost = (double *)ALWAN_ALLOC(alwan_safe_array_size((size_t)clusters.n + 1, sizeof(double)), 16);
+    fM = (double(*)[9])ALWAN_ALLOC(alwan_safe_array_size((size_t)clusters.n + 1, sizeof(*fM)), 16);
+    if (!cbox || !member || !fcount || !fpts || !fcorner || !fcost || !fM) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+    for (i = 0; i < clusters.n; i++) {
+        if (!ccd_box_of(cbox[i], clusters.v[i].p, clusters.v[i].n)) {
+            st = ALWAN_E_NOMEM;
+            goto done;
+        }
+    }
+
+    /* extractor_templated: the centroids strictly inside each cluster, 8 to 24 of them,
+     * truncated to int32; four corners, the farthest from their mean in each quadrant */
+    for (i = 0; i < clusters.n; i++) {
+        int nm = 0, q;
+        double mx = 0, my = 0;
+        int best_q[4];
+        double best_d[4];
+        for (k = 0; k < nswt; k++)
+            if (ccd_point_in_polygon(cbox[i], 4, (float)cent[k * 2], (float)cent[k * 2 + 1]) == 1) member[nm++] = k;
+        if (!((double)nsw / 3 <= nm && nm <= nsw)) continue;
+        for (k = 0; k < nm; k++) {
+            int ix = (int)cent[member[k] * 2], iy = (int)cent[member[k] * 2 + 1];
+            fpts[nf][k].x = (float)ix;
+            fpts[nf][k].y = (float)iy;
+            mx += ix;
+            my += iy;
+        }
+        mx /= nm;
+        my /= nm;
+        for (q = 0; q < 4; q++) {
+            best_q[q] = -1;
+            best_d[q] = 0;
+        }
+        for (k = 0; k < nm; k++) {
+            double ang = ALWAN_ATAN2((double)fpts[nf][k].y - my, (double)fpts[nf][k].x - mx);
+            double dx = (double)fpts[nf][k].x - mx, dy = (double)fpts[nf][k].y - my;
+            double dist = ALWAN_SQRT(dx * dx + dy * dy);
+            q = ((int)((ang + 3.141592653589793) / (3.141592653589793 / 2))) % 4;
+            if (best_q[q] < 0 || dist > best_d[q]) {
+                best_q[q] = k;
+                best_d[q] = dist;
+            }
+        }
+        {
+            int no = 0;
+            for (q = 0; q < 4; q++)
+                if (best_q[q] >= 0) fcorner[nf][no++] = fpts[nf][best_q[q]];
+            if (no != 4)
+                for (q = 0; q < 4; q++) fcorner[nf][q] = fpts[nf][q];
+        }
+        fcount[nf] = nm;
+        fcost[nf] = HUGE_VAL; /* no map yet */
+        nf++;
+    }
+
+    /* the correspondence search */
+    {
+        double best_global = HUGE_VAL;
+        int fi;
+        for (fi = 0; fi < nf; fi++) {
+            int c;
+            if (best_global < s->cost_threshold) break;
+            for (c = 0; c < CCD_TPL_NCORR; c++) {
+                ccd_ptf dst[4], warped[CCD_TPL_N];
+                double M[9], cm[CCD_TPL_N * CCD_TPL_N], sel[CCD_TPL_N], cost;
+                int col4row[CCD_TPL_N], n = fcount[fi], r;
+                for (k = 0; k < 4; k++) {
+                    int t = ccd_tpl_corr[c * 4 + k];
+                    dst[k].x = ccd_tpl_centroids[t * 2];
+                    dst[k].y = ccd_tpl_centroids[t * 2 + 1];
+                }
+                if (!ccd_perspective(M, fcorner[fi], dst)) {
+                    /* cv::solve zeroes a singular system's result; getPerspectiveTransform
+                     * then sets M[8] = 1, and the package goes on with that map */
+                    memset(M, 0, sizeof(M));
+                    M[8] = 1.;
+                }
+                ccd_persp_points(warped, fpts[fi], n, M);
+                for (r = 0; r < n; r++) {
+                    for (k = 0; k < nsw; k++) {
+                        double d0 = (double)ccd_tpl_centroids[k * 2] - (double)warped[r].x;
+                        double d1 = (double)ccd_tpl_centroids[k * 2 + 1] - (double)warped[r].y;
+                        cm[r * nsw + k] = ALWAN_SQRT(d0 * d0 + d1 * d1);
+                    }
+                }
+                if (!ccd_lsap(n, nsw, cm, col4row)) continue;
+                for (r = 0; r < n; r++) sel[r] = cm[r * nsw + col4row[r]];
+                cost = ccd_np_sum_d(sel, n) / n;
+                if (cost < fcost[fi]) {
+                    fcost[fi] = cost;
+                    memcpy(fM[fi], M, sizeof(M));
+                    if (cost < best_global) best_global = cost;
+                    if (cost < s->cost_threshold) break;
+                }
+            }
+        }
+    }
+
+    /* the cheapest map; the package returns one detection */
+    {
+        int bi = -1, tw = ccd_tpl_size[0], th = ccd_tpl_size[1], half = s->samples / 2, vec_end;
+        double Mi[9];
+        float Mf[9], cols[CCD_TPL_N * 3];
+        alwan_checker_detection *d;
+        for (i = 0; i < nf; i++)
+            if (bi < 0 || fcost[i] < fcost[bi]) bi = i;
+        if (bi < 0 || !(fcost[bi] < HUGE_VAL)) goto done; /* nothing to warp: no detection */
+        if (!ccd_invert3(Mi, fM[bi])) goto done;
+        for (i = 0; i < 9; i++) Mf[i] = (float)Mi[i];
+        vec_end = tw - tw % 16;
+        for (k = 0; k < nsw; k++) {
+            int x = (int)ccd_tpl_centroids[k * 2], y = (int)ccd_tpl_centroids[k * 2 + 1];
+            int x0 = x - half > 0 ? x - half : 0, x1 = x + half < tw ? x + half : tw;
+            int y0 = y - half > 0 ? y - half : 0, y1 = y + half < th ? y + half : th;
+            float acc[3] = {0.f, 0.f, 0.f};
+            int cnt = 0, yy, xx;
+            for (yy = y0; yy < y1; yy++) {
+                for (xx = x0; xx < x1; xx++) {
+                    float px[3];
+                    ccd_warp_linear_pixel(px, Mf, xx, yy, xx < vec_end, fr.img, W, H);
+                    acc[0] += px[0];
+                    acc[1] += px[1];
+                    acc[2] += px[2];
+                    cnt++;
+                }
+            }
+            for (j = 0; j < 3; j++) cols[k * 3 + j] = cnt ? acc[j] / (float)cnt : 0.f;
+        }
+        /* upside down when the chromatic swatches vary less than the achromatic ones */
+        {
+            float sd[CCD_TPL_N], chroma, achroma;
+            for (k = 0; k < nsw; k++) sd[k] = ccd_np_std3(cols + k * 3);
+            chroma = ccd_np_sum_f(sd, 18) / 18.f;
+            achroma = ccd_np_sum_f(sd + 18, 6) / 6.f;
+            if (chroma < achroma) {
+                for (k = 0; k < nsw / 2; k++) {
+                    for (j = 0; j < 3; j++) {
+                        float t = cols[k * 3 + j];
+                        cols[k * 3 + j] = cols[(nsw - 1 - k) * 3 + j];
+                        cols[(nsw - 1 - k) * 3 + j] = t;
+                    }
+                }
+            }
+        }
+        if (capacity == 0) {
+            *count = 1;
+            st = ALWAN_E_RANGE;
+            goto done;
+        }
+        d = &out[0];
+        memset(d, 0, sizeof(*d));
+        d->swatch_count = (size_t)nsw;
+        for (k = 0; k < nsw * 3; k++) d->swatches[k / 3][k % 3] = cols[k];
+        {
+            double acc = 0;
+            for (k = 0; k < nsw * 3; k++) {
+                double e = (double)cols[k] - (double)ccd_tpl_colours[k];
+                acc += e * e;
+            }
+            d->mse = acc / (nsw * 3);
+        }
+        /* the package's quadrilateral: clusters[cluster_id] with the index among the kept ones */
+        if (bi < clusters.n) {
+            for (k = 0; k < 4; k++) {
+                double wx = cbox[bi][k].x, wy = cbox[bi][k].y, ix, iy, sc = (double)fr.w1 / W, scy = (double)fr.h1 / H;
+                d->quad[k][0] = wx;
+                d->quad[k][1] = wy;
+                ix = (wx + 0.5) * sc - 0.5;
+                iy = (wy + 0.5) * scy - 0.5;
+                if (fr.rotated) {
+                    d->quad_image[k][0] = iy;
+                    d->quad_image[k][1] = (double)(h0 - 1) - ix;
+                } else {
+                    d->quad_image[k][0] = ix;
+                    d->quad_image[k][1] = iy;
+                }
+            }
+        }
+        d->working_width = (size_t)W;
+        d->working_height = (size_t)H;
+        *count = 1;
+    }
+
+done:
+    ccd_front_free(&fr);
+    if (squares) ALWAN_FREE(squares);
+    if (kept) ALWAN_FREE(kept);
+    if (keep) ALWAN_FREE(keep);
+    if (feat) ALWAN_FREE(feat);
+    if (cent) ALWAN_FREE(cent);
+    if (swatches) ALWAN_FREE(swatches);
+    if (cbox) ALWAN_FREE(cbox);
+    if (qbuf) ALWAN_FREE(qbuf);
+    if (slo) ALWAN_FREE(slo);
+    if (scaled) ALWAN_FREE(scaled);
+    if (scaled_ptrs) ALWAN_FREE(scaled_ptrs);
+    if (npts) ALWAN_FREE(npts);
+    if (member) ALWAN_FREE(member);
+    if (fcount) ALWAN_FREE(fcount);
+    if (fpts) ALWAN_FREE(fpts);
+    if (fcorner) ALWAN_FREE(fcorner);
+    if (fcost) ALWAN_FREE(fcost);
+    if (fM) ALWAN_FREE(fM);
     ccd_polys_free(&clusters);
     return st;
 }
@@ -2337,13 +3037,15 @@ static alwan_status ccd_entry(alwan_checker_detection *out, size_t capacity, siz
     size_t x, y;
     if (!count || !image || (capacity > 0 && !out)) return ALWAN_E_INVALID;
     *count = 0;
-    if (method != ALWAN_CHECKER_DETECT_SEGMENTATION) return ALWAN_E_INVALID;
+    if (method != ALWAN_CHECKER_DETECT_SEGMENTATION && method != ALWAN_CHECKER_DETECT_TEMPLATED) return ALWAN_E_INVALID;
     if (width < 2 || height < 2 || channels < 3 || width > (size_t)INT_MAX / 4 || height > (size_t)INT_MAX / 4)
         return ALWAN_E_INVALID;
     if (row_stride == 0) row_stride = width * channels * (is_f64 ? sizeof(alwan_f64) : sizeof(alwan_f32));
     if (row_stride < width * channels * (is_f64 ? sizeof(alwan_f64) : sizeof(alwan_f32))) return ALWAN_E_INVALID;
     st = ccd_settings_from(&s, params);
     if (st != ALWAN_OK) return st;
+    /* the template is the ColorChecker Classic's */
+    if (method == ALWAN_CHECKER_DETECT_TEMPLATED && s.sh * s.sv != CCD_TPL_N) return ALWAN_E_INVALID;
     buf = (float *)ALWAN_ALLOC(alwan_safe_array_size(width * height, 3 * sizeof(float)), 64);
     if (!buf) return ALWAN_E_NOMEM;
     for (y = 0; y < height; y++) {
@@ -2356,7 +3058,9 @@ static alwan_status ccd_entry(alwan_checker_detection *out, size_t capacity, siz
             }
         }
     }
-    st = ccd_detect(out, capacity, count, buf, (int)width, (int)height, &s);
+    st = method == ALWAN_CHECKER_DETECT_TEMPLATED
+             ? ccd_detect_templated(out, capacity, count, buf, (int)width, (int)height, &s)
+             : ccd_detect(out, capacity, count, buf, (int)width, (int)height, &s);
     ALWAN_FREE(buf);
     return st;
 }

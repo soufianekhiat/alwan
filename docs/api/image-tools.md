@@ -2738,8 +2738,9 @@ alwan_status alwan_color_checker_detect_{T}(alwan_checker_detection *out, size_t
 Finds ColorChecker charts in a photograph and reads their swatches: colour-checker-detection
 0.2.3's segmentation method (`detect_colour_checkers_segmentation`), a port of the Colour
 Developers' pipeline (BSD-3-Clause) with the OpenCV calls it makes reproduced from OpenCV
-5.x's own sources. One method so far, `ALWAN_CHECKER_DETECT_SEGMENTATION`; the package's
-inference method needs network weights alwan does not ship.
+5.x's own sources. Two methods, `ALWAN_CHECKER_DETECT_SEGMENTATION` and
+`ALWAN_CHECKER_DETECT_TEMPLATED` (below); the package's inference method needs network
+weights alwan does not ship.
 
 The image is read as float32 RGB (the first three of `channels`), turned a quarter clockwise
 if it is taller than wide, and resized to `working_width` by OpenCV's cubic resize. The
@@ -2787,6 +2788,55 @@ a few pixels of the filtered one. On the 164 photographs of the SRIC collection 
 colours identical when IPP is off and within 2.4e-6 when it is on, as the package ships. The det build,
 with its polynomial pow and exp and its unfused multiply-adds, finds the same corners and
 swatches within 1.2e-7.
+
+### The templated method
+
+`ALWAN_CHECKER_DETECT_TEMPLATED` is the package's `detect_colour_checkers_templated`
+(`segmenter_templated`, `extractor_templated`). It shares the resize, the encoding, the
+filtering, the threshold, the contours and the clustering, and differs in what it keeps and
+how it reads a chart:
+
+- every contour is cut by `approxPolyDP` at `contour_approximation_factor` (0.1) of its
+  perimeter, and the four-point ones in the area range are kept;
+- their squareness (`matchShapes` I2 against the unit square), area and bounding-box aspect,
+  each standardised over the candidates, go through DBSCAN (`dbscan_eps` 0.5,
+  `dbscan_min_samples` 5); the points DBSCAN calls noise are dropped, all are kept when it
+  calls them all noise;
+- the clusters are the segmentation method's, without the aspect test; the swatch centroids
+  strictly inside a cluster, 8 to 24 of them, are matched against the package's ColorChecker
+  Classic template (810 x 560 pixels, 24 swatch centroids and colours, 29,424 corner
+  correspondences, shipped in `data/colorchecker/`): for each correspondence the perspective
+  map from the four outermost centroids (one per quadrant about their mean) to the
+  template's, every centroid carried through it, and the mean distance of the best
+  one-to-one assignment to the template's swatches (SciPy's `linear_sum_assignment`, ported
+  with its notice so ties fall the same way). The search stops at the first cost under
+  `transformation_cost_threshold` (10 template pixels);
+- the image is warped onto the template by the cheapest map (OpenCV 5's float bilinear
+  `warpPerspective`, its AVX2 block and scalar tail both reproduced), a `samples` x `samples`
+  window averaged at each template swatch, and the order reversed when the first 18 swatches
+  vary less across R, G and B than the last 6 (the chart read as upside down).
+
+It returns one detection at most, and none when no cluster holds 8 to 24 centroids (the
+package raises there). `quad` is the package's quadrilateral, the cheapest cluster's box,
+with one quirk reproduced: the package indexes the clusters by the cheapest one's position
+among those kept, so when a cluster before it was dropped for its centroid count, `quad` is
+another cluster's box. `mse` is the mean squared distance to the template's colours.
+`reference_values` is not read and the layout must be 6 x 4.
+
+| `alwan_checker_detect_params` (templated) | Default | Meaning |
+|---|---|---|
+| `contour_approximation_factor` | 0.1 | `approxPolyDP`'s tolerance, as a fraction of the perimeter |
+| `dbscan_eps`, `dbscan_min_samples` | 0.5, 5 | the outlier filter on the standardised features |
+| `transformation_cost_threshold` | 10 | stop at the first map whose mean distance is under this |
+
+Suite 269 holds it to the package on the same synthetic scenes: four charts found, the same
+quadrilaterals and swatch colours to the bit, and no chart in the two scenes where the package
+finds none; the det build is within 1.2e-7 on the swatches. On the 166 SRIC photographs at
+the plate's exposure (IPP off) both find the same 14 charts, identical, and neither finds one
+in the other 152. The search costs 2 to 5 seconds a photograph at the default width, most of
+it in the 29,424 assignments a cluster can take; DBSCAN's radius is tested on squared
+distances (scikit-learn's KD-tree path), which below 12 candidates can differ from
+scikit-learn's brute-force path at exactly `dbscan_eps`.
 
 ## Contours
 

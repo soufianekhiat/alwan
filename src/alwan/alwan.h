@@ -2279,11 +2279,65 @@ alwan_status alwan_key_chroma_f64(alwan_f64 *alpha_out, size_t alpha_stride, alw
  * see suite 183.
  * ---------------------------------------------------------------- */
 
+/* Two estimators outside the e(n, p, sigma) framework, chosen by `method` (suite 183):
+ *
+ * ALWAN_CONSTANCY_GREY_PIXEL: Yang, Gao and Li, "Efficient Illuminant Estimation for Color
+ * Constancy Using Grey Pixels", CVPR 2015, as the authors' MATLAB code (GPconstancy.m,
+ * GetGreyidx.m; no licence, so run as the test oracle only) computes it. Each channel, its
+ * zeros replaced by DBL_EPSILON, is taken to its logarithm and measured for local contrast:
+ * the standard deviation (n - 1) over a grey_pixel_window x grey_pixel_window window with the
+ * edge replicated (GREY_PIXEL_LOCAL_STD, their GPstd, 3 x 3), or the gradient magnitude of
+ * their 2D Gaussian derivative at `sigma` (GREY_PIXEL_EDGE, GPedge). The grey index is the
+ * standard deviation (n - 1) of the three contrasts over their mean, over the pixel's mean
+ * intensity, scaled by its maximum; a pixel with no contrast in any channel takes the
+ * maximum; the index is averaged over 7 x 7 with the image wrapped round. The
+ * grey_pixel_percent % lowest (0.1 by default; at least one pixel, ties at the threshold all
+ * taken) are summed per channel. `exclude` and `saturation` (as above, dilated 3 x 3) mark
+ * pixels as never grey; no border is left out; order and minkowski are not read.
+ *
+ * ALWAN_CONSTANCY_WEIGHTED_GREY_EDGE: Gijsenij, Gevers and van de Weijer, "Improving Color
+ * Constancy by Photometric Edge Weighting", IEEE TPAMI 34(5), 2012, the iterative weighted
+ * first-order Grey-Edge, as weightedGE.m does it (here held to an MIT-licensed Python port of
+ * it). Each pass corrects the image by the estimate so far, takes the first-order Gaussian
+ * derivatives at `sigma` (> 0), and weights each pixel's per-channel gradient magnitude by
+ * (|quasi-variant gradient| / |gradient|)^kappa, at most 1, where the quasi-variant is the
+ * specular one, the derivative along the illuminant (R + G + B) / sqrt 3 (EDGE_WEIGHT_SPECULAR,
+ * the paper's best), or the shadow-shading one, the derivative along the pixel's own colour
+ * (EDGE_WEIGHT_SHADOW, the Gaussian-smoothed colour at the pixel). The Minkowski sums
+ * (minkowski p >= 1, 0 the maximum) over the pixels inside a sigma + 1 border, not excluded,
+ * not saturated and with some gradient give the pass's estimate; the result is the product of
+ * the passes' estimates, unit length, after `iterations` passes (10) or as soon as a pass's
+ * estimate is within 0.05 degrees of neutral. A pixel with no gradient has weight 0 (the
+ * reference divides 0 by 0 there and its sums go NaN). order is not read. */
+typedef enum {
+    ALWAN_CONSTANCY_EDGE_FRAMEWORK = 0,      /* e(n, p, sigma): Grey World ... second-order Grey-Edge */
+    ALWAN_CONSTANCY_GREY_PIXEL = 1,
+    ALWAN_CONSTANCY_WEIGHTED_GREY_EDGE = 2
+} alwan_constancy_method;
+
+typedef enum {
+    ALWAN_GREY_PIXEL_LOCAL_STD = 0,          /* GPstd */
+    ALWAN_GREY_PIXEL_EDGE = 1                /* GPedge: Gaussian derivative at sigma */
+} alwan_grey_pixel_measure;
+
+typedef enum {
+    ALWAN_EDGE_WEIGHT_SPECULAR = 0,
+    ALWAN_EDGE_WEIGHT_SHADOW = 1
+} alwan_edge_weight;
+
 typedef struct {
     int order;               /* 0 the pixels, 1 the gradient, 2 the second derivatives */
     alwan_f64 minkowski;     /* p >= 1; 0 takes the maximum */
     alwan_f64 sigma;         /* Gaussian scale in pixels; 0 is no smoothing (order 0 only) */
     alwan_f64 saturation;    /* a pixel whose largest channel reaches this is left out; 0 leaves none out */
+    /* appended in 3.0.0: zero the struct or use alwan_constancy_params_init */
+    alwan_constancy_method method;          /* 0 the framework */
+    alwan_f64 grey_pixel_percent;           /* GREY_PIXEL: percent of the pixels taken; 0: 0.1 */
+    alwan_grey_pixel_measure grey_pixel_measure;
+    size_t grey_pixel_window;               /* GREY_PIXEL_LOCAL_STD: odd window side; 0: 3 */
+    alwan_f64 kappa;                        /* WEIGHTED_GREY_EDGE: the weight's power; 0: 1 */
+    alwan_edge_weight edge_weight;          /* WEIGHTED_GREY_EDGE */
+    size_t iterations;                      /* WEIGHTED_GREY_EDGE: at most this many passes; 0: 10 */
 } alwan_constancy_params;
 
 /* Grey World: order 0, Minkowski 1, sigma 0, no saturation limit. */
@@ -3166,9 +3220,32 @@ alwan_status alwan_match_template_u8(alwan_f64 *out, size_t out_row_stride, unsi
  * Classic; reference_values, swatches_horizontal x swatches_vertical rows of linear RGB in
  * the image's space, NULL for the Classic after November 2014 in linear sRGB. The image
  * should be display-referred RGB in about [0, 1], linear or not: the segmentation encodes it
- * (skip_srgb_encoding off), and the swatch colours are sampled from the image as given. */
+ * (skip_srgb_encoding off), and the swatch colours are sampled from the image as given.
+ *
+ * ALWAN_CHECKER_DETECT_TEMPLATED is the package's templated method
+ * (detect_colour_checkers_templated, suite 269), after the same resize, encoding, filtering,
+ * threshold and contours: every contour is cut by approxPolyDP at 0.1 of its perimeter
+ * (contour_approximation_factor) and the four-point ones in the area range kept; their
+ * squareness, area and bounding-box aspect, standardised, go through DBSCAN (dbscan_eps 0.5,
+ * dbscan_min_samples 5) and the noise points are dropped (all are kept when DBSCAN keeps
+ * none); stacked ones are removed and the rest grown and joined into clusters as above. The
+ * swatch centroids strictly inside each cluster, 8 to 24 of them, are matched against the
+ * ColorChecker Classic template (810 x 560, 24 swatches, 29424 corner correspondences,
+ * shipped from the package): for each correspondence the perspective map from the cluster's
+ * four outermost centroids, one per quadrant about their mean, to the template's, the
+ * centroids carried through it, and the cost of the best one-to-one assignment to the
+ * template swatches (scipy's linear_sum_assignment) per centroid. The search stops at the
+ * first cost under transformation_cost_threshold (10). The image is warped by the cheapest
+ * map onto the template (OpenCV 5's float bilinear warpPerspective), a samples x samples
+ * window averaged at each template swatch, and the order reversed when the first 18 swatches
+ * vary less across R, G and B than the last 6 (the chart taken to be upside down). One
+ * detection at most; none when no cluster holds 8 to 24 centroids. quad is the package's:
+ * its cluster box with the index of the cheapest cluster among those kept, which is the
+ * cluster's own only when no cluster before it was dropped (reproduced, see the docs); mse
+ * is the mean squared distance to the template's colours. reference_values is not read. */
 typedef enum {
-    ALWAN_CHECKER_DETECT_SEGMENTATION = 0
+    ALWAN_CHECKER_DETECT_SEGMENTATION = 0,
+    ALWAN_CHECKER_DETECT_TEMPLATED = 1
 } alwan_checker_detect_method;
 
 #define ALWAN_CHECKER_MAX_SWATCHES 140
@@ -3192,6 +3269,11 @@ typedef struct {
     double threshold_constant;         /* 0: 3 */
     int skip_srgb_encoding;            /* non-zero: segment the image as given, not its sRGB encoding */
     double const *reference_values;    /* NULL: the ColorChecker Classic (2014) in linear sRGB */
+    /* TEMPLATED only (appended in 3.0.0: zero the struct) */
+    double contour_approximation_factor;  /* 0: 0.1 of the contour's perimeter */
+    double dbscan_eps;                    /* 0: 0.5 (in standard deviations) */
+    size_t dbscan_min_samples;            /* 0: 5 */
+    double transformation_cost_threshold; /* 0: 10 (template pixels per centroid) */
 } alwan_checker_detect_params;
 
 typedef struct {

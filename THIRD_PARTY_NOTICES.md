@@ -107,8 +107,10 @@ What alwan takes:
 - Code that follows colour's implementation step for step, the Munsell conversion
   (`src/alwan/api/alwan_munsell.c`) first among them.
 - `src/alwan/api/alwan_dng.c`: `highlights_recovery_LCHab` from colour-hdri 0.2.6.
-- `src/alwan/api/alwan_checker_detect.c`: the segmentation detector of
-  colour-checker-detection 0.2.3.
+- `src/alwan/api/alwan_checker_detect.c`: the segmentation and templated detectors of
+  colour-checker-detection 0.2.3, and its ColorChecker Classic template
+  (`src/alwan/data/colorchecker/template_classic_*.csv`, copied from
+  `template_colorchecker_classic.npz` by `gendata/data/checker_templates.py`).
 
 ## scikit-image
 
@@ -147,7 +149,10 @@ What alwan takes: the B-spline interpolation of `scipy.ndimage.map_coordinates` 
 `scipy/ndimage/src/ni_splines.c` (`get_spline_interpolation_weights`, the filter poles,
 `apply_filter` with its reflect initialisations) and the 12-pixel edge padding of
 `_interpolation.py`; the local Wiener filter of `scipy/signal/_signaltools.py` (`wiener`)
-for `ALWAN_DENOISE_WIENER_LOCAL` (`src/alwan/api/alwan_denoise_bilateral.c`).
+for `ALWAN_DENOISE_WIENER_LOCAL` (`src/alwan/api/alwan_denoise_bilateral.c`); the rectangular
+linear sum assignment of `scipy/optimize/rectangular_lsap/rectangular_lsap.cpp` (PM Larsen,
+after Crouse 2016) for the templated checker detector (`src/alwan/api/alwan_checker_detect.c`,
+which carries that file's notice).
 
 ## Pillow
 

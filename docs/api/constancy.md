@@ -97,6 +97,66 @@ forms, and the corrected image bit for bit.
 
 The code fixes its saturation level at 255; alwan makes it a parameter.
 
+## Grey Pixel and weighted Grey-Edge
+
+Two estimators outside e(n, p, sigma), chosen by `method` in the same parameters (append-only
+fields: zero the struct or call `alwan_constancy_params_init`).
+
+`ALWAN_CONSTANCY_GREY_PIXEL` is Yang, Gao and Li, "Efficient Illuminant Estimation for Color
+Constancy Using Grey Pixels" (CVPR 2015): a grey surface keeps the same local contrast in every
+channel's logarithm whatever the light, so the pixels whose three log contrasts agree best are
+taken as grey and averaged. As the authors' code computes it:
+
+- each channel's zeros become `DBL_EPSILON`, then its natural logarithm is measured for local
+  contrast: the sample standard deviation over `grey_pixel_window` x `grey_pixel_window` (3)
+  with the edge replicated (`ALWAN_GREY_PIXEL_LOCAL_STD`, their GPstd), or the gradient
+  magnitude of their 2D Gaussian derivative at `sigma` (`ALWAN_GREY_PIXEL_EDGE`, GPedge);
+- the grey index is the three contrasts' standard deviation (n - 1) over their mean, over the
+  pixel's mean intensity, scaled by its maximum; a pixel with no contrast at all takes the
+  maximum, and the index is averaged over 7 x 7 with the image wrapped round;
+- the `grey_pixel_percent` % lowest (0.1; at least one pixel; every pixel tied with the last
+  one taken) are summed per channel.
+
+`exclude` and `saturation` (dilated 3 x 3) mark pixels as never grey; there is no border.
+
+`ALWAN_CONSTANCY_WEIGHTED_GREY_EDGE` is Gijsenij, Gevers and van de Weijer, "Improving Color
+Constancy by Photometric Edge Weighting" (TPAMI 2012): the first-order Grey-Edge, with each
+pixel's edge weighted by the share of it that runs along a photometric direction, and iterated
+because that direction depends on the light being estimated. Each pass divides the image by the
+estimate so far times sqrt 3, takes the first-order Gaussian derivatives at `sigma`, and weights
+each channel's gradient magnitude by (|quasi-variant| / |gradient|)^`kappa` (1), capped at 1:
+
+- `ALWAN_EDGE_WEIGHT_SPECULAR`: the derivative along (R + G + B) / sqrt 3, the illuminant's
+  direction once corrected, which highlights follow; the paper's best;
+- `ALWAN_EDGE_WEIGHT_SHADOW`: the derivative along the pixel's own colour (the Gaussian-smoothed
+  colour at sigma), which shadows and shading follow.
+
+The pass's estimate is the Minkowski sum (`minkowski` p, 0 the maximum) over the pixels inside
+a sigma + 1 border, not excluded, not saturated and with some gradient; the result is the
+product of the passes' estimates, unit length, after `iterations` (10) passes or as soon as a
+pass lands within 0.05 degrees of neutral. A pixel with no gradient has weight 0, where the
+reference divides 0 by 0.
+
+| field | Default | Read by |
+|---|---|---|
+| `method` | `ALWAN_CONSTANCY_EDGE_FRAMEWORK` | all |
+| `grey_pixel_percent` | 0.1 | GREY_PIXEL |
+| `grey_pixel_measure`, `grey_pixel_window` | LOCAL_STD, 3 (odd, 3 to 255) | GREY_PIXEL |
+| `sigma` | required (> 0) | GREY_PIXEL with EDGE, WEIGHTED_GREY_EDGE |
+| `kappa`, `edge_weight`, `iterations` | 1, SPECULAR, 10 | WEIGHTED_GREY_EDGE |
+| `minkowski`, `saturation` | as above | WEIGHTED_GREY_EDGE; `saturation` also GREY_PIXEL |
+
+Suite 183 holds Grey Pixel to the authors' MATLAB code (`GetGreyidx.m`, `DerivGauss.m`,
+`LocalStd.m`, at <https://github.com/jackygsb/Efficient-Illuminant-Estimation-for-Color-Constancy-Using-Grey-Pixels>,
+no licence: fetched at a pinned commit and run in MATLAB, nothing copied) over 11 settings on
+three images with zeros, a flat patch and a caller mask: 1.7e-15 worst. The weighted Grey-Edge
+is held to an MIT-licensed Python port of `weightedGE.m` for the specular weighting (6
+settings) and, for the shadow weighting, the maximum and the mask, which the port does not
+have, to a transcription of the same iteration that agrees with the port to 1e-12 where both
+apply (6 settings): 1.1e-15 worst. The f32 forms equal the f64 ones on the pixels narrowed to
+float. The weighted Grey-Edge's saturation test reads the image as given, once; the port tests
+the corrected image for 255 at every pass.
+
 ## White balance, as OpenCV's xphoto
 
 ```c

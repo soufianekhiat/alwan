@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+### Added: Grey Pixel, weighted Grey-Edge and the templated checker detector (batch 16)
+
+- **`ALWAN_CONSTANCY_GREY_PIXEL`** in `alwan_illuminant_estimate_{T}` (new `method` field):
+  Yang, Gao and Li's grey pixels (CVPR 2015), alwan's own code from the paper, held in suite
+  183 to the authors' MATLAB code (no licence, run as the oracle only) to 1.7e-15 over 11
+  settings, both contrast measures (local deviation, Gaussian derivative).
+- **`ALWAN_CONSTANCY_WEIGHTED_GREY_EDGE`**: Gijsenij, Gevers and van de Weijer's iterative
+  photometric edge weighting (TPAMI 2012), specular and shadow-shading weights, held to an
+  MIT-licensed Python port of `weightedGE.m` (and a transcription of it for what the port
+  lacks) to 1.1e-15 over 12 settings.
+- **`ALWAN_CHECKER_DETECT_TEMPLATED`** in `alwan_color_checker_detect_{T}`: the templated
+  method of colour-checker-detection 0.2.3 (Copyright 2018 Colour Developers, BSD-3-Clause),
+  with its ColorChecker Classic template shipped under `data/colorchecker/`, SciPy's
+  `linear_sum_assignment` (BSD-3-Clause) ported for the matching and OpenCV 5's float
+  bilinear `warpPerspective` reproduced. Equal to the package to the bit on suite 269's scenes
+  and on all 14 charts it finds among the 166 SRIC photographs.
+- **Source compatibility:** `alwan_constancy_params` and `alwan_checker_detect_params` gain
+  fields at the end. Zero them or use `alwan_constancy_params_init`.
+
 ### Added: iterative distribution transfer, regrain and Xiao 2006 (batch 14)
 
 - **`ALWAN_COLOR_TRANSFER_IDT`** (value 3) in `alwan_color_transfer_{T}`: Pitie, Kokaram and
