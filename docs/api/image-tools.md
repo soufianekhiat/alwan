@@ -3165,17 +3165,48 @@ no bright neutral at all has no airlight to find and returns `ALWAN_E_RANGE`.
 typedef enum {
     ALWAN_QUANTIZE_MEDIAN_CUT = 0,
     ALWAN_QUANTIZE_FAST_OCTREE = 1,
-    ALWAN_QUANTIZE_MAX_COVERAGE = 2
+    ALWAN_QUANTIZE_MAX_COVERAGE = 2,
+    ALWAN_QUANTIZE_KMEANS = 3,
+    ALWAN_QUANTIZE_WU = 4,
+    ALWAN_QUANTIZE_OCTREE_CLASSIC = 5
 } alwan_quantize_method;
+
+typedef struct {
+    size_t max_iterations;            /* KMEANS: 0 = 300 */
+    alwan_f64 tolerance;              /* KMEANS: 0 = 1e-4, relative to the mean channel variance */
+    alwan_f64 const *initial_centres; /* KMEANS: initial_count x 3, NULL = the median-cut palette */
+    size_t initial_count;
+    alwan_f64 *centres_out;           /* KMEANS, optional: the final centres */
+    size_t *iterations_out;           /* KMEANS, optional: Lloyd iterations run */
+} alwan_quantize_params;
 
 alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out,
                                unsigned int *index_out,
                                unsigned char const *rgb, size_t pixel_stride,
                                size_t count, size_t max_colors, alwan_quantize_method method);
+alwan_status alwan_quantize_ex_u8(unsigned char *palette_out, size_t *count_out,
+                                  unsigned int *index_out,
+                                  unsigned char const *rgb, size_t pixel_stride,
+                                  size_t count, size_t max_colors, alwan_quantize_method method,
+                                  alwan_quantize_params const *params);
 ```
 
 A palette of at most `max_colors` entries for a photograph, and optionally each pixel's
-entry. An unknown method is `ALWAN_E_INVALID`.
+entry. An unknown method is `ALWAN_E_INVALID`. `alwan_quantize_u8` is
+`alwan_quantize_ex_u8` with `params` NULL, every setting at its default; only `KMEANS`
+reads the params.
+
+On three SRIC frames (plate 164) at 16 colours, RMS error in 8-bit levels and mean
+CIEDE2000, and the time on a 512 x 192 frame:
+
+| method | mean RMS | mean dE00 | time |
+|---|---|---|---|
+| `MEDIAN_CUT` | 16.1 | 7.77 | 40 ms |
+| `FAST_OCTREE` | 15.9 | 7.64 | 0.9 ms |
+| `MAX_COVERAGE` | 26.8 | 14.20 | 39 ms |
+| `KMEANS` | 12.9 | 6.88 | 200 ms |
+| `WU` | 14.9 | 7.13 | 0.9 ms |
+| `OCTREE_CLASSIC` | 27.6 | 9.91 | 32 ms |
 
 ### `MEDIAN_CUT`
 
@@ -3260,6 +3291,62 @@ Suite 208 holds palette and index map to Pillow 12.0 exactly in twelve cases: th
 crop at 8 to 256 colours, the posterised gradient, four colours asked for 16, 12000
 random colours and a grey ramp. With the hash order replaced by plain colour order, ten
 of the twelve fail.
+
+### `KMEANS`
+
+Lloyd's algorithm over the pixels, as scikit-learn's `KMeans(algorithm="lloyd", n_init=1)`
+runs it from the same initial centres: `params->initial_centres`, or by default the
+`MEDIAN_CUT` palette (so `count_out` is the median cut's entry count). Each iteration
+labels every pixel with the first centre of least `||c||^2 - 2 x.c` and sets each centre
+to the sum of its pixels times `1 / count`. A centre left without pixels moves onto the
+pixel farthest from the centre it was labelled with; scikit-learn takes those through
+numpy's `argpartition`, whose order among several equal distances is not defined, and
+alwan takes the farthest first, then the colour seen first. It stops when the labels
+repeat, when the summed squared centre shift is at most `tolerance` (default 1e-4) times
+the mean per-channel variance of the pixels, or after `max_iterations` (default 300), and
+labels once more from the final centres unless it stopped on repeated labels. The palette
+is the centres rounded; `index_out` holds the labels, the nearest centre, which is not
+always the nearest rounded entry; `params->centres_out` gets the centres and
+`params->iterations_out` the iteration count. The pixels are worked as their distinct
+colours weighted by count, which sums the same integers.
+
+Suite 297 holds labels and iteration counts equal to scikit-learn 1.9 in twelve cases
+(two SRIC crops, a poster and a noisy image at 4, 16 and 64 colours) and the centres to
+2.1e-12. scikit-learn first subtracts the mean pixel, which alwan does not. On integer
+pixels from integer centres (a median-cut palette) many pixels lie exactly half way
+between two centres; alwan sends them to the first, scikit-learn to whichever its BLAS
+rounding of the shifted dot products favours, which is a property of the BLAS build. The
+suite therefore starts both from the median-cut palette moved off the integer grid by a
+fixed fraction.
+
+### `WU`
+
+Wu 1991, "Efficient statistical computations for optimal color quantization" (Graphics
+Gems II). The pixels are counted in a 33 x 33 x 33 cube over the top five bits of each
+channel with their first and second moments, made cumulative so that any box's sums take
+eight reads. Starting from the whole cube, the box of largest variance is split next,
+along the axis and at the plane where the summed squared means of the two halves, each
+weighted by its count, are largest; a box of one cell, or one no plane splits, is left
+alone. Each entry is its box's mean, truncated, and a pixel maps to its cell's box, as the
+paper's listing does. The listing keeps the second moment and the variances in single
+precision; alwan keeps them in double, which can choose a different plane where two are
+within float rounding. At most 65535 entries. Suite 297 holds palette and index map to a
+transcription of the listing (in double) in sixteen cases, and checks every entry is the
+truncated mean of the pixels mapped to it.
+
+### `OCTREE_CLASSIC`
+
+Gervautz and Purgathofer 1988: an octree of depth 8 over the distinct colours, each level
+one bit of red, green and blue, then folded from the deepest level: the node with the
+fewest pixels first, at equal counts the one earlier in the tree, its children merged into
+it, until at most `max_colors` leaves remain. Folding a node of several children can
+leave fewer than `max_colors` (15 for 16 on plate 164's garden). Entries are each leaf's
+mean rounded half up, in tree order, and a pixel maps to its leaf. The paper folds while it
+inserts pixels, which makes its palette depend on the pixel order; folding the full tree
+does not. Folding by fewest pixels keeps a rare colour on its own branch as an entry while
+the bulk of the image shares few, which is why its error on photographs is high (plate
+164). Suite 297 holds palette and index map to a transcription in sixteen cases and checks
+every entry is the rounded mean of its pixels.
 
 ## The colour cube: a 3D histogram
 

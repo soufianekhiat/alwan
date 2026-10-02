@@ -319,9 +319,9 @@ done:
     return st;
 }
 
-alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
-                               unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors,
-                               alwan_quantize_method method) {
+alwan_status alwan_quantize_ex_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
+                                  unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors,
+                                  alwan_quantize_method method, alwan_quantize_params const *params) {
     switch (method) {
     case ALWAN_QUANTIZE_MEDIAN_CUT:
         return alwan_mc_run(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors);
@@ -329,7 +329,24 @@ alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, un
         return alwan__quantize_octree(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors);
     case ALWAN_QUANTIZE_MAX_COVERAGE:
         return alwan__quantize_max_coverage(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors);
+    case ALWAN_QUANTIZE_KMEANS:
+    case ALWAN_QUANTIZE_WU:
+    case ALWAN_QUANTIZE_OCTREE_CLASSIC:
+        /* the checks the other methods make in their own workers */
+        if (!palette_out || !count_out || !rgb || count == 0 || max_colors == 0 || pixel_stride < 3) {
+            return ALWAN_E_INVALID;
+        }
+        if (max_colors > 65536) return ALWAN_E_RANGE;
+        return alwan__quantize_ext(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors,
+                                   method, params);
     default:
         return ALWAN_E_INVALID;
     }
+}
+
+alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out,
+                               unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors,
+                               alwan_quantize_method method) {
+    return alwan_quantize_ex_u8(palette_out, count_out, index_out, rgb, pixel_stride, count, max_colors, method,
+                                NULL);
 }

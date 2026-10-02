@@ -1649,6 +1649,7 @@ EXPORTS
     alwan_pu21_ssim_f64
     alwan_pupil_diameter_barten1999_f32
     alwan_pupil_diameter_barten1999_f64
+    alwan_quantize_ex_u8
     alwan_quantize_u8
     alwan_rayleigh_cross_section_f32
     alwan_rayleigh_cross_section_f64

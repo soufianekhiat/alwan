@@ -2439,14 +2439,65 @@ alwan_status alwan_palette_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
  * stops at the number of distinct colours, where Pillow repeats one. Suite 208 holds
  * palette and index map to Pillow exactly.
  *
+ * KMEANS: Lloyd's algorithm over the pixels, as scikit-learn's KMeans with
+ * algorithm="lloyd", n_init=1 and the same initial centres runs it (suite 297 holds
+ * labels and iteration counts equal, centres to 2e-12). scikit-learn first subtracts the
+ * mean pixel, which alwan does not: a pixel exactly half way between two centres (integer
+ * pixels and integer centres make these common) goes to the first in alwan, and to
+ * whichever its BLAS rounding favours in scikit-learn. The initial centres are
+ * params->initial_centres, or by
+ * default the MEDIAN_CUT palette. Each iteration labels every pixel with the first centre
+ * of least ||c||^2 - 2 x.c, then sets each centre to the sum of its pixels times 1 / their
+ * count; a centre left without pixels moves onto the pixel farthest from the centre it was
+ * labelled with (scikit-learn takes those through numpy's argpartition, whose order among
+ * several equal distances is not defined; alwan takes the farthest first, then the colour
+ * seen first). It stops when the labels repeat, when the summed squared centre shift is at
+ * most tolerance (default 1e-4) times the mean per-channel variance of the pixels, or after
+ * max_iterations (default 300), and labels once more from the final centres unless the
+ * labels had repeated. The palette is the centres rounded, index_out the labels (the
+ * nearest centre, which is not always the nearest rounded entry); params->centres_out gets
+ * the centres themselves. count_out is the number of initial centres.
+ *
+ * WU: Wu 1991 (Graphics Gems II): a 33 x 33 x 33 cube of moments over the top five bits
+ * of each channel, the box of largest variance split next, along the axis and at the
+ * plane where the summed squared means of the two halves are largest, a box of one cell
+ * or one that cannot be split left alone. Entries are each box's mean, truncated, as the
+ * paper's listing computes them; a pixel maps to its cell's box. The listing keeps the
+ * second moment and the variances in single precision; alwan keeps them in double. At
+ * most 65535 entries.
+ *
+ * OCTREE_CLASSIC: Gervautz and Purgathofer 1988: an octree of depth 8 over the distinct
+ * colours (each level a bit of red, green and blue), reduced from the deepest level by
+ * folding a node's children into it, the node with the fewest pixels first and, at equal
+ * counts, the one earlier in the tree, until at most max_colors leaves remain. Folding a
+ * node of several children can leave fewer than max_colors. Entries are each leaf's mean
+ * rounded half up, in tree order; a pixel maps to its leaf. The paper folds while it
+ * inserts, so its result depends on the order of the pixels; folding the full tree does
+ * not.
+ *
  * An unknown method is ALWAN_E_INVALID. */
 typedef enum {
     ALWAN_QUANTIZE_MEDIAN_CUT = 0,
     ALWAN_QUANTIZE_FAST_OCTREE = 1,
-    ALWAN_QUANTIZE_MAX_COVERAGE = 2
+    ALWAN_QUANTIZE_MAX_COVERAGE = 2,
+    ALWAN_QUANTIZE_KMEANS = 3,
+    ALWAN_QUANTIZE_WU = 4,
+    ALWAN_QUANTIZE_OCTREE_CLASSIC = 5
 } alwan_quantize_method;
 
+/* Settings for alwan_quantize_ex_u8; zero or NULL in a field takes its default, and a NULL
+ * params takes every default. Only KMEANS reads them. */
+typedef struct {
+    size_t max_iterations;          /* KMEANS: 0 = 300 */
+    alwan_f64 tolerance;            /* KMEANS: 0 = 1e-4, relative to the mean channel variance */
+    alwan_f64 const *initial_centres; /* KMEANS: initial_count x 3 values, NULL = the median-cut palette */
+    size_t initial_count;           /* KMEANS: at most max_colors when initial_centres is set */
+    alwan_f64 *centres_out;         /* KMEANS, optional output: the final centres, 3 per entry */
+    size_t *iterations_out;         /* KMEANS, optional output: Lloyd iterations run */
+} alwan_quantize_params;
+
 alwan_status alwan_quantize_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors, alwan_quantize_method method);
+alwan_status alwan_quantize_ex_u8(unsigned char *palette_out, size_t *count_out, unsigned int *index_out, unsigned char const *rgb, size_t pixel_stride, size_t count, size_t max_colors, alwan_quantize_method method, alwan_quantize_params const *params);
 
 /* A 3D histogram of RGB values: counts_out[(r * bins + g) * bins + b] receives how many
  * of count pixels (three values, stride bytes apart) fall in each cell of a bins^3

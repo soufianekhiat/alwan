@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added: colour quantisers (batch 10)
+
+- **Three more colour quantisers, `alwan_quantize_ex_u8`.** `ALWAN_QUANTIZE_KMEANS` (Lloyd's
+  algorithm as scikit-learn runs it, from the median-cut palette or the caller's centres;
+  labels and iteration counts equal to scikit-learn 1.9, centres to 2.1e-12),
+  `ALWAN_QUANTIZE_WU` (Wu 1991, the moment-cube variance splits of Graphics Gems II) and
+  `ALWAN_QUANTIZE_OCTREE_CLASSIC` (Gervautz and Purgathofer 1988, the full octree folded
+  from its deepest level, fewest pixels first). `alwan_quantize_params` carries the k-means
+  settings and optional outputs; `alwan_quantize_u8` is the new call with NULL params. All
+  three are alwan's own code from the papers (suite 297, plate 164).
+
 ### Added: activations, Vienot 1999, one colour-difference entry point, more wavelets (batches 9, 12, 13)
 
 - **Six activations** in `alwan_nn_activation_kind`, values 5 to 10: `SILU`, `ELU` (alpha,
