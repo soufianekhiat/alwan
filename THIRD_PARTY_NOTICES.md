@@ -33,6 +33,9 @@ GPL code is never ported into alwan.
     `modules/imgproc/src/resize.cpp`.
   - 3-clause BSD (Copyright (C) 2014, Beat Kueng, Lukas Vogel, Morten Lysgaard),
     `licenses/OpenCV-ximgproc-niblack-BSD-3-Clause.txt`: `modules/ximgproc/src/niblack_thresholding.cpp`.
+  - 3-clause BSD (Intel, Willow Garage, Itseez) with the original Bayer code's BSD-style
+    notice (Copyright (c) 2002, MD-Mathematische Dienste GmbH, Dirk Schaefer),
+    `licenses/OpenCV-imgproc-demosaicing-BSD.txt`: `modules/imgproc/src/demosaicing.cpp`.
 - OpenCV ships no NOTICE file at that tag.
 
 What alwan takes:
@@ -50,6 +53,7 @@ What alwan takes:
 | `src/alwan/api/alwan_wmf.c` | `ximgproc` weighted median filter |
 | `src/alwan/api/alwan_resize_opencv.c`, `alwan_resize_opencv_impl.inc` | `imgproc/src/resize.cpp` (INTER_CUBIC and INTER_AREA: `resizeGeneric_`, `resizeAreaFast_`, `resizeArea_`, `computeResizeAreaTab`) |
 | `src/alwan/api/alwan_threshold_local.c` | `ximgproc/src/niblack_thresholding.cpp` (Wolf and NICK binarisation), with `imgproc` boxFilter and sqrBoxFilter's double sums |
+| `src/alwan/api/alwan_demosaic_opencv.c` | `imgproc/src/demosaicing.cpp` (`Bayer2RGB_VNG_8u`, `Bayer2RGB_EdgeAware_T`) |
 | `src/alwan/api/alwan_match_template.c` | `imgproc/src/templmatch.cpp` (`common_matchTemplate`, the six `TM_*` scores) |
 | `src/alwan/api/alwan_checker_detect.c` | the cv2 operations the colour checker detector calls (resize, bilateral filter, threshold, contours, minAreaRect, approxPolyDP, warpPerspective) |
 | `src/alwan/api/alwan_clahe.c`, `src/alwan/api/alwan_denoise.c` | CLAHE, fast non-local means and anisotropic diffusion, reproduced to OpenCV's arithmetic |

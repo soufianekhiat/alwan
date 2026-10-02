@@ -6882,7 +6882,15 @@ typedef enum {
     ALWAN_DEMOSAIC_MALVAR2004          = 1, /* Malvar, He and Cutler: gradient-corrected linear filters */
     ALWAN_DEMOSAIC_MENON2007           = 2, /* Menon, Andriani and Calvagno: directional filtering with an
                                              * a posteriori decision (DDFAPD), with its refining step */
-    ALWAN_DEMOSAIC_MENON2007_NO_REFINE = 3  /* the same, without the refining step */
+    ALWAN_DEMOSAIC_MENON2007_NO_REFINE = 3, /* the same, without the refining step */
+    /* The two below are OpenCV's (cv::demosaicing, COLOR_Bayer*2BGR_VNG and _EA), defined on
+     * integer codes, so they are reached through alwan_cfa_bayer_demosaic_u8 / _u16 only; the
+     * float functions return ALWAN_E_INVALID for them. */
+    ALWAN_DEMOSAIC_VNG_OPENCV          = 4, /* Chang, Cheung and Pang 1999's variable number of
+                                             * gradients as OpenCV implements it; 8-bit only, both
+                                             * sides at least 8 pixels */
+    ALWAN_DEMOSAIC_EDGE_AWARE_OPENCV   = 5  /* OpenCV's edge-aware interpolation: green along the
+                                             * smaller of the two gradients; 8- and 16-bit */
 } alwan_demosaic_method;
 
 /* The mosaic an RGB image would record: each site keeps its layout's channel. */
@@ -6892,6 +6900,25 @@ alwan_status alwan_cfa_bayer_mosaic_f32(alwan_f32 *cfa_out, size_t cfa_row_strid
 /* Demosaic a Bayer plane into RGB. */
 alwan_status alwan_cfa_bayer_demosaic_f64(alwan_f64 *rgb_out, size_t rgb_row_stride, alwan_f64 const *cfa, size_t cfa_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern, alwan_demosaic_method method);
 alwan_status alwan_cfa_bayer_demosaic_f32(alwan_f32 *rgb_out, size_t rgb_row_stride, alwan_f32 const *cfa, size_t cfa_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern, alwan_demosaic_method method);
+
+/* Demosaic an 8- or 16-bit Bayer plane into RGB codes of the same type. Strides in bytes.
+ *
+ * ALWAN_DEMOSAIC_VNG_OPENCV and ALWAN_DEMOSAIC_EDGE_AWARE_OPENCV are ports of OpenCV
+ * 5.0.0's demosaicing.cpp and give cv::demosaicing's codes exactly (suite 295); alwan's
+ * output is RGB where OpenCV's is BGR, and alwan names a pattern by its top-left 2 x 2
+ * where OpenCV names it by the second row's second and third sites (RGGB is OpenCV's
+ * BayerBG, BGGR BayerRG, GRBG BayerGB, GBRG BayerGR). Their borders are OpenCV's:
+ *   - VNG pads the plane by two pixels with BORDER_REFLECT_101 and computes every pixel.
+ *     It is 8-bit only, and refuses an image under 8 pixels a side, where OpenCV switches
+ *     to its plain bilinear interpolation instead (not ported).
+ *   - Edge-aware computes the interior and copies the outer rows and columns from their
+ *     neighbours inward; an image 2 pixels high or wide comes out all zeros, as OpenCV's.
+ * The four float methods run here on the codes as given (not normalised), in double
+ * (float in a single-precision build), and are rounded to nearest, ties up, and clamped to
+ * the type; they give the float functions' result to that rounding.
+ * Returns ALWAN_E_INVALID for a bad argument, VNG on 16 bits or VNG under 8 x 8. */
+alwan_status alwan_cfa_bayer_demosaic_u8(alwan_uint8 *rgb_out, size_t rgb_row_stride, alwan_uint8 const *cfa, size_t cfa_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern, alwan_demosaic_method method);
+alwan_status alwan_cfa_bayer_demosaic_u16(alwan_uint16 *rgb_out, size_t rgb_row_stride, alwan_uint16 const *cfa, size_t cfa_row_stride, size_t width, size_t height, alwan_cfa_pattern pattern, alwan_demosaic_method method);
 
 /* ----------------------------------------------------------------
  * Spectral Shape Descriptors

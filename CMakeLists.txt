@@ -118,6 +118,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_exposure.c
   src/alwan/api/alwan_crf.c
   src/alwan/api/alwan_demosaic.c
+  src/alwan/api/alwan_demosaic_opencv.c
   src/alwan/api/alwan_fusion.c
   src/alwan/api/alwan_ssim.c
   src/alwan/api/alwan_psnr.c

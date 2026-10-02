@@ -237,6 +237,8 @@ EXPORTS
     alwan_cct_to_xy_kang_f64
     alwan_cfa_bayer_demosaic_f32
     alwan_cfa_bayer_demosaic_f64
+    alwan_cfa_bayer_demosaic_u16
+    alwan_cfa_bayer_demosaic_u8
     alwan_cfa_bayer_mosaic_f32
     alwan_cfa_bayer_mosaic_f64
     alwan_chart_destroy_f32

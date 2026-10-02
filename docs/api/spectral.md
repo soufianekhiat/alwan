@@ -844,6 +844,47 @@ with a border crop because the edges are where demosaicing is least reliable and
 the literature stops measuring. On alwan's own test image: bilinear 30.4 dB, Malvar
 33.6, Menon 33.9 without its refining step and 34.2 with it.
 
+### 8- and 16-bit planes, and OpenCV's two methods
+
+```c
+alwan_cfa_bayer_demosaic_u8(rgb, 3 * width, cfa, width, width, height,
+                            ALWAN_CFA_RGGB, ALWAN_DEMOSAIC_VNG_OPENCV);
+```
+
+`alwan_cfa_bayer_demosaic_u8` and `alwan_cfa_bayer_demosaic_u16` take integer codes and return RGB codes of the
+same type. Two methods exist only here, because OpenCV defines them on integers:
+
+| Method | What it is | Types |
+|---|---|---|
+| `ALWAN_DEMOSAIC_VNG_OPENCV` | Chang, Cheung and Pang 1999's variable number of gradients: eight directional gradients, and the average taken over the directions below a threshold set by the smallest and largest | 8-bit, both sides at least 8 |
+| `ALWAN_DEMOSAIC_EDGE_AWARE_OPENCV` | green along the smaller of the horizontal and vertical gradients, red and blue from their neighbours' averages | 8- and 16-bit |
+
+Both are ports of OpenCV 5.0.0's `modules/imgproc/src/demosaicing.cpp` (cv::demosaicing
+with `COLOR_Bayer*2BGR_VNG` and `_EA`; the file's 3-clause BSD notice and the notice of the
+original Bayer code by MD-Mathematische Dienste GmbH are kept in
+`api/alwan_demosaic_opencv.c` and `licenses/OpenCV-imgproc-demosaicing-BSD.txt`), and give
+cv2's codes exactly, borders included (suite 295: 156 cases on every pattern; plate 161:
+three whole frames). OpenCV names a pattern by its second row's second and third sites,
+so alwan's `ALWAN_CFA_RGGB` is OpenCV's `BayerBG`, `BGGR` is `BayerRG`, `GRBG` is
+`BayerGB` and `GBRG` is `BayerGR`; and alwan returns RGB where OpenCV returns BGR.
+
+- VNG pads the plane by two pixels with OpenCV's `BORDER_REFLECT_101` and computes every
+  pixel. OpenCV's x64 build computes most of each row eight pixels at a time and divides
+  there by `0.5f / ng`, while its scalar columns read a table whose 1/14 entry is
+  `0.0714286f`, a different float; the port reproduces which columns take which path,
+  which is what makes it exact. Under 8 pixels a side OpenCV switches to its plain
+  bilinear interpolation, which is not ported: alwan returns `ALWAN_E_INVALID` there.
+- Edge-aware computes the interior and copies the outer rows and columns from their
+  inner neighbours; a plane 2 pixels high or wide comes out all zeros, as OpenCV's.
+
+The other four methods run on the codes as given, in double, and are rounded to nearest
+with ties up and clamped to the type: they equal the float functions' result rounded
+(suite 295). The float functions return `ALWAN_E_INVALID` for the two OpenCV methods.
+
+On 8-bit sRGB codes of three SRIC frames (plate 161) the mean CPSNR is VNG 29.83 dB,
+Malvar 29.45, Menon 28.78, edge-aware 28.43 and bilinear 28.42: on display-encoded codes,
+which is how OpenCV users demosaic, the ranking differs from the linear test image above.
+
 ---
 
 ## Error Codes

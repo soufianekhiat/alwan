@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added: demosaicing on 8- and 16-bit planes, and OpenCV's VNG and edge-aware methods
+
+- `alwan_cfa_bayer_demosaic_u8` and `_u16` demosaic integer Bayer planes. Two new methods,
+  `ALWAN_DEMOSAIC_VNG_OPENCV` (Chang, Cheung and Pang 1999, 8-bit) and
+  `ALWAN_DEMOSAIC_EDGE_AWARE_OPENCV` (8- and 16-bit), are ports of OpenCV 5.0.0's
+  `modules/imgproc/src/demosaicing.cpp` (3-clause BSD, Intel, Willow Garage, Itseez; with
+  the original Bayer code's notice, MD-Mathematische Dienste GmbH) and equal
+  `cv2.demosaicing` code for code, borders included (suite 295, 156 cases; plate 161).
+  The bilinear, Malvar and Menon methods run on integer codes too, rounded from the double
+  result. The float functions refuse the two OpenCV methods, which are defined on integers.
+
 ### Added: texture descriptors (GLCM, Gabor, HOG)
 
 - **Gabor filters in the texture family** (values 5 to 7, appended):
