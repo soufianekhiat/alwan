@@ -118,7 +118,11 @@ Moravec and FAST corner loops (`feature/corner_cy.pyx`, `alwan_corner.c`), the m
 search (`filters/_multiotsu.pyx`, `alwan_threshold.c`), Felzenszwalb's graph segmentation and
 quick shift (`segmentation/_felzenszwalb_cy.pyx`, `segmentation/_quickshift_cy.pyx`,
 `alwan_segment_ext.c`, which also follows `_chan_vese.py` and
-`random_walker_segmentation.py`), total
+`random_walker_segmentation.py`), the co-occurrence loop and properties
+(`feature/_texture.pyx`, `feature/texture.py`), the HOG gradients, cell histograms, block
+norms and visualisation lines (`feature/_hog.py`, `feature/_hoghistogram.pyx`,
+`draw/_draw.pyx`; `alwan_texture_descriptors.c`), the Gabor kernel and filter
+(`filters/_gabor.py`, `alwan_texture.c`), total
 variation denoising (`alwan_denoise.c`), the thresholds, and the stain and video matrices in
 `src/alwan/data/stain/` and `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
 

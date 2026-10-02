@@ -4680,26 +4680,176 @@ alwan_status alwan_warp_u8(unsigned char *out, size_t out_row_stride, size_t out
  *                                  where it is 0
  *
  * As scikit-image's feature.local_binary_pattern, value for value (suite 230): the
- * neighbours interpolated bilinearly with 0 outside the image. ALWAN_E_INVALID for a NULL,
- * a zero size, a channel count other than 1, a stride too small, a NaN or infinite value,
- * or an unknown method; ALWAN_E_RANGE for more than 31 points or a negative radius. */
+ * neighbours interpolated bilinearly with 0 outside the image.
+ *
+ *   ALWAN_TEXTURE_GABOR_REAL       the even (cosine) response of a Gabor filter: the image
+ *                                  convolved with the real part of alwan_gabor_kernel
+ *   ALWAN_TEXTURE_GABOR_IMAG       the odd (sine) response, the imaginary part
+ *   ALWAN_TEXTURE_GABOR_MAGNITUDE  sqrt(real^2 + imag^2), the filter's energy
+ *
+ * The Gabor methods are scikit-image's filters.gabor (suite 294): scipy.ndimage.convolve
+ * with the kernel's real or imaginary part, weights whose magnitude is at most DBL_EPSILON
+ * skipped as scipy skips them, the image extended past its edge by params->border. An f32
+ * image's kernel and responses are rounded to float as scikit-image's complex64 kernel and
+ * scipy's float32 output round them. scikit-image filters an 8-bit image into an 8-bit result
+ * (ndimage casts its sums to the input's type); alwan_texture_u8 returns the unrounded double
+ * response instead, scikit-image's on the image as float64.
+ *
+ * ALWAN_E_INVALID for a NULL, a zero size, a channel count other than 1, a stride too small,
+ * a NaN or infinite value, an unknown method or border; ALWAN_E_RANGE for more than 31
+ * points or a negative radius, or a Gabor frequency not above 0, a bandwidth or sigma not
+ * above 0, n_stds below 0 or a kernel side over 2^16. */
 typedef enum {
     ALWAN_TEXTURE_LBP = 0,
     ALWAN_TEXTURE_LBP_ROR = 1,
     ALWAN_TEXTURE_LBP_UNIFORM = 2,
     ALWAN_TEXTURE_LBP_NRI_UNIFORM = 3,
-    ALWAN_TEXTURE_LBP_VAR = 4
+    ALWAN_TEXTURE_LBP_VAR = 4,
+    ALWAN_TEXTURE_GABOR_REAL = 5,
+    ALWAN_TEXTURE_GABOR_IMAG = 6,
+    ALWAN_TEXTURE_GABOR_MAGNITUDE = 7
 } alwan_texture_method;
 
-/* A zero field is its default. */
+/* A zero field is its default; each method reads its own. */
 typedef struct {
-    size_t points;  /* P, 1 to 31; 0 reads as 8 */
-    double radius;  /* R in pixels; 0 reads as 1 */
+    size_t points;  /* LBP: P, 1 to 31; 0 reads as 8 */
+    double radius;  /* LBP: R in pixels; 0 reads as 1 */
+    double frequency; /* GABOR: the harmonic's spatial frequency in cycles per pixel; required, above 0 */
+    double theta;     /* GABOR: the orientation in radians (0: the harmonic runs along x, the columns) */
+    double bandwidth; /* GABOR: in octaves, sets sigma when sigma_x or sigma_y is 0; 0 reads as 1 */
+    double sigma_x, sigma_y; /* GABOR: the envelope's standard deviations in pixels, before rotation;
+                      * 0 reads as scikit-image's None, sigma from the bandwidth and frequency */
+    double n_stds;    /* GABOR: the kernel's half side in standard deviations, at least 1 pixel;
+                       * 0 reads as 3 */
+    double offset;    /* GABOR: the harmonic's phase offset in radians */
+    alwan_filter_border border; /* GABOR: past the edge; 0 is NEAREST, the default of alwan's other
+                       * filters (scikit-image's gabor defaults to REFLECT) */
+    double cval;      /* GABOR, BORDER_CONSTANT: the value past the edge */
 } alwan_texture_params;
 
 alwan_status alwan_texture_f32(double *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
 alwan_status alwan_texture_f64(double *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
 alwan_status alwan_texture_u8(double *out, size_t out_row_stride, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_texture_method method, alwan_texture_params const *params);
+
+/* The Gabor kernel the GABOR methods convolve with, scikit-image's filters.gabor_kernel: a
+ * Gaussian envelope (sigma_x, sigma_y, rotated by theta) times the complex harmonic
+ * exp(i (2 pi frequency x' + offset)), scaled by 1 / (2 pi sigma_x sigma_y); x runs along the
+ * columns, y down the rows. It has width = 2 x0 + 1 columns and height = 2 y0 + 1 rows, x0
+ * and y0 the ceiling of n_stds sigma projected on each axis and at least 1. real and imag
+ * receive width x height values row by row (either may be NULL); with both NULL only the size
+ * is reported. The f32 form rounds as scikit-image's complex64 kernel does: each value in
+ * double, then to float, scaled in float. Reads the GABOR fields of params, which must not
+ * be NULL (frequency has no default). ALWAN_E_INVALID for a NULL params or size pointer;
+ * ALWAN_E_RANGE as alwan_texture. */
+alwan_status alwan_gabor_kernel_f32(alwan_f32 *real, alwan_f32 *imag, size_t *width_out, size_t *height_out, alwan_texture_params const *params);
+alwan_status alwan_gabor_kernel_f64(alwan_f64 *real, alwan_f64 *imag, size_t *width_out, size_t *height_out, alwan_texture_params const *params);
+
+/* Grey-level co-occurrence matrices (Haralick, Shanmugam and Dinstein 1973), scikit-image's
+ * feature.graycomatrix (suite 294). For each distance d and angle a, the pixel pair at
+ * (row + round(sin(a) d), col + round(cos(a) d)), rounded half away from zero, is counted
+ * into P[i][j][d][a], i the first pixel's level and j the second's: note the row offset is
+ * +sin, so a = pi/2 pairs a pixel with the one BELOW it, as scikit-image counts (its
+ * documentation says above). Pairs leaving the image or with a level at or above levels are
+ * not counted. out receives levels x levels x distance_count x angle_count doubles in that
+ * order (the last index fastest): the counts, exact integers, or with normed each (d, a)
+ * matrix divided by its sum (a matrix that sums to 0 stays 0). symmetric adds the transpose,
+ * so (i, j) and (j, i) are both counted.
+ *
+ * levels 0 reads as 256 for the u8 form; the u16 form requires it, as scikit-image requires
+ * it past 8 bits. ALWAN_E_INVALID for a NULL, a zero size, a stride too small, no distance
+ * or angle, a non-finite distance or angle, or u16 levels of 0; ALWAN_E_RANGE for a pixel
+ * at or above levels (scikit-image refuses it too), levels over 65536, or a matrix over
+ * 2^28 entries. */
+typedef struct {
+    size_t levels;      /* grey levels counted, values 0 .. levels - 1; 0 reads as 256 for u8 */
+    int symmetric;      /* non-zero: P + P transposed */
+    int normed;         /* non-zero: each (distance, angle) matrix sums to 1 */
+} alwan_glcm_params;
+
+alwan_status alwan_glcm_u8(double *out, unsigned char const *src, size_t src_row_stride, size_t width, size_t height, double const *distances, size_t distance_count, double const *angles, size_t angle_count, alwan_glcm_params const *params);
+alwan_status alwan_glcm_u16(double *out, unsigned short const *src, size_t src_row_stride, size_t width, size_t height, double const *distances, size_t distance_count, double const *angles, size_t angle_count, alwan_glcm_params const *params);
+
+/* One property of every (distance, angle) matrix of a GLCM, scikit-image's
+ * feature.graycoprops: each matrix is first divided by its sum (a zero sum left alone), then
+ * with i the row level and j the column level:
+ *
+ *   ALWAN_GLCM_CONTRAST       sum P (i - j)^2
+ *   ALWAN_GLCM_DISSIMILARITY  sum P |i - j|
+ *   ALWAN_GLCM_HOMOGENEITY    sum P / (1 + (i - j)^2)
+ *   ALWAN_GLCM_ASM            sum P^2, the angular second moment
+ *   ALWAN_GLCM_ENERGY         sqrt(ASM)
+ *   ALWAN_GLCM_CORRELATION    sum P (i - mu_i)(j - mu_j) / (sigma_i sigma_j), 1 where either
+ *                             sigma is under 1e-15
+ *   ALWAN_GLCM_MEAN           sum P i (the row level only, as scikit-image weighs it)
+ *   ALWAN_GLCM_VARIANCE       sum P (i - mean)^2
+ *   ALWAN_GLCM_STD            sqrt(VARIANCE)
+ *   ALWAN_GLCM_ENTROPY        sum -P ln P over P != 0
+ *
+ * glcm is the layout alwan_glcm writes (counts or normed); out receives distance_count x
+ * angle_count values. ALWAN_E_INVALID for a NULL, a zero count, a negative or non-finite
+ * entry, or an unknown property. */
+typedef enum {
+    ALWAN_GLCM_CONTRAST = 0,
+    ALWAN_GLCM_DISSIMILARITY = 1,
+    ALWAN_GLCM_HOMOGENEITY = 2,
+    ALWAN_GLCM_ASM = 3,
+    ALWAN_GLCM_ENERGY = 4,
+    ALWAN_GLCM_CORRELATION = 5,
+    ALWAN_GLCM_MEAN = 6,
+    ALWAN_GLCM_VARIANCE = 7,
+    ALWAN_GLCM_STD = 8,
+    ALWAN_GLCM_ENTROPY = 9
+} alwan_glcm_prop;
+
+alwan_status alwan_glcm_props(double *out, double const *glcm, size_t levels, size_t distance_count, size_t angle_count, alwan_glcm_prop prop);
+
+/* Histograms of oriented gradients (Dalal and Triggs 2005), scikit-image's feature.hog
+ * (suite 294). The gradient is the central difference [-1, 0, 1] on each axis, 0 on the
+ * image's first and last rows (row gradient) and columns (column gradient); with 2 to 4
+ * channels each pixel takes the channel whose gradient is largest (the first on a tie). Each
+ * cell of cell_height x cell_width pixels sums the magnitudes falling in each of
+ * `orientations` bins of unsigned orientation over [0, 180) degrees, in float as
+ * scikit-image's Cython accumulates, divided by the cell's pixel count; only whole cells
+ * count. Blocks of block_height x block_width cells, sliding one cell at a time, are
+ * normalised with eps = 1e-5:
+ *
+ *   ALWAN_HOG_BLOCK_NORM_L2_HYS   L2, clipped at 0.2, L2 again (Dalal and Triggs; the default)
+ *   ALWAN_HOG_BLOCK_NORM_L1       v / (sum |v| + eps)
+ *   ALWAN_HOG_BLOCK_NORM_L1_SQRT  sqrt(v / (sum |v| + eps))
+ *   ALWAN_HOG_BLOCK_NORM_L2       v / sqrt(sum v^2 + eps^2)
+ *
+ * out receives the feature vector, block row, block column, cell row, cell column,
+ * orientation, the last fastest; count_out the number of values. With out NULL only the count
+ * is reported. The f32 form computes the gradients and the result in float as scikit-image
+ * does for a float32 image; the u8 form reads the values as they are (0 .. 255, no scaling,
+ * as scikit-image casts) in double. visualization, when not NULL, receives scikit-image's
+ * visualize image (width x height doubles at visualization_row_stride bytes): for each cell
+ * and orientation, a line of the bin's value drawn through the cell centre across the bin's
+ * orientation. ALWAN_E_INVALID for a NULL src or count_out, a zero size, a channel count
+ * outside 1 to 4, a stride too small, a non-finite value, a negative value with
+ * transform_sqrt, or an unknown block norm; ALWAN_E_RANGE when the image is smaller than one
+ * block. */
+typedef enum {
+    ALWAN_HOG_BLOCK_NORM_L2_HYS = 0,
+    ALWAN_HOG_BLOCK_NORM_L1 = 1,
+    ALWAN_HOG_BLOCK_NORM_L1_SQRT = 2,
+    ALWAN_HOG_BLOCK_NORM_L2 = 3
+} alwan_hog_block_norm;
+
+/* A zero field is its default. */
+typedef struct {
+    size_t orientations;               /* bins over 180 degrees; 0 reads as 9 */
+    size_t cell_width, cell_height;    /* pixels per cell; 0 reads as 8 */
+    size_t block_width, block_height;  /* cells per block; 0 reads as 3 */
+    alwan_hog_block_norm block_norm;   /* 0 is L2_HYS */
+    int transform_sqrt;                /* non-zero: the square root of the image first (gamma compression) */
+    double *visualization;             /* optional: scikit-image's hog_image */
+    size_t visualization_row_stride;   /* in bytes */
+} alwan_hog_params;
+
+alwan_status alwan_hog_f32(alwan_f32 *out, size_t *count_out, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_hog_params const *params);
+alwan_status alwan_hog_f64(alwan_f64 *out, size_t *count_out, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_hog_params const *params);
+alwan_status alwan_hog_u8(alwan_f64 *out, size_t *count_out, unsigned char const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_hog_params const *params);
 
 /* Distance transforms: for every feature pixel, its distance to the nearest background
  * pixel, in out (one double a pixel, out_row_stride in bytes, whatever the source's type).

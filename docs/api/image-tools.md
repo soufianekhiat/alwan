@@ -1597,7 +1597,8 @@ scikit-image divides 8-bit data by 255 first.
 ```c
 typedef enum {
     ALWAN_TEXTURE_LBP = 0, ALWAN_TEXTURE_LBP_ROR = 1, ALWAN_TEXTURE_LBP_UNIFORM = 2,
-    ALWAN_TEXTURE_LBP_NRI_UNIFORM = 3, ALWAN_TEXTURE_LBP_VAR = 4
+    ALWAN_TEXTURE_LBP_NRI_UNIFORM = 3, ALWAN_TEXTURE_LBP_VAR = 4,
+    ALWAN_TEXTURE_GABOR_REAL = 5, ALWAN_TEXTURE_GABOR_IMAG = 6, ALWAN_TEXTURE_GABOR_MAGNITUDE = 7
 } alwan_texture_method;
 
 alwan_status alwan_texture_{T}(double *out, size_t out_row_stride,
@@ -1628,8 +1629,14 @@ so it is unchanged by any increasing change of the levels: exposure, gamma, a to
 
 | Field of `alwan_texture_params` | 0 reads as |
 |---|---|
-| `points` | 8; up to 31 |
-| `radius` | 1 |
+| `points` | 8; up to 31 (LBP) |
+| `radius` | 1 (LBP) |
+| `frequency` | required, above 0 (GABOR) |
+| `bandwidth` | 1 octave (GABOR) |
+| `sigma_x`, `sigma_y` | from the bandwidth and frequency, scikit-image's `None` (GABOR) |
+| `n_stds` | 3 (GABOR) |
+| `theta`, `offset`, `cval` | 0 (GABOR) |
+| `border` | `ALWAN_FILTER_BORDER_NEAREST` (GABOR; scikit-image's `gabor` defaults to `REFLECT`) |
 
 This is scikit-image's `feature.local_binary_pattern` value for value, and suite 230 holds
 it there: 8-bit luma with a flat patch through every method at (8, 1) and (16, 2), other
@@ -1638,6 +1645,124 @@ to 5 decimals as scikit-image rounds them, and the uniform count, like scikit-im
 does not wrap from the last neighbour to the first. scikit-image recommends integer
 images, since on float data neighbours that differ from the centre by rounding alone flip
 bits.
+
+### Gabor filters
+
+```c
+alwan_status alwan_gabor_kernel_{T}(alwan_{T} *real, alwan_{T} *imag,
+                                    size_t *width_out, size_t *height_out,
+                                    alwan_texture_params const *params);
+```
+
+A Gabor filter is a Gaussian envelope times a complex harmonic: it answers to texture of one
+frequency at one orientation, and a bank of them over several of each is a classic texture
+descriptor. `GABOR_REAL` and `GABOR_IMAG` are the even and odd responses, the image
+convolved with the kernel's real and imaginary parts, and `GABOR_MAGNITUDE` is
+`sqrt(real^2 + imag^2)`, the response's energy, which does not ripple with the phase of the
+texture under it.
+
+`alwan_gabor_kernel_{T}` gives the kernel itself, `width x height` values row by row, x along
+the columns; with both outputs NULL it reports only the size. Its half sides are the
+envelope's `n_stds` standard deviations projected on each axis, at least one pixel. When
+`sigma_x` or `sigma_y` is 0 it comes from the bandwidth b in octaves, as scikit-image derives
+it: `sigma = sqrt(ln 2 / 2) / pi * (2^b + 1) / (2^b - 1) / frequency`.
+
+This is scikit-image's `filters.gabor_kernel` and `filters.gabor`, and suite 294 holds the
+kernels and the three responses to them exactly, for double, float32 and 8-bit images and
+every border. The convolution is scipy.ndimage's: the kernel flipped, weights of magnitude at
+most `DBL_EPSILON` skipped as scipy skips them, the sum taken in double. For a float32 image
+scikit-image builds a complex64 kernel and scipy writes float32 results, and the f32 form
+rounds the same way. For an 8-bit image scikit-image's result is 8-bit too (scipy casts its
+sums to the input's type, truncating); `alwan_texture_u8` returns the double response instead,
+scikit-image's on the image as float64.
+
+### Grey-level co-occurrence matrices
+
+```c
+typedef struct { size_t levels; int symmetric; int normed; } alwan_glcm_params;
+
+alwan_status alwan_glcm_u8(double *out, unsigned char const *src, size_t src_row_stride,
+                           size_t width, size_t height,
+                           double const *distances, size_t distance_count,
+                           double const *angles, size_t angle_count,
+                           alwan_glcm_params const *params);
+alwan_status alwan_glcm_u16(double *out, unsigned short const *src, ...);  /* same */
+
+alwan_status alwan_glcm_props(double *out, double const *glcm, size_t levels,
+                              size_t distance_count, size_t angle_count, alwan_glcm_prop prop);
+```
+
+A grey-level co-occurrence matrix (Haralick, Shanmugam and Dinstein 1973) counts how often a
+pixel of level i has a pixel of level j at a given offset. Each distance d and angle a gives
+the offset `(round(sin(a) d), round(cos(a) d))` in (rows, columns), rounded half away from
+zero, so `a = 0` pairs a pixel with the one to its right and `a = pi/2` with the one below it.
+That is scikit-image's count (its documentation says above). `out` holds
+`levels x levels x distance_count x angle_count` doubles, the last index fastest: the counts,
+or each (d, a) matrix divided by its sum when `normed`. `symmetric` adds the transpose.
+`levels` 0 reads as 256 for 8-bit images and is required for 16-bit ones; a pixel at or above
+`levels` is `ALWAN_E_RANGE`.
+
+`alwan_glcm_props` summarises each (d, a) matrix in one number, after dividing it by its sum:
+
+| Property | Value |
+|---|---|
+| `ALWAN_GLCM_CONTRAST` | sum P (i - j)^2 |
+| `ALWAN_GLCM_DISSIMILARITY` | sum P \|i - j\| |
+| `ALWAN_GLCM_HOMOGENEITY` | sum P / (1 + (i - j)^2) |
+| `ALWAN_GLCM_ASM` | sum P^2, the angular second moment |
+| `ALWAN_GLCM_ENERGY` | sqrt(ASM) |
+| `ALWAN_GLCM_CORRELATION` | sum P (i - mu_i)(j - mu_j) / (sigma_i sigma_j); 1 where either sigma is under 1e-15 |
+| `ALWAN_GLCM_MEAN` | sum P i, the row level only, as scikit-image weighs it |
+| `ALWAN_GLCM_VARIANCE` | sum P (i - mean)^2 |
+| `ALWAN_GLCM_STD` | sqrt(VARIANCE) |
+| `ALWAN_GLCM_ENTROPY` | sum -P ln P over the non-zero entries |
+
+These are scikit-image's `feature.graycomatrix` and `feature.graycoprops`, and suite 294 holds
+them to it exactly: the counts for 8-bit and 16-bit images, symmetric and normed, and all ten
+properties, summed in numpy's order (pairwise for a single (d, a) matrix, in order across
+several).
+
+### Histograms of oriented gradients
+
+```c
+typedef enum {
+    ALWAN_HOG_BLOCK_NORM_L2_HYS = 0, ALWAN_HOG_BLOCK_NORM_L1 = 1,
+    ALWAN_HOG_BLOCK_NORM_L1_SQRT = 2, ALWAN_HOG_BLOCK_NORM_L2 = 3
+} alwan_hog_block_norm;
+
+alwan_status alwan_hog_{T}(alwan_{T} *out, size_t *count_out,
+                           alwan_{T} const *src, size_t src_row_stride, size_t channels,
+                           size_t width, size_t height, alwan_hog_params const *params);
+alwan_status alwan_hog_u8(alwan_f64 *out, size_t *count_out, unsigned char const *src, ...);
+```
+
+The descriptor of Dalal and Triggs 2005, the classic of pedestrian detection: the image's
+gradient by central differences, and in each cell of `cell_height x cell_width` pixels a
+histogram of the gradient's unsigned orientation over `orientations` bins of [0, 180)
+degrees, each pixel voting its magnitude. Blocks of `block_height x block_width` cells slide
+one cell at a time, and each block's histograms are normalised together, which is what makes
+the descriptor stand up to changes of lighting. With 2 to 4 channels each pixel takes the
+channel with the largest gradient. `out` is the feature vector (block row, block column, cell
+row, cell column, orientation, the last fastest) and `count_out` its length; with `out` NULL
+only the length is reported. `visualization`, when set, receives scikit-image's picture of
+the histograms: a line through each cell's centre for each bin, its weight the bin's value.
+
+| Field of `alwan_hog_params` | 0 reads as |
+|---|---|
+| `orientations` | 9 |
+| `cell_width`, `cell_height` | 8 |
+| `block_width`, `block_height` | 3 |
+| `block_norm` | `L2_HYS`: L2, clipped at 0.2, L2 again |
+| `transform_sqrt` | off; on takes the square root of the image first |
+
+This is scikit-image's `feature.hog`, and suite 294 holds the features and the visualisation
+to it exactly, grey and RGB, double, float32 and 8-bit, all four norms. The cell sums are
+taken in float as scikit-image's Cython takes them; an 8-bit image is read as its values,
+0 to 255, as scikit-image casts it, not scaled to [0, 1]. The det build reaches the same bits:
+its polynomial atan2 would put a gradient on an axis or a diagonal, which lands on a bin edge,
+an ulp to the wrong side, so those cases are the correctly rounded constants; and its hypot
+would break the ties between channels of an 8-bit image (gradients (3, 4) and (4, 3) are both
+5) the other way, so there the magnitude is `sqrt(x^2 + y^2)`, exact for integer gradients.
 
 ## Ridge filters
 

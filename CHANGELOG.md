@@ -1,5 +1,32 @@
 ## [Unreleased]
 
+### Added: texture descriptors (GLCM, Gabor, HOG)
+
+- **Gabor filters in the texture family** (values 5 to 7, appended):
+  `ALWAN_TEXTURE_GABOR_REAL`, `_IMAG` and `_MAGNITUDE`, with new fields at the end of
+  `alwan_texture_params` (`frequency`, `theta`, `bandwidth`, `sigma_x`, `sigma_y`, `n_stds`,
+  `offset`, `border`, `cval`), and `alwan_gabor_kernel_{T}` for the kernel itself.
+- **Grey-level co-occurrence matrices**: `alwan_glcm_u8` and `_u16` (distances, angles,
+  levels, symmetric, normed) and `alwan_glcm_props` with its family enum `alwan_glcm_prop`
+  (contrast, dissimilarity, homogeneity, ASM, energy, correlation, mean, variance, std,
+  entropy).
+- **Histograms of oriented gradients**: `alwan_hog_{T}` and `_u8` (orientations, cell and
+  block sizes, the four block norms of `alwan_hog_block_norm`, `transform_sqrt`, and
+  scikit-image's visualisation image).
+- **Against scikit-image 0.26** (suite 294): every count, property, kernel value, response,
+  feature and visualisation pixel equal, over 8 GLCM cases (8 and 16 bit, symmetric, normed,
+  256 levels), 7 Gabor cases (f64, f32, 8-bit, every scipy border) and 7 HOG cases (grey and
+  RGB, f64, f32, 8-bit, the four norms, transform_sqrt). The det build matches HOG exactly
+  too (atan2 on an axis or diagonal and the magnitude of integer gradients are spelled out);
+  its GLCM properties are within 1.3e-16 and its Gabor responses within 9.7e-15.
+- scikit-image computes `a = pi/2` co-occurrences with the pixel below (its documentation
+  says above), and filters an 8-bit image into an 8-bit result; alwan counts as scikit-image
+  does and returns the double response for 8-bit Gabor input. Ports of scikit-image's
+  `_texture.pyx`, `texture.py`, `_hog.py`, `_hoghistogram.pyx`, `_gabor.py` and
+  `draw/_draw.pyx`'s line (BSD-3-Clause, Copyright the scikit-image team; the notice is in
+  `alwan_texture.c`, `alwan_texture_descriptors.c` and `THIRD_PARTY_NOTICES.md`). Full
+  Release and Release_Det suites owed.
+
 ### Added: segmentation methods (Felzenszwalb, quick shift, Chan-Vese, random walker)
 
 - **Four methods for `alwan_segment_{T}` and `_u8`** (values 3 to 6, appended):

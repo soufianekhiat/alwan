@@ -780,6 +780,8 @@ EXPORTS
     alwan_focal_plane_exposure_f64
     alwan_fresnel_f32
     alwan_fresnel_f64
+    alwan_gabor_kernel_f32
+    alwan_gabor_kernel_f64
     alwan_gain_map_apply_f32_map_interleave
     alwan_gain_map_apply_f64_map_interleave
     alwan_gain_map_encode_f32_map_interleave
@@ -821,6 +823,9 @@ EXPORTS
     alwan_gamut_volume_ratio_f32
     alwan_gamut_volume_ratio_f64
     alwan_get_build_info
+    alwan_glcm_props
+    alwan_glcm_u16
+    alwan_glcm_u8
     alwan_gradient_edit
     alwan_gradient_f32
     alwan_gradient_f64
@@ -908,6 +913,9 @@ EXPORTS
     alwan_hlg_ootf_f64
     alwan_hlg_ootf_inv_f32
     alwan_hlg_ootf_inv_f64
+    alwan_hog_f32
+    alwan_hog_f64
+    alwan_hog_u8
     alwan_hpluv_to_srgb_f32
     alwan_hpluv_to_srgb_f64
     alwan_hsl_to_linear_srgb_f32

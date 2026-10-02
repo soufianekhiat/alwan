@@ -181,6 +181,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_region_props.c
   src/alwan/api/alwan_corner.c
   src/alwan/api/alwan_texture.c
+  src/alwan/api/alwan_texture_descriptors.c
   src/alwan/api/alwan_denoise_nlm.c
   src/alwan/api/alwan_ridge.c
   src/alwan/api/alwan_resize.c
