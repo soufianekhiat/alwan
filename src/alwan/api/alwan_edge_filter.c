@@ -6,7 +6,7 @@
  * alwan_edge_filter_{T}: the edge-aware smoothing filters behind one entry point. Each
  * method's worker lives with its own references in api/alwan_guided_filter.c,
  * alwan_bilateral.c, alwan_domain_transform.c, alwan_fast_global_smoother.c,
- * alwan_l0_smooth.c, alwan_am_filter.c and alwan_wmf.c; this file
+ * alwan_l0_smooth.c, alwan_am_filter.c, alwan_wmf.c and alwan_bilateral_texture.c; this file
  * resolves the defaults of alwan_edge_filter_params_{T} and routes.
  */
 
@@ -18,6 +18,7 @@ typedef struct {
     size_t radius, iterations;
     double eps, sigma_color, sigma_space, lambda, attenuation, kappa;
     int start_from_source, adjust_outliers, weight_type;
+    double sigma_alpha, sigma_avg;
 } alwan_ef_resolved;
 
 static double alwan_ef_or(double v, double def) {
@@ -64,6 +65,12 @@ static alwan_status alwan_ef_route(void *out, size_t out_rs, void const *src, si
     case ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN:
         return alwan__wmf_run(out, out_rs, src, src_rs, sch, guide, guide_rs, gch, w, h, p->radius == 0 ? 5 : p->radius,
                               alwan_ef_or(p->sigma_color, 0.1), (alwan_wmf_weight)p->weight_type, is_f32);
+    case ALWAN_EDGE_FILTER_BILATERAL_TEXTURE: { /* the guide is not used */
+        size_t const fr = p->radius == 0 ? 3 : p->radius;
+        double const avg = p->sigma_avg != 0.0 ? p->sigma_avg : 0.05 * (double)ALWAN_SQRT_F32((float)sch);
+        return alwan__btf_run(out, out_rs, src, src_rs, sch, w, h, fr, p->iterations == 0 ? 1 : p->iterations,
+                              alwan_ef_or(p->sigma_alpha, 5.0 * (double)fr), avg, is_f32);
+    }
     default:
         return ALWAN_E_INVALID;
     }
@@ -87,6 +94,8 @@ alwan_status alwan_edge_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_
         r.kappa = (double)params->kappa;
         r.adjust_outliers = params->adjust_outliers;
         r.weight_type = params->weight_type;
+        r.sigma_alpha = (double)params->sigma_alpha;
+        r.sigma_avg = (double)params->sigma_avg;
     }
     return alwan_ef_route(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
                           guide_channels, width, height, method, &r, 0);
@@ -111,6 +120,8 @@ alwan_status alwan_edge_filter_f32(alwan_f32 *out, size_t out_row_stride, alwan_
         r.kappa = (double)params->kappa;
         r.adjust_outliers = params->adjust_outliers;
         r.weight_type = params->weight_type;
+        r.sigma_alpha = (double)params->sigma_alpha;
+        r.sigma_avg = (double)params->sigma_avg;
     }
     return alwan_ef_route(out, out_row_stride, src, src_row_stride, src_channels, guide, guide_row_stride,
                           guide_channels, width, height, method, &r, 1);

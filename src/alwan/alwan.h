@@ -2547,6 +2547,14 @@ alwan_status alwan_histogram3d_f64(unsigned int *counts_out, size_t bins, alwan_
  *                                          quantised to 256 levels as OpenCV does; guide 1
  *                                          channel, read as 8 bits (ximgproc::
  *                                          weightedMedianFilter, ported)
+ *   ALWAN_EDGE_FILTER_BILATERAL_TEXTURE    Cho, Lee, Kang and Lee, SIGGRAPH 2014: texture
+ *                                          smoothed away and structure kept, by a joint
+ *                                          bilateral filter whose guide is each pixel's
+ *                                          blur taken from its least-textured neighbour
+ *                                          (the modified relative total variation); 1 or 3
+ *                                          channels in 0..1; the guide is not used
+ *                                          (ximgproc::bilateralTextureFilter, ported, in
+ *                                          float, to the bit, suite 298)
  *
  * src has src_channels (1 to 4) values a pixel and the guide guide_channels (1 to 4; 1 or
  * 3 for GUIDED), rows at the given byte strides; out has src's layout and may be src.
@@ -2575,7 +2583,8 @@ typedef enum {
     ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5,
     ALWAN_EDGE_FILTER_L0_SMOOTH = 6,
     ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD = 7,
-    ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN = 8
+    ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN = 8,
+    ALWAN_EDGE_FILTER_BILATERAL_TEXTURE = 9
 } alwan_edge_filter_method;
 
 /* The weight between two guide values in ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN, OpenCV's WMF_*
@@ -2709,6 +2718,39 @@ alwan_status alwan_local_contrast_u16(unsigned short *out, size_t out_row_stride
  *                                        row and column are covered by none and come out 0
  *                                        on 8-bit data and NaN on floats; 1 or 3 channels;
  *                                        block_size even, 2 to 64 and under both sides
+ *   ALWAN_DENOISE_BILATERAL_OPENCV       the bilateral filter (Tomasi and Manduchi 1998): each
+ *                                        pixel the mean of its window weighted by distance
+ *                                        and by likeness, cv::bilateralFilter itself (OpenCV
+ *                                        5.0.0, 3-clause BSD, notice in
+ *                                        api/alwan_denoise_bilateral.c), to the bit with IPP
+ *                                        off: the window round(1.5 sigma_space) (or
+ *                                        bilateral_diameter / 2) in radius, reflected 101 at
+ *                                        the border; 8 bits through its 256-level weight
+ *                                        table, floats through its 4096-bin table over the
+ *                                        image's range, the likeness of three channels the sum
+ *                                        of their absolute differences; 1 or 3 channels; a
+ *                                        double call is computed in float, as OpenCV has no
+ *                                        double form (suite 298)
+ *   ALWAN_DENOISE_BILATERAL_SKIMAGE      the same filter as scikit-image's denoise_bilateral:
+ *                                        the likeness the Euclidean distance over the
+ *                                        channels, read from a `bilateral_bins` table over
+ *                                        [0, max), any border; its spatial table one sample
+ *                                        wider than the window and read with the window's
+ *                                        width, as scikit-image reads it. Doubles to the bit;
+ *                                        floats in float with tables from exp in double,
+ *                                        where scikit-image's float32 exp differs by a step;
+ *                                        an image with a negative value is filtered shifted
+ *                                        and shifted back (scikit-image returns it shifted);
+ *                                        8 bits through v / 255 and back (suite 298)
+ *   ALWAN_DENOISE_WIENER_LOCAL           Lee's local Wiener filter, scipy.signal.wiener: the
+ *                                        mean and variance of each wiener_size square window
+ *                                        (zero outside the image), each pixel pulled to its
+ *                                        mean by noise / variance, the mean where the variance
+ *                                        is under the noise; the noise the mean local variance
+ *                                        unless wiener_noise gives it; per channel. scipy's
+ *                                        direct form to the bit; its default picks an FFT for
+ *                                        the window sums and differs by that FFT's rounding
+ *                                        (suite 298). 8 bits on the codes, rounded back
  *
  * alwan_denoise_u8 runs every method on 8-bit data (TV and the float NL means through
  * double in 0..1, rounded back); alwan_denoise_{T} runs every method but NL_MEANS and
@@ -2726,7 +2768,10 @@ typedef enum {
     ALWAN_DENOISE_TV_BREGMAN = 6,
     ALWAN_DENOISE_NL_MEANS_DARBON = 7,
     ALWAN_DENOISE_NL_MEANS_BUADES = 8,
-    ALWAN_DENOISE_DCT_OPENCV = 9
+    ALWAN_DENOISE_DCT_OPENCV = 9,
+    ALWAN_DENOISE_BILATERAL_OPENCV = 10,
+    ALWAN_DENOISE_BILATERAL_SKIMAGE = 11,
+    ALWAN_DENOISE_WIENER_LOCAL = 12
 } alwan_denoise_method;
 
 /* The wavelets of ALWAN_DENOISE_WAVELET: the orthogonal Daubechies, symlets and coiflets,
@@ -2825,6 +2870,22 @@ typedef struct {
     int nl_means_fast_exp;  /* NL_MEANS_DARBON, _BUADES: non-zero weighs by scikit-image's Schraudolph
                              * approximation of exp, a few percent off, to reproduce its results to the
                              * bit; 0 the exact exp */
+    double sigma_color;     /* BILATERAL_*: the likeness sigma in the data's units (0..255 for 8-bit).
+                             * BILATERAL_OPENCV: 0 reads as 0.1 (25.5 on 8-bit). BILATERAL_SKIMAGE: 0
+                             * reads as the image's standard deviation, as scikit-image's None */
+    double sigma_space;     /* BILATERAL_*: the spatial sigma in pixels. BILATERAL_OPENCV: 0 reads as 3.
+                             * BILATERAL_SKIMAGE: 0 reads as scikit-image's 1 */
+    size_t bilateral_diameter; /* BILATERAL_OPENCV: OpenCV's d, the window's diameter (radius d / 2);
+                             * 0 is OpenCV's d <= 0, a radius of round(1.5 sigma_space).
+                             * BILATERAL_SKIMAGE: win_size; 0 is max(5, 2 ceil(3 sigma_space) + 1) */
+    size_t bilateral_bins;  /* BILATERAL_SKIMAGE: entries of the likeness table; 0 reads as 10000 */
+    int border;             /* BILATERAL_SKIMAGE: an alwan_filter_border; 0 is NEAREST (scikit-image's
+                             * 'edge'). REFLECT is its 'symmetric', MIRROR its 'reflect', CONSTANT its
+                             * default 'constant' with cval */
+    double cval;            /* BILATERAL_SKIMAGE with CONSTANT: the value outside the image */
+    size_t wiener_size;     /* WIENER_LOCAL: the window's side, odd, at most 255; 0 reads as scipy's 3 */
+    double wiener_noise;    /* WIENER_LOCAL: the noise power (variance) in the data's units squared; 0
+                             * estimates it as the mean local variance (scipy's None) */
 } alwan_denoise_params;
 
 alwan_status alwan_denoise_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_denoise_method method, alwan_denoise_params const *params);
@@ -2841,8 +2902,18 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
  *                               an extended box blur each way in 24-bit fixed point, and
  *                               only differences over `threshold` levels sharpened, so
  *                               noise and smooth gradients are left alone (suite 212)
+ *   ALWAN_SHARPEN_CAS           AMD FidelityFX Contrast Adaptive Sharpening (MIT, notice in
+ *                               api/alwan_sharpen.c), its sharpen-only CasFilter: each
+ *                               pixel's four neighbours weighted by w = -amp / lerp(8, 5,
+ *                               cas_sharpness), amp from the window's minimum and maximum, so
+ *                               low-contrast detail is sharpened most and edges near the
+ *                               signal's limits least; values in 0..1, returned clamped to
+ *                               0..1; 1, 3 or 4 channels (the fourth copied), the green
+ *                               channel's weight for all three unless cas_per_channel; the
+ *                               border its nearest pixel; in float, a double call rounded to
+ *                               float (suite 298)
  *
- * alwan_sharpen_{T} runs UNSHARP_MASK and alwan_sharpen_u8 UNSHARP_MASK_BOX; each refuses
+ * alwan_sharpen_{T} runs UNSHARP_MASK and CAS, alwan_sharpen_u8 UNSHARP_MASK_BOX; each refuses
  * the other with ALWAN_E_INVALID. src has 1 to 4 channels, each sharpened on its own, rows
  * at the given byte strides; out may be src. Sharpening R, G and B apart can fringe colour
  * at edges; sharpen a lightness channel for a gentler result. params NULL is every
@@ -2852,7 +2923,8 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
  * (UNSHARP_MASK_BOX). */
 typedef enum {
     ALWAN_SHARPEN_UNSHARP_MASK = 0,
-    ALWAN_SHARPEN_UNSHARP_MASK_BOX = 1
+    ALWAN_SHARPEN_UNSHARP_MASK_BOX = 1,
+    ALWAN_SHARPEN_CAS = 2
 } alwan_sharpen_method;
 
 /* Each method reads its own fields; a zero field is its default. */
@@ -2867,6 +2939,12 @@ typedef struct {
                      * come (scikit-image's preserve_range) */
     int threshold;  /* UNSHARP_MASK_BOX: differences of at most this many levels are left alone;
                      * 0 reads as Pillow's 3, a negative value as 0 (every difference) */
+    double cas_sharpness;     /* CAS: 0 (the shader's default, least ringing) to 1 (most), clamped */
+    int cas_better_diagonals; /* CAS: non-zero adds the full 3 x 3 window's minimum and maximum to the
+                               * cross's (CAS_BETTER_DIAGONALS) */
+    int cas_per_channel;      /* CAS: non-zero weighs each channel by its own amp (CAS_SLOW); 0 by green's */
+    int cas_approximate;      /* CAS: non-zero uses the shader's bit-level reciprocal and square root
+                               * approximations (its default); 0 the exact ones (CAS_GO_SLOWER) */
 } alwan_sharpen_params;
 
 alwan_status alwan_sharpen_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_sharpen_method method, alwan_sharpen_params const *params);

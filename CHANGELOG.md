@@ -1,5 +1,28 @@
 ## [Unreleased]
 
+### Added: bilateral, Wiener, CAS and bilateral texture filters (batch 11)
+
+- **`ALWAN_DENOISE_BILATERAL_OPENCV`, `BILATERAL_SKIMAGE`, `WIENER_LOCAL`** (values 10 to 12)
+  in `alwan_denoise_{T}` and `alwan_denoise_u8`. The first is `cv::bilateralFilter` ported
+  from OpenCV 5.0.0 (3-clause BSD, `licenses/OpenCV-imgproc-bilateral-BSD-3-Clause.txt`)
+  with its AVX2 kernel's order and fused multiply-adds: equal to cv2 on every value, 8-bit
+  and float32. The second follows scikit-image's `denoise_bilateral`, including its spatial
+  table one sample wider than the window: equal on float64 and 8-bit, float32 within
+  2.4e-7. The third is `scipy.signal.wiener`'s formula with direct sums: equal to scipy's
+  direct method, 1.7e-15 from its FFT default. New `alwan_denoise_params` fields:
+  `sigma_color`, `sigma_space`, `bilateral_diameter`, `bilateral_bins`, `border`, `cval`,
+  `wiener_size`, `wiener_noise`.
+- **`ALWAN_SHARPEN_CAS`** (value 2) in `alwan_sharpen_{T}`: AMD FidelityFX Contrast Adaptive
+  Sharpening 1.20190610 (MIT, `licenses/AMD-FidelityFX-CAS-MIT.txt`), with its better
+  diagonals, per-channel and approximate-reciprocal variants (`cas_sharpness`,
+  `cas_better_diagonals`, `cas_per_channel`, `cas_approximate`). Equal on every value to
+  `CasFilter` transcribed in numpy float32.
+- **`ALWAN_EDGE_FILTER_BILATERAL_TEXTURE`** (value 9) in `alwan_edge_filter_{T}`: Cho et al.
+  2014, ported from opencv_contrib's `ximgproc::bilateralTextureFilter` (Intel and Willow
+  Garage 3-clause BSD), new params `sigma_alpha` and `sigma_avg`. Equal to cv2 on every
+  value; the deterministic build within 2.4e-7.
+- Suite 298 holds all of it (gendata `denoise_sharpen_b11_reference.py`).
+
 ### Added: colour quantisers (batch 10)
 
 - **Three more colour quantisers, `alwan_quantize_ex_u8`.** `ALWAN_QUANTIZE_KMEANS` (Lloyd's

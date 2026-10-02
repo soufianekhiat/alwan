@@ -19,7 +19,8 @@ typedef enum {
     ALWAN_EDGE_FILTER_FAST_GLOBAL_SMOOTHER = 5,
     ALWAN_EDGE_FILTER_L0_SMOOTH = 6,
     ALWAN_EDGE_FILTER_ADAPTIVE_MANIFOLD = 7,
-    ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN = 8
+    ALWAN_EDGE_FILTER_WEIGHTED_MEDIAN = 8,
+    ALWAN_EDGE_FILTER_BILATERAL_TEXTURE = 9
 } alwan_edge_filter_method;
 
 typedef enum {
@@ -39,21 +40,24 @@ Each method smooths `src` while keeping the edges of a guide image: the base lay
 base-and-detail edit, a matte or mask snapped to a picture's edges, or a no-flash photograph
 denoised along a flash photograph's edges. `guide` NULL uses `src` as its own guide.
 `src` has 1 to 4 channels and the guide 1 to 4 (1 or 3 for `GUIDED`, 1 for
-`WEIGHTED_MEDIAN`); `out` has `src`'s layout and may be `src`.
+`WEIGHTED_MEDIAN`; `BILATERAL_TEXTURE` takes 1 or 3 source channels and no guide); `out` has
+`src`'s layout and may be `src`.
 
 | Field of `alwan_edge_filter_params_{T}` | Methods | 0 reads as |
 |---|---|---|
-| `radius` | `GUIDED`, `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `WEIGHTED_MEDIAN` | 4 for `GUIDED`, `round(1.5 sigma_space)` for the next two / 5 |
+| `radius` | `GUIDED`, `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `WEIGHTED_MEDIAN` / `BILATERAL_TEXTURE` | 4 for `GUIDED`, `round(1.5 sigma_space)` for the next two / 5 / 3 |
 | `eps` | `GUIDED` | 0.01 |
 | `sigma_color` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` / `FAST_GLOBAL_SMOOTHER` / `ADAPTIVE_MANIFOLD` / `WEIGHTED_MEDIAN` | 0.1 / 0.4 / 0.03 / 0.2 / 0.1 |
 | `sigma_space` | `JOINT_BILATERAL`, `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*` / `ADAPTIVE_MANIFOLD` | 3 / 60 / 16 |
 | `lambda` | `FAST_GLOBAL_SMOOTHER` / `L0_SMOOTH` | 900 / 0.02 |
 | `lambda_attenuation` | `FAST_GLOBAL_SMOOTHER` | 0.25 |
-| `iterations` | `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*`, `FAST_GLOBAL_SMOOTHER` | 4 / 3 |
+| `iterations` | `ROLLING_GUIDANCE` / `DOMAIN_TRANSFORM_*`, `FAST_GLOBAL_SMOOTHER` / `BILATERAL_TEXTURE` | 4 / 3 / 1 |
 | `start_from_source` | `ROLLING_GUIDANCE` | 0: start from the source's Gaussian (the paper) |
 | `kappa` | `L0_SMOOTH` | 2 (above 1) |
 | `adjust_outliers` | `ADAPTIVE_MANIFOLD` | 0: off |
 | `weight_type` | `WEIGHTED_MEDIAN` | `ALWAN_WMF_EXP` |
+| `sigma_alpha` | `BILATERAL_TEXTURE` | `5 radius`, OpenCV's |
+| `sigma_avg` | `BILATERAL_TEXTURE` | `0.05 sqrt(channels)`, OpenCV's |
 
 The defaults are each paper's settings for values in 0..1.
 
@@ -212,6 +216,29 @@ source is its own guide, read as 8 bits (OpenCV runs `medianBlur` instead). Suit
 with `cv2.ximgproc.weightedMedianFilter` on every value of 48 cases (one and three source
 channels, radius 1 and 3, `sigma` 25.5 and 60 of 255, every weight type), in both builds.
 
+### `BILATERAL_TEXTURE`
+
+Cho, Lee, Kang and Lee (SIGGRAPH 2014): fine texture (fabric, foliage, gravel) is smoothed
+away and the structure it sits on kept, which a plain bilateral filter cannot do because
+texture has edges too. Each pixel's guide is the box blur taken from the pixel of its window
+with the least modified relative total variation, `maxG (2 fr + 1) / sumG x (maxL - minL)`
+(the window's largest gradient over its summed gradients, times its range), blended back
+toward its own blur where its own mRTV is close to that least one; a joint bilateral filter
+over a `4 fr + 1` window then smooths the image on that guide. `radius` is the paper's `fr`;
+`iterations` repeats the whole on its result.
+
+It is a port of OpenCV's `ximgproc::bilateralTextureFilter` (opencv_contrib 5.0.0, the
+Intel and Willow Garage 3-clause notice in `api/alwan_bilateral_texture.c`), kept to its
+float arithmetic: `cv::blur`'s double row and running column sums (fresh row sums for
+windows up to 5, a running sum wider), the forward-difference gradient, the window's
+maximum and minimum started from 0 and from 1 as OpenCV starts them, `expf` for every
+exponential, and `accumulateProduct`'s fused multiply-adds in its AVX2 blocks of 16 for
+three channels. Values are expected in 0..1 (OpenCV divides 8-bit input by 255 first); a
+double call is computed in float. Suite 298 is equal to
+`cv2.ximgproc.bilateralTextureFilter`, IPP off, on every value of 16 cases (one and three
+channels, `fr` 1 to 4, one and two iterations, OpenCV's defaults and given sigmas); the
+deterministic build, whose `expf` is its polynomial, is within 2.4e-7.
+
 OpenCV's `ximgproc::fastBilateralSolverFilter` (Barron and Poole 2016) is not in this family:
 the installed cv2 5.0.0 is built without Eigen, where that function raises "not implemented",
 so there is no reference to hold a port to.
@@ -350,7 +377,10 @@ typedef enum {
     ALWAN_DENOISE_TV_BREGMAN = 6,
     ALWAN_DENOISE_NL_MEANS_DARBON = 7,
     ALWAN_DENOISE_NL_MEANS_BUADES = 8,
-    ALWAN_DENOISE_DCT_OPENCV = 9
+    ALWAN_DENOISE_DCT_OPENCV = 9,
+    ALWAN_DENOISE_BILATERAL_OPENCV = 10,
+    ALWAN_DENOISE_BILATERAL_SKIMAGE = 11,
+    ALWAN_DENOISE_WIENER_LOCAL = 12
 } alwan_denoise_method;
 
 alwan_status alwan_denoise_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -364,9 +394,10 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride,
 ```
 
 Classic denoisers that fail in different ways (plate 89 of the v3 plates shows them on
-one portrait). `alwan_denoise_u8` runs all ten; `alwan_denoise_{T}` runs every method
+one portrait). `alwan_denoise_u8` runs all thirteen; `alwan_denoise_{T}` runs every method
 but `NL_MEANS` and `ANISOTROPIC_DIFFUSION`, and returns `ALWAN_E_INVALID` for those two,
-whose references work on 8-bit data. 1 to 4 channels; `out` may alias `src` except for `NL_MEANS`.
+whose references work on 8-bit data. 1 to 4 channels (1 or 3 for `BILATERAL_OPENCV`);
+`out` may alias `src` except for `NL_MEANS`.
 
 | Field of `alwan_denoise_params` | Method | 0 reads as |
 |---|---|---|
@@ -384,6 +415,13 @@ whose references work on 8-bit data. 1 to 4 channels; `out` may alias `src` exce
 | `kernel_size` | `MEDIAN` | 3 (odd, 3 to 255) |
 | `weight`, `tolerance`, `iterations` | `TV_BREGMAN` | 5 (fidelity: larger keeps more), 1e-3, 100 |
 | `anisotropic` | `TV_BREGMAN` | 0: the isotropic `|grad u|` |
+| `sigma_color` | `BILATERAL_OPENCV` / `BILATERAL_SKIMAGE` | 0.1 in the data's units (25.5 on 8-bit) / the image's standard deviation |
+| `sigma_space` | `BILATERAL_OPENCV` / `BILATERAL_SKIMAGE` | 3 / 1, pixels |
+| `bilateral_diameter` | `BILATERAL_OPENCV` / `BILATERAL_SKIMAGE` | a radius of `round(1.5 sigma_space)` / `max(5, 2 ceil(3 sigma_space) + 1)` |
+| `bilateral_bins` | `BILATERAL_SKIMAGE` | 10000 |
+| `border`, `cval` | `BILATERAL_SKIMAGE` | `ALWAN_FILTER_BORDER_NEAREST`; `cval` for `CONSTANT` |
+| `wiener_size` | `WIENER_LOCAL` | 3 (odd, at most 255) |
+| `wiener_noise` | `WIENER_LOCAL` | the mean local variance |
 
 ### `TV_CHAMBOLLE`
 
@@ -576,6 +614,58 @@ on float32, 3.6e-7 away, because numpy's float32 `exp` builds the gaussian patch
 unit apart from the C library's. With the exact `exp`, the default, the same cases land
 within 3e-3 of scikit-image's, the reach of its approximation. `ALWAN_DENOISE_NL_MEANS` is
 OpenCV's 8-bit algorithm and stays as it was.
+
+### `BILATERAL_OPENCV`
+
+The bilateral filter (Tomasi and Manduchi, ICCV 1998): each pixel the mean of its window,
+each neighbour weighted by a Gaussian of its distance (`sigma_space`) and one of its
+difference from the centre (`sigma_color`), so flat regions are averaged and edges are not.
+This is `cv::bilateralFilter` itself (OpenCV 5.0.0, the 3-clause notice in
+`api/alwan_denoise_bilateral.c`): the window is the pixels within `round(1.5 sigma_space)`
+(or `bilateral_diameter / 2`), reflected 101 at the border; on 8 bits the difference reads a
+256-level table OpenCV fills with its polynomial `v_exp`, and on floats a 4096-bin table
+over the image's range, interpolated linearly; three channels compare by the sum of their
+absolute differences. Its float path leaves the centre out of the window and adds it with
+weight 1 at the end. OpenCV's AVX2 kernel and its scalar tail add differently (fused
+multiply-adds in blocks of 32 or 16 pixels, a 13-pixel window in its own load order, a
+different interpolation of the float table), and the port follows each. One or three
+channels; a double call is computed in float, as OpenCV has no double form. Suite 298 is
+equal to `cv2.bilateralFilter` with IPP off on every value of 48 cases (8-bit and float32,
+one and three channels, windows of 5 and 13 pixels and wider, widths across both blocks),
+in both builds.
+
+### `BILATERAL_SKIMAGE`
+
+The same filter as scikit-image's `restoration.denoise_bilateral`: the difference is the
+Euclidean distance over the channels, read from a `bilateral_bins` table over `[0, max)`,
+and the window any border. Two of scikit-image's details set its values and are kept: its
+spatial table is built over `arange(-win // 2, win // 2 + 1)`, one sample wider than the
+window, and read with the window's width, so the spatial weights are not the radially
+symmetric Gaussian a reader would expect; and the colour index is `(bins / channels)` (an
+integer division) `/ max x distance`, truncated. Two are not: an image with a negative value
+comes back shifted by its minimum in scikit-image and in place here, and an 8-bit image is
+filtered as `v / 255` with that image's maximum, where scikit-image takes the maximum of the
+8-bit codes and so spans its colour table over 0..255 for data in 0..1. `border` maps to
+scikit-image's modes: `NEAREST` its `'edge'`, `REFLECT` its `'symmetric'`, `MIRROR` its
+`'reflect'`, `CONSTANT` its default `'constant'` with `cval`, `WRAP` its `'wrap'`. Suite 298
+is equal to scikit-image on every float64 and 8-bit value of 30 cases; the float32 path runs
+in float as scikit-image's does, but its tables come from `exp` in double where
+scikit-image's float32 `exp` is neither the C runtime's nor correctly rounded, so it is
+within 2.4e-7.
+
+### `WIENER_LOCAL`
+
+Lee's local adaptive Wiener filter (1980) as `scipy.signal.wiener` computes it: the mean
+and variance of each `wiener_size` square window (zero outside the image), the noise power
+the mean of the local variances unless `wiener_noise` gives it, and each pixel pulled to its
+window's mean by `noise / variance`, or set to the mean where the variance is below the
+noise. Flat regions are smoothed and busy ones kept. Per channel. scipy adds the window
+sums with an FFT on almost every image size its method picker sees (anything past about
+32 x 32 with a 3 x 3 window); alwan adds them directly, row by row from 0 as scipy's direct
+method does, and suite 298 is equal to scipy's formula with `method='direct'` on every value
+of 36 cases in both builds. scipy's default differs from that by its FFT's rounding, at
+most 1.7e-15 on those cases. On 8 bits it works on the codes and rounds back; scipy squares
+an 8-bit image in 8 bits, which wraps, and is not followed there.
 
 ## Local contrast
 
@@ -3047,7 +3137,8 @@ float32 and blend cases.
 ```c
 typedef enum {
     ALWAN_SHARPEN_UNSHARP_MASK = 0,
-    ALWAN_SHARPEN_UNSHARP_MASK_BOX = 1
+    ALWAN_SHARPEN_UNSHARP_MASK_BOX = 1,
+    ALWAN_SHARPEN_CAS = 2
 } alwan_sharpen_method;
 
 alwan_status alwan_sharpen_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -3059,9 +3150,9 @@ alwan_status alwan_sharpen_u8(...);   /* same, unsigned char pixels */
 
 The detail of an image amplified. 1 to 4 channels, each sharpened on its own; `out` may be
 `src`. Sharpening R, G and B apart can fringe colour at edges; sharpen a lightness channel
-for a gentler result. The float entry points run `UNSHARP_MASK` and `alwan_sharpen_u8`
-runs `UNSHARP_MASK_BOX`; each refuses the other, since each follows a reference that
-works in that type.
+for a gentler result. The float entry points run `UNSHARP_MASK` and `CAS`, and
+`alwan_sharpen_u8` runs `UNSHARP_MASK_BOX`; each refuses the others, since each follows a
+reference that works in that type.
 
 | Field of `alwan_sharpen_params` | Method | 0 reads as |
 |---|---|---|
@@ -3069,6 +3160,10 @@ works in that type.
 | `amount` | `UNSHARP_MASK` / `UNSHARP_MASK_BOX` | 1 / 1.5 (it may be negative, which softens) |
 | `clip` | `UNSHARP_MASK` | 0: no clipping; non-zero clips as scikit-image does |
 | `threshold` | `UNSHARP_MASK_BOX` | 3 levels; a negative value is 0, every difference |
+| `cas_sharpness` | `CAS` | 0, the shader's default (least ringing); 1 is the most |
+| `cas_better_diagonals` | `CAS` | 0: the cross of four neighbours only |
+| `cas_per_channel` | `CAS` | 0: green's weight for all three channels |
+| `cas_approximate` | `CAS` | 0: exact reciprocals and square root |
 
 ### `UNSHARP_MASK`
 
@@ -3106,6 +3201,25 @@ it for that.
 Suite 212 is equal to Pillow 12.0, value for value, on grey and colour images at radii 0.3
 to 12, 50 to 300 %, thresholds 0 to 10, and on an image narrower than the box, which takes
 the blur's other branch.
+
+### `CAS`
+
+AMD FidelityFX Contrast Adaptive Sharpening (1.20190610, MIT, the notice in
+`api/alwan_sharpen.c`), its sharpen-only `CasFilter`. Each pixel's four neighbours get the
+weight `w = amp x peak`, `peak = -1 / lerp(8, 5, cas_sharpness)`, with `amp` the square root
+of the window's distance to the signal's limits over its maximum,
+`sat(min(mn, 1 - mx) / mx)`, and the result is `(w (b + d + f + h) + e) / (1 + 4 w)`. Where
+the window already spans most of the range, `amp` falls and the pixel is sharpened less, so
+edges do not ring and dark or bright detail does not clip; low-contrast texture gets the
+most. `cas_better_diagonals` adds the full 3 x 3 window's extremes to the cross's
+(`CAS_BETTER_DIAGONALS`), `cas_per_channel` weighs each channel by its own `amp`
+(`CAS_SLOW`) instead of green's, and `cas_approximate` uses the shader's bit-level
+reciprocal and square root (`APrxLoRcpF1`, `APrxLoSqrtF1`, `APrxMedRcpF1`, its default)
+in place of exact ones (`CAS_GO_SLOWER`). Values are in 0..1, 1 the display's peak, and
+come back clamped to 0..1; 1, 3 or 4 channels, the fourth copied; the border its nearest
+pixel. It runs in float, as the shader does. Suite 298 is equal, on every value of 36 cases,
+to `CasFilter` transcribed in numpy float32 from `ffx_cas.h` (exact and approximate,
+cross and full window, shared and per-channel weights).
 
 ## Haze removal
 

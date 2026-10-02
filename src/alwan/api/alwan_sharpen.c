@@ -31,6 +31,42 @@
  * is in + diff percent / 100 in integer arithmetic (truncated toward zero), clamped to
  * 0..255, and elsewhere in is kept, so small differences (noise, film grain, smooth
  * gradients) are left alone.
+ *
+ * ALWAN_SHARPEN_CAS: AMD FidelityFX Contrast Adaptive Sharpening 1.20190610, the sharpen-only
+ * path of CasFilter (ffx-cas/ffx_cas.h, with the CPU helpers of ffx_a.h). Per pixel and
+ * channel, over the cross of four neighbours (b d f h) and the centre e:
+ *
+ *   mn, mx       the cross's minimum and maximum (plus those of the full 3 x 3 window,
+ *                added, with better_diagonals, and the limit 2 in place of 1)
+ *   amp          sqrt(sat(min(mn, limit - mx) / mx))
+ *   w            amp x peak, peak = -1 / lerp(8, 5, sat(sharpness))
+ *   out          sat((b w + d w + f w + h w + e) / (1 + 4 w))
+ *
+ * in float, with the green channel's w for every channel (the default) or each channel's
+ * own (per_channel, CAS_SLOW). The shader's default reciprocals and square root are bit-level
+ * approximations (APrxLoRcpF1, APrxLoSqrtF1, APrxMedRcpF1); alwan computes them exactly
+ * (CAS_GO_SLOWER) unless cas_approximate asks for those. A neighbour outside the image is the
+ * nearest edge pixel. CAS expects values in 0..1 with 1 the display's peak and returns them
+ * clamped to 0..1. The AMD code carries this notice:
+ *
+ *   Copyright (c) 2017-2019 Advanced Micro Devices, Inc. All rights reserved.
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ *   software and associated documentation files (the "Software"), to deal in the Software
+ *   without restriction, including without limitation the rights to use, copy, modify,
+ *   merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+ *   permit persons to whom the Software is furnished to do so, subject to the following
+ *   conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all copies
+ *   or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ *   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+ *   PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+ *   HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+ *   CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+ *   OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 #include "../alwan.h"
@@ -247,6 +283,113 @@ static alwan_status alwan_sh_usm_box(unsigned char *out, size_t out_rs, unsigned
     return ALWAN_OK;
 }
 
+/* ---- CAS ---- */
+
+static float alwan_cas_f(unsigned int u) {
+    float f;
+    memcpy(&f, &u, sizeof f);
+    return f;
+}
+
+static unsigned int alwan_cas_u(float f) {
+    unsigned int u;
+    memcpy(&u, &f, sizeof u);
+    return u;
+}
+
+/* ASatF1 on the CPU: AMinF1(1, AMaxF1(0, a)) */
+static float alwan_cas_sat(float a) {
+    float const lo = 0.0f > a ? 0.0f : a;
+    return 1.0f < lo ? 1.0f : lo;
+}
+
+static float alwan_cas_min(float a, float b) {
+    return a < b ? a : b;
+}
+
+static float alwan_cas_max(float a, float b) {
+    return a > b ? a : b;
+}
+
+static alwan_status alwan_sh_cas(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                                 double sharpness, int better_diagonals, int per_channel, int approximate, int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    size_t const cc = ch == 1 ? 1 : 3, n = w * h * ch;
+    float *img;
+    float lerp, peak, s;
+    size_t x, y, c;
+    if (!out || !src || w == 0 || h == 0 || (ch != 1 && ch != 3 && ch != 4)) return ALWAN_E_INVALID;
+    if (src_rs / elem / ch < w || out_rs / elem / ch < w || n / w / ch != h) return ALWAN_E_INVALID;
+    if (!alwan_sh_finite(sharpness)) return ALWAN_E_INVALID;
+    img = (float *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(float)), 16);
+    if (!img) return ALWAN_E_NOMEM;
+    for (y = 0; y < h; y++) {
+        unsigned char const *row = (unsigned char const *)src + y * src_rs;
+        for (x = 0; x < w * ch; x++) {
+            double const v = is_f32 ? (double)((alwan_f32 const *)row)[x] : ((alwan_f64 const *)row)[x];
+            if (!alwan_sh_finite(v)) {
+                ALWAN_FREE(img);
+                return ALWAN_E_INVALID;
+            }
+            img[y * w * ch + x] = (float)v;
+        }
+    }
+    /* CasSetup on the CPU: ALerpF1(a, b, c) = b c + (-a c + a) */
+    s = alwan_cas_sat((float)sharpness);
+    {
+        float const t = -8.0f * s + 8.0f;
+        lerp = 5.0f * s + t;
+    }
+    peak = -(1.0f / lerp);
+    for (y = 0; y < h; y++) {
+        size_t const ym = y == 0 ? 0 : y - 1, yp = y + 1 == h ? y : y + 1;
+        unsigned char *orow = (unsigned char *)out + y * out_rs;
+        for (x = 0; x < w; x++) {
+            size_t const xm = x == 0 ? 0 : x - 1, xp = x + 1 == w ? x : x + 1;
+            float const *A = img + (ym * w + xm) * ch, *B = img + (ym * w + x) * ch, *C = img + (ym * w + xp) * ch;
+            float const *D = img + (y * w + xm) * ch, *E = img + (y * w + x) * ch, *F = img + (y * w + xp) * ch;
+            float const *G = img + (yp * w + xm) * ch, *H = img + (yp * w + x) * ch, *I = img + (yp * w + xp) * ch;
+            float wgt[3], rcpw[3];
+            for (c = 0; c < cc; c++) {
+                float mn = alwan_cas_min(alwan_cas_min(D[c], alwan_cas_min(E[c], F[c])), alwan_cas_min(B[c], H[c]));
+                float mx = alwan_cas_max(alwan_cas_max(D[c], alwan_cas_max(E[c], F[c])), alwan_cas_max(B[c], H[c]));
+                float rcpm, amp, den, lim = 1.0f;
+                if (better_diagonals) {
+                    float const mn2 = alwan_cas_min(alwan_cas_min(mn, alwan_cas_min(A[c], C[c])), alwan_cas_min(G[c], I[c]));
+                    float const mx2 = alwan_cas_max(alwan_cas_max(mx, alwan_cas_max(A[c], C[c])), alwan_cas_max(G[c], I[c]));
+                    mn = mn + mn2;
+                    mx = mx + mx2;
+                    lim = 2.0f;
+                }
+                rcpm = approximate ? alwan_cas_f(0x7ef07ebbu - alwan_cas_u(mx)) : 1.0f / mx;
+                amp = alwan_cas_sat(alwan_cas_min(mn, lim - mx) * rcpm);
+                amp = approximate ? alwan_cas_f((alwan_cas_u(amp) >> 1) + 0x1fbc4639u) : ALWAN_SQRT_F32(amp);
+                wgt[c] = amp * peak;
+                den = 1.0f + 4.0f * wgt[c];
+                if (approximate) {
+                    float const b0 = alwan_cas_f(0x7ef19fffu - alwan_cas_u(den));
+                    rcpw[c] = b0 * (-b0 * den + 2.0f);
+                } else {
+                    rcpw[c] = 1.0f / den;
+                }
+            }
+            for (c = 0; c < cc; c++) {
+                size_t const k = per_channel ? c : (cc == 3 ? 1 : 0); /* green's weight, as the shader */
+                float const wk = wgt[k];
+                float const res = alwan_cas_sat((B[c] * wk + D[c] * wk + F[c] * wk + H[c] * wk + E[c]) * rcpw[k]);
+                if (is_f32) ((alwan_f32 *)orow)[x * ch + c] = res;
+                else ((alwan_f64 *)orow)[x * ch + c] = (alwan_f64)res;
+            }
+            if (ch == 4) {
+                if (is_f32) ((alwan_f32 *)orow)[x * ch + 3] = E[3];
+                else ((alwan_f64 *)orow)[x * ch + 3] = (alwan_f64)E[3];
+            }
+        }
+    }
+    ALWAN_FREE(img);
+    return ALWAN_OK;
+}
+
 static alwan_status alwan_sh_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_sharpen_method method, alwan_sharpen_params const *params, int is_f32) {
     alwan_sharpen_params const zero = { 0 };
@@ -255,6 +398,9 @@ static alwan_status alwan_sh_run(void *out, size_t out_rs, void const *src, size
     case ALWAN_SHARPEN_UNSHARP_MASK:
         return alwan_sh_unsharp(out, out_rs, src, src_rs, ch, w, h, p->radius == 0.0 ? 1.0 : p->radius,
                                 p->amount == 0.0 ? 1.0 : p->amount, p->clip, is_f32);
+    case ALWAN_SHARPEN_CAS:
+        return alwan_sh_cas(out, out_rs, src, src_rs, ch, w, h, p->cas_sharpness, p->cas_better_diagonals,
+                            p->cas_per_channel, p->cas_approximate, is_f32);
     case ALWAN_SHARPEN_UNSHARP_MASK_BOX: /* 8-bit fixed point, as Pillow's */
     default:
         return ALWAN_E_INVALID;

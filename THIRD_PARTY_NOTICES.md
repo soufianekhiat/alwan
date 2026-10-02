@@ -25,7 +25,7 @@ GPL code is never ported into alwan.
   - Intel License Agreement, `licenses/OpenCV-Intel-License-Agreement.txt`:
     `modules/photo/src/inpaint.cpp`, `modules/core/src/dxt.cpp`.
   - 3-clause BSD (Intel, Willow Garage), `licenses/OpenCV-BSD-3-Clause-Intel-WillowGarage.txt`:
-    `modules/xphoto/src/dct_image_denoising.cpp`.
+    `modules/xphoto/src/dct_image_denoising.cpp`, `modules/ximgproc/src/bilateral_texture_filter.cpp`.
   - 3-clause BSD, `licenses/OpenCV-ximgproc-BSD-3-Clause.txt`:
     `modules/ximgproc/src/weighted_median_filter.cpp`, `adaptive_manifold_filter_n.cpp`,
     `edgeaware_filters_common.cpp`.
@@ -36,6 +36,9 @@ GPL code is never ported into alwan.
   - 3-clause BSD (Intel, Willow Garage, Itseez) with the original Bayer code's BSD-style
     notice (Copyright (c) 2002, MD-Mathematische Dienste GmbH, Dirk Schaefer),
     `licenses/OpenCV-imgproc-demosaicing-BSD.txt`: `modules/imgproc/src/demosaicing.cpp`.
+  - 3-clause BSD (Intel, Willow Garage, Itseez, Advanced Micro Devices),
+    `licenses/OpenCV-imgproc-bilateral-BSD-3-Clause.txt`:
+    `modules/imgproc/src/bilateral_filter.dispatch.cpp`, `bilateral_filter.simd.hpp`.
 - OpenCV ships no NOTICE file at that tag.
 
 What alwan takes:
@@ -54,6 +57,8 @@ What alwan takes:
 | `src/alwan/api/alwan_resize_opencv.c`, `alwan_resize_opencv_impl.inc` | `imgproc/src/resize.cpp` (INTER_CUBIC and INTER_AREA: `resizeGeneric_`, `resizeAreaFast_`, `resizeArea_`, `computeResizeAreaTab`) |
 | `src/alwan/api/alwan_threshold_local.c` | `ximgproc/src/niblack_thresholding.cpp` (Wolf and NICK binarisation), with `imgproc` boxFilter and sqrBoxFilter's double sums |
 | `src/alwan/api/alwan_demosaic_opencv.c` | `imgproc/src/demosaicing.cpp` (`Bayer2RGB_VNG_8u`, `Bayer2RGB_EdgeAware_T`) |
+| `src/alwan/api/alwan_denoise_bilateral.c` | `imgproc/src/bilateral_filter.dispatch.cpp`, `bilateral_filter.simd.hpp` (`cv::bilateralFilter`, 8u and 32f, the AVX2 kernel's order and fused multiply-adds) |
+| `src/alwan/api/alwan_bilateral_texture.c` | `ximgproc/src/bilateral_texture_filter.cpp` (`bilateralTextureFilter`), with `imgproc` box filter's double sums and `core` `accumulateProduct` |
 | `src/alwan/api/alwan_match_template.c` | `imgproc/src/templmatch.cpp` (`common_matchTemplate`, the six `TM_*` scores) |
 | `src/alwan/api/alwan_checker_detect.c` | the cv2 operations the colour checker detector calls (resize, bilateral filter, threshold, contours, minAreaRect, approxPolyDP, warpPerspective) |
 | `src/alwan/api/alwan_clahe.c`, `src/alwan/api/alwan_denoise.c` | CLAHE, fast non-local means and anisotropic diffusion, reproduced to OpenCV's arithmetic |
@@ -127,7 +132,8 @@ quick shift (`segmentation/_felzenszwalb_cy.pyx`, `segmentation/_quickshift_cy.p
 norms and visualisation lines (`feature/_hog.py`, `feature/_hoghistogram.pyx`,
 `draw/_draw.pyx`; `alwan_texture_descriptors.c`), the Gabor kernel and filter
 (`filters/_gabor.py`, `alwan_texture.c`), total
-variation denoising (`alwan_denoise.c`), the thresholds, and the stain and video matrices in
+variation denoising (`alwan_denoise.c`), the bilateral filter of `restoration/_denoise_cy.pyx`
+and `_denoise.py` (`alwan_denoise_bilateral.c`), the thresholds, and the stain and video matrices in
 `src/alwan/data/stain/` and `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
 
 ## SciPy
@@ -140,7 +146,8 @@ What alwan takes: the B-spline interpolation of `scipy.ndimage.map_coordinates` 
 `ALWAN_WARP_BSPLINE3` and `BSPLINE5` (`src/alwan/api/alwan_warp.c`), from
 `scipy/ndimage/src/ni_splines.c` (`get_spline_interpolation_weights`, the filter poles,
 `apply_filter` with its reflect initialisations) and the 12-pixel edge padding of
-`_interpolation.py`.
+`_interpolation.py`; the local Wiener filter of `scipy/signal/_signaltools.py` (`wiener`)
+for `ALWAN_DENOISE_WIENER_LOCAL` (`src/alwan/api/alwan_denoise_bilateral.c`).
 
 ## Pillow
 
@@ -250,6 +257,18 @@ published equations and its Table 2 (`src/alwan/data/sky/preetham_table2.csv`); 
 
 What alwan takes: the wavelet filter banks in `src/alwan/data/wavelets/`, exported from
 PyWavelets.
+
+## AMD FidelityFX Contrast Adaptive Sharpening
+
+- Upstream: https://github.com/GPUOpen-Effects/FidelityFX-CAS, commit
+  9fabcc9a2c45f958aff55ddfda337e74ef894b7f (CAS 1.20190610).
+- Copyright (c) 2017-2019 Advanced Micro Devices, Inc. (the header); Copyright (c) 2020
+  Advanced Micro Devices, Inc. (the repository's LICENSE.txt).
+- Licence: MIT, `licenses/AMD-FidelityFX-CAS-MIT.txt`.
+
+What alwan takes: `CasFilter` and the `ffx_a.h` helpers it calls (`ALerpF1`, `APrxLoRcpF1`,
+`APrxLoSqrtF1`, `APrxMedRcpF1`), ported to C for `ALWAN_SHARPEN_CAS` in
+`src/alwan/api/alwan_sharpen.c`.
 
 ## DaltonLens-Python
 

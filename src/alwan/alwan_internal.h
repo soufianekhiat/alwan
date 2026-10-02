@@ -64,6 +64,9 @@ alwan_status alwan__amf_run(void *out, size_t out_row_stride, void const *src, s
 alwan_status alwan__wmf_run(void *out, size_t out_row_stride, void const *src, size_t src_row_stride, size_t sch,
                             void const *guide, size_t guide_row_stride, size_t gch, size_t w, size_t h,
                             size_t radius, double sigma, alwan_wmf_weight type, int is_f32);
+/* api/alwan_bilateral_texture.c: ximgproc::bilateralTextureFilter, 1 or 3 channels */
+alwan_status alwan__btf_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t cn, size_t w, size_t h,
+                            size_t fr, size_t iterations, double sigma_alpha, double sigma_avg, int is_f32);
 /* alwan_segment_ext.c: ALWAN_SEGMENT_FELZENSZWALB to _RANDOM_WALKER; v is h x w x ch doubles
  * (the data's values, 8-bit as they come), kind 0 f64, 1 f32, 2 u8 */
 alwan_status alwan__segment_ext(uint32_t *labels, size_t labels_rs, size_t *count_out, double *v, size_t w, size_t h, size_t ch,
@@ -119,6 +122,15 @@ void alwan__cv_dct2d(alwan__cv_dct_plan const *p, float const *src, size_t src_s
  * 1 f32, 2 u8. api/alwan_dct_denoise_opencv.c. */
 alwan_status alwan__dct_denoise_opencv(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch,
                                        size_t w, size_t h, double sigma, size_t ps, int kind);
+/* api/alwan_denoise_bilateral.c: BILATERAL_OPENCV, BILATERAL_SKIMAGE and WIENER_LOCAL; kind 0 f64,
+ * 1 f32, 2 u8 (the u8 skimage path takes sigma_color and cval in 0..1). */
+alwan_status alwan__denoise_bilateral_opencv(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w,
+                                             size_t h, size_t diameter, double sigma_color, double sigma_space, int kind);
+alwan_status alwan__denoise_bilateral_skimage(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w,
+                                              size_t h, size_t win, double sigma_color, double sigma_spatial, size_t bins,
+                                              int border, double cval, int kind);
+alwan_status alwan__denoise_wiener(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                                   size_t size, double noise, int kind);
 
 typedef struct alwan__fft alwan__fft;
 alwan__fft *alwan__fft_create(size_t n);

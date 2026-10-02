@@ -1133,6 +1133,18 @@ static alwan_status alwan_dn_float(void *out, size_t out_row_stride, void const 
                                   method == ALWAN_DENOISE_NL_MEANS_BUADES, alwan_dn_or(p->h, 0.1),
                                   p->template_window == 0 ? 7 : p->template_window,
                                   p->search_window == 0 ? 11 : p->search_window / 2, p->sigma, p->nl_means_fast_exp, is_f32 ? 1 : 0);
+    case ALWAN_DENOISE_BILATERAL_OPENCV:
+        return alwan__denoise_bilateral_opencv(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                               p->bilateral_diameter, alwan_dn_or(p->sigma_color, 0.1),
+                                               alwan_dn_or(p->sigma_space, 3.0), is_f32 ? 1 : 0);
+    case ALWAN_DENOISE_BILATERAL_SKIMAGE:
+        return alwan__denoise_bilateral_skimage(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                                p->bilateral_diameter, p->sigma_color, alwan_dn_or(p->sigma_space, 1.0),
+                                                p->bilateral_bins == 0 ? 10000 : p->bilateral_bins, p->border, p->cval,
+                                                is_f32 ? 1 : 0);
+    case ALWAN_DENOISE_WIENER_LOCAL:
+        return alwan__denoise_wiener(out, out_row_stride, src, src_row_stride, channels, width, height, p->wiener_size,
+                                     p->wiener_noise, is_f32 ? 1 : 0);
     case ALWAN_DENOISE_NL_MEANS:
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION: /* 8-bit only, as their references are */
     default:
@@ -1178,6 +1190,17 @@ alwan_status alwan_denoise_u8(unsigned char *out, size_t out_row_stride, unsigne
     case ALWAN_DENOISE_ANISOTROPIC_DIFFUSION:
         return alwan_ad_run(out, out_row_stride, src, src_row_stride, channels, width, height, alwan_dn_or(p->alpha, 0.15),
                             alwan_dn_or(p->k, 0.05), p->iterations == 0 ? 10 : p->iterations);
+    case ALWAN_DENOISE_BILATERAL_OPENCV:
+        return alwan__denoise_bilateral_opencv(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                               p->bilateral_diameter, alwan_dn_or(p->sigma_color, 25.5),
+                                               alwan_dn_or(p->sigma_space, 3.0), 2);
+    case ALWAN_DENOISE_BILATERAL_SKIMAGE: /* through v / 255 */
+        return alwan__denoise_bilateral_skimage(out, out_row_stride, src, src_row_stride, channels, width, height,
+                                                p->bilateral_diameter, p->sigma_color / 255.0, alwan_dn_or(p->sigma_space, 1.0),
+                                                p->bilateral_bins == 0 ? 10000 : p->bilateral_bins, p->border, p->cval / 255.0, 2);
+    case ALWAN_DENOISE_WIENER_LOCAL:
+        return alwan__denoise_wiener(out, out_row_stride, src, src_row_stride, channels, width, height, p->wiener_size,
+                                     p->wiener_noise, 2);
     default:
         return ALWAN_E_INVALID;
     }
