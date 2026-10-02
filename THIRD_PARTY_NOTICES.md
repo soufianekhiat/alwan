@@ -31,6 +31,8 @@ GPL code is never ported into alwan.
     `edgeaware_filters_common.cpp`.
   - 3-clause BSD (Intel, Willow Garage, Itseez), `licenses/OpenCV-imgproc-resize-BSD-3-Clause.txt`:
     `modules/imgproc/src/resize.cpp`.
+  - 3-clause BSD (Copyright (C) 2014, Beat Kueng, Lukas Vogel, Morten Lysgaard),
+    `licenses/OpenCV-ximgproc-niblack-BSD-3-Clause.txt`: `modules/ximgproc/src/niblack_thresholding.cpp`.
 - OpenCV ships no NOTICE file at that tag.
 
 What alwan takes:
@@ -47,6 +49,8 @@ What alwan takes:
 | `src/alwan/api/alwan_am_filter.c` | `ximgproc` adaptive manifold filter |
 | `src/alwan/api/alwan_wmf.c` | `ximgproc` weighted median filter |
 | `src/alwan/api/alwan_resize_opencv.c`, `alwan_resize_opencv_impl.inc` | `imgproc/src/resize.cpp` (INTER_CUBIC and INTER_AREA: `resizeGeneric_`, `resizeAreaFast_`, `resizeArea_`, `computeResizeAreaTab`) |
+| `src/alwan/api/alwan_threshold_local.c` | `ximgproc/src/niblack_thresholding.cpp` (Wolf and NICK binarisation), with `imgproc` boxFilter and sqrBoxFilter's double sums |
+| `src/alwan/api/alwan_match_template.c` | `imgproc/src/templmatch.cpp` (`common_matchTemplate`, the six `TM_*` scores) |
 | `src/alwan/api/alwan_checker_detect.c` | the cv2 operations the colour checker detector calls (resize, bilateral filter, threshold, contours, minAreaRect, approxPolyDP, warpPerspective) |
 | `src/alwan/api/alwan_clahe.c`, `src/alwan/api/alwan_denoise.c` | CLAHE, fast non-local means and anisotropic diffusion, reproduced to OpenCV's arithmetic |
 | `src/alwan/data/opencv/rgb2lab_lut_s16.csv`, `lab2srgb_float.csv` | colour conversion tables, read back from cv2 |
@@ -107,7 +111,11 @@ What alwan takes:
 
 What alwan takes: routines reproduced from scikit-image's code, among them the watershed
 heap, `find_contours` and `approximate_polygon` (`alwan_contour.c`), the skeletonisation
-passes transcribed from `_skeletonize_various_cy.pyx` (`alwan_morphology.c`), total
+passes transcribed from `_skeletonize_various_cy.pyx` and the medial axis from
+`_skeletonize.py` (`alwan_morphology.c`), the convex hull's `possible_hull` and
+`point_in_polygon` (`_convex_hull.pyx`, `_shared/geometry.pyx`; `alwan_morphology.c`), the
+Moravec and FAST corner loops (`feature/corner_cy.pyx`, `alwan_corner.c`), the multi-Otsu
+search (`filters/_multiotsu.pyx`, `alwan_threshold.c`), total
 variation denoising (`alwan_denoise.c`), the thresholds, and the stain and video matrices in
 `src/alwan/data/stain/` and `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
 

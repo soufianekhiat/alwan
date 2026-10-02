@@ -28,6 +28,14 @@
  *   MINIMUM   the histogram smoothed by a 3-tap mean (edges repeated) until it has two
  *             maxima, then the lowest bin between them
  *   MEAN      the mean
+ *   MULTI_OTSU the classes - 1 bin centres maximising the summed between-class variance
+ *             of the classes they cut the histogram into, by scikit-image's exhaustive
+ *             lookup-table search (filters/_multiotsu.pyx, BSD-3-Clause, Copyright the
+ *             scikit-image team), ported: the histogram normalised in double and rounded to
+ *             float32, the zeroth and first moments and every variance in float32, the
+ *             first moment seeded with p[0] where 0 * p[0] would be 0, and the table's
+ *             (0, 0) entry 0, as scikit-image leaves it; the splits tried in lexicographic
+ *             order, the first strictly larger sum kept
  *
  * Sums that numpy forms by reduction (the mean, Li's class means) are formed as numpy's
  * pairwise summation forms them. A constant channel returns its value for every method.
@@ -370,6 +378,71 @@ static alwan_status alwan_th_channel(double *out, double const *v, size_t n, alw
     }
 }
 
+/* The between-class variance of bins i..j, as scikit-image's lookup table holds it. */
+static double alwan_th_mo_var(double const *z, double const *f, size_t i, size_t j) {
+    if (i == 0) {
+        if (j == 0 || !(z[j] > 0.0)) return 0.0;
+        return alwan_th_r32(alwan_th_r32(f[j] * f[j]) / z[j]);
+    } else {
+        double const zij = alwan_th_r32(z[j] - z[i - 1]);
+        double fij;
+        if (!(zij > 0.0)) return 0.0;
+        fij = alwan_th_r32(f[j] - f[i - 1]);
+        return alwan_th_r32(alwan_th_r32(fij * fij) / zij);
+    }
+}
+
+/* MULTI_OTSU for one channel: classes - 1 thresholds into out. counts, centres, z and f as
+ * for alwan_th_channel. */
+static alwan_status alwan_th_multiotsu(double *out, double const *v, size_t n, size_t classes, size_t bins, int kind, double *counts,
+                                       double *centres, double *z, double *f) {
+    size_t const tc = classes - 1;
+    double vmin = v[0], vmax = v[0], best = 0.0;
+    size_t i, nb, nvalues = 0, cur[8], keep[8];
+    for (i = 1; i < n; i++) {
+        if (v[i] < vmin) vmin = v[i];
+        if (v[i] > vmax) vmax = v[i];
+    }
+    if (vmin == vmax) return ALWAN_E_RANGE;   /* one class */
+    nb = alwan_th_histogram(counts, centres, v, n, vmin, vmax, bins, kind);
+    for (i = 0; i < nb; i++) {
+        counts[i] = alwan_th_r32(counts[i] / (double)n);   /* the probabilities */
+        if (counts[i] != 0.0) nvalues++;
+    }
+    if (nvalues < classes) return ALWAN_E_RANGE;
+    if (nvalues == classes) {
+        size_t m = 0;
+        for (i = 0; i < nb && m < tc; i++)
+            if (counts[i] != 0.0) out[m++] = centres[i];
+        return ALWAN_OK;
+    }
+    z[0] = counts[0];
+    f[0] = counts[0];
+    for (i = 1; i < nb; i++) {
+        z[i] = alwan_th_r32(z[i - 1] + counts[i]);
+        f[i] = alwan_th_r32(f[i - 1] + alwan_th_r32((double)(float)i * counts[i]));
+    }
+    /* every split cur[0] < ... < cur[tc - 1], cur[t] < nb - tc + t, in lexicographic order */
+    for (i = 0; i < tc; i++) cur[i] = i, keep[i] = i;
+    for (;;) {
+        double sigma = alwan_th_r32(alwan_th_mo_var(z, f, 0, cur[0]) + alwan_th_mo_var(z, f, cur[tc - 1] + 1, nb - 1));
+        size_t t;
+        for (t = 0; t + 1 < tc; t++) sigma = alwan_th_r32(sigma + alwan_th_mo_var(z, f, cur[t] + 1, cur[t + 1]));
+        if (sigma > best) {
+            best = sigma;
+            for (t = 0; t < tc; t++) keep[t] = cur[t];
+        }
+        /* next combination */
+        t = tc;
+        while (t > 0 && cur[t - 1] + 1 >= nb - tc + (t - 1)) t--;
+        if (t == 0) break;
+        cur[t - 1]++;
+        for (i = t; i < tc; i++) cur[i] = cur[i - 1] + 1;
+    }
+    for (i = 0; i < tc; i++) out[i] = centres[keep[i]];
+    return ALWAN_OK;
+}
+
 static alwan_status alwan_th_run(double *threshold_out, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_threshold_method method, alwan_threshold_params const *params, int kind) {
     alwan_threshold_params const zero = { 0 };
@@ -377,14 +450,16 @@ static alwan_status alwan_th_run(double *threshold_out, void const *src, size_t 
     size_t const elem = kind == 0 ? sizeof(alwan_f64) : kind == 1 ? sizeof(alwan_f32) : 1u;
     size_t const bins = kind == 2 ? 256 : (p->bins ? p->bins : 256);
     size_t const max_iterations = p->max_iterations ? p->max_iterations : 10000;
+    size_t const classes = p->classes ? p->classes : 3;
     size_t const n = w * h, hb = (bins > 256 ? bins : 256) + 1;
     double *buf, *v, *counts, *centres, *a, *b, *c, *work;
     size_t x, y, k;
     alwan_status st = ALWAN_OK;
     if (!threshold_out || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_THRESHOLD_MEAN) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_THRESHOLD_MULTI_OTSU) return ALWAN_E_INVALID;
     if (bins < 2 || bins > 65536 || !(p->tolerance >= 0.0) || max_iterations > 1000000) return ALWAN_E_RANGE;
+    if (method == ALWAN_THRESHOLD_MULTI_OTSU && (classes < 2 || classes > 8)) return ALWAN_E_RANGE;
     buf = (double *)ALWAN_ALLOC(alwan_safe_array_size(4 * n + 6 * hb, sizeof(double)), sizeof(double));
     if (!buf) return ALWAN_E_NOMEM;
     v = buf;
@@ -408,8 +483,11 @@ static alwan_status alwan_th_run(double *threshold_out, void const *src, size_t 
                 v[y * w + x] = s;
             }
         }
-        st = alwan_th_channel(&threshold_out[k], v, n, method, bins, p->tolerance, max_iterations, kind, counts, centres, a, b, c,
-                              work);
+        if (method == ALWAN_THRESHOLD_MULTI_OTSU)
+            st = alwan_th_multiotsu(&threshold_out[k * (classes - 1)], v, n, classes, bins, kind, counts, centres, a, b);
+        else
+            st = alwan_th_channel(&threshold_out[k], v, n, method, bins, p->tolerance, max_iterations, kind, counts, centres, a, b,
+                                  c, work);
     }
     ALWAN_FREE(buf);
     return st;

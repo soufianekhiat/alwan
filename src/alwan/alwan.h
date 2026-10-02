@@ -2919,8 +2919,41 @@ alwan_status alwan_register_u8(alwan_register_result *out, unsigned char const *
  *
  * One channel, like scikit-image's 2-D images: for colour, match on luminance or run each
  * channel and combine. f32 computes in double and rounds the result; u8 takes raw values 0 to
- * 255 as scikit-image does and writes doubles. ALWAN_E_INVALID for a NULL, a zero size, a
- * stride too small or an unknown mode; ALWAN_E_RANGE for a template larger than the image. */
+ * 255 as scikit-image does and writes doubles.
+ *
+ * method picks OpenCV's matchTemplate scores instead (suite 292), for the template's
+ * top-left corner at each placement, out (width - template_width + 1) x (height -
+ * template_height + 1), no padding (pad_input must be 0):
+ *
+ *   ALWAN_TEMPLATE_MATCH_SQDIFF         sum (T - I)^2, 0 at a perfect match
+ *   ALWAN_TEMPLATE_MATCH_SQDIFF_NORMED  that over sqrt(sum T^2 sum I^2)
+ *   ALWAN_TEMPLATE_MATCH_CCORR          sum T I
+ *   ALWAN_TEMPLATE_MATCH_CCORR_NORMED   that over sqrt(sum T^2 sum I^2)
+ *   ALWAN_TEMPLATE_MATCH_CCOEFF         sum (T - mean T)(I - mean I)
+ *   ALWAN_TEMPLATE_MATCH_CCOEFF_NORMED  that over the product of the two deviations' norms
+ *
+ * OpenCV's normalisation (modules/imgproc/src/templmatch.cpp, common_matchTemplate) is
+ * followed step for step in double, from the window sums of integral images, including its
+ * guards: a window flatter than 10 FLT_EPSILON of its energy scores 0, a ratio just over 1
+ * snaps to +/-1, a flat template scores 1 everywhere for CCOEFF_NORMED. The correlation
+ * itself is exact here and rounded to float32 where OpenCV stores it; OpenCV takes it from a
+ * float32 (8-bit images) or double (float32 images) DFT, so the two differ by that DFT's
+ * rounding. The result is rounded to float32 as OpenCV's is. On a nearly flat window
+ * CCOEFF_NORMED's numerator is the difference of two large, nearly equal sums, and one
+ * float32 step of the stored correlation moves the score by up to a few 1e-4 (OpenCV's 8-bit
+ * and float32 paths differ by as much between themselves). ALWAN_E_INVALID for a NULL, a
+ * zero size, a stride too small, an unknown mode or method, or pad_input with an OpenCV
+ * method; ALWAN_E_RANGE for a template larger than the image. */
+typedef enum {
+    ALWAN_TEMPLATE_MATCH_NCC = 0,              /* scikit-image's match_template, as above */
+    ALWAN_TEMPLATE_MATCH_SQDIFF = 1,           /* OpenCV TM_SQDIFF */
+    ALWAN_TEMPLATE_MATCH_SQDIFF_NORMED = 2,    /* OpenCV TM_SQDIFF_NORMED */
+    ALWAN_TEMPLATE_MATCH_CCORR = 3,            /* OpenCV TM_CCORR */
+    ALWAN_TEMPLATE_MATCH_CCORR_NORMED = 4,     /* OpenCV TM_CCORR_NORMED */
+    ALWAN_TEMPLATE_MATCH_CCOEFF = 5,           /* OpenCV TM_CCOEFF */
+    ALWAN_TEMPLATE_MATCH_CCOEFF_NORMED = 6     /* OpenCV TM_CCOEFF_NORMED */
+} alwan_template_method;
+
 typedef enum {
     ALWAN_TEMPLATE_PAD_CONSTANT = 0,   /* numpy 'constant': k k k | a b c d | k k k, k = constant_value */
     ALWAN_TEMPLATE_PAD_EDGE = 1,       /* numpy 'edge':      a a a | a b c d | d d d */
@@ -2934,6 +2967,7 @@ typedef struct {
     int pad_input;                     /* non-zero: out the image's size, values at the template's centre */
     alwan_template_pad mode;           /* how the image is padded; 0 is CONSTANT */
     double constant_value;             /* CONSTANT: the value past the edge; 0 as scikit-image's */
+    alwan_template_method method;      /* 0 is scikit-image's NCC; the others are OpenCV's scores */
 } alwan_template_params;
 
 alwan_status alwan_match_template_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *image, size_t image_row_stride, size_t width, size_t height, alwan_f32 const *templ, size_t templ_row_stride, size_t templ_width, size_t templ_height, alwan_template_params const *params);
@@ -3739,6 +3773,17 @@ alwan_status alwan_ibl_energy_average_f64(alwan_f64 *out, alwan_f64 const *lut, 
  *                               element) whose neighbours outside it are all lower, else 0,
  *                               as scikit-image's local_maxima
  *   ALWAN_MORPHOLOGY_LOCAL_MINIMA the same for minima
+ *   ALWAN_MORPHOLOGY_MEDIAL_AXIS every shape (non-zero pixels) reduced to its medial axis:
+ *                               pixels taken from the outside in, by distance to the
+ *                               background, removed unless that would split a region or
+ *                               the pixel has two neighbours or fewer, as scikit-image's
+ *                               medial_axis. A kept pixel keeps its value, or with
+ *                               medial_axis_distance its Euclidean distance to the background
+ *   ALWAN_MORPHOLOGY_CONVEX_HULL 1 on every pixel inside or on the convex hull of all the
+ *                               shape's pixels (each taken as the diamond of its four edge
+ *                               midpoints), else 0, as scikit-image's convex_hull_image
+ *   ALWAN_MORPHOLOGY_CONVEX_HULL_OBJECT the same for each connected shape on its own, the
+ *                               hulls joined, as scikit-image's convex_hull_object
  *
  * The element sits with its anchor, (kernel_width / 2, kernel_height / 2), on the pixel and
  * is used as given (not reflected); pixels outside the image take no part; iterations
@@ -3760,7 +3805,15 @@ alwan_status alwan_ibl_energy_average_f64(alwan_f64 *out, alwan_f64 const *lut, 
  * exceeds the channel's range; LOCAL_MAXIMA and LOCAL_MINIMA need a 3 x 3 element (the default
  * 3 x 3 RECT is scikit-image's full connectivity, CROSS its 4-connectivity) and let a plateau
  * touch the edge unless exclude_borders is set or it lies at the channel's lowest (highest)
- * value; all four are pixel for pixel with scikit-image (suite 250). The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
+ * value; all four are pixel for pixel with scikit-image (suite 250). MEDIAL_AXIS, CONVEX_HULL and
+ * CONVEX_HULL_OBJECT treat each channel as a mask, non-zero the shape, and are pixel for pixel
+ * with scikit-image (suite 292) with one difference: medial_axis breaks ties between pixels
+ * at the same distance and of the same cornerness by a seeded random permutation, and this
+ * by raster order, so the suite holds it to scikit-image's algorithm with that one line
+ * replaced. The hull's vertices are half-integers, so the hull is computed exactly (doubled
+ * integer coordinates) and gives Qhull's polygon; the inside test is scikit-image's, borders
+ * included. CONVEX_HULL_OBJECT labels shapes with connectivity (0 reads as 8, scikit-image's
+ * default here). An empty channel gives an empty hull. The 8-bit results saturate at 0 and 255. params NULL is a 3 x 3
  * rectangle once, an area of 64 or a diameter of 8, 4-connected. ALWAN_E_INVALID for a NULL, a zero size, a
  * channel count out of range, a stride too small, a NaN, a connectivity other than 4 or 8,
  * or an unknown method or shape, h 0 for H_MAXIMA and H_MINIMA, or an element other than 3 x 3
@@ -3784,7 +3837,10 @@ typedef enum {
     ALWAN_MORPHOLOGY_H_MAXIMA = 14,
     ALWAN_MORPHOLOGY_H_MINIMA = 15,
     ALWAN_MORPHOLOGY_LOCAL_MAXIMA = 16,
-    ALWAN_MORPHOLOGY_LOCAL_MINIMA = 17
+    ALWAN_MORPHOLOGY_LOCAL_MINIMA = 17,
+    ALWAN_MORPHOLOGY_MEDIAL_AXIS = 18,
+    ALWAN_MORPHOLOGY_CONVEX_HULL = 19,
+    ALWAN_MORPHOLOGY_CONVEX_HULL_OBJECT = 20
 } alwan_morphology_method;
 
 /* The structuring elements, OpenCV's getStructuringElement and its numbering. */
@@ -3812,6 +3868,8 @@ typedef struct {
                                     * required, 0 is refused as scikit-image refuses it */
     int exclude_borders;           /* LOCAL_MAXIMA, LOCAL_MINIMA: non-zero never marks a plateau touching
                                     * the edge (scikit-image's allow_borders=False); 0 allows it */
+    int medial_axis_distance;      /* MEDIAL_AXIS: non-zero writes each kept pixel's distance to the
+                                    * background (scikit-image's return_distance) instead of its value */
 } alwan_morphology_params;
 
 alwan_status alwan_morphology_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_morphology_method method, alwan_morphology_params const *params);
@@ -4066,14 +4124,23 @@ alwan_status alwan_light_probe_sample_u8(alwan_light_probe_light *lights, size_t
  *   ALWAN_THRESHOLD_TRIANGLE  Zack's: furthest below the line from the peak to the far tail
  *   ALWAN_THRESHOLD_MINIMUM   Prewitt's: the valley of the histogram smoothed until bimodal
  *   ALWAN_THRESHOLD_MEAN      the mean
+ *   ALWAN_THRESHOLD_MULTI_OTSU Liao, Chen and Chung 2001: the classes - 1 bin centres that
+ *                             split the histogram into `classes` classes of the greatest
+ *                             between-class variance, ascending. threshold_out receives
+ *                             classes - 1 values per channel, channel after channel; label
+ *                             a pixel by how many it is above (numpy.digitize)
  *
  * The histogram, on 8-bit data one bin per level from the channel's minimum to its maximum
  * and on float data `bins` bins over [min, max], and each method's arithmetic are
- * scikit-image's filters.threshold_*, value for value (suite 221). A constant channel
- * returns its value. ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range,
- * a stride too small, a NaN or infinite value, or an unknown method; ALWAN_E_RANGE for bins
- * outside 2 to 65536, a negative tolerance, and when ISODATA finds no level or MINIMUM no
- * two maxima within max_iterations. */
+ * scikit-image's filters.threshold_*, value for value (suites 221 and 292). A constant
+ * channel returns its value (MULTI_OTSU: ALWAN_E_RANGE, it has one class). MULTI_OTSU
+ * searches every split, its cost growing as bins^(classes - 1): 256 bins and 5 classes is
+ * about 10^8 trials. It follows scikit-image's lookup-table search, the one it uses unless
+ * the table does not fit in memory. ALWAN_E_INVALID for a NULL, a zero size, a channel
+ * count out of range, a stride too small, a NaN or infinite value, or an unknown method;
+ * ALWAN_E_RANGE for bins outside 2 to 65536, a negative tolerance, classes outside 2 to 8,
+ * a channel with fewer occupied bins than classes, and when ISODATA finds no level or
+ * MINIMUM no two maxima within max_iterations. */
 typedef enum {
     ALWAN_THRESHOLD_OTSU = 0,
     ALWAN_THRESHOLD_LI = 1,
@@ -4081,7 +4148,8 @@ typedef enum {
     ALWAN_THRESHOLD_ISODATA = 3,
     ALWAN_THRESHOLD_TRIANGLE = 4,
     ALWAN_THRESHOLD_MINIMUM = 5,
-    ALWAN_THRESHOLD_MEAN = 6
+    ALWAN_THRESHOLD_MEAN = 6,
+    ALWAN_THRESHOLD_MULTI_OTSU = 7
 } alwan_threshold_method;
 
 /* A zero field is its default. */
@@ -4090,6 +4158,7 @@ typedef struct {
     double tolerance;       /* LI: stop when t moves by no more; 0 reads as half the smallest gap between
                              * values (0.5 on 8-bit data) */
     size_t max_iterations;  /* MINIMUM: smoothing passes; 0 reads as 10000 */
+    size_t classes;         /* MULTI_OTSU: the classes, 2 to 8; 0 reads as 3, scikit-image's default */
 } alwan_threshold_params;
 
 alwan_status alwan_threshold_f32(double *threshold_out, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_threshold_method method, alwan_threshold_params const *params);
@@ -4105,28 +4174,49 @@ alwan_status alwan_threshold_u8(double *threshold_out, unsigned char const *src,
  *   ALWAN_THRESHOLD_LOCAL_MEDIAN    the block's median, minus offset
  *   ALWAN_THRESHOLD_LOCAL_NIBLACK   m - k s, the block's mean and standard deviation
  *   ALWAN_THRESHOLD_LOCAL_SAUVOLA   m (1 + k (s / r - 1)), for text on an uneven page
+ *   ALWAN_THRESHOLD_LOCAL_WOLF      Wolf and Jolion 2004: m - k (m - min - s (m - min) /
+ *                                   max s), min the channel's least value and max s the
+ *                                   largest local deviation
+ *   ALWAN_THRESHOLD_LOCAL_NICK      Khurshid et al. 2009: m + k sqrt(s^2 + mean of squares)
+ *   ALWAN_THRESHOLD_LOCAL_BRADLEY   Bradley and Roth 2007: the window's mean times (1 - k),
+ *                                   the window clipped to the image
  *
- * As scikit-image's filters.threshold_local, threshold_niblack and threshold_sauvola,
- * value for value (suite 222), including their edges: the first three extend the image as
- * scipy's "reflect" (the edge sample repeated), the last two as numpy's (not repeated).
- * 8-bit data: convert to double first, as scikit-image does, and give Sauvola r = 127.5.
- * ALWAN_E_INVALID for a NULL, a zero size, a channel count out of range, a stride too
- * small, a NaN or infinite value, or an unknown method; ALWAN_E_RANGE for an even
- * block_size or one over 1023, a sigma negative or over 256, or a NaN parameter. */
+ * GAUSSIAN to SAUVOLA are scikit-image's filters.threshold_local, threshold_niblack and
+ * threshold_sauvola, value for value (suite 222), including their edges: the first three
+ * extend the image as scipy's "reflect" (the edge sample repeated), the last two as numpy's
+ * (not repeated). 8-bit data: convert to double first, as scikit-image does, and give
+ * Sauvola r = 127.5. WOLF and NICK are OpenCV's ximgproc niBlackThreshold (BINARIZATION_WOLF
+ * and _NICK): m and s from box filters with the edge sample repeated (OpenCV's
+ * BORDER_REPLICATE), and every step in float32 as OpenCV computes it, whatever the data's
+ * precision; a window whose float32 variance rounds below zero gets a NaN threshold, as in
+ * OpenCV, and so no foreground. OpenCV's 8-bit output rounds the threshold to 8 bits (half
+ * to even) before comparing: pass the codes as float and round the threshold to reproduce
+ * it. BRADLEY is the paper's: the mean over the block_size square
+ * centred on the pixel, cut at the image's edge, in double. Suite 292 holds WOLF and NICK
+ * to OpenCV and BRADLEY to the paper's arithmetic. ALWAN_E_INVALID for a NULL, a zero size,
+ * a channel count out of range, a stride too small, a NaN or infinite value, or an unknown
+ * method; ALWAN_E_RANGE for an even block_size or one over 1023 (WOLF and NICK: also 1), a
+ * sigma negative or over 256, or a NaN parameter. */
 typedef enum {
     ALWAN_THRESHOLD_LOCAL_GAUSSIAN = 0,
     ALWAN_THRESHOLD_LOCAL_MEAN = 1,
     ALWAN_THRESHOLD_LOCAL_MEDIAN = 2,
     ALWAN_THRESHOLD_LOCAL_NIBLACK = 3,
-    ALWAN_THRESHOLD_LOCAL_SAUVOLA = 4
+    ALWAN_THRESHOLD_LOCAL_SAUVOLA = 4,
+    ALWAN_THRESHOLD_LOCAL_WOLF = 5,
+    ALWAN_THRESHOLD_LOCAL_NICK = 6,
+    ALWAN_THRESHOLD_LOCAL_BRADLEY = 7
 } alwan_threshold_local_method;
 
 /* A zero field is its default. */
 typedef struct {
-    size_t block_size;  /* the odd side of the neighbourhood, 1 to 1023; 0 reads as 15 */
+    size_t block_size;  /* the odd side of the neighbourhood, 1 to 1023; 0 reads as 15 (BRADLEY: the
+                         * paper's width / 8, made odd, at least 3) */
     double offset;      /* GAUSSIAN, MEAN, MEDIAN: subtracted from the threshold */
     double sigma;       /* GAUSSIAN: 0 reads as (block_size - 1) / 6 */
-    double k;           /* NIBLACK, SAUVOLA: 0 reads as 0.2 */
+    double k;           /* NIBLACK, SAUVOLA: 0 reads as 0.2. WOLF: 0 reads as 0.5, the paper's. NICK: 0
+                         * reads as -0.1, the paper's. BRADLEY: the fraction below the mean, 0 reads as
+                         * 0.15, the paper's t = 15 */
     double r;           /* SAUVOLA: the standard deviation's dynamic range; 0 reads as 1, as for float data */
 } alwan_threshold_local_params;
 
@@ -4201,17 +4291,36 @@ alwan_status alwan_edge_detect_u8(unsigned char *edges, size_t edges_row_stride,
  *   ALWAN_CORNER_KITCHEN_ROSENFELD  the curvature of the level line times the gradient,
  *                                   from second derivatives, no smoothing
  *   ALWAN_CORNER_FOERSTNER          det / trace (component 0) or 4 det / trace^2 (1)
+ *   ALWAN_CORNER_MORAVEC            Moravec 1980: the least sum of squared differences
+ *                                   between the (2 window_size + 1)^2 patch around the
+ *                                   pixel and the same patch shifted diagonally, over the
+ *                                   shifts within window_size; 0 within 2 window_size of the
+ *                                   edge. scikit-image tries only shifts that move both the
+ *                                   row and the column (its test is br != r and bc != c), and
+ *                                   so does this
+ *   ALWAN_CORNER_FAST               Rosten and Drummond 2006, FAST-n: where fast_n
+ *                                   consecutive pixels of the 16 on the radius-3 Bresenham
+ *                                   circle are all brighter than the centre plus
+ *                                   fast_threshold, or all darker than it minus it, the sum
+ *                                   of the 16 absolute differences, else 0; 0 within 3 of the
+ *                                   edge. For n of 12 or more the four compass pixels are
+ *                                   tested first, as scikit-image does. Pick the corners from
+ *                                   the response with alwan_peak_local_max, as
+ *                                   scikit-image's corner_peaks does (non-maximum suppression)
  *
- * As scikit-image's feature.corner_harris, corner_shi_tomasi, corner_kitchen_rosenfeld
- * and corner_foerstner, value for value (suite 229). 8-bit data: divide by 255 into float,
- * as scikit-image does. ALWAN_E_INVALID for a NULL, a zero size, a channel count other
- * than 1, a stride too small, a NaN or infinite value, an unknown method or component;
- * ALWAN_E_RANGE for a sigma negative or over 64, a NaN k or a negative eps. */
+ * As scikit-image's feature.corner_harris, corner_shi_tomasi, corner_kitchen_rosenfeld,
+ * corner_foerstner, corner_moravec and corner_fast, value for value (suites 229 and 292).
+ * 8-bit data: divide by 255 into float, as scikit-image does. ALWAN_E_INVALID for a NULL, a
+ * zero size, a channel count other than 1, a stride too small, a NaN or infinite value, an
+ * unknown method or component; ALWAN_E_RANGE for a sigma negative or over 64, a NaN k or a
+ * negative eps, a window_size over 64, a fast_n over 16 or a NaN or negative fast_threshold. */
 typedef enum {
     ALWAN_CORNER_HARRIS = 0,
     ALWAN_CORNER_SHI_TOMASI = 1,
     ALWAN_CORNER_KITCHEN_ROSENFELD = 2,
-    ALWAN_CORNER_FOERSTNER = 3
+    ALWAN_CORNER_FOERSTNER = 3,
+    ALWAN_CORNER_MORAVEC = 4,
+    ALWAN_CORNER_FAST = 5
 } alwan_corner_method;
 
 /* A zero field is its default. */
@@ -4221,6 +4330,9 @@ typedef struct {
     int harris_normalised;  /* HARRIS: non-zero gives 2 det / (trace + eps) */
     double eps;             /* HARRIS normalised: 0 reads as 1e-6 */
     int component;          /* FOERSTNER: 0 the error ellipse size w, 1 its roundness q */
+    size_t window_size;     /* MORAVEC: the patch's and the shifts' half-size, 1 to 64; 0 reads as 1 */
+    unsigned fast_n;        /* FAST: the run of consecutive circle pixels needed, 1 to 16; 0 reads as 12 */
+    double fast_threshold;  /* FAST: how much brighter or darker, in the data's units; 0 reads as 0.15 */
 } alwan_corner_params;
 
 alwan_status alwan_corner_response_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_corner_method method, alwan_corner_params const *params);

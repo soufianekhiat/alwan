@@ -21,6 +21,16 @@
  *   response    = numerator / denominator where denominator > epsilon, else 0
  *
  * and the output is the slice scikit-image returns.
+ *
+ * The OpenCV methods (params->method other than NCC) follow cv::matchTemplate (OpenCV
+ * 5.0.0, modules/imgproc/src/templmatch.cpp, Apache-2.0): the raw correlation sum T I for
+ * the template's top-left corner at each placement, here exact (directly, or by alwan's FFT
+ * when that costs less) and rounded to float32 where OpenCV stores it in the result; then
+ * common_matchTemplate's normalisation, ported line for line in double: the image's sum and
+ * sum of squares as double integral images (row running sums added to the row above), the
+ * template's mean and deviation as meanStdDev gives them, the window sums
+ * ((p0 - p1) - p2) + p3, the numerator, the guard on flat windows and the 1.125 snap, the
+ * result rounded to float32.
  */
 
 #include "../alwan.h"
@@ -102,9 +112,176 @@ static size_t alwan_mt_pow2(size_t n) {
     return p;
 }
 
+/* cv::matchTemplate's six scores for one channel, no padding. */
+static alwan_status alwan_mt_opencv(void *out, size_t out_rs, void const *img, size_t img_rs, size_t w, size_t h, void const *tpl,
+                                    size_t tpl_rs, size_t tw, size_t th, alwan_template_method method, int kind) {
+    size_t const ow = w - tw + 1, oh = h - th + 1, vol = tw * th, W1 = w + 1;
+    int const numType = method == ALWAN_TEMPLATE_MATCH_CCORR || method == ALWAN_TEMPLATE_MATCH_CCORR_NORMED     ? 0
+                        : method == ALWAN_TEMPLATE_MATCH_CCOEFF || method == ALWAN_TEMPLATE_MATCH_CCOEFF_NORMED ? 1
+                                                                                                                : 2;
+    int const normed = method == ALWAN_TEMPLATE_MATCH_CCORR_NORMED || method == ALWAN_TEMPLATE_MATCH_SQDIFF_NORMED ||
+                       method == ALWAN_TEMPLATE_MATCH_CCOEFF_NORMED;
+    double const invArea = 1.0 / ((double)th * (double)tw);
+    double *I = NULL, *T = NULL, *xc = NULL, *S = NULL, *Q = NULL, *re = NULL, *im = NULL, *tre = NULL, *tim = NULL, *col = NULL;
+    alwan__fft *fw = NULL, *fh = NULL;
+    double tsum = 0.0, tsq = 0.0, tmean, tsdv, templNorm = 0.0, templSum2 = 0.0, templMean;
+    int all_one = 0;
+    alwan_status st = ALWAN_OK;
+    size_t x, y, a, b, i;
+
+    I = (double *)ALWAN_ALLOC(alwan_safe_array_size(w * h, sizeof(double)), 64);
+    T = (double *)ALWAN_ALLOC(alwan_safe_array_size(vol, sizeof(double)), 64);
+    xc = (double *)ALWAN_ALLOC(alwan_safe_array_size(ow * oh, sizeof(double)), 64);
+    S = (double *)ALWAN_ALLOC(alwan_safe_array_size(W1 * (h + 1), 2 * sizeof(double)), 64);
+    if (!I || !T || !xc || !S) {
+        st = ALWAN_E_NOMEM;
+        goto done;
+    }
+    Q = S + W1 * (h + 1);
+    for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++) I[y * w + x] = alwan_mt_read(img, img_rs, x, y, kind);
+    for (a = 0; a < th; a++)
+        for (b = 0; b < tw; b++) T[a * tw + b] = alwan_mt_read(tpl, tpl_rs, b, a, kind);
+    /* the correlation, exact */
+    {
+        size_t const Lr = alwan_mt_pow2(h), Lc = alwan_mt_pow2(w), L = Lr * Lc;
+        double const direct = (double)ow * (double)oh * (double)vol;
+        double const viafft = 3.0 * (double)L * (ALWAN_LOG2_F64((double)L) + 2.0) * 2.5;
+        if (direct <= viafft || L / Lr != Lc) {
+            for (y = 0; y < oh; y++)
+                for (x = 0; x < ow; x++) {
+                    double sum = 0.0;
+                    for (a = 0; a < th; a++) {
+                        double const *ir = I + (y + a) * w + x, *tr = T + a * tw;
+                        for (b = 0; b < tw; b++) sum += ir[b] * tr[b];
+                    }
+                    xc[y * ow + x] = sum;
+                }
+        } else {
+            double const scale = 1.0 / (double)L;
+            re = (double *)ALWAN_ALLOC(alwan_safe_array_size(L, sizeof(double)), 64);
+            im = (double *)ALWAN_ALLOC(alwan_safe_array_size(L, sizeof(double)), 64);
+            tre = (double *)ALWAN_ALLOC(alwan_safe_array_size(L, sizeof(double)), 64);
+            tim = (double *)ALWAN_ALLOC(alwan_safe_array_size(L, sizeof(double)), 64);
+            col = (double *)ALWAN_ALLOC(alwan_safe_array_size(2 * Lr, sizeof(double)), 64);
+            fw = alwan__fft_create(Lc);
+            fh = alwan__fft_create(Lr);
+            if (!re || !im || !tre || !tim || !col || !fw || !fh) {
+                st = ALWAN_E_NOMEM;
+                goto done;
+            }
+            memset(re, 0, L * sizeof(double));
+            memset(im, 0, L * sizeof(double));
+            memset(tre, 0, L * sizeof(double));
+            memset(tim, 0, L * sizeof(double));
+            for (y = 0; y < h; y++) memcpy(re + y * Lc, I + y * w, w * sizeof(double));
+            for (a = 0; a < th; a++) memcpy(tre + a * Lc, T + a * tw, tw * sizeof(double));
+            alwan_mt_fft2(re, im, Lc, Lr, fw, fh, col, col + Lr, 0);
+            alwan_mt_fft2(tre, tim, Lc, Lr, fw, fh, col, col + Lr, 0);
+            for (i = 0; i < L; i++) {
+                double const ar = re[i], ai = im[i], br = tre[i], bi = tim[i];
+                re[i] = ar * br + ai * bi;
+                im[i] = ai * br - ar * bi;
+            }
+            alwan_mt_fft2(re, im, Lc, Lr, fw, fh, col, col + Lr, 1);
+            for (y = 0; y < oh; y++)
+                for (x = 0; x < ow; x++) xc[y * ow + x] = re[y * Lc + x] * scale;
+        }
+    }
+    /* OpenCV stores the correlation in its float32 result */
+    for (i = 0; i < ow * oh; i++) xc[i] = (double)(float)xc[i];
+    if (method != ALWAN_TEMPLATE_MATCH_CCORR) {
+        /* integral images: sum[y + 1][x + 1] = sum[y][x + 1] + the row's running sum */
+        for (x = 0; x < W1; x++) S[x] = 0.0, Q[x] = 0.0;
+        for (y = 0; y < h; y++) {
+            double s = 0.0, q = 0.0;
+            S[(y + 1) * W1] = 0.0;
+            Q[(y + 1) * W1] = 0.0;
+            for (x = 0; x < w; x++) {
+                double const v = I[y * w + x];
+                s += v;
+                q += v * v;
+                S[(y + 1) * W1 + x + 1] = S[y * W1 + x + 1] + s;
+                Q[(y + 1) * W1 + x + 1] = Q[y * W1 + x + 1] + q;
+            }
+        }
+        for (i = 0; i < vol; i++) {
+            tsum += T[i];
+            tsq += T[i] * T[i];
+        }
+        tmean = tsum * (1.0 / (double)vol);
+        tsdv = tsq * (1.0 / (double)vol) - tmean * tmean;
+        tsdv = ALWAN_SQRT_F64(tsdv > 0.0 ? tsdv : 0.0);
+        templMean = tmean;
+        if (method != ALWAN_TEMPLATE_MATCH_CCOEFF) {
+            templNorm = tsdv * tsdv;
+            if (templNorm < DBL_EPSILON && method == ALWAN_TEMPLATE_MATCH_CCOEFF_NORMED) all_one = 1;
+            templSum2 = templNorm + tmean * tmean;
+            if (numType != 1) {
+                templMean = 0.0;
+                templNorm = templSum2;
+            }
+            templSum2 /= invArea;
+            templNorm = ALWAN_SQRT_F64(templNorm);
+            templNorm /= ALWAN_SQRT_F64(invArea);
+        }
+    } else {
+        templMean = 0.0;
+    }
+    for (y = 0; y < oh; y++) {
+        char *orow = (char *)out + y * out_rs;
+        for (x = 0; x < ow; x++) {
+            double num = xc[y * ow + x], t, wndMean2 = 0.0, wndSum2 = 0.0;
+            if (all_one) {
+                num = 1.0;
+            } else if (method != ALWAN_TEMPLATE_MATCH_CCORR) {
+                if (numType == 1) {
+                    t = ((S[y * W1 + x] - S[y * W1 + x + tw]) - S[(y + th) * W1 + x]) + S[(y + th) * W1 + x + tw];
+                    wndMean2 += t * t;
+                    num -= t * templMean;
+                    wndMean2 *= invArea;
+                }
+                if (normed || numType == 2) {
+                    t = ((Q[y * W1 + x] - Q[y * W1 + x + tw]) - Q[(y + th) * W1 + x]) + Q[(y + th) * W1 + x + tw];
+                    wndSum2 += t;
+                    if (numType == 2) {
+                        num = wndSum2 - 2.0 * num + templSum2;
+                        if (num < 0.0) num = 0.0;
+                    }
+                }
+                if (normed) {
+                    double diff2 = wndSum2 - wndMean2;
+                    double const lim = 10.0 * (double)FLT_EPSILON * wndSum2;
+                    if (diff2 < 0.0) diff2 = 0.0;
+                    if (diff2 <= (lim < 0.5 ? lim : 0.5)) t = 0.0;
+                    else t = ALWAN_SQRT_F64(diff2) * templNorm;
+                    if (ALWAN_ABS(num) < t) num /= t;
+                    else if (ALWAN_ABS(num) < t * 1.125) num = num > 0.0 ? 1.0 : -1.0;
+                    else num = method != ALWAN_TEMPLATE_MATCH_SQDIFF_NORMED ? 0.0 : 1.0;
+                }
+            }
+            if (kind == 1) ((alwan_f32 *)orow)[x] = (alwan_f32)num;
+            else ((alwan_f64 *)orow)[x] = (double)(float)num;
+        }
+    }
+done:
+    alwan__fft_destroy(fw);
+    alwan__fft_destroy(fh);
+    ALWAN_FREE(col);
+    ALWAN_FREE(tim);
+    ALWAN_FREE(tre);
+    ALWAN_FREE(im);
+    ALWAN_FREE(re);
+    ALWAN_FREE(S);
+    ALWAN_FREE(xc);
+    ALWAN_FREE(T);
+    ALWAN_FREE(I);
+    return st;
+}
+
 static alwan_status alwan_mt_run(void *out, size_t out_rs, void const *img, size_t img_rs, size_t w, size_t h, void const *tpl, size_t tpl_rs,
                                  size_t tw, size_t th, alwan_template_params const *params, int kind) {
-    alwan_template_params const zero = {0, ALWAN_TEMPLATE_PAD_CONSTANT, 0.0};
+    alwan_template_params const zero = {0, ALWAN_TEMPLATE_PAD_CONSTANT, 0.0, ALWAN_TEMPLATE_MATCH_NCC};
     alwan_template_params const *p = params ? params : &zero;
     size_t const elem = kind == 0 ? sizeof(alwan_f64) : kind == 1 ? sizeof(alwan_f32) : 1u;
     size_t const oelem = kind == 1 ? sizeof(alwan_f32) : sizeof(alwan_f64);
@@ -117,7 +294,13 @@ static alwan_status alwan_mt_run(void *out, size_t out_rs, void const *img, size
     if (!out || !img || !tpl || w == 0 || h == 0 || tw == 0 || th == 0) return ALWAN_E_INVALID;
     if (img_rs / elem < w || tpl_rs / elem < tw) return ALWAN_E_INVALID;
     if ((unsigned)p->mode > (unsigned)ALWAN_TEMPLATE_PAD_WRAP) return ALWAN_E_INVALID;
+    if ((unsigned)p->method > (unsigned)ALWAN_TEMPLATE_MATCH_CCOEFF_NORMED) return ALWAN_E_INVALID;
+    if (p->method != ALWAN_TEMPLATE_MATCH_NCC && p->pad_input) return ALWAN_E_INVALID;
     if (tw > w || th > h) return ALWAN_E_RANGE;
+    if (p->method != ALWAN_TEMPLATE_MATCH_NCC) {
+        if (out_rs / oelem < w - tw + 1) return ALWAN_E_INVALID;
+        return alwan_mt_opencv(out, out_rs, img, img_rs, w, h, tpl, tpl_rs, tw, th, p->method, kind);
+    }
     ow = p->pad_input ? w : w - tw + 1;
     oh = p->pad_input ? h : h - th + 1;
     if (out_rs / oelem < ow) return ALWAN_E_INVALID;

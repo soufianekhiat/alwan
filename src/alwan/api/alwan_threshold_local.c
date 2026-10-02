@@ -23,6 +23,43 @@
  * rows in double, the window's sum the four-corner combination in scikit-image's order.
  * On float32 data every operation outside the double sums, and every constant, is rounded
  * to float as numpy rounds it.
+ *
+ * WOLF and NICK port OpenCV's ximgproc niBlackThreshold (modules/ximgproc/src/
+ * niblack_thresholding.cpp, opencv_contrib; Copyright (C) 2014, Beat Kueng, Lukas Vogel,
+ * Morten Lysgaard; the 3-clause licence below). The mean and the mean of squares are
+ * OpenCV's boxFilter and sqrBoxFilter to float32 with BORDER_REPLICATE: row sums in double
+ * (direct for a 3 or 5 wide box, else a running sum; squares always running), then running
+ * column sums in double, each output (float)(sum * (1 / block_size^2)). Then, in float32:
+ * variance = sqmean - mean^2, s = sqrt(variance) (NaN where that rounds negative, as
+ * OpenCV's), WOLF m - k (m - min - s (m - min) / max s), NICK m + k sqrt(variance + sqmean).
+ * OpenCV evaluates those through its matrix expressions, whose vectorised paths may fuse a
+ * multiply and an add; the order here is the plain one, and suite 292 measures the residual.
+ * For a float32 image and a block of 3 or 5 OpenCV's boxFilter takes another summation
+ * path; the sums are exact in double for ordinary data, so the means are the same.
+ *
+ *   Redistribution and use in source and binary forms, with or without modification, are
+ *   permitted provided that the following conditions are met:
+ *   * Redistribution's of source code must retain the above copyright notice, this list of
+ *     conditions and the following disclaimer.
+ *   * Redistribution's in binary form must reproduce the above copyright notice, this list
+ *     of conditions and the following disclaimer in the documentation and/or other
+ *     materials provided with the distribution.
+ *   * The name of the copyright holders may not be used to endorse or promote products
+ *     derived from this software without specific prior written permission.
+ *   This software is provided by the copyright holders and contributors "as is" and any
+ *   express or implied warranties, including, but not limited to, the implied warranties of
+ *   merchantability and fitness for a particular purpose are disclaimed. In no event shall
+ *   the Intel Corporation or contributors be liable for any direct, indirect, incidental,
+ *   special, exemplary, or consequential damages (including, but not limited to,
+ *   procurement of substitute goods or services; loss of use, data, or profits; or business
+ *   interruption) however caused and on any theory of liability, whether in contract,
+ *   strict liability, or tort (including negligence or otherwise) arising in any way out of
+ *   the use of this software, even if advised of the possibility of such damage.
+ *
+ * BRADLEY is Bradley and Roth 2007, "Adaptive Thresholding using the Integral Image": the
+ * image's integral (summed down the columns, then along the rows, in double, a zero row and
+ * column first), the window's sum ((I[y2][x2] - I[y1][x2]) - I[y2][x1]) + I[y1][x1] over the
+ * block clipped to the image, the threshold sum / count * (1 - k).
  */
 
 #include "../alwan.h"
@@ -109,14 +146,56 @@ static int alwan_tl_cmp(void const *a, void const *b) {
     return x < y ? -1 : x > y ? 1 : 0;
 }
 
+/* OpenCV's boxFilter (sq 0) or sqrBoxFilter (sq 1) of one channel to float32, normalised,
+ * BORDER_REPLICATE; img holds float32 values. rs: (h + b - 1) * w doubles, ext: w + b. */
+static void alwan_tl_cv_box(double *out, double const *img, size_t w, size_t h, size_t b, int sq, double *rs, double *ext) {
+    size_t const half = b / 2, rows = h + b - 1;
+    double const scale = 1.0 / (double)(b * b);
+    size_t y, x, i;
+    for (y = 0; y < rows; y++) {
+        /* padded row y is source row y - half, clamped (BORDER_REPLICATE); likewise columns */
+        size_t const sy = y < half ? 0 : y - half >= h ? h - 1 : y - half;
+        double const *row = img + sy * w;
+        double *d = rs + y * w;
+        for (i = 0; i < w + b - 1; i++) ext[i] = row[i < half ? 0 : i - half >= w ? w - 1 : i - half];
+        if (!sq && b == 3) {
+            for (x = 0; x < w; x++) d[x] = ext[x] + ext[x + 1] + ext[x + 2];
+        } else if (!sq && b == 5) {
+            for (x = 0; x < w; x++) d[x] = ext[x] + ext[x + 1] + ext[x + 2] + ext[x + 3] + ext[x + 4];
+        } else {
+            double acc = 0.0;
+            for (i = 0; i < b; i++) acc += sq ? ext[i] * ext[i] : ext[i];
+            d[0] = acc;
+            for (x = 0; x + 1 < w; x++) {
+                if (sq) acc += ext[x + b] * ext[x + b] - ext[x] * ext[x];
+                else acc += ext[x + b] - ext[x];
+                d[x + 1] = acc;
+            }
+        }
+    }
+    for (x = 0; x < w; x++) {
+        double sum = 0.0;
+        for (i = 0; i + 1 < b; i++) sum += rs[i * w + x];
+        for (y = 0; y < h; y++) {
+            double const s0 = sum + rs[(y + b - 1) * w + x];
+            out[y * w + x] = (double)(float)(s0 * scale);
+            sum = s0 - rs[y * w + x];
+        }
+    }
+}
+
 static alwan_status alwan_tl_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_threshold_local_method method, alwan_threshold_local_params const *params, int f32) {
     alwan_threshold_local_params const zero = { 0 };
     alwan_threshold_local_params const *p = params ? params : &zero;
     size_t const elem = f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
-    size_t const b = p->block_size ? p->block_size : 15, half = b / 2;
+    size_t const b = p->block_size ? p->block_size
+                     : method == ALWAN_THRESHOLD_LOCAL_BRADLEY ? ((w / 8) < 3 ? 3 : (w / 8) | 1)
+                                                               : 15,
+                 half = b / 2;
     size_t const n = w * h, pw = w + b, ph = h + b;
     double const k = alwan_tl_r(p->k != 0.0 ? p->k : 0.2, f32);
+    float const kcv = (float)(p->k != 0.0 ? p->k : method == ALWAN_THRESHOLD_LOCAL_WOLF ? 0.5 : -0.1);
     double const r = alwan_tl_r(p->r != 0.0 ? p->r : 1.0, f32);
     double const offset = alwan_tl_r(p->offset, f32);
     double const sigma = p->sigma > 0.0 ? p->sigma : (double)(b - 1) / 6.0;
@@ -127,7 +206,8 @@ static alwan_status alwan_tl_run(void *out, size_t out_rs, void const *src, size
     alwan_status st = ALWAN_OK;
     if (!out || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_THRESHOLD_LOCAL_SAUVOLA) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_THRESHOLD_LOCAL_BRADLEY) return ALWAN_E_INVALID;
+    if ((method == ALWAN_THRESHOLD_LOCAL_WOLF || method == ALWAN_THRESHOLD_LOCAL_NICK) && b == 1) return ALWAN_E_RANGE;
     if (b % 2 == 0 || b > 1023 || !(p->sigma >= 0.0) || p->sigma > 256.0 || !(p->k == p->k) || !(p->r == p->r) ||
         !(p->offset == p->offset))
         return ALWAN_E_RANGE;
@@ -138,7 +218,21 @@ static alwan_status alwan_tl_run(void *out, size_t out_rs, void const *src, size
     res = tmp + n;
     ext = res + n;
     wts = ext + ext_len;
-    if (method == ALWAN_THRESHOLD_LOCAL_NIBLACK || method == ALWAN_THRESHOLD_LOCAL_SAUVOLA) {
+    if (method == ALWAN_THRESHOLD_LOCAL_WOLF || method == ALWAN_THRESHOLD_LOCAL_NICK) {
+        /* ia: the box sums' rows, (h + b - 1) x w, and their padded line; ib: mean and sqmean */
+        ia = (double *)ALWAN_ALLOC(alwan_safe_array_size((h + b - 1) * w + w + b + 2 * n, sizeof(double)), sizeof(double));
+        if (!ia) {
+            ALWAN_FREE(buf);
+            return ALWAN_E_NOMEM;
+        }
+        ib = ia + (h + b - 1) * w + w + b;
+    } else if (method == ALWAN_THRESHOLD_LOCAL_BRADLEY) {
+        ia = (double *)ALWAN_ALLOC(alwan_safe_array_size((w + 1) * (h + 1), sizeof(double)), sizeof(double));
+        if (!ia) {
+            ALWAN_FREE(buf);
+            return ALWAN_E_NOMEM;
+        }
+    } else if (method == ALWAN_THRESHOLD_LOCAL_NIBLACK || method == ALWAN_THRESHOLD_LOCAL_SAUVOLA) {
         ia = (double *)ALWAN_ALLOC(alwan_safe_array_size(pw * ph, 2 * sizeof(double)), sizeof(double));
         if (!ia) {
             ALWAN_FREE(buf);
@@ -196,6 +290,63 @@ static alwan_status alwan_tl_run(void *out, size_t out_rs, void const *src, size
                     }
                     qsort(win, m, sizeof(double), alwan_tl_cmp);
                     res[y * w + x] = alwan_tl_r(alwan_tl_r(win[m / 2], f32) - offset, f32);
+                }
+            }
+            break;
+        }
+        case ALWAN_THRESHOLD_LOCAL_WOLF:
+        case ALWAN_THRESHOLD_LOCAL_NICK: {
+            double *mean = ib, *sqm = ib + n, *ext2 = ia + (h + b - 1) * w;
+            for (i = 0; i < n; i++) img[i] = (double)(float)img[i];   /* OpenCV's float32 image */
+            alwan_tl_cv_box(mean, img, w, h, b, 0, ia, ext2);
+            alwan_tl_cv_box(sqm, img, w, h, b, 1, ia, ext2);
+            for (i = 0; i < n; i++) {
+                float const m = (float)mean[i];
+                float const var = (float)sqm[i] - m * m;
+                tmp[i] = (double)var;                                   /* the variance */
+                res[i] = (double)(float)ALWAN_SQRT_F64((double)var);   /* s: NaN where var < 0, as OpenCV's */
+            }
+            if (method == ALWAN_THRESHOLD_LOCAL_WOLF) {
+                float smin = (float)img[0], sdmax = 0.0f;
+                int first = 1;
+                for (i = 1; i < n; i++)
+                    if ((float)img[i] < smin) smin = (float)img[i];
+                for (i = 0; i < n; i++) {
+                    float const sd = (float)res[i];
+                    if (sd == sd && (first || sd > sdmax)) sdmax = sd, first = 0;
+                }
+                for (i = 0; i < n; i++) {
+                    float const m = (float)mean[i], sd = (float)res[i];
+                    float const a = m - smin;
+                    float const xs = (sd * a) / sdmax;
+                    res[i] = (double)(m - kcv * (a - xs));
+                }
+            } else {
+                for (i = 0; i < n; i++) {
+                    float const m = (float)mean[i];
+                    float const root = (float)ALWAN_SQRT_F64((double)((float)tmp[i] + (float)sqm[i]));
+                    res[i] = (double)(m + kcv * root);
+                }
+            }
+            break;
+        }
+        case ALWAN_THRESHOLD_LOCAL_BRADLEY: {
+            double const frac = 1.0 - (p->k != 0.0 ? p->k : 0.15);
+            size_t const W1 = w + 1;
+            memset(ia, 0, W1 * sizeof(double));
+            for (y = 0; y < h; y++) {
+                ia[(y + 1) * W1] = 0.0;
+                for (x = 0; x < w; x++) ia[(y + 1) * W1 + x + 1] = ia[y * W1 + x + 1] + img[y * w + x];
+            }
+            for (y = 1; y <= h; y++)
+                for (x = 1; x <= w; x++) ia[y * W1 + x] += ia[y * W1 + x - 1];
+            for (y = 0; y < h; y++) {
+                size_t const y1 = y > half ? y - half : 0, y2 = y + half + 1 < h ? y + half + 1 : h;
+                for (x = 0; x < w; x++) {
+                    size_t const x1 = x > half ? x - half : 0, x2 = x + half + 1 < w ? x + half + 1 : w;
+                    double const sum = ((ia[y2 * W1 + x2] - ia[y1 * W1 + x2]) - ia[y2 * W1 + x1]) + ia[y1 * W1 + x1];
+                    double const count = (double)((y2 - y1) * (x2 - x1));
+                    res[y * w + x] = alwan_tl_r(sum / count * frac, f32);
                 }
             }
             break;

@@ -1056,7 +1056,9 @@ typedef enum {
     ALWAN_MORPHOLOGY_FILL_HOLES = 11,
     ALWAN_MORPHOLOGY_SKELETONIZE = 12, ALWAN_MORPHOLOGY_THIN = 13,
     ALWAN_MORPHOLOGY_H_MAXIMA = 14, ALWAN_MORPHOLOGY_H_MINIMA = 15,
-    ALWAN_MORPHOLOGY_LOCAL_MAXIMA = 16, ALWAN_MORPHOLOGY_LOCAL_MINIMA = 17
+    ALWAN_MORPHOLOGY_LOCAL_MAXIMA = 16, ALWAN_MORPHOLOGY_LOCAL_MINIMA = 17,
+    ALWAN_MORPHOLOGY_MEDIAL_AXIS = 18,
+    ALWAN_MORPHOLOGY_CONVEX_HULL = 19, ALWAN_MORPHOLOGY_CONVEX_HULL_OBJECT = 20
 } alwan_morphology_method;
 
 typedef enum {
@@ -1093,6 +1095,7 @@ speckle off a hard key and closes its pinholes. Each channel on its own; `out` m
 | `diameter_threshold` | 8: `DIAMETER_OPEN` and `DIAMETER_CLOSE`, the shortest region kept, as the longer side of its bounding box |
 | `h` | required for `H_MAXIMA` and `H_MINIMA`: 0 is refused, as scikit-image refuses it |
 | `exclude_borders` | 0: `LOCAL_MAXIMA` and `LOCAL_MINIMA` may mark a plateau touching the edge |
+| `medial_axis_distance` | 0: `MEDIAL_AXIS` keeps a kept pixel's value; non-zero writes its Euclidean distance to the background |
 
 The element's anchor is `(kernel_width / 2, kernel_height / 2)`, off centre for an even
 size, and the element is used as given, not reflected, for dilation as for erosion. Pixels
@@ -1104,6 +1107,23 @@ asymmetric caller's element, on 8-bit grey, colour and a speckled mask and on fl
 8-bit composites saturate at 0 and 255 as OpenCV's do. A caller's element that reaches no
 pixel of the image leaves that pixel as it was, where OpenCV writes its border value; the
 four shapes always include the anchor.
+
+### `MEDIAL_AXIS`, `CONVEX_HULL`, `CONVEX_HULL_OBJECT`
+
+Each channel is a mask, non-zero the shape. `MEDIAL_AXIS` wears every shape down to the
+ridge of its distance map: pixels are visited from the outside in, by distance to the
+background and then by how many background neighbours they have, and one is removed unless
+that would split a region or it has two neighbours or fewer. This is scikit-image's
+`morphology.medial_axis`, ported (BSD-3-Clause), except that scikit-image breaks ties
+between pixels at the same distance and cornerness with a seeded random permutation, and
+this with raster order. `CONVEX_HULL` sets 1 on every pixel inside or on the convex hull of
+all the shape's pixels, each taken as the diamond of its four edge midpoints, and 0
+elsewhere, as scikit-image's `convex_hull_image` (borders included); `CONVEX_HULL_OBJECT`
+does it for each connected shape on its own and joins the hulls, as `convex_hull_object`,
+`connectivity` 0 reading as 8 here, scikit-image's default. The hull's vertices are
+half-integers, so the hull is computed exactly and is Qhull's polygon. Suite 292 holds all
+three to scikit-image pixel for pixel, the medial axis to scikit-image's algorithm with its
+one tie-break line replaced, both connectivities for the per-object hull.
 
 ### `AREA_OPEN`, `AREA_CLOSE`
 
@@ -1316,7 +1336,8 @@ and a flat image with and without labels.
 typedef enum {
     ALWAN_THRESHOLD_OTSU = 0, ALWAN_THRESHOLD_LI = 1, ALWAN_THRESHOLD_YEN = 2,
     ALWAN_THRESHOLD_ISODATA = 3, ALWAN_THRESHOLD_TRIANGLE = 4,
-    ALWAN_THRESHOLD_MINIMUM = 5, ALWAN_THRESHOLD_MEAN = 6
+    ALWAN_THRESHOLD_MINIMUM = 5, ALWAN_THRESHOLD_MEAN = 6,
+    ALWAN_THRESHOLD_MULTI_OTSU = 7
 } alwan_threshold_method;
 
 alwan_status alwan_threshold_{T}(double *threshold_out,
@@ -1340,12 +1361,14 @@ receives `channels` values.
 | `TRIANGLE` | the level furthest below the line from the histogram's peak to the end of its longer tail (Zack et al. 1977): for one bright or dark population on a long tail |
 | `MINIMUM` | the valley between the two maxima of the histogram smoothed by a 3-tap mean until it has two (Prewitt and Mendelsohn 1966): for two clear populations |
 | `MEAN` | the mean |
+| `MULTI_OTSU` | the `classes - 1` levels, ascending, that cut the histogram into `classes` classes of the greatest between-class variance (Liao, Chen and Chung 2001); `threshold_out` receives `classes - 1` values per channel, channel after channel |
 
 | Field of `alwan_threshold_params` | 0 reads as |
 |---|---|
 | `bins` | 256: float data only, 2 to 65536 |
 | `tolerance` | `LI`: half the smallest gap between two values (0.5 on 8-bit data) |
 | `max_iterations` | `MINIMUM`: 10000 smoothing passes |
+| `classes` | `MULTI_OTSU`: 3, scikit-image's default; 2 to 8 |
 
 The histogram is scikit-image's: on 8-bit data one bin per level from the channel's
 minimum to its maximum (`bins` is not used), on float data `bins` equal bins over the
@@ -1359,13 +1382,24 @@ returns its value, as scikit-image's Otsu, Li and triangle do; its Yen, isodata 
 look at a histogram widened by half a unit either side there. `ISODATA` without a level and
 `MINIMUM` without two maxima return `ALWAN_E_RANGE`, where scikit-image raises.
 
+`MULTI_OTSU` is scikit-image's `threshold_multiotsu` (its Cython search ported,
+BSD-3-Clause): every split is tried, so the cost grows as `bins^(classes - 1)`, about 10^8
+trials at 256 bins and 5 classes. The probabilities, moments and variances are in float32
+as scikit-image keeps them, including two of its quirks: the first moment is seeded with
+`p[0]`, and its lookup table's (0, 0) entry is left at 0. scikit-image falls back to a
+search without the table when the table does not fit in memory, whose (0, 0) entry differs;
+this always follows the table. A channel with fewer occupied bins than classes is
+`ALWAN_E_RANGE`, where scikit-image raises. Suite 292 holds it to scikit-image value for
+value, 8-bit, float32 and double, 2 to 5 classes.
+
 ## Local thresholds
 
 ```c
 typedef enum {
     ALWAN_THRESHOLD_LOCAL_GAUSSIAN = 0, ALWAN_THRESHOLD_LOCAL_MEAN = 1,
     ALWAN_THRESHOLD_LOCAL_MEDIAN = 2, ALWAN_THRESHOLD_LOCAL_NIBLACK = 3,
-    ALWAN_THRESHOLD_LOCAL_SAUVOLA = 4
+    ALWAN_THRESHOLD_LOCAL_SAUVOLA = 4, ALWAN_THRESHOLD_LOCAL_WOLF = 5,
+    ALWAN_THRESHOLD_LOCAL_NICK = 6, ALWAN_THRESHOLD_LOCAL_BRADLEY = 7
 } alwan_threshold_local_method;
 
 alwan_status alwan_threshold_local_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -1387,13 +1421,16 @@ Each channel on its own; `out` may be `src`.
 | `MEDIAN` | the block's median, minus `offset` |
 | `NIBLACK` | `m - k s`, the block's mean and standard deviation (Niblack 1986) |
 | `SAUVOLA` | `m (1 + k (s / r - 1))`: lower than the mean where the block is flat, so a page's plain paper stays background (Sauvola and Pietikainen 2000) |
+| `WOLF` | `m - k (m - min - s (m - min) / max s)`, `min` the channel's least value and `max s` its largest local deviation (Wolf and Jolion 2004), as OpenCV computes it |
+| `NICK` | `m + k sqrt(s^2 + mean of squares)` (Khurshid et al. 2009), as OpenCV computes it |
+| `BRADLEY` | the block's mean times `1 - k`, the block cut at the image's edge (Bradley and Roth 2007) |
 
 | Field of `alwan_threshold_local_params` | 0 reads as |
 |---|---|
-| `block_size` | 15; odd, 1 to 1023 |
+| `block_size` | 15; odd, 1 to 1023 (`WOLF`, `NICK` from 3); `BRADLEY`: the paper's width / 8, made odd, at least 3 |
 | `offset` | 0 |
 | `sigma` | `(block_size - 1) / 6`, covering the block to three sigma |
-| `k` | 0.2 (a k of 0 is not expressible; `MEAN` is Niblack's with it) |
+| `k` | 0.2 (a k of 0 is not expressible; `MEAN` is Niblack's with it); `WOLF` 0.5, `NICK` -0.1 and `BRADLEY` 0.15, each paper's |
 | `r` | 1, the dynamic range scikit-image gives float data |
 
 This is scikit-image's `filters.threshold_local` with its gaussian, mean and median
@@ -1407,6 +1444,18 @@ numpy's `reflect` (the edge sample not repeated), summed in double. On float32 d
 `offset`, `k` and `r` are rounded to float first, as numpy does with a Python number. There
 is no 8-bit entry point, since scikit-image converts 8-bit data to double: convert it and,
 for Sauvola, pass `r = 127.5`, the value scikit-image uses for 8-bit data.
+
+`WOLF` and `NICK` are OpenCV's `ximgproc::niBlackThreshold` (`BINARIZATION_WOLF`,
+`BINARIZATION_NICK`), ported with its BSD-style notice: the mean and mean of squares from
+OpenCV's box filters with the edge sample repeated, then every step in float32 as OpenCV
+computes it, whatever the data's precision. A window whose float32 variance rounds below
+zero gets a NaN threshold, as in OpenCV, and so no foreground. OpenCV's 8-bit output rounds
+the threshold to 8 bits (half to even) before comparing; pass the codes as float and round
+the threshold to reproduce it. `BRADLEY` is the paper's arithmetic: an integral image in
+double, the window clipped to the image, `sum / count * (1 - k)`. Suite 292 holds `WOLF` and
+`NICK` to `cv2.ximgproc.niBlackThreshold` (the binary output equal on float32 and 8-bit
+images, the threshold within one float32 step where `THRESH_TRUNC` shows it) and `BRADLEY` to
+the paper's formula in numpy, equal.
 
 ## Gradient
 
@@ -1497,7 +1546,8 @@ mask are not carried.
 ```c
 typedef enum {
     ALWAN_CORNER_HARRIS = 0, ALWAN_CORNER_SHI_TOMASI = 1,
-    ALWAN_CORNER_KITCHEN_ROSENFELD = 2, ALWAN_CORNER_FOERSTNER = 3
+    ALWAN_CORNER_KITCHEN_ROSENFELD = 2, ALWAN_CORNER_FOERSTNER = 3,
+    ALWAN_CORNER_MORAVEC = 4, ALWAN_CORNER_FAST = 5
 } alwan_corner_method;
 
 alwan_status alwan_corner_response_{T}(alwan_{T} *out, size_t out_row_stride,
@@ -1518,6 +1568,8 @@ tracking. `out` may be `src`.
 | `SHI_TOMASI` | the tensor's smaller eigenvalue (Shi and Tomasi 1994) |
 | `KITCHEN_ROSENFELD` | `(Ixx Iy^2 + Iyy Ix^2 - 2 Ixy Ix Iy) / (Ix^2 + Iy^2)`, the level line's curvature times the gradient, from second derivatives without smoothing; 0 where the gradient is |
 | `FOERSTNER` | `det / trace`, the size of the error ellipse (`component` 0), or `4 det / trace^2`, its roundness in [0, 1] (`component` 1); 0 where the trace is |
+| `MORAVEC` | the least sum of squared differences between the patch around the pixel and the patch shifted diagonally within `window_size` (Moravec 1980); 0 within `2 window_size` of the edge. scikit-image tries only shifts that move both row and column, and so does this |
+| `FAST` | where `fast_n` consecutive pixels of the 16 on the radius-3 circle are all brighter than the centre plus `fast_threshold` or all darker than it minus it, the sum of the 16 absolute differences, else 0 (Rosten and Drummond 2006, FAST-n); 0 within 3 of the edge. `alwan_peak_local_max` on the response gives the corners, as scikit-image's `corner_peaks` |
 
 | Field of `alwan_corner_params` | 0 reads as |
 |---|---|
@@ -1526,6 +1578,9 @@ tracking. `out` may be `src`.
 | `harris_normalised` | 0: the `k` form |
 | `eps` | 1e-6 |
 | `component` | 0 |
+| `window_size` | `MORAVEC`: 1, up to 64 |
+| `fast_n` | `FAST`: 12, 1 to 16 |
+| `fast_threshold` | `FAST`: 0.15, in the data's units |
 
 The structure tensor is scikit-image's: scipy's `ndimage.sobel` down the rows and across
 the columns with a zero edge, and the three products of the two derivatives each smoothed
@@ -2318,6 +2373,29 @@ and the next ones.
 | `pad_input` | 0 | as above |
 | `mode` | `CONSTANT` | how the image is padded: `CONSTANT`, `EDGE`, `SYMMETRIC`, `REFLECT`, `WRAP`, numpy.pad's |
 | `constant_value` | 0 | `CONSTANT`'s value |
+| `method` | `NCC` | scikit-image's coefficient, or one of OpenCV's six scores below |
+
+### OpenCV's scores
+
+`method` set to `SQDIFF`, `SQDIFF_NORMED`, `CCORR`, `CCORR_NORMED`, `CCOEFF` or
+`CCOEFF_NORMED` gives `cv::matchTemplate`'s `TM_*` score of the same name instead, for the
+template's top-left corner at each placement, `out` (width - templ_width + 1) x (height -
+templ_height + 1), without padding (`pad_input` must be 0). The best match is the smallest
+`SQDIFF*` value and the largest of the others. OpenCV's normalisation
+(`common_matchTemplate`) is followed step for step in double: integral images of the image
+and its square, the template's mean and deviation, the guard that scores 0 on a window
+flatter than 10 FLT_EPSILON of its energy, the snap of a ratio just over 1 to +/-1, a flat
+template scoring 1 everywhere for `CCOEFF_NORMED`. The correlation is exact here and rounded
+to float32 where OpenCV keeps it; OpenCV computes it by a DFT, float32 for 8-bit images and
+double for float32 ones, and the result is rounded to float32 as OpenCV's is. Suite 292
+holds the six to `cv2.matchTemplate` on a direct-sized and an FFT-sized template: float32
+images equal, 8-bit images within 2.2e-5 of the score's scale (OpenCV's float32 DFT). On a
+nearly flat window `CCOEFF_NORMED`'s numerator is the difference of two large, nearly equal
+sums, so one float32 step of the stored correlation moves the score by up to a few 1e-4.
+On plate 158's frame (a 32 x 32 template, sums near 4e7, the worst window's deviation 0.6
+code values) alwan differs from cv2's 8-bit result by 3.8e-4 and from cv2 run on the same
+values as float32 (a double DFT) by 6.7e-5, while cv2's two paths differ from each other by
+3.8e-4; 2,969 of the 158,497 scores differ from the 8-bit result by more than 1e-5.
 
 As scikit-image, the image is padded by the template's size on every side whatever
 `pad_input` says, so the mode matters at the edges in both. The window sums and sums of

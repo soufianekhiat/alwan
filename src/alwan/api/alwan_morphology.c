@@ -664,6 +664,296 @@ static alwan_status alwan_mo_local_extrema(double *a, size_t w, size_t h, size_t
     return ALWAN_OK;
 }
 
+/* ---- MEDIAL_AXIS, CONVEX_HULL, CONVEX_HULL_OBJECT ------------------------------------
+ * Ported from scikit-image 0.26 (morphology/_skeletonize.py medial_axis and
+ * _skeletonize_various_cy.pyx _skeletonize_loop; morphology/convex_hull.py and
+ * _convex_hull.pyx possible_hull; _shared/geometry.pyx point_in_polygon; BSD-3-Clause,
+ * Copyright the scikit-image team). */
+
+/* The 3 x 3 configuration index of p in m (w x h, 0/1), bit k for row k / 3 - 1, column
+ * k % 3 - 1, pixels outside the image 0, as scikit-image's tables number it. */
+static unsigned alwan_mo_index9(unsigned char const *m, size_t w, size_t h, size_t y, size_t x) {
+    unsigned acc = 0, bit = 1;
+    size_t dy, dx;   /* the neighbour at (y + dy - 1, x + dx - 1) */
+    for (dy = 0; dy < 3; dy++)
+        for (dx = 0; dx < 3; dx++, bit <<= 1) {
+            if (y + dy < 1 || x + dx < 1 || y + dy - 1 >= h || x + dx - 1 >= w) continue;
+            if (m[(y + dy - 1) * w + (x + dx - 1)]) acc |= bit;
+        }
+    return acc;
+}
+
+/* 8-connected components of a 3 x 3 pattern (bit k at row k / 3, column k % 3). */
+static int alwan_mo_comp9(unsigned idx) {
+    int seen = 0, comps = 0, k;
+    for (k = 0; k < 9; k++) {
+        int stack[9], sp = 0;
+        if (!(idx >> k & 1) || (seen >> k & 1)) continue;
+        comps++;
+        stack[sp++] = k;
+        seen |= 1 << k;
+        while (sp) {
+            int const c = stack[--sp], r = c / 3, q = c % 3;
+            int dr, dq;
+            for (dr = -1; dr <= 1; dr++)
+                for (dq = -1; dq <= 1; dq++) {
+                    int const rr = r + dr, qq = q + dq, n = rr * 3 + qq;
+                    if (rr < 0 || rr > 2 || qq < 0 || qq > 2) continue;
+                    if ((idx >> n & 1) && !(seen >> n & 1)) {
+                        seen |= 1 << n;
+                        stack[sp++] = n;
+                    }
+                }
+        }
+    }
+    return comps;
+}
+
+static int alwan_mo_popcount9(unsigned idx) {
+    int c = 0;
+    while (idx) c += (int)(idx & 1u), idx >>= 1;
+    return c;
+}
+
+typedef struct {
+    double dist;
+    int corner;
+    size_t pos;
+} alwan_mo_ma;
+
+static int alwan_mo_ma_cmp(void const *pa, void const *pb) {
+    alwan_mo_ma const *a = (alwan_mo_ma const *)pa, *b = (alwan_mo_ma const *)pb;
+    if (a->dist != b->dist) return a->dist < b->dist ? -1 : 1;
+    if (a->corner != b->corner) return a->corner < b->corner ? -1 : 1;
+    return a->pos < b->pos ? -1 : a->pos > b->pos ? 1 : 0;
+}
+
+/* MEDIAL_AXIS on every channel of a: kept pixels keep their value (or their distance). */
+static alwan_status alwan_mo_medial(double *a, size_t w, size_t h, size_t ch, int want_distance) {
+    size_t const n = w * h;
+    unsigned char table[512];
+    unsigned char *m = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size(n, 2), 1), *res;
+    double *dist = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
+    alwan_mo_ma *ord = (alwan_mo_ma *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(alwan_mo_ma)), sizeof(double));
+    alwan_distance_params dp;
+    size_t c, i, x, y;
+    unsigned idx;
+    if (!m || !dist || !ord) {
+        ALWAN_FREE(ord);
+        ALWAN_FREE(dist);
+        ALWAN_FREE(m);
+        return ALWAN_E_NOMEM;
+    }
+    res = m + n;
+    for (idx = 0; idx < 512; idx++) {
+        int const centre = (idx & 16u) != 0;
+        int const split = alwan_mo_comp9(idx) != alwan_mo_comp9(idx & ~16u);
+        table[idx] = (unsigned char)(centre && (split || alwan_mo_popcount9(idx) < 3));
+    }
+    memset(&dp, 0, sizeof(dp));
+    for (c = 0; c < ch; c++) {
+        size_t nf = 0, k;
+        alwan_status st;
+        for (i = 0; i < n; i++) m[i] = (unsigned char)(a[i * ch + c] != 0.0);
+        st = alwan_distance_transform_u8(dist, w * sizeof(double), m, w, 1, w, h, ALWAN_DISTANCE_EUCLIDEAN, &dp);
+        if (st != ALWAN_OK) {
+            ALWAN_FREE(ord);
+            ALWAN_FREE(dist);
+            ALWAN_FREE(m);
+            return st;
+        }
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++) {
+                size_t const pos = y * w + x;
+                if (!m[pos]) continue;
+                ord[nf].dist = dist[pos];
+                ord[nf].corner = 9 - alwan_mo_popcount9(alwan_mo_index9(m, w, h, y, x));
+                ord[nf].pos = pos;
+                nf++;
+            }
+        qsort(ord, nf, sizeof(alwan_mo_ma), alwan_mo_ma_cmp);
+        memcpy(res, m, n);
+        for (k = 0; k < nf; k++) {
+            size_t const pos = ord[k].pos;
+            res[pos] = table[alwan_mo_index9(res, w, h, pos / w, pos % w)];
+        }
+        for (i = 0; i < n; i++) {
+            double *v = &a[i * ch + c];
+            if (!res[i]) *v = 0.0;
+            else if (want_distance) *v = dist[i];
+        }
+    }
+    ALWAN_FREE(ord);
+    ALWAN_FREE(dist);
+    ALWAN_FREE(m);
+    return ALWAN_OK;
+}
+
+/* scikit-image's point_in_polygon on (row x, column y): 0 outside, 1 inside, 2 vertex, 3 edge. */
+static int alwan_mo_pip(double const *xp, double const *yp, size_t nv, double x, double y) {
+    double const eps = 1e-12;
+    double x1 = xp[nv - 1] - x, y1 = yp[nv - 1] - y;
+    unsigned l_cross = 0, r_cross = 0;
+    size_t i;
+    for (i = 0; i < nv; i++) {
+        double const x0 = xp[i] - x, y0 = yp[i] - y;
+        if (-eps < x0 && x0 < eps && -eps < y0 && y0 < eps) return 2;
+        if ((y0 > 0) != (y1 > 0) && (x0 * y1 - x1 * y0) / (y1 - y0) > 0) r_cross++;
+        if ((y0 < 0) != (y1 < 0) && (x0 * y1 - x1 * y0) / (y1 - y0) < 0) l_cross++;
+        x1 = x0;
+        y1 = y0;
+    }
+    if ((r_cross & 1) != (l_cross & 1)) return 3;
+    return (r_cross & 1) ? 1 : 0;
+}
+
+static int alwan_mo_pt_cmp(void const *pa, void const *pb) {
+    long long const *a = (long long const *)pa, *b = (long long const *)pb;
+    if (a[0] != b[0]) return a[0] < b[0] ? -1 : 1;
+    return a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : 0;
+}
+
+static long long alwan_mo_cross(long long const *o, long long const *a, long long const *b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+}
+
+/* The convex hull of mask m (w x h, 0/1) into hull (1 inside or on it, else 0). With
+ * P = 8 (w + h), the most candidate points: pts holds 2 P long longs, hv 2 (P + 2), vx and
+ * vy P + 2 doubles each. */
+static void alwan_mo_hull(unsigned char *hull, unsigned char const *m, size_t w, size_t h, long long *pts, long long *hv, double *vx,
+                          double *vy) {
+    size_t np = 0, nh = 0, i, k, x, y;
+    long long rmin, rmax, cmin, cmax;
+    memset(hull, 0, w * h);
+    /* possible_hull: the first and last pixel of every row and column, each as the four
+     * midpoints of its edges, in doubled coordinates */
+    for (y = 0; y < h; y++) {
+        size_t first = w, last = w;
+        for (x = 0; x < w; x++)
+            if (m[y * w + x]) {
+                if (first == w) first = x;
+                last = x;
+            }
+        if (first == w) continue;
+        for (k = 0; k < 2; k++) {
+            long long const r = 2 * (long long)y, q = 2 * (long long)(k ? last : first);
+            long long const add[4][2] = { { r - 1, q }, { r + 1, q }, { r, q - 1 }, { r, q + 1 } };
+            size_t j;
+            for (j = 0; j < 4; j++) pts[2 * np] = add[j][0], pts[2 * np + 1] = add[j][1], np++;
+        }
+    }
+    for (x = 0; x < w; x++) {
+        size_t first = h, last = h;
+        for (y = 0; y < h; y++)
+            if (m[y * w + x]) {
+                if (first == h) first = y;
+                last = y;
+            }
+        if (first == h) continue;
+        for (k = 0; k < 2; k++) {
+            long long const r = 2 * (long long)(k ? last : first), q = 2 * (long long)x;
+            long long const add[4][2] = { { r - 1, q }, { r + 1, q }, { r, q - 1 }, { r, q + 1 } };
+            size_t j;
+            for (j = 0; j < 4; j++) pts[2 * np] = add[j][0], pts[2 * np + 1] = add[j][1], np++;
+        }
+    }
+    if (np == 0) return;
+    /* Andrew's monotone chain, collinear points dropped: the same polygon Qhull returns */
+    qsort(pts, np, 2 * sizeof(long long), alwan_mo_pt_cmp);
+    for (i = 0; i < np; i++) {
+        while (nh >= 2 && alwan_mo_cross(hv + 2 * (nh - 2), hv + 2 * (nh - 1), pts + 2 * i) <= 0) nh--;
+        hv[2 * nh] = pts[2 * i], hv[2 * nh + 1] = pts[2 * i + 1], nh++;
+    }
+    {
+        size_t const lower = nh + 1;
+        for (i = np - 1; i-- > 0;) {
+            while (nh >= lower && alwan_mo_cross(hv + 2 * (nh - 2), hv + 2 * (nh - 1), pts + 2 * i) <= 0) nh--;
+            hv[2 * nh] = pts[2 * i], hv[2 * nh + 1] = pts[2 * i + 1], nh++;
+        }
+    }
+    nh--;   /* the last point repeats the first */
+    rmin = rmax = hv[0];
+    cmin = cmax = hv[1];
+    for (i = 0; i < nh; i++) {
+        vx[i] = (double)hv[2 * i] / 2.0;
+        vy[i] = (double)hv[2 * i + 1] / 2.0;
+        if (hv[2 * i] < rmin) rmin = hv[2 * i];
+        if (hv[2 * i] > rmax) rmax = hv[2 * i];
+        if (hv[2 * i + 1] < cmin) cmin = hv[2 * i + 1];
+        if (hv[2 * i + 1] > cmax) cmax = hv[2 * i + 1];
+    }
+    for (y = 0; y < h; y++) {
+        if (2 * (long long)y < rmin || 2 * (long long)y > rmax) continue;   /* outside the box: outside */
+        for (x = 0; x < w; x++) {
+            if (2 * (long long)x < cmin || 2 * (long long)x > cmax) continue;
+            hull[y * w + x] = (unsigned char)(alwan_mo_pip(vx, vy, nh, (double)y, (double)x) >= 1);
+        }
+    }
+}
+
+/* CONVEX_HULL (per_object 0) or CONVEX_HULL_OBJECT on every channel of a. */
+static alwan_status alwan_mo_convex(double *a, size_t w, size_t h, size_t ch, int per_object, int conn8) {
+    size_t const n = w * h, P = 8 * (w + h);
+    unsigned char *m = (unsigned char *)ALWAN_ALLOC(alwan_safe_array_size(n, 4), 1), *hull, *obj, *acc;
+    long long *pts = (long long *)ALWAN_ALLOC(alwan_safe_array_size(4 * P + 4, sizeof(long long)), sizeof(long long)), *hv;
+    double *vx = (double *)ALWAN_ALLOC(alwan_safe_array_size(2 * P + 4, sizeof(double)), sizeof(double)), *vy;
+    size_t *lab = per_object ? (size_t *)ALWAN_ALLOC(alwan_safe_array_size(n, 2 * sizeof(size_t)), sizeof(size_t)) : NULL, *stack;
+    size_t c, i;
+    if (!m || !pts || !vx || (per_object && !lab)) {
+        ALWAN_FREE(lab);
+        ALWAN_FREE(vx);
+        ALWAN_FREE(pts);
+        ALWAN_FREE(m);
+        return ALWAN_E_NOMEM;
+    }
+    hull = m + n;
+    obj = hull + n;
+    acc = obj + n;
+    hv = pts + 2 * P;
+    vy = vx + P + 2;
+    stack = lab ? lab + n : NULL;
+    for (c = 0; c < ch; c++) {
+        for (i = 0; i < n; i++) m[i] = (unsigned char)(a[i * ch + c] != 0.0);
+        if (!per_object) {
+            alwan_mo_hull(acc, m, w, h, pts, hv, vx, vy);
+        } else {
+            size_t nl = 0;
+            memset(acc, 0, n);
+            for (i = 0; i < n; i++) lab[i] = 0;
+            for (i = 0; i < n; i++) {
+                size_t sp = 0, j;
+                if (!m[i] || lab[i]) continue;
+                nl++;
+                memset(obj, 0, n);
+                lab[i] = nl;
+                stack[sp++] = i;
+                while (sp) {
+                    size_t const q = stack[--sp], qy = q / w, qx = q % w;
+                    long dy, dx;
+                    obj[q] = 1;
+                    for (dy = -1; dy <= 1; dy++)
+                        for (dx = -1; dx <= 1; dx++) {
+                            long const yy = (long)qy + dy, xx = (long)qx + dx;
+                            size_t r;
+                            if ((dy == 0 && dx == 0) || (!conn8 && dy != 0 && dx != 0)) continue;
+                            if (yy < 0 || xx < 0 || yy >= (long)h || xx >= (long)w) continue;
+                            r = (size_t)yy * w + (size_t)xx;
+                            if (m[r] && !lab[r]) lab[r] = nl, stack[sp++] = r;
+                        }
+                }
+                alwan_mo_hull(hull, obj, w, h, pts, hv, vx, vy);
+                for (j = 0; j < n; j++) acc[j] |= hull[j];
+            }
+        }
+        for (i = 0; i < n; i++) a[i * ch + c] = acc[i] ? 1.0 : 0.0;
+    }
+    ALWAN_FREE(lab);
+    ALWAN_FREE(vx);
+    ALWAN_FREE(pts);
+    ALWAN_FREE(m);
+    return ALWAN_OK;
+}
+
 static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                                  alwan_morphology_method method, alwan_morphology_params const *params,
                                  int kind /* 0 f64, 1 f32, 2 u8 */) {
@@ -678,7 +968,7 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
     size_t x, y, i;
     if (!out || !src || w == 0 || h == 0 || ch == 0 || ch > 4 || n / ch / w != h) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < w) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_LOCAL_MINIMA) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_MORPHOLOGY_CONVEX_HULL_OBJECT) return ALWAN_E_INVALID;
     if ((method == ALWAN_MORPHOLOGY_H_MAXIMA || method == ALWAN_MORPHOLOGY_H_MINIMA) &&
         (p->h == 0.0 || !(p->h == p->h))) return ALWAN_E_INVALID;   /* h = 0 is ambiguous, as scikit-image says */
     if ((method == ALWAN_MORPHOLOGY_H_MAXIMA || method == ALWAN_MORPHOLOGY_H_MINIMA) && p->h < 0.0) return ALWAN_E_RANGE;
@@ -759,6 +1049,18 @@ static alwan_status alwan_mo_run(void *out, size_t out_rs, void const *src, size
                  ? alwan_mo_hextrema(a, w, h, ch, off, no, p->h, method == ALWAN_MORPHOLOGY_H_MINIMA, kind)
                  : alwan_mo_local_extrema(a, w, h, ch, off, no, method == ALWAN_MORPHOLOGY_LOCAL_MINIMA, p->exclude_borders);
         ALWAN_FREE(off);
+        if (st != ALWAN_OK) {
+            ALWAN_FREE(a);
+            return st;
+        }
+        break;
+    }
+    case ALWAN_MORPHOLOGY_MEDIAL_AXIS:
+    case ALWAN_MORPHOLOGY_CONVEX_HULL:
+    case ALWAN_MORPHOLOGY_CONVEX_HULL_OBJECT: {
+        alwan_status const st = method == ALWAN_MORPHOLOGY_MEDIAL_AXIS
+                                    ? alwan_mo_medial(a, w, h, ch, p->medial_axis_distance)
+                                    : alwan_mo_convex(a, w, h, ch, method == ALWAN_MORPHOLOGY_CONVEX_HULL_OBJECT, p->connectivity != 4);
         if (st != ALWAN_OK) {
             ALWAN_FREE(a);
             return st;

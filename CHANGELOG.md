@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+### Added: image-analysis methods (corners, thresholds, template scores, medial axis, hulls)
+
+- **Corners:** `ALWAN_CORNER_MORAVEC` (Moravec 1980, `window_size`) and `ALWAN_CORNER_FAST`
+  (Rosten and Drummond 2006, `fast_n` and `fast_threshold`) in `alwan_corner_response`,
+  ported from scikit-image 0.26's `feature/corner_cy.pyx` (BSD-3-Clause), equal to its
+  `corner_moravec` and `corner_fast` (suite 292).
+- **Multi-Otsu:** `ALWAN_THRESHOLD_MULTI_OTSU` in `alwan_threshold`, `classes` 2 to 8,
+  `classes - 1` thresholds per channel: scikit-image's `threshold_multiotsu` search ported
+  (`filters/_multiotsu.pyx`), equal on 8-bit, float32 and double data.
+- **Local thresholds:** `ALWAN_THRESHOLD_LOCAL_WOLF` (Wolf and Jolion 2004) and `_NICK`
+  (Khurshid et al. 2009), ported from opencv_contrib's `ximgproc/src/niblack_thresholding.cpp`
+  (3-clause BSD, Kueng, Vogel and Lysgaard 2014; notice in the source and in `licenses/`):
+  the binary output equal to `cv2.ximgproc.niBlackThreshold`, the threshold within one float32
+  step. `ALWAN_THRESHOLD_LOCAL_BRADLEY` (Bradley and Roth 2007), the paper's integral-image
+  mean, equal to its formula in numpy.
+- **Template scores:** `alwan_template_params.method` selects OpenCV's six `TM_*` scores in
+  `alwan_match_template` (`imgproc/src/templmatch.cpp`, Apache-2.0); 0 keeps scikit-image's
+  coefficient. Equal to `cv2.matchTemplate` on float32 images, within 2.2e-5 of the score's
+  scale on 8-bit ones, where OpenCV correlates by a float32 DFT; on a nearly flat window
+  `CCOEFF_NORMED` can differ by a few 1e-4, one float32 step of the stored correlation over a
+  small deviation, as much as cv2's own 8-bit and float32 paths differ.
+- **Morphology:** `ALWAN_MORPHOLOGY_MEDIAL_AXIS` (with `medial_axis_distance`),
+  `_CONVEX_HULL` and `_CONVEX_HULL_OBJECT`, ported from scikit-image's `medial_axis`,
+  `convex_hull_image` and `convex_hull_object`, equal pixel for pixel; the medial axis breaks
+  ties in raster order where scikit-image uses a seeded random permutation.
+
 ### Added: resize and warp kernels
 
 - **Seven resize kernels** in `alwan_resize`, in Pillow's resampling scheme: `LANCZOS2`,
