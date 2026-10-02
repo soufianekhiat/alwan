@@ -74,6 +74,12 @@ photon is at a longer wavelength, so the energy given back is never more than th
 `alwan_fluorescent_get_info` reports the worst column of any matrix as `photon_balance_max`
 (a measured matrix can come out slightly over 1); it does not refuse one.
 
+`alwan_fluorescent_matrix_{T}` copies the Donaldson matrix out: `count` x `count` values
+(`count` from `get_info`), row o the emitted wavelength and column i the incident one, so
+the diagonal is the reflectance and the entries above it the reradiation. Rows are
+`row_stride` bytes apart, 0 for packed. `alwan_fluorescent_destroy` frees a material
+made by `alwan_fluorescent_create`; pass the same `ctx` (or NULL for both).
+
 ## Radiance and colour
 
 `alwan_fluorescent_radiance_{T}` gives `L`, `beta_T` and the fluorescent part of `beta_T`
