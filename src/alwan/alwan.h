@@ -3097,33 +3097,164 @@ alwan_status alwan_filter_u8(unsigned char *out, size_t out_row_stride, unsigned
  * angle of CC_max, as scikit-image computes them. Transforms in double for every pixel type;
  * u8 values are read as they are. Suite 248.
  *
+ * ALWAN_REGISTER_ECC is OpenCV 5.0.0's findTransformECC (Evangelidis and Psarakis, "Parametric
+ * Image Alignment Using Enhanced Correlation Coefficient Maximization", IEEE TPAMI 30(10),
+ * 2008), ported from video/src/ecc.cpp (Intel's licence, notice in api/alwan_optical_flow.c):
+ * the warp that maximises the enhanced correlation coefficient between the reference (the
+ * template) and the moving image (the input), found by Gauss-Newton iterations on both images
+ * blurred by a gauss_filter_size Gaussian. motion picks the warp: a translation, a rotation and
+ * translation (EUCLIDEAN), an affine map or a homography. The images are read as float (8-bit
+ * values as they are, 0 to 255; double rounded to float), as OpenCV converts them, and the
+ * whole method runs in OpenCV's float arithmetic: its Gaussian blur, its float bilinear and
+ * nearest warps (vector blocks of 16 columns with fused multiply-adds, the rest without),
+ * its block dot products in float and its small inverses, so warp agrees with
+ * cv2.findTransformECC to float rounding (suite 300). The masks are optional, non-zero for a
+ * valid pixel, as findTransformECCWithMask's template and input masks.
+ *
+ * ECC fills warp with the 3 x 3 map from a reference pixel (x, y, 1) to its moving-image point
+ * (homogeneous for HOMOGRAPHY; the last row 0 0 1 otherwise), correlation with the coefficient
+ * of the warp before the last update (OpenCV's return value), iterations with the updates made,
+ * shift with minus the map's translation as (rows, columns), so that a pure translation reads
+ * as phase correlation reports it, and error with 1 - correlation. It stops after
+ * max_iterations updates or once the coefficient moves by less than epsilon. PHASE_CORRELATION
+ * fills warp with the translation it found (an identity with -shift in the last column),
+ * correlation and iterations with 0.
+ *
  * ALWAN_E_INVALID for a NULL pointer, a zero size, a stride shorter than a row, or an
- * unknown method or normalization; ALWAN_E_RANGE when either image has no energy or the
- * input is not finite. */
+ * unknown method, normalization or motion, or an even gauss_filter_size; ALWAN_E_RANGE when
+ * either image has no energy or the input is not finite, or (ECC) when the iterations stop
+ * converging (OpenCV's StsNoConv: the images are uncorrelated or do not overlap) or the
+ * coefficient is NaN; ALWAN_E_NOMEM. */
 typedef enum {
-    ALWAN_REGISTER_PHASE_CORRELATION = 0
+    ALWAN_REGISTER_PHASE_CORRELATION = 0,
+    ALWAN_REGISTER_ECC = 1
 } alwan_register_method;
+
+/* ECC's warp: OpenCV's MOTION_AFFINE (its default, and 0 here), MOTION_TRANSLATION,
+ * MOTION_EUCLIDEAN and MOTION_HOMOGRAPHY. */
+typedef enum {
+    ALWAN_REGISTER_MOTION_AFFINE = 0,
+    ALWAN_REGISTER_MOTION_TRANSLATION = 1,
+    ALWAN_REGISTER_MOTION_EUCLIDEAN = 2,
+    ALWAN_REGISTER_MOTION_HOMOGRAPHY = 3
+} alwan_register_motion;
 
 typedef enum {
     ALWAN_REGISTER_NORMALIZE_PHASE = 0,  /* divide the cross-power spectrum by its modulus */
     ALWAN_REGISTER_NORMALIZE_NONE = 1    /* plain cross-correlation */
 } alwan_register_normalization;
 
-/* A zero field is its default. */
+/* A zero field is its default. Zero the struct before setting fields. */
 typedef struct {
-    size_t upsample_factor;              /* 1 / precision in pixels; 0 reads as 1, whole pixels */
-    alwan_register_normalization normalization;
+    size_t upsample_factor;              /* PHASE_CORRELATION: 1 / precision in pixels; 0 reads as 1 */
+    alwan_register_normalization normalization;  /* PHASE_CORRELATION */
+    alwan_register_motion motion;        /* ECC: 0 is AFFINE */
+    size_t max_iterations;               /* ECC: 0 reads as 50, cv2's default criteria */
+    double epsilon;                      /* ECC: the smallest change of the coefficient that keeps
+                                          * iterating; 0 reads as 0.001, negative never stops early */
+    size_t gauss_filter_size;            /* ECC: the blur's odd size; 0 reads as 5, 1 is no blur */
+    double const *initial_warp;          /* ECC: 9 values, row-major, as warp below; NULL is the identity */
+    unsigned char const *reference_mask; /* ECC: optional, width x height, non-zero valid */
+    size_t reference_mask_row_stride;
+    unsigned char const *moving_mask;    /* ECC: optional */
+    size_t moving_mask_row_stride;
 } alwan_register_params;
 
 typedef struct {
     double shift[2];                     /* rows, columns */
     double error;                        /* 0 for a perfect match */
-    double phasediff;                    /* global phase difference, radians */
+    double phasediff;                    /* PHASE_CORRELATION: global phase difference, radians */
+    double warp[9];                      /* reference pixel to moving point, row-major 3 x 3 */
+    double correlation;                  /* ECC: the enhanced correlation coefficient */
+    size_t iterations;                   /* ECC: the updates made */
 } alwan_register_result;
 
 alwan_status alwan_register_f32(alwan_register_result *out, alwan_f32 const *reference, size_t reference_row_stride, alwan_f32 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
 alwan_status alwan_register_f64(alwan_register_result *out, alwan_f64 const *reference, size_t reference_row_stride, alwan_f64 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
 alwan_status alwan_register_u8(alwan_register_result *out, unsigned char const *reference, size_t reference_row_stride, unsigned char const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_register_method method, alwan_register_params const *params);
+
+/* Dense optical flow: for every pixel of the reference image, the displacement (dx, dy) to
+ * the matching point of the moving image, reference(x, y) ~ moving(x + dx, y + dy). Both
+ * images are one channel, width x height (at least 2 x 2), row strides in bytes; flow is
+ * width x height pairs (dx, dy), its rows flow_row_stride bytes apart (0 for packed). This is
+ * cv2.calcOpticalFlowFarneback(reference, moving)'s flow and scikit-image's (row, column)
+ * flow with its components swapped.
+ *
+ *   TVL1       scikit-image 0.26's registration.optical_flow_tvl1 (Zach, Pock and Bischof
+ *              2007; Wedel et al. 2009; Perez, Meinhardt-Llopis and Facciolo 2013, IPOL), its
+ *              TV-L1 solver on scikit-image's coarse-to-fine pyramid (factor 2, at most 10
+ *              levels, down to 16 pixels), ported with its arithmetic (BSD-3, notice in
+ *              api/alwan_optical_flow.c)
+ *   ILK        scikit-image's optical_flow_ilk (Le Besnerais and Champagnat 2005), iterative
+ *              Lucas-Kanade with a uniform or Gaussian window, on the same pyramid
+ *   FARNEBACK  OpenCV 5.0.0's calcOpticalFlowFarneback (Farneback 2003, "Two-Frame Motion
+ *              Estimation Based on Polynomial Expansion"), ported from video/src/optflowgf.cpp
+ *              (BSD-3, notice in the same file) with its float arithmetic, its Gaussian blur and
+ *              its bilinear resize
+ *
+ * Precision: TVL1 and ILK run in the entry point's precision (f32 is scikit-image's default
+ * dtype=float32, f64 its dtype=float64); the u8 entry point reads v * (1/255) in float32, as
+ * scikit-image converts 8-bit images. FARNEBACK runs in float whatever the entry point, as
+ * OpenCV does, and reads 8-bit values as they are (0 to 255), as OpenCV converts them; its
+ * result depends on the intensity scale through the 1e-3 it adds to each 2 x 2 determinant.
+ * Suite 300 holds TVL1 and ILK to scikit-image at float64 and float32 and FARNEBACK to cv2.
+ *
+ * ALWAN_E_INVALID for a NULL pointer, a size under 2 x 2, a stride shorter than a row, an
+ * unknown method, a pyr_scale not in (0, 1), an even or zero window_size, a poly_n other than
+ * 5 or 7 (OpenCV's two), or a negative attachment, tightness or tolerance; ALWAN_E_RANGE for a
+ * value that is not finite; ALWAN_E_NOMEM. */
+typedef enum {
+    ALWAN_OPTICAL_FLOW_TVL1 = 0,
+    ALWAN_OPTICAL_FLOW_ILK = 1,
+    ALWAN_OPTICAL_FLOW_FARNEBACK = 2
+} alwan_optical_flow_method;
+
+/* A zero field is its default (the defaults of the scikit-image and OpenCV calls). Zero the
+ * struct before setting fields. */
+typedef struct {
+    double attachment;          /* TVL1: lambda; 0 reads as 15 */
+    double tightness;           /* TVL1: theta; 0 reads as 0.3 */
+    double tolerance;           /* TVL1: the stopping test on the change of the flow; 0 reads as 1e-4 */
+    size_t num_iter;            /* TVL1: fixed-point iterations per warp; 0 reads as 10 */
+    size_t num_warp;            /* TVL1, ILK: warps per level; 0 reads as 5 (TVL1) or 10 (ILK) */
+    int prefilter;              /* TVL1, ILK: non-zero takes a 3 x 3 median of the flow before each warp */
+    size_t radius;              /* ILK: the window's radius; 0 reads as 7 */
+    int gaussian;               /* ILK: non-zero integrates with a Gaussian (sigma (2 radius + 1) / 4),
+                                 * 0 with a uniform window */
+    double pyr_scale;           /* FARNEBACK: each level's size against the one below; 0 reads as 0.5 */
+    int levels;                 /* FARNEBACK: pyramid levels above the image; 0 reads as 5, -1 is none */
+    size_t window_size;         /* FARNEBACK: the averaging window, odd; 0 reads as 13 */
+    size_t iterations;          /* FARNEBACK: per level; 0 reads as 10 */
+    int poly_n;                 /* FARNEBACK: the polynomial expansion's neighbourhood, 5 or 7; 0 reads as 5 */
+    double poly_sigma;          /* FARNEBACK: its Gaussian; 0 reads as 1.1 */
+    int gaussian_window;        /* FARNEBACK: non-zero is OPTFLOW_FARNEBACK_GAUSSIAN */
+    int use_initial_flow;       /* FARNEBACK: non-zero reads flow as the starting estimate
+                                 * (OPTFLOW_USE_INITIAL_FLOW) */
+} alwan_optical_flow_params;
+
+alwan_status alwan_optical_flow_f32(alwan_f32 *flow, size_t flow_row_stride, alwan_f32 const *reference, size_t reference_row_stride, alwan_f32 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_optical_flow_method method, alwan_optical_flow_params const *params);
+alwan_status alwan_optical_flow_f64(alwan_f64 *flow, size_t flow_row_stride, alwan_f64 const *reference, size_t reference_row_stride, alwan_f64 const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_optical_flow_method method, alwan_optical_flow_params const *params);
+alwan_status alwan_optical_flow_u8(alwan_f32 *flow, size_t flow_row_stride, unsigned char const *reference, size_t reference_row_stride, unsigned char const *moving, size_t moving_row_stride, size_t width, size_t height, alwan_optical_flow_method method, alwan_optical_flow_params const *params);
+
+/* An image moved by a flow: out(x, y) = src(x + dx, y + dy), so warping the moving image by
+ * its flow brings it onto the reference. channels 1 to 4, all images width x height. The
+ * points come from alwan_warp's FIELD map, one lattice point a pixel, clamped to the image as
+ * scikit-image's warp(mode='edge') clamps them, and read by its bilinear sampler.
+ * ALWAN_E_INVALID for a NULL pointer, a zero size, more than 4 channels or a short stride;
+ * ALWAN_E_NOMEM. */
+alwan_status alwan_optical_flow_warp_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f32 const *flow, size_t flow_row_stride);
+alwan_status alwan_optical_flow_warp_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_f64 const *flow, size_t flow_row_stride);
+
+/* A flow as colour, the Middlebury colour wheel (Baker, Scharstein, Lewis, Roth, Black and
+ * Szeliski, "A Database and Evaluation Methodology for Optical Flow", IJCV 92(1), 2011): the
+ * direction picks the hue on a wheel of 55 steps (red to yellow 15, yellow to green 6, green to
+ * cyan 4, cyan to blue 11, blue to magenta 13, magenta to red 6), the length over max_radius
+ * the saturation, white at rest; past max_radius the colour is darkened to 75%. max_radius 0
+ * reads as the field's longest vector (1 when the field is all zero). out holds three values a
+ * pixel in [0, 1], display-encoded as the wheel's 8-bit table is. ALWAN_E_INVALID for a NULL
+ * pointer, a zero size, a short stride or a negative max_radius. */
+alwan_status alwan_optical_flow_to_rgb_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *flow, size_t flow_row_stride, size_t width, size_t height, double max_radius);
+alwan_status alwan_optical_flow_to_rgb_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *flow, size_t flow_row_stride, size_t width, size_t height, double max_radius);
 
 /* Template matching by normalised cross-correlation, as scikit-image's match_template
  * (suite 251): at every placement, the correlation coefficient between the template and the

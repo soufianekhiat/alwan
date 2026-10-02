@@ -708,3 +708,10 @@ finish:
     if (cluster0) ALWAN_FREE(cluster0);
     return st;
 }
+
+/* cv::resize of one packed float plane to dw x dh, for the other OpenCV ports
+ * (alwan_optical_flow.c): INTER_LINEAR, its fast 2x2 area path at a factor of exactly 2, a
+ * copy at the same size. 0 when a buffer cannot be had. */
+int alwan__cv_resize_f32_plane(float *dst, int dw, int dh, float const *src, int sw, int sh) {
+    return amf_resize(dst, dw, dh, src, sw, sh, (double)dw / (double)sw, (double)dh / (double)sh);
+}

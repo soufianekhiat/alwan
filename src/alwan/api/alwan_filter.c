@@ -390,6 +390,12 @@ static alwan_status alwan_fl_run(void *out, size_t out_rs, void const *src, size
     return st;
 }
 
+/* alwan_optical_flow.c's way in, ungated by precision: kind 0 f64, 1 f32 */
+alwan_status alwan__filter_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t channels, size_t width,
+                               size_t height, alwan_filter_method method, alwan_filter_params const *params, int kind) {
+    return alwan_fl_run(out, out_rs, src, src_rs, channels, width, height, method, params, kind);
+}
+
 #if ALWAN_WITH_F64_FACADE
 alwan_status alwan_filter_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, size_t channels,
                               size_t width, size_t height, alwan_filter_method method, alwan_filter_params const *params) {

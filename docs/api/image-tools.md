@@ -319,10 +319,23 @@ over 2^20 pixels, `DOG`'s high sigma under the low one on an axis, a cut-off out
 ## Registration
 
 ```c
-typedef enum { ALWAN_REGISTER_PHASE_CORRELATION = 0 } alwan_register_method;
+typedef enum { ALWAN_REGISTER_PHASE_CORRELATION = 0, ALWAN_REGISTER_ECC = 1 } alwan_register_method;
+typedef enum {
+    ALWAN_REGISTER_MOTION_AFFINE = 0, ALWAN_REGISTER_MOTION_TRANSLATION = 1,
+    ALWAN_REGISTER_MOTION_EUCLIDEAN = 2, ALWAN_REGISTER_MOTION_HOMOGRAPHY = 3
+} alwan_register_motion;
 typedef enum { ALWAN_REGISTER_NORMALIZE_PHASE = 0, ALWAN_REGISTER_NORMALIZE_NONE = 1 } alwan_register_normalization;
-typedef struct { size_t upsample_factor; alwan_register_normalization normalization; } alwan_register_params;
-typedef struct { double shift[2]; double error; double phasediff; } alwan_register_result;
+typedef struct {
+    size_t upsample_factor; alwan_register_normalization normalization;    /* PHASE_CORRELATION */
+    alwan_register_motion motion; size_t max_iterations; double epsilon;    /* ECC */
+    size_t gauss_filter_size; double const *initial_warp;
+    unsigned char const *reference_mask; size_t reference_mask_row_stride;
+    unsigned char const *moving_mask; size_t moving_mask_row_stride;
+} alwan_register_params;
+typedef struct {
+    double shift[2]; double error; double phasediff;
+    double warp[9]; double correlation; size_t iterations;
+} alwan_register_result;
 
 alwan_status alwan_register_{T}(alwan_register_result *out, alwan_{T} const *reference, size_t reference_row_stride,
                                 alwan_{T} const *moving, size_t moving_row_stride, size_t width, size_t height,
@@ -343,6 +356,25 @@ and its largest sample is the whole-pixel shift. With `upsample_factor` u above 
 rounded to 1/u and the cross-correlation is evaluated again on a `ceil(1.5 u)` square of points
 1/u apart about it, by a matrix-multiply DFT that costs about `1.5 u` passes over the image rather
 than an FFT u times larger.
+
+`ALWAN_REGISTER_ECC` is OpenCV 5.0.0's `findTransformECC` (Evangelidis and Psarakis 2008,
+"Parametric Image Alignment Using Enhanced Correlation Coefficient Maximization"), ported from
+`video/src/ecc.cpp` with its float arithmetic: both images Gaussian-blurred (`gauss_filter_size`,
+0 reads as 5, 1 is none), the moving image and its gradients warped back by the current warp,
+the warp updated by the Gauss-Newton step that maximises the zero-mean normalised correlation,
+until `max_iterations` (0 reads as 50) or until the correlation changes by less than `epsilon`
+(0 reads as 0.001, negative never stops early). `motion` picks the model; `initial_warp` (9
+values) starts it; the masks, non-zero valid, are `findTransformECC`'s template and input masks.
+The result holds the 3 x 3 `warp` from reference pixels to moving points (OpenCV's matrix; the
+affine models end in 0 0 1), the final `correlation`, `error = 1 - correlation`, the updates
+made, and `shift` as the negated translation (the phase-correlation convention). Both images
+are read as float whatever the entry point, as OpenCV converts them. Suite 300 holds the
+warps of TRANSLATION, AFFINE and HOMOGRAPHY to cv2 to the bit; EUCLIDEAN within a few float
+ulps. `ALWAN_E_RANGE` when OpenCV would raise `StsNoConv` (a NaN coefficient or a negative
+illumination term).
+
+Dense optical flow, its warp and its colour wheel are a family of their own:
+[optical-flow.md](optical-flow.md).
 
 - `shift` is (rows, columns), the shift to apply to the moving image, each in (-n/2, n/2] and to
   1/u; 0 along an axis of length 1. It is modulo the frame: a translation of more than half the

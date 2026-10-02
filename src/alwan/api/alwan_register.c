@@ -21,6 +21,10 @@
  * u is 1 (scikit-image's two branches normalise differently and alwan keeps both); phasediff
  * is the angle of CC_max. The full-size transforms are alwan__fft's (radix 2 or Bluestein),
  * computed in double whatever the pixel type.
+ *
+ * ALWAN_REGISTER_ECC reads both images as float (8-bit values as they are, double rounded to
+ * float, as cv::findTransformECC converts them) and runs alwan__register_ecc
+ * (api/alwan_optical_flow.c).
  */
 
 #include "../alwan.h"
@@ -70,8 +74,23 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
     size_t x, y, best = 0;
 
     if (!out || !ref || !mov || W == 0 || H == 0) return ALWAN_E_INVALID;
-    if (method != ALWAN_REGISTER_PHASE_CORRELATION) return ALWAN_E_INVALID;
+    if (method != ALWAN_REGISTER_PHASE_CORRELATION && method != ALWAN_REGISTER_ECC) return ALWAN_E_INVALID;
     if (ref_rs < W * elem || mov_rs < W * elem) return ALWAN_E_INVALID;
+    if (N / W != H) return ALWAN_E_RANGE;
+    if (method == ALWAN_REGISTER_ECC) {
+        float *fr = (float *)ALWAN_ALLOC(alwan_safe_array_size(2 * N, sizeof(float)), 64), *fm;
+        if (!fr) return ALWAN_E_NOMEM;
+        fm = fr + N;
+        for (y = 0; y < H; y++) {
+            for (x = 0; x < W; x++) {
+                fr[y * W + x] = (float)alwan_rg_read(ref, ref_rs, x, y, kind);
+                fm[y * W + x] = (float)alwan_rg_read(mov, mov_rs, x, y, kind);
+            }
+        }
+        st = alwan__register_ecc(out, fr, fm, W, H, params);
+        ALWAN_FREE(fr);
+        return st;
+    }
     if (params) {
         if (params->normalization != ALWAN_REGISTER_NORMALIZE_PHASE && params->normalization != ALWAN_REGISTER_NORMALIZE_NONE) {
             return ALWAN_E_INVALID;
@@ -79,7 +98,6 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
         phase = params->normalization == ALWAN_REGISTER_NORMALIZE_PHASE;
         if (params->upsample_factor > 0) u = params->upsample_factor;
     }
-    if (N / W != H) return ALWAN_E_RANGE;
 
     buf = (double *)ALWAN_ALLOC(alwan_safe_array_size(4 * N + 2 * H, sizeof(double)), 64);
     fw = alwan__fft_create(W);
@@ -220,6 +238,13 @@ static alwan_status alwan_rg_run(alwan_register_result *out, void const *ref, si
     out->shift[1] = shift[1];
     out->error = ALWAN_SQRT_F64(ALWAN_ABS_F64(1.0 - (cc_re * cc_re + cc_im * cc_im) / (src_amp * tgt_amp)));
     out->phasediff = ALWAN_ATAN2_F64(cc_im, cc_re);
+    /* the same translation as a warp from the reference to the moving image */
+    memset(out->warp, 0, sizeof(out->warp));
+    out->warp[0] = out->warp[4] = out->warp[8] = 1.0;
+    out->warp[2] = 0.0 - shift[1];
+    out->warp[5] = 0.0 - shift[0];
+    out->correlation = 0.0;
+    out->iterations = 0;
 done:
     if (fw) alwan__fft_destroy(fw);
     if (fh) alwan__fft_destroy(fh);

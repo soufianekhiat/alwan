@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Added: optical flow and ECC registration (batch 15)
+
+- **`ALWAN_REGISTER_ECC`** in `alwan_register_{T}`: OpenCV 5.0.0's `findTransformECC`
+  (Evangelidis and Psarakis 2008) ported from `video/src/ecc.cpp` (Intel licence kept), the four
+  motion models (new `alwan_register_motion`, AFFINE the default as in OpenCV), the criteria,
+  the blur size, an initial warp and both masks. `alwan_register_result` gains the 3 x 3 `warp`,
+  the `correlation` and the update count. Suite 300: TRANSLATION, AFFINE and HOMOGRAPHY warps
+  equal cv2's to the bit, EUCLIDEAN within a few float ulps.
+- **`alwan_optical_flow_{T}`**, a new family: scikit-image 0.26's `optical_flow_tvl1` and
+  `optical_flow_ilk` (BSD-3) and OpenCV's `calcOpticalFlowFarneback` (`optflowgf.cpp`, BSD
+  licence kept), all three equal to their sources to the bit in suite 300 (float64, float32 and
+  8-bit), with endpoint errors of 0.03 to 0.07 pixel against the true motion on SRIC crops.
+- **`alwan_optical_flow_warp_{T}`** (an image moved by a flow, through `alwan_warp`'s FIELD map)
+  and **`alwan_optical_flow_to_rgb_{T}`** (the Middlebury colour wheel of Baker et al. 2011,
+  from the paper). Documentation: `docs/api/optical-flow.md`.
+
 ### Added: Grey Pixel, weighted Grey-Edge and the templated checker detector (batch 16)
 
 - **`ALWAN_CONSTANCY_GREY_PIXEL`** in `alwan_illuminant_estimate_{T}` (new `method` field):

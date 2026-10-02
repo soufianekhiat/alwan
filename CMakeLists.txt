@@ -155,6 +155,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_fft.c
   src/alwan/api/alwan_filter.c
   src/alwan/api/alwan_register.c
+  src/alwan/api/alwan_optical_flow.c
   src/alwan/api/alwan_contour.c
   src/alwan/api/alwan_peaks.c
   src/alwan/api/alwan_match_template.c

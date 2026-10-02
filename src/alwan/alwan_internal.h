@@ -81,6 +81,16 @@ alwan_status alwan__warp_run(void *out, size_t out_rs, size_t ow, size_t oh, voi
  * image; kind 0 f64, 1 f32, 2 u8 */
 alwan_status alwan__cv_resize(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                               int area, int kind);
+/* alwan_am_filter.c: cv::resize INTER_LINEAR on one packed float plane (OpenCV 5.0.0, the
+ * fast 2x2 area path at a factor of exactly 2, a copy at the same size); 0 on no memory */
+int alwan__cv_resize_f32_plane(float *dst, int dw, int dh, float const *src, int sw, int sh);
+/* alwan_filter.c: alwan_filter's engine whatever precisions the build holds; kind 0 f64, 1 f32 */
+alwan_status alwan__filter_run(void *out, size_t out_rs, void const *src, size_t src_rs, size_t channels, size_t width,
+                               size_t height, alwan_filter_method method, alwan_filter_params const *params, int kind);
+/* alwan_optical_flow.c: ALWAN_REGISTER_ECC (cv::findTransformECC, OpenCV 5.0.0) on two
+ * packed float images of the same size, behind alwan_register */
+alwan_status alwan__register_ecc(alwan_register_result *out, float const *ref, float const *mov, size_t w, size_t h,
+                                 alwan_register_params const *params);
 /* alwan_denoise_nlm.c: ALWAN_DENOISE_NL_MEANS_DARBON (buades 0) and _BUADES (1); kind 0 f64,
  * 1 f32, 2 u8 (through double in 0..1, rounded back) */
 alwan_status alwan__denoise_nlm(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h, int buades,

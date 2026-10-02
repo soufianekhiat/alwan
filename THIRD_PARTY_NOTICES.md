@@ -23,9 +23,11 @@ GPL code is never ported into alwan.
   `src/alwan/data/opencv/LICENSE-opencv_contrib.txt`). Some ported files carry older
   BSD-style headers instead, kept as their conditions ask:
   - Intel License Agreement, `licenses/OpenCV-Intel-License-Agreement.txt`:
-    `modules/photo/src/inpaint.cpp`, `modules/core/src/dxt.cpp`.
+    `modules/photo/src/inpaint.cpp`, `modules/core/src/dxt.cpp`, `modules/video/src/ecc.cpp`.
   - 3-clause BSD (Intel, Willow Garage), `licenses/OpenCV-BSD-3-Clause-Intel-WillowGarage.txt`:
-    `modules/xphoto/src/dct_image_denoising.cpp`, `modules/ximgproc/src/bilateral_texture_filter.cpp`.
+    `modules/xphoto/src/dct_image_denoising.cpp`, `modules/ximgproc/src/bilateral_texture_filter.cpp`,
+    `modules/video/src/optflowgf.cpp` (its header reads Willow Garage 2009; the text, kept whole at
+    the top of `src/alwan/api/alwan_optical_flow.c`, is otherwise the same).
   - 3-clause BSD, `licenses/OpenCV-ximgproc-BSD-3-Clause.txt`:
     `modules/ximgproc/src/weighted_median_filter.cpp`, `adaptive_manifold_filter_n.cpp`,
     `edgeaware_filters_common.cpp`.
@@ -61,6 +63,7 @@ What alwan takes:
 | `src/alwan/api/alwan_bilateral_texture.c` | `ximgproc/src/bilateral_texture_filter.cpp` (`bilateralTextureFilter`), with `imgproc` box filter's double sums and `core` `accumulateProduct` |
 | `src/alwan/api/alwan_match_template.c` | `imgproc/src/templmatch.cpp` (`common_matchTemplate`, the six `TM_*` scores) |
 | `src/alwan/api/alwan_checker_detect.c` | the cv2 operations the colour checker detector calls (resize, bilateral filter, threshold, contours, minAreaRect, approxPolyDP, warpPerspective) |
+| `src/alwan/api/alwan_optical_flow.c` | `video/src/ecc.cpp` (`findTransformECC`), `video/src/optflowgf.cpp` (`calcOpticalFlowFarneback`), with `imgproc` GaussianBlur, warpAffine/warpPerspective, filter2D and `core` dot, norm, meanStdDev, invert and small gemm to their float arithmetic |
 | `src/alwan/api/alwan_clahe.c`, `src/alwan/api/alwan_denoise.c` | CLAHE, fast non-local means and anisotropic diffusion, reproduced to OpenCV's arithmetic |
 | `src/alwan/data/opencv/rgb2lab_lut_s16.csv`, `lab2srgb_float.csv` | colour conversion tables, read back from cv2 |
 | `src/alwan/data/opencv/lbwb_*.csv` | the LearningBasedWB trained model, verbatim |
@@ -120,7 +123,9 @@ What alwan takes:
   University of Wisconsin-Madison and others).
 - Licence: BSD-3-Clause, `licenses/scikit-image-BSD-3-Clause.txt`.
 
-What alwan takes: routines reproduced from scikit-image's code, among them the watershed
+What alwan takes: routines reproduced from scikit-image's code, among them the TV-L1 and
+iterative Lucas-Kanade optical flow solvers and their coarse-to-fine pyramid
+(`registration/_optical_flow.py`, `_optical_flow_utils.py`; `alwan_optical_flow.c`), the watershed
 heap, `find_contours` and `approximate_polygon` (`alwan_contour.c`), the skeletonisation
 passes transcribed from `_skeletonize_various_cy.pyx` and the medial axis from
 `_skeletonize.py` (`alwan_morphology.c`), the convex hull's `possible_hull` and

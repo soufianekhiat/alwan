@@ -1515,6 +1515,13 @@ EXPORTS
     alwan_oklch_to_rgb_f64
     alwan_oklch_to_xyz_f32
     alwan_oklch_to_xyz_f64
+    alwan_optical_flow_f32
+    alwan_optical_flow_f64
+    alwan_optical_flow_to_rgb_f32
+    alwan_optical_flow_to_rgb_f64
+    alwan_optical_flow_u8
+    alwan_optical_flow_warp_f32
+    alwan_optical_flow_warp_f64
     alwan_optical_mtf_barten1999_f32
     alwan_optical_mtf_barten1999_f64
     alwan_optimize_spectrum_for_xyz_f32
