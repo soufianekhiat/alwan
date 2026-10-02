@@ -29,6 +29,8 @@ GPL code is never ported into alwan.
   - 3-clause BSD, `licenses/OpenCV-ximgproc-BSD-3-Clause.txt`:
     `modules/ximgproc/src/weighted_median_filter.cpp`, `adaptive_manifold_filter_n.cpp`,
     `edgeaware_filters_common.cpp`.
+  - 3-clause BSD (Intel, Willow Garage, Itseez), `licenses/OpenCV-imgproc-resize-BSD-3-Clause.txt`:
+    `modules/imgproc/src/resize.cpp`.
 - OpenCV ships no NOTICE file at that tag.
 
 What alwan takes:
@@ -44,6 +46,7 @@ What alwan takes:
 | `src/alwan/api/alwan_cv_dxt.c` | `core/src/dxt.cpp` (DFT and DCT) |
 | `src/alwan/api/alwan_am_filter.c` | `ximgproc` adaptive manifold filter |
 | `src/alwan/api/alwan_wmf.c` | `ximgproc` weighted median filter |
+| `src/alwan/api/alwan_resize_opencv.c`, `alwan_resize_opencv_impl.inc` | `imgproc/src/resize.cpp` (INTER_CUBIC and INTER_AREA: `resizeGeneric_`, `resizeAreaFast_`, `resizeArea_`, `computeResizeAreaTab`) |
 | `src/alwan/api/alwan_checker_detect.c` | the cv2 operations the colour checker detector calls (resize, bilateral filter, threshold, contours, minAreaRect, approxPolyDP, warpPerspective) |
 | `src/alwan/api/alwan_clahe.c`, `src/alwan/api/alwan_denoise.c` | CLAHE, fast non-local means and anisotropic diffusion, reproduced to OpenCV's arithmetic |
 | `src/alwan/data/opencv/rgb2lab_lut_s16.csv`, `lab2srgb_float.csv` | colour conversion tables, read back from cv2 |
@@ -107,6 +110,18 @@ heap, `find_contours` and `approximate_polygon` (`alwan_contour.c`), the skeleto
 passes transcribed from `_skeletonize_various_cy.pyx` (`alwan_morphology.c`), total
 variation denoising (`alwan_denoise.c`), the thresholds, and the stain and video matrices in
 `src/alwan/data/stain/` and `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
+
+## SciPy
+
+- Upstream: https://github.com/scipy/scipy, v1.16.3.
+- Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.
+- Licence: BSD-3-Clause, `licenses/scipy-BSD-3-Clause.txt`.
+
+What alwan takes: the B-spline interpolation of `scipy.ndimage.map_coordinates` for
+`ALWAN_WARP_BSPLINE3` and `BSPLINE5` (`src/alwan/api/alwan_warp.c`), from
+`scipy/ndimage/src/ni_splines.c` (`get_spline_interpolation_weights`, the filter poles,
+`apply_filter` with its reflect initialisations) and the 12-pixel edge padding of
+`_interpolation.py`.
 
 ## Pillow
 

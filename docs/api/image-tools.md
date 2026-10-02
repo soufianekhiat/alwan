@@ -1637,7 +1637,11 @@ correctly rounded value that the C library's `expf` gives, so `FRANGI` agrees to
 ```c
 typedef enum {
     ALWAN_RESIZE_NEAREST = 0, ALWAN_RESIZE_BOX = 1, ALWAN_RESIZE_BILINEAR = 2,
-    ALWAN_RESIZE_HAMMING = 3, ALWAN_RESIZE_BICUBIC = 4, ALWAN_RESIZE_LANCZOS = 5
+    ALWAN_RESIZE_HAMMING = 3, ALWAN_RESIZE_BICUBIC = 4, ALWAN_RESIZE_LANCZOS = 5,
+    ALWAN_RESIZE_LANCZOS2 = 6, ALWAN_RESIZE_LANCZOS4 = 7, ALWAN_RESIZE_MITCHELL = 8,
+    ALWAN_RESIZE_BSPLINE = 9, ALWAN_RESIZE_GAUSSIAN = 10,
+    ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2013 = 11, ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2021 = 12,
+    ALWAN_RESIZE_OPENCV_CUBIC = 13, ALWAN_RESIZE_OPENCV_AREA = 14
 } alwan_resize_method;
 
 alwan_status alwan_resize_{T}(alwan_{T} *out, size_t out_row_stride, size_t out_width, size_t out_height,
@@ -1660,6 +1664,13 @@ does not alias into moire; enlarging uses the filter at its own width.
 | `HAMMING` | a Hamming-windowed sinc: sharper than bilinear at the same cost | 1 |
 | `BICUBIC` | Keys' cubic convolution, `a = -0.5` | 2 |
 | `LANCZOS` | `sinc(x) sinc(x / 3)`: the sharpest, with the most ringing at edges | 3 |
+| `LANCZOS2` | `sinc(x) sinc(x / 2)`: less ringing than Lanczos-3, a little softer | 2 |
+| `LANCZOS4` | `sinc(x) sinc(x / 4)`: sharper still, rings more | 4 |
+| `MITCHELL` | the Mitchell-Netravali (1988) cubic with `B` and `C` (`cubic_b`, `cubic_c` when `cubic_bc_set`, else their recommended `B = C = 1/3`): a balance of blur, ringing and anisotropy. `B = 0, C = 0.5` is `BICUBIC`; `B = 0, C = 0` the Hermite cubic | 2 |
+| `BSPLINE` | the cubic B-spline (`B = 1, C = 0`): smooth and free of ringing, but it blurs and does not pass through the samples | 2 |
+| `GAUSSIAN` | `exp(-x^2 / (2 sigma^2))`, `sigma` from `gaussian_sigma` (0.5 by default) | `4 sigma` |
+| `MAGIC_KERNEL_SHARP_2013` | Costella's Magic Kernel Sharp: the magic kernel convolved with its sharpening step, piecewise quadratic | 2.5 |
+| `MAGIC_KERNEL_SHARP_2021` | its 2021 revision, flatter in the passband | 4.5 |
 
 `params->box` resamples a region of the source, `x0, y0, x1, y1` in pixels with fractions
 allowed; all zero is the whole image. The resampling happens in the data's own values:
@@ -1677,11 +1688,37 @@ in double and lands within 1.0e-7 of Pillow's float32 results, their rounding. A
 size and box is a copy. Pillow premultiplies RGBA by its alpha before resampling; alwan
 treats the fourth channel like the others, so premultiply first where alpha matters.
 
+The seven kernels after `LANCZOS` run in the same scheme, Pillow's resampler with a kernel
+Pillow does not have: the same pixel grid, the kernel widened by the reduction factor when
+shrinking, its support clipped at the edges and the weights renormalised, 8-bit through
+the same fixed point. Suite 291 holds each in double to the scheme with the kernel written
+out from its definition (Mitchell and Netravali's paper, Costella's Magic Kernel pages, the
+Lanczos window, a Gaussian cut at four sigma), 30 cases within 1.2e-15, and `MITCHELL`
+with `B = 0, C = 0.5` to `BICUBIC` within 1.6e-15.
+
+Two more methods are OpenCV's own resamplers, not Pillow's scheme: `cv::resize` ported
+from OpenCV 5.0.0 (Apache-2.0, see THIRD_PARTY_NOTICES.md), the whole image only.
+
+| Method | What it does |
+|---|---|
+| `OPENCV_CUBIC` | `INTER_CUBIC`: Keys' cubic with `a = -0.75` over the 4 x 4 pixels around `(x + 0.5) scale - 0.5`, the edge pixel repeated. The kernel is NOT widened when shrinking, so a strong reduction aliases where `BICUBIC` averages |
+| `OPENCV_AREA` | `INTER_AREA`: shrinking both ways, each output the mean of the source area it covers (exactly the block mean at an integer factor); enlarging along either axis, OpenCV's area-weighted bilinear |
+
+They reproduce OpenCV's arithmetic as cv2 runs it with IPP off: 8-bit cubic through its
+11-bit coefficients, its vertical pass in OpenCV's SSE form (eight lanes in float, rounded
+to even) and a fixed-point tail; float32 cubic with the vertical sum nested over whole
+vectors of four as its SSE baseline evaluates it; the 8-bit area mean at a factor of two
+as `(a + b + c + d + 2) >> 2` and otherwise the float mean rounded to even;
+`computeResizeAreaTab`'s weights for other factors. Suite 291 holds them to cv2.resize
+value for value on 8-bit, float32 and double, one to four channels, 36 cases. A box,
+integration or a subpixel layout is `ALWAN_E_INVALID` with these two.
+
 Two options leave Pillow's resampling for other ends. `integration` (an
 `alwan_pixel_integration`, see Warping) makes each output pixel the mean of the source over
 its own area, through `alwan_warp`'s integration with the scale as the map: the source is
 reconstructed at sub-positions of the output pixel by nearest (`NEAREST`, `BOX`), bilinear
-(`BILINEAR`, `HAMMING`) or bicubic (`BICUBIC`, `LANCZOS`), and `kernel`, `samples`, `seed`
+(`BILINEAR`, `HAMMING`, `GAUSSIAN`), Lanczos-4 (`LANCZOS4`, `MAGIC_KERNEL_SHARP_2021`), the
+cubic B-spline (`BSPLINE`) or bicubic (the rest), and `kernel`, `samples`, `seed`
 and `alpha_channel` mean what they mean there. `GRID` with `BOX` at an integer factor is the
 block mean exactly.
 
@@ -1698,12 +1735,15 @@ It needs three or four channels.
 | `box[4]` | the whole image |
 | `integration`, `kernel`, `samples`, `seed`, `alpha_channel` | `POINT`: Pillow's resampling |
 | `subpixel` | `ALWAN_SUBPIXEL_NONE` |
+| `cubic_bc_set`, `cubic_b`, `cubic_c` | `MITCHELL`: `B = C = 1/3` |
+| `gaussian_sigma` | `GAUSSIAN`: 0.5 |
 
 ## Warping
 
 ```c
 typedef enum {
-    ALWAN_WARP_NEAREST = 0, ALWAN_WARP_BILINEAR = 1, ALWAN_WARP_BICUBIC = 2
+    ALWAN_WARP_NEAREST = 0, ALWAN_WARP_BILINEAR = 1, ALWAN_WARP_BICUBIC = 2,
+    ALWAN_WARP_LANCZOS4 = 3, ALWAN_WARP_BSPLINE3 = 4, ALWAN_WARP_BSPLINE5 = 5
 } alwan_warp_method;
 
 alwan_status alwan_warp_{T}(alwan_{T} *out, size_t out_row_stride, size_t out_width, size_t out_height,
@@ -1794,6 +1834,28 @@ results truncated with bicubic clamped first, and on float32 its horizontal stag
 arithmetic, as its macros compute it on `FLOAT32` pixels. The double entry point computes
 in double throughout and agrees with Pillow's float32 to 1.3e-7. Pillow premultiplies RGBA
 before a bilinear or bicubic transform; alwan's channels are independent at `POINT`.
+
+Three more methods go past Pillow's:
+
+| Method | Around the point |
+|---|---|
+| `LANCZOS4` | 8 x 8 pixels weighted by `sinc(t) sinc(t / 4)`, normalised to sum 1: OpenCV's `INTER_LANCZOS4` kernel, at the exact position |
+| `BSPLINE3` | the cubic B-spline through the samples: the image prefiltered into B-spline coefficients once per call, then 4 x 4 of them weighted at the point |
+| `BSPLINE5` | the same with the quintic B-spline, 6 x 6 coefficients |
+
+All three repeat the edge pixel past the image, leave `fill` for a point outside it, and
+round 8-bit results to nearest (half up, with clamping). The B-splines are
+`scipy.ndimage.map_coordinates(order=3 or 5, mode='nearest')`, value for value: the image
+padded by 12 repeated pixels each side as scipy pads it, prefiltered along y then x with
+the gain and, per pole, the causal and anticausal passes with scipy's reflect
+initialisations, then the weights of `get_spline_interpolation_weights` summed in row order.
+Suite 291 holds them to scipy exactly on double, float32 and 8-bit, 18 cases. `LANCZOS4`
+evaluates the kernel at the exact position, where cv2.remap and cv2.warpAffine round
+positions to 1/32 pixel and tabulate the weights in float: on translations by multiples of
+1/32 it agrees with cv2.remap to 3.6e-7 (float rounding), and on double at a rotation with
+the kernel's definition to 8.9e-16. The B-splines pass through the samples, so they
+overshoot near edges as Lanczos does, and they cost one prefilter pass over the image per
+call.
 
 ### Output-space integration
 

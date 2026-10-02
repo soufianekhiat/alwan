@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+### Added: resize and warp kernels
+
+- **Seven resize kernels** in `alwan_resize`, in Pillow's resampling scheme: `LANCZOS2`,
+  `LANCZOS4`, `MITCHELL` (Mitchell-Netravali with `B` and `C`, `B = C = 1/3` by default;
+  `B = 0, C = 0.5` is `BICUBIC`), `BSPLINE` (`B = 1, C = 0`), `GAUSSIAN` (`sigma`, cut at
+  4 sigma), `MAGIC_KERNEL_SHARP_2013` and `_2021` (Costella). Held in double to the scheme
+  with each kernel written from its definition (suite 291, within 1.2e-15).
+- **OpenCV's own resamplers** in `alwan_resize`: `OPENCV_CUBIC` (`INTER_CUBIC`, `a = -0.75`,
+  no widening when shrinking) and `OPENCV_AREA` (`INTER_AREA`), ported from OpenCV 5.0.0's
+  `imgproc/src/resize.cpp` (3-clause BSD, Intel, Willow Garage, Itseez; notice in the
+  source and `licenses/`). Value for value with cv2.resize, IPP off, on 8-bit, float32 and
+  double, 1 to 4 channels (suite 291, 36 cases plus 192 probes).
+- **Three warp methods** in `alwan_warp`: `LANCZOS4` (OpenCV's `INTER_LANCZOS4` kernel at
+  the exact position; within 3.6e-7 of cv2.remap on its 1/32 grid), `BSPLINE3` and
+  `BSPLINE5` (scipy.ndimage.map_coordinates with `mode='nearest'`, ported from SciPy 1.16.3's
+  `ni_splines.c`, BSD-3-Clause; exact on double, float32 and 8-bit). The new methods round
+  8-bit results to nearest where the Pillow methods truncate.
+
 ### Added: filmic view curves and error-diffusion kernels
 
 - **Five game-engine filmic view curves** in `alwan_view_transform`: `HABLE_UNCHARTED2`

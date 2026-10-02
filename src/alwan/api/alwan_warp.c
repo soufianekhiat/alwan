@@ -23,6 +23,23 @@
  * A point outside the image leaves the output at `fill`. 8-bit results are truncated
  * (bicubic clamped first), float32 results stored from double, as Pillow's are.
  *
+ * Beyond Pillow's three:
+ *
+ *   LANCZOS4  8 x 8 pixels around the point, (x0 - 3 .. x0 + 4) for x0 the pixel at or left
+ *             of it, weighted by sinc(t) sinc(t / 4) normalised to sum 1 (OpenCV's
+ *             INTER_LANCZOS4 kernel at the exact position), each row summed then the rows
+ *   BSPLINE3, BSPLINE5  scipy.ndimage.map_coordinates(order=3 or 5, mode='nearest'): the
+ *             image padded by 12 repeated pixels each side, prefiltered into B-spline
+ *             coefficients along y then along x (ni_splines.c: the gain, then per pole
+ *             the causal and anticausal passes with the reflect initialisations), then
+ *             (order + 1)^2 coefficients weighted at the point, the sum in row order
+ *
+ * These three repeat the edge pixel past the image and round 8-bit results half up with
+ * clamping (scipy's rule for integer output). The B-spline code is ported from SciPy 1.16.3
+ * (scipy/ndimage/src/ni_splines.c), Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy
+ * Developers, BSD-3-Clause; its licence is licenses/scipy-BSD-3-Clause.txt (see
+ * THIRD_PARTY_NOTICES.md).
+ *
  * Beyond Pillow: the map may also be a swirl, a sampled field of source points or a
  * caller's function, and each output pixel may be integrated rather than point-sampled
  * (output-space subpixel integration): the pixel's sub-positions are offset BEFORE the map,
@@ -61,7 +78,11 @@ typedef struct {
     void const *src;
     size_t rs, ch, w, h;
     int kind;
+    double const *spl;   /* BSPLINE: the padded coefficients, (h + 24) x (w + 24) x ch */
+    int order;
 } alwan_wp_img;
+
+#define ALWAN_WP_SPL_PAD 12
 
 static double alwan_wp_px(alwan_wp_img const *im, long x, long y, size_t c) {
     char const *row = (char const *)im->src + (size_t)y * im->rs;
@@ -74,11 +95,181 @@ static long alwan_wp_xclip(alwan_wp_img const *im, long x) {
     return x < 0 ? 0 : x < (long)im->w ? x : (long)im->w - 1;
 }
 
+/* cubic: 0 truncate, 1 clamp then truncate (Pillow), 2 round half up with clamping (scipy) */
 static void alwan_wp_store(void *out, int kind, size_t i, double v, int cubic) {
     if (kind == 0) ((alwan_f64 *)out)[i] = v;
     else if (kind == 1) ((alwan_f32 *)out)[i] = (alwan_f32)v;
-    else if (cubic) ((unsigned char *)out)[i] = (unsigned char)(v <= 0.0 ? 0.0 : v >= 255.0 ? 255.0 : v);
+    else if (cubic == 2) {
+        double t = v > 0 ? v + 0.5 : 0;
+        t = t > 255.0 ? 255.0 : t;
+        ((unsigned char *)out)[i] = (unsigned char)t;
+    } else if (cubic) ((unsigned char *)out)[i] = (unsigned char)(v <= 0.0 ? 0.0 : v >= 255.0 ? 255.0 : v);
     else ((unsigned char *)out)[i] = (unsigned char)v;
+}
+
+/* sinc(t) sinc(t / 4) */
+static double alwan_wp_lanczos4(double t) {
+    double const pi = 3.14159265358979323846;
+    double a, b;
+    if (t == 0.0) return 1.0;
+    a = pi * t;
+    b = a / 4.0;
+    return (ALWAN_SIN_F64(a) / a) * (ALWAN_SIN_F64(b) / b);
+}
+
+/* ni_splines.c get_spline_interpolation_weights, orders 3 and 5. */
+static void alwan_wp_spline_weights(double x, int order, double *w) {
+    double y, z, t;
+    int i;
+    x -= ALWAN_FLOOR_F64(x);
+    y = x;
+    z = 1.0 - x;
+    if (order == 3) {
+        w[1] = (y * y * (y - 2.0) * 3.0 + 4.0) / 6.0;
+        w[2] = (z * z * (z - 2.0) * 3.0 + 4.0) / 6.0;
+        w[0] = z * z * z / 6.0;
+    } else {
+        t = y * y;
+        w[2] = t * (t * (0.25 - y / 12.0) - 0.5) + 0.55;
+        t = z * z;
+        w[3] = t * (t * (0.25 - z / 12.0) - 0.5) + 0.55;
+        y += 1.0;
+        w[1] = y * (y * (y * (y * (y / 24.0 - 0.375) + 1.25) - 1.75) + 0.625) + 0.425;
+        z += 1.0;
+        w[4] = z * (z * (z * (z * (z / 24.0 - 0.375) + 1.25) - 1.75) + 0.625) + 0.425;
+        y = 1.0 - x;
+        t = y * y;
+        w[0] = y * t * t / 120.0;
+    }
+    w[order] = 1.0;
+    for (i = 0; i < order; ++i) w[order] -= w[i];
+}
+
+/* z^n by squaring (the term it scales is far below rounding for any n the pad allows). */
+static double alwan_wp_ipow(double z, size_t n) {
+    double r = 1.0;
+    while (n) {
+        if (n & 1) r *= z;
+        z *= z;
+        n >>= 1;
+    }
+    return r;
+}
+
+/* ni_splines.c apply_filter on one line with the reflect initialisations (mode 'nearest'). */
+static void alwan_wp_spline_line(double *c, size_t n, size_t step, int order) {
+    double const p3[1] = { -0.267949192431122706472553658494127633 };
+    double const p5[2] = { -0.430575347099973791851434783493520110, -0.043096288203264653822712376822550182 };
+    double const *poles = order == 3 ? p3 : p5;
+    int const npoles = order == 3 ? 1 : 2;
+    double gain = 1.0;
+    size_t i;
+    int q;
+    if (n < 2) return;
+    for (q = 0; q < npoles; q++) gain *= (1.0 - poles[q]) * (1.0 - 1.0 / poles[q]);
+    for (i = 0; i < n; i++) c[i * step] *= gain;
+    for (q = 0; q < npoles; q++) {
+        double const z = poles[q];
+        double const z_n = alwan_wp_ipow(z, n);
+        double const c0 = c[0];
+        double z_i = z;
+        c[0] = c[0] + z_n * c[(n - 1) * step];
+        for (i = 1; i < n; ++i) {
+            c[0] += z_i * (c[i * step] + z_n * c[(n - 1 - i) * step]);
+            z_i *= z;
+        }
+        c[0] *= z / (1 - z_n * z_n);
+        c[0] += c0;
+        for (i = 1; i < n; ++i) c[i * step] += z * c[(i - 1) * step];
+        c[(n - 1) * step] *= z / (z - 1);
+        for (i = n - 1; i-- > 0;) c[i * step] = z * (c[(i + 1) * step] - c[i * step]);
+    }
+}
+
+/* The padded coefficient image for BSPLINE3 / BSPLINE5 into *out. */
+static alwan_status alwan_wp_spline_prefilter(double **out, void const *src, size_t rs, size_t ch, size_t w, size_t h, int kind, int order) {
+    size_t const pw = w + 2 * ALWAN_WP_SPL_PAD, ph = h + 2 * ALWAN_WP_SPL_PAD;
+    double *P = (double *)ALWAN_ALLOC(alwan_safe_array_size(pw * ph, ch * sizeof(double)), sizeof(double));
+    size_t x, y, c;
+    *out = P;
+    if (!P) return ALWAN_E_NOMEM;
+    for (y = 0; y < ph; y++) {
+        size_t const sy = y < ALWAN_WP_SPL_PAD ? 0 : y - ALWAN_WP_SPL_PAD < h ? y - ALWAN_WP_SPL_PAD : h - 1;
+        char const *row = (char const *)src + sy * rs;
+        for (x = 0; x < pw; x++) {
+            size_t const sx = x < ALWAN_WP_SPL_PAD ? 0 : x - ALWAN_WP_SPL_PAD < w ? x - ALWAN_WP_SPL_PAD : w - 1;
+            for (c = 0; c < ch; c++) {
+                size_t const i = sx * ch + c;
+                P[(y * pw + x) * ch + c] = kind == 0 ? ((alwan_f64 const *)row)[i] : kind == 1 ? (double)((alwan_f32 const *)row)[i]
+                                                                                          : (double)((unsigned char const *)row)[i];
+            }
+        }
+    }
+    /* scipy's spline_filter: axis 0 (along y) first, then axis 1 (along x) */
+    for (x = 0; x < pw; x++)
+        for (c = 0; c < ch; c++) alwan_wp_spline_line(P + x * ch + c, ph, pw * ch, order);
+    for (y = 0; y < ph; y++)
+        for (c = 0; c < ch; c++) alwan_wp_spline_line(P + y * pw * ch + c, pw, ch, order);
+    return ALWAN_OK;
+}
+
+/* LANCZOS4 and the B-splines at (xin, yin) in Pillow's coordinates: 0 when outside. */
+static int alwan_wp_eval_ext(double *vout, alwan_wp_img const *im, double xin, double yin, alwan_warp_method method) {
+    size_t c;
+    if (!(xin >= 0.0 && xin < (double)im->w && yin >= 0.0 && yin < (double)im->h)) return 0;
+    if (method == ALWAN_WARP_LANCZOS4) {
+        double const px = xin - 0.5, py = yin - 0.5;
+        long const x0 = ALWAN_WP_FLOOR(px), y0 = ALWAN_WP_FLOOR(py);
+        double const fx = px - (double)x0, fy = py - (double)y0;
+        double wx[8], wy[8], sx = 0.0, sy = 0.0;
+        long xs[8], ys[8];
+        int i, j;
+        for (i = 0; i < 8; i++) {
+            long xi = x0 - 3 + i, yi = y0 - 3 + i;
+            wx[i] = fx == 0.0 ? (i == 3 ? 1.0 : 0.0) : alwan_wp_lanczos4(fx + 3.0 - i);
+            wy[i] = fy == 0.0 ? (i == 3 ? 1.0 : 0.0) : alwan_wp_lanczos4(fy + 3.0 - i);
+            sx += wx[i];
+            sy += wy[i];
+            xs[i] = xi < 0 ? 0 : xi < (long)im->w ? xi : (long)im->w - 1;
+            ys[i] = yi < 0 ? 0 : yi < (long)im->h ? yi : (long)im->h - 1;
+        }
+        for (i = 0; i < 8; i++) {
+            wx[i] /= sx;
+            wy[i] /= sy;
+        }
+        for (c = 0; c < im->ch; c++) {
+            double v = 0.0;
+            for (j = 0; j < 8; j++) {
+                double r = 0.0;
+                for (i = 0; i < 8; i++) r += wx[i] * alwan_wp_px(im, xs[i], ys[j], c);
+                v += wy[j] * r;
+            }
+            vout[c] = v;
+        }
+    } else {
+        int const order = im->order;
+        size_t const pw = im->w + 2 * ALWAN_WP_SPL_PAD;
+        double const cx = (xin - 0.5) + ALWAN_WP_SPL_PAD, cy = (yin - 0.5) + ALWAN_WP_SPL_PAD;
+        long const x0 = ALWAN_WP_FLOOR(cx) - order / 2, y0 = ALWAN_WP_FLOOR(cy) - order / 2;
+        double wx[6], wy[6];
+        int i, j;
+        alwan_wp_spline_weights(cx, order, wx);
+        alwan_wp_spline_weights(cy, order, wy);
+        for (c = 0; c < im->ch; c++) {
+            double t = 0.0;
+            for (j = 0; j <= order; j++) {
+                double const *row = im->spl + ((size_t)(y0 + j) * pw) * im->ch;
+                for (i = 0; i <= order; i++) {
+                    double coeff = row[(size_t)(x0 + i) * im->ch + c];
+                    coeff *= wy[j];
+                    coeff *= wx[i];
+                    t += coeff;
+                }
+            }
+            vout[c] = t;
+        }
+    }
+    return 1;
 }
 
 static double alwan_wp_r32(double x, int f32) {
@@ -150,12 +341,20 @@ static int alwan_wp_eval(double *vout, alwan_wp_img const *im, double xin, doubl
     return 1;
 }
 
-/* The filter sampled and stored as Pillow stores it (8-bit truncated, bicubic clamped). */
-static int alwan_wp_sample(void *orow, size_t ox, alwan_wp_img const *im, double xin, double yin, int cubic) {
+/* The method at (xin, yin): Pillow's bilinear or bicubic, or one of the three above. */
+static int alwan_wp_eval_m(double *vout, alwan_wp_img const *im, double xin, double yin, alwan_warp_method method) {
+    if (method >= ALWAN_WARP_LANCZOS4) return alwan_wp_eval_ext(vout, im, xin, yin, method);
+    return alwan_wp_eval(vout, im, xin, yin, method == ALWAN_WARP_BICUBIC);
+}
+
+/* The filter sampled and stored as Pillow stores it (8-bit truncated, bicubic clamped), the
+ * methods beyond Pillow's rounded. */
+static int alwan_wp_sample(void *orow, size_t ox, alwan_wp_img const *im, double xin, double yin, alwan_warp_method method) {
     double v[4];
     size_t c;
-    if (!alwan_wp_eval(v, im, xin, yin, cubic)) return 0;
-    for (c = 0; c < im->ch; c++) alwan_wp_store(orow, im->kind, ox * im->ch + c, v[c], cubic);
+    int const mode = method >= ALWAN_WARP_LANCZOS4 ? 2 : method == ALWAN_WARP_BICUBIC;
+    if (!alwan_wp_eval_m(v, im, xin, yin, method)) return 0;
+    for (c = 0; c < im->ch; c++) alwan_wp_store(orow, im->kind, ox * im->ch + c, v[c], mode);
     return 1;
 }
 
@@ -354,7 +553,7 @@ static void alwan_wp_subsample(double *v, alwan_wp_map const *m, alwan_wp_img co
                 for (c = 0; c < im->ch; c++) v[c] = alwan_wp_px(im, xi, yi, c);
                 return;
             }
-        } else if (alwan_wp_eval(v, im, sx, sy, method == ALWAN_WARP_BICUBIC)) {
+        } else if (alwan_wp_eval_m(v, im, sx, sy, method)) {
             return;
         }
     }
@@ -604,7 +803,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                         long const xi = ALWAN_WP_COORD(sx), yi = ALWAN_WP_COORD(sy);
                         if (xi >= 0 && xi < (long)im->w && yi >= 0 && yi < (long)im->h) alwan_wp_copy_px(orow, x, im, xi, yi);
                     } else {
-                        alwan_wp_sample(orow, x, im, sx, sy, method == ALWAN_WARP_BICUBIC);
+                        alwan_wp_sample(orow, x, im, sx, sy, method);
                     }
                 }
                 if (brow) brow[x] = 1;
@@ -769,7 +968,7 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
     size_t x, y, c;
     if (!out || !src || w == 0 || h == 0 || ow == 0 || oh == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < ow) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_WARP_BICUBIC) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_WARP_BSPLINE5) return ALWAN_E_INVALID;
     if ((unsigned)p->map > (unsigned)ALWAN_WARP_MAP_CALLBACK || (unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_AUTO ||
         (unsigned)p->kernel > (unsigned)ALWAN_PIXEL_KERNEL_GAUSSIAN)
         return ALWAN_E_INVALID;
@@ -805,6 +1004,8 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
     if (identity) a[0] = 1.0, a[4] = 1.0;
     if (!p->perspective) a[6] = a[7] = 0.0;
     im.src = src, im.rs = src_rs, im.ch = ch, im.w = w, im.h = h, im.kind = kind;
+    im.spl = NULL;
+    im.order = method == ALWAN_WARP_BSPLINE5 ? 5 : 3;
     for (y = 0; y < h; y++) {
         for (x = 0; x < w * ch; x++) {
             double const v = alwan_wp_px(&im, (long)(x / ch), (long)y, x % ch);
@@ -822,7 +1023,16 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
                 else ((unsigned char *)orow)[x * ch + c] = (unsigned char)(f < 0.0 ? 0.0 : f > 255.0 ? 255.0 : f);
             }
     }
-    if (p->map != ALWAN_WARP_MAP_MATRIX || p->integration != ALWAN_PIXEL_INTEGRATE_POINT)
+    if (method == ALWAN_WARP_BSPLINE3 || method == ALWAN_WARP_BSPLINE5) {
+        alwan_status st;
+        double *spl = NULL;
+        if (alwan_wp_spline_prefilter(&spl, src, src_rs, ch, w, h, kind, im.order) != ALWAN_OK) return ALWAN_E_NOMEM;
+        im.spl = spl;
+        st = alwan_wp_general(out, out_rs, ow, oh, &im, method, p, a);
+        ALWAN_FREE(spl);
+        return st;
+    }
+    if (p->map != ALWAN_WARP_MAP_MATRIX || p->integration != ALWAN_PIXEL_INTEGRATE_POINT || method == ALWAN_WARP_LANCZOS4)
         return alwan_wp_general(out, out_rs, ow, oh, &im, method, p, a);
     if (p->samples_out)
         for (y = 0; y < oh; y++) memset(p->samples_out + y * p->samples_out_row_stride, 1, ow);
@@ -898,7 +1108,7 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
                 long const xi = ALWAN_WP_COORD(xs), yi = ALWAN_WP_COORD(ys);
                 if (xi >= 0 && xi < (long)w && yi >= 0 && yi < (long)h) alwan_wp_copy_px(orow, x, &im, xi, yi);
             } else {
-                alwan_wp_sample(orow, x, &im, xs, ys, method == ALWAN_WARP_BICUBIC);
+                alwan_wp_sample(orow, x, &im, xs, ys, method);
             }
         }
     }

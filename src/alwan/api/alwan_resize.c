@@ -19,6 +19,13 @@
  *   BICUBIC   Keys' cubic with a = -0.5, support 2
  *   LANCZOS   sinc(x) sinc(x / 3), support 3
  *
+ * Kernels Pillow does not have, in the same scheme (suite 291 holds them to their
+ * definitions): LANCZOS2 and LANCZOS4 (sinc(x) sinc(x / a), support a), MITCHELL (the
+ * Mitchell-Netravali cubic, B and C, support 2), BSPLINE (B = 1, C = 0), GAUSSIAN
+ * (exp(-x^2 / (2 sigma^2)), support 4 sigma) and Costella's Magic Kernel Sharp 2013 and
+ * 2021 (support 2.5 and 4.5). OPENCV_CUBIC and OPENCV_AREA are not Pillow's scheme: they
+ * run cv::resize's own code (alwan_resize_opencv.c).
+ *
  * NEAREST takes the source sample at (int)(position), the position starting at half a step
  * and advancing a step at a time as Pillow's scale loop does; a position past the image
  * leaves the output 0. A request for the source's own size and box returns a copy.
@@ -39,9 +46,75 @@
 
 #define ALWAN_RS_PREC 22
 
-static double alwan_rs_filter(int m, double x) {
+/* A kernel and its parameters. */
+typedef struct {
+    int m;
+    double b, c, sigma;
+} alwan_rs_kernel;
+
+static double alwan_rs_sinc_window(double x, double a) {
     double const pi = 3.14159265358979323846;
-    switch (m) {
+    double s1, s2, y;
+    if (!(-a <= x && x < a)) return 0.0;
+    if (x == 0.0) s1 = 1.0;
+    else {
+        y = x * pi;
+        s1 = ALWAN_SIN_F64(y) / y;
+    }
+    y = x / a;
+    if (y == 0.0) s2 = 1.0;
+    else {
+        y = y * pi;
+        s2 = ALWAN_SIN_F64(y) / y;
+    }
+    return s1 * s2;
+}
+
+/* The Mitchell-Netravali family (1988), as their paper writes it. */
+static double alwan_rs_bc_cubic(double x, double b, double c) {
+    if (x < 0.0) x = -x;
+    if (x < 1.0) return ((12.0 - 9.0 * b - 6.0 * c) * x * x * x + (-18.0 + 12.0 * b + 6.0 * c) * x * x + (6.0 - 2.0 * b)) / 6.0;
+    if (x < 2.0)
+        return ((-b - 6.0 * c) * x * x * x + (6.0 * b + 30.0 * c) * x * x + (-12.0 * b - 48.0 * c) * x + (8.0 * b + 24.0 * c)) / 6.0;
+    return 0.0;
+}
+
+/* Costella's Magic Kernel Sharp, piecewise quadratic (johncostella.com/magic). */
+static double alwan_rs_mks2013(double x) {
+    if (x < 0.0) x = -x;
+    if (x <= 0.5) return 17.0 / 16.0 - 7.0 / 4.0 * x * x;
+    if (x <= 1.5) return (1.0 - x) * (7.0 / 4.0 - x);
+    if (x <= 2.5) return -1.0 / 8.0 * (2.5 - x) * (2.5 - x);
+    return 0.0;
+}
+
+static double alwan_rs_mks2021(double x) {
+    if (x < 0.0) x = -x;
+    if (x <= 0.5) return 577.0 / 576.0 - 239.0 / 144.0 * x * x;
+    if (x <= 1.5) return 35.0 / 36.0 * (x - 1.0) * (x - 239.0 / 140.0);
+    if (x <= 2.5) return 1.0 / 6.0 * (x - 2.0) * (65.0 / 24.0 - x);
+    if (x <= 3.5) return 1.0 / 36.0 * (x - 3.0) * (x - 15.0 / 4.0);
+    if (x <= 4.5) return -1.0 / 288.0 * (x - 4.5) * (x - 4.5);
+    return 0.0;
+}
+
+static double alwan_rs_filter(alwan_rs_kernel const *kn, double x) {
+    double const pi = 3.14159265358979323846;
+    switch (kn->m) {
+    case ALWAN_RESIZE_LANCZOS2:
+        return alwan_rs_sinc_window(x, 2.0);
+    case ALWAN_RESIZE_LANCZOS4:
+        return alwan_rs_sinc_window(x, 4.0);
+    case ALWAN_RESIZE_MITCHELL:
+        return alwan_rs_bc_cubic(x, kn->b, kn->c);
+    case ALWAN_RESIZE_BSPLINE:
+        return alwan_rs_bc_cubic(x, 1.0, 0.0);
+    case ALWAN_RESIZE_GAUSSIAN:
+        return (x < 0.0 ? -x : x) <= 4.0 * kn->sigma ? ALWAN_EXP_F64(-x * x / (2.0 * kn->sigma * kn->sigma)) : 0.0;
+    case ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2013:
+        return alwan_rs_mks2013(x);
+    case ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2021:
+        return alwan_rs_mks2021(x);
     case ALWAN_RESIZE_BOX:
         return (x > -0.5 && x <= 0.5) ? 1.0 : 0.0;
     case ALWAN_RESIZE_BILINEAR:
@@ -77,12 +150,24 @@ static double alwan_rs_filter(int m, double x) {
     }
 }
 
-static double alwan_rs_support(int m) {
-    return m == ALWAN_RESIZE_BOX ? 0.5 : m == ALWAN_RESIZE_BICUBIC ? 2.0 : m == ALWAN_RESIZE_LANCZOS ? 3.0 : 1.0;
+static double alwan_rs_support(alwan_rs_kernel const *kn) {
+    switch (kn->m) {
+    case ALWAN_RESIZE_BOX: return 0.5;
+    case ALWAN_RESIZE_BICUBIC:
+    case ALWAN_RESIZE_LANCZOS2:
+    case ALWAN_RESIZE_MITCHELL:
+    case ALWAN_RESIZE_BSPLINE: return 2.0;
+    case ALWAN_RESIZE_LANCZOS: return 3.0;
+    case ALWAN_RESIZE_LANCZOS4: return 4.0;
+    case ALWAN_RESIZE_GAUSSIAN: return 4.0 * kn->sigma;
+    case ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2013: return 2.5;
+    case ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2021: return 4.5;
+    default: return 1.0;
+    }
 }
 
 /* Pillow's precompute_coeffs: ksize weights a sample in kk, bounds (first, count) in b. */
-static int alwan_rs_coeffs(double *kk, int *b, int in_size, float in0, float in1, int out_size, int m) {
+static int alwan_rs_coeffs(double *kk, int *b, int in_size, float in0, float in1, int out_size, alwan_rs_kernel const *m) {
     double const scale = (double)(in1 - in0) / out_size;
     double const filterscale = scale < 1.0 ? 1.0 : scale;
     double const support = alwan_rs_support(m) * filterscale;
@@ -142,9 +227,11 @@ static alwan_status alwan_rs_integrate(void *out, size_t out_rs, size_t ow, size
     wp.samples = p->samples;
     wp.seed = p->seed;
     wp.alpha_channel = p->alpha_channel;
-    wm = (method == ALWAN_RESIZE_NEAREST || method == ALWAN_RESIZE_BOX) ? ALWAN_WARP_NEAREST
-         : (method == ALWAN_RESIZE_BILINEAR || method == ALWAN_RESIZE_HAMMING) ? ALWAN_WARP_BILINEAR
-                                                                                : ALWAN_WARP_BICUBIC;
+    wm = (method == ALWAN_RESIZE_NEAREST || method == ALWAN_RESIZE_BOX || method == ALWAN_RESIZE_OPENCV_AREA) ? ALWAN_WARP_NEAREST
+         : (method == ALWAN_RESIZE_BILINEAR || method == ALWAN_RESIZE_HAMMING || method == ALWAN_RESIZE_GAUSSIAN) ? ALWAN_WARP_BILINEAR
+         : (method == ALWAN_RESIZE_LANCZOS4 || method == ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2021) ? ALWAN_WARP_LANCZOS4
+         : method == ALWAN_RESIZE_BSPLINE ? ALWAN_WARP_BSPLINE3
+                                          : ALWAN_WARP_BICUBIC;
     return alwan__warp_run(out, out_rs, ow, oh, src, src_rs, ch, w, h, wm, &wp, kind);
 }
 
@@ -210,7 +297,13 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
     size_t x, y, c;
     if (!out || !src || w == 0 || h == 0 || ow == 0 || oh == 0 || ch == 0 || ch > 4) return ALWAN_E_INVALID;
     if (src_rs / elem / ch < w || out_rs / elem / ch < ow) return ALWAN_E_INVALID;
-    if ((unsigned)method > (unsigned)ALWAN_RESIZE_LANCZOS) return ALWAN_E_INVALID;
+    if ((unsigned)method > (unsigned)ALWAN_RESIZE_OPENCV_AREA) return ALWAN_E_INVALID;
+    if (method == ALWAN_RESIZE_GAUSSIAN && !(p->gaussian_sigma >= 0.0 && p->gaussian_sigma < 1e6)) return ALWAN_E_RANGE;
+    if (method == ALWAN_RESIZE_MITCHELL && p->cubic_bc_set && !(p->cubic_b - p->cubic_b == 0.0 && p->cubic_c - p->cubic_c == 0.0))
+        return ALWAN_E_RANGE;
+    if ((method == ALWAN_RESIZE_OPENCV_CUBIC || method == ALWAN_RESIZE_OPENCV_AREA) &&
+        (!whole || p->integration != ALWAN_PIXEL_INTEGRATE_POINT || p->subpixel != ALWAN_SUBPIXEL_NONE))
+        return ALWAN_E_INVALID;
     if (w > 1u << 24 || h > 1u << 24 || ow > 1u << 24 || oh > 1u << 24) return ALWAN_E_RANGE;
     if (!(bx0 >= 0.0f) || !(by0 >= 0.0f) || !(bx1 <= (float)w) || !(by1 <= (float)h) || !(bx1 > bx0) || !(by1 > by0)) return ALWAN_E_RANGE;
     if ((unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_AUTO || (unsigned)p->subpixel > (unsigned)ALWAN_SUBPIXEL_VBGR ||
@@ -232,6 +325,8 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
         for (y = 0; y < h; y++) memmove((char *)out + y * out_rs, (char const *)src + y * src_rs, w * ch * elem);
         return ALWAN_OK;
     }
+    if (method == ALWAN_RESIZE_OPENCV_CUBIC || method == ALWAN_RESIZE_OPENCV_AREA)
+        return alwan__cv_resize(out, out_rs, ow, oh, src, src_rs, ch, w, h, method == ALWAN_RESIZE_OPENCV_AREA, kind);
     if (method == ALWAN_RESIZE_NEAREST) {
         double const a0 = (double)(bx1 - bx0) / (double)ow, a4 = (double)(by1 - by0) / (double)oh;
         int *xin = (int *)ALWAN_ALLOC(alwan_safe_array_size(ow, sizeof(int)), sizeof(int));
@@ -259,8 +354,14 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
         int const need_h = ow != w || bx0 != 0.0f || bx1 != (float)ow;
         int const need_v = oh != h || by0 != 0.0f || by1 != (float)oh;
         double const sh = (double)(bx1 - bx0) / (double)ow, sv = (double)(by1 - by0) / (double)oh;
-        size_t const kh = (size_t)ALWAN_CEIL_F64(alwan_rs_support(method) * (sh < 1.0 ? 1.0 : sh)) * 2 + 1;
-        size_t const kv = (size_t)ALWAN_CEIL_F64(alwan_rs_support(method) * (sv < 1.0 ? 1.0 : sv)) * 2 + 1;
+        alwan_rs_kernel kn;
+        size_t kh, kv;
+        kn.m = (int)method;
+        kn.b = p->cubic_bc_set ? p->cubic_b : 1.0 / 3.0;
+        kn.c = p->cubic_bc_set ? p->cubic_c : 1.0 / 3.0;
+        kn.sigma = p->gaussian_sigma > 0.0 ? p->gaussian_sigma : 0.5;
+        kh = (size_t)ALWAN_CEIL_F64(alwan_rs_support(&kn) * (sh < 1.0 ? 1.0 : sh)) * 2 + 1;
+        kv = (size_t)ALWAN_CEIL_F64(alwan_rs_support(&kn) * (sv < 1.0 ? 1.0 : sv)) * 2 + 1;
         double *kkh = (double *)ALWAN_ALLOC(alwan_safe_array_size(ow * kh + oh * kv, sizeof(double)), sizeof(double));
         int *bh = (int *)ALWAN_ALLOC(alwan_safe_array_size(2 * (ow + oh), sizeof(int)), sizeof(int));
         double *kkv, *tmp = NULL;
@@ -273,8 +374,8 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
         }
         kkv = kkh + ow * kh;
         bv = bh + 2 * ow;
-        alwan_rs_coeffs(kkh, bh, (int)w, bx0, bx1, (int)ow, method);
-        alwan_rs_coeffs(kkv, bv, (int)h, by0, by1, (int)oh, method);
+        alwan_rs_coeffs(kkh, bh, (int)w, bx0, bx1, (int)ow, &kn);
+        alwan_rs_coeffs(kkv, bv, (int)h, by0, by1, (int)oh, &kn);
         yfirst = bv[0];
         ylast = bv[oh * 2 - 2] + bv[oh * 2 - 1];
         /* the intermediate: rows yfirst .. ylast of the horizontally resampled image, or the

@@ -183,6 +183,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_denoise_nlm.c
   src/alwan/api/alwan_ridge.c
   src/alwan/api/alwan_resize.c
+  src/alwan/api/alwan_resize_opencv.c
   src/alwan/api/alwan_warp.c
   src/alwan/api/alwan_edge_filter.c
   src/alwan/api/alwan_guided_filter.c

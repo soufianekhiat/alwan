@@ -4272,7 +4272,8 @@ alwan_status alwan_ridge_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 co
  *   ALWAN_RESIZE_BOX       the box filter: each output the mean of the source it covers
  *   ALWAN_RESIZE_BILINEAR  the triangle filter
  *   ALWAN_RESIZE_HAMMING   a Hamming-windowed sinc of support 1: sharper than bilinear
- *   ALWAN_RESIZE_BICUBIC   Keys' cubic convolution, a = -0.5
+ *   ALWAN_RESIZE_BICUBIC   Keys' cubic convolution, a = -0.5 (the Catmull-Rom spline, the
+ *                          Mitchell-Netravali family's B = 0, C = 0.5)
  *   ALWAN_RESIZE_LANCZOS   the Lanczos-3 windowed sinc: the sharpest, with the most ringing
  *
  * As Pillow's Image.resize, value for value (suite 233): its filters and supports, its
@@ -4282,14 +4283,55 @@ alwan_status alwan_ridge_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 co
  * independent: premultiply an alpha channel first for resampling with transparency. out
  * must not overlap src unless the sizes are equal. ALWAN_E_INVALID for a NULL, a zero
  * size, a channel count out of range, a stride too small, a NaN or infinite value, or an
- * unknown method; ALWAN_E_RANGE for a side over 2^24 or a box outside the image or empty. */
+ * unknown method; ALWAN_E_RANGE for a side over 2^24 or a box outside the image or empty.
+ *
+ * More kernels in the same scheme (Pillow's resampler, its edges and fixed point, a kernel
+ * Pillow does not have; held to the kernel's definition, suite 291):
+ *
+ *   ALWAN_RESIZE_LANCZOS2   sinc(x) sinc(x / 2), support 2: less ringing than Lanczos-3
+ *   ALWAN_RESIZE_LANCZOS4   sinc(x) sinc(x / 4), support 4: sharper, rings more
+ *   ALWAN_RESIZE_MITCHELL   the Mitchell-Netravali (1988) cubic, support 2, with B and C
+ *                           from cubic_b and cubic_c when cubic_bc_set is non-zero, else
+ *                           B = C = 1/3 (their recommendation). B = 0, C = 0.5 is BICUBIC;
+ *                           B = 0, C = 0 is the Hermite cubic
+ *   ALWAN_RESIZE_BSPLINE    the cubic B-spline (B = 1, C = 0): smooth, never rings, blurs, and
+ *                           does not pass through the samples
+ *   ALWAN_RESIZE_GAUSSIAN   exp(-x^2 / (2 sigma^2)), sigma from gaussian_sigma (0 reads as
+ *                           0.5), cut at 4 sigma
+ *   ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2013  Costella's Magic Kernel Sharp (2013): the magic
+ *                           kernel convolved with its sharpening step, piecewise quadratic,
+ *                           support 2.5
+ *   ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2021  its 2021 revision, support 4.5
+ *
+ * And two of OpenCV's own resamplers, value for value with cv2.resize with IPP off (suite
+ * 291), which differ from Pillow's scheme in their pixel grid (no box, positions
+ * (x + 0.5) scale - 0.5), their edges (the edge pixel repeated) and, for the cubic, in not
+ * widening the kernel when shrinking:
+ *
+ *   ALWAN_RESIZE_OPENCV_CUBIC  INTER_CUBIC: Keys' cubic with a = -0.75 over 4 x 4 pixels,
+ *                              8-bit through OpenCV's 11-bit coefficients and its SSE
+ *                              rounding, float32 and double through its float coefficients
+ *   ALWAN_RESIZE_OPENCV_AREA   INTER_AREA: shrinking, each output the mean of the source
+ *                              area it covers (exact block means for an integer factor);
+ *                              enlarging along either axis, OpenCV's area-weighted bilinear
+ *
+ * The OpenCV methods take the whole image only (box all 0) and POINT integration. */
 typedef enum {
     ALWAN_RESIZE_NEAREST = 0,
     ALWAN_RESIZE_BOX = 1,
     ALWAN_RESIZE_BILINEAR = 2,
     ALWAN_RESIZE_HAMMING = 3,
     ALWAN_RESIZE_BICUBIC = 4,
-    ALWAN_RESIZE_LANCZOS = 5
+    ALWAN_RESIZE_LANCZOS = 5,
+    ALWAN_RESIZE_LANCZOS2 = 6,
+    ALWAN_RESIZE_LANCZOS4 = 7,
+    ALWAN_RESIZE_MITCHELL = 8,
+    ALWAN_RESIZE_BSPLINE = 9,
+    ALWAN_RESIZE_GAUSSIAN = 10,
+    ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2013 = 11,
+    ALWAN_RESIZE_MAGIC_KERNEL_SHARP_2021 = 12,
+    ALWAN_RESIZE_OPENCV_CUBIC = 13,
+    ALWAN_RESIZE_OPENCV_AREA = 14
 } alwan_resize_method;
 
 /* LCD subpixel layouts for alwan_resize: the order of the red, green and blue stripes
@@ -4321,6 +4363,10 @@ typedef struct {
                                     * (8, 77, 86, 77, 8) / 256: text on an LCD of that layout keeps about three
                                     * times the resolution across the stripes, at the price of colour fringes on
                                     * any other display */
+    int cubic_bc_set;              /* MITCHELL: non-zero takes cubic_b and cubic_c as given (0, 0 included);
+                                    * 0 is Mitchell and Netravali's B = C = 1/3 */
+    double cubic_b, cubic_c;       /* MITCHELL: the B and C of the family */
+    double gaussian_sigma;         /* GAUSSIAN: in source pixels at scale 1; 0 reads as 0.5 */
 } alwan_resize_params;
 
 alwan_status alwan_resize_f32(alwan_f32 *out, size_t out_row_stride, size_t out_width, size_t out_height, alwan_f32 const *src, size_t src_row_stride, size_t channels, size_t width, size_t height, alwan_resize_method method, alwan_resize_params const *params);
@@ -4339,6 +4385,22 @@ alwan_status alwan_resize_u8(unsigned char *out, size_t out_row_stride, size_t o
  *   ALWAN_WARP_NEAREST   the pixel under the point
  *   ALWAN_WARP_BILINEAR  the four around it
  *   ALWAN_WARP_BICUBIC   the sixteen around it, Catmull-Rom (a = -0.5)
+ *   ALWAN_WARP_LANCZOS4  the 64 around it, weighted by sinc(t) sinc(t / 4) and normalised
+ *                        to sum 1: OpenCV's INTER_LANCZOS4 kernel, evaluated at the exact
+ *                        position (cv2.remap rounds positions to 1/32 of a pixel; suite 291
+ *                        holds this to cv2 on that grid, and to the definition elsewhere)
+ *   ALWAN_WARP_BSPLINE3  the cubic B-spline through the samples: the image is prefiltered
+ *                        into B-spline coefficients once per call, then 16 of them weigh
+ *                        each point, as scipy.ndimage.map_coordinates(order=3,
+ *                        mode='nearest') computes it, value for value (suite 291)
+ *   ALWAN_WARP_BSPLINE5  the same with the quintic B-spline (order=5), 36 coefficients
+ *
+ * LANCZOS4 and the B-splines repeat the edge pixel past the image (their prefilter pads
+ * by 12 repeated pixels, as scipy does for mode 'nearest'), keep the same rule for a point
+ * outside (fill), and round 8-bit results to nearest (half up, as scipy stores them) with
+ * clamping, where the Pillow methods truncate. They overshoot near edges as any
+ * interpolating kernel with negative lobes does; integration (below) averages them like
+ * the others.
  *
  * As Pillow's Image.transform (AFFINE, PERSPECTIVE) value for value (suite 234), its edge
  * rules and its nearest-neighbour fixed point included; 8-bit results truncated (bicubic
@@ -4358,7 +4420,10 @@ alwan_status alwan_resize_u8(unsigned char *out, size_t out_row_stride, size_t o
 typedef enum {
     ALWAN_WARP_NEAREST = 0,
     ALWAN_WARP_BILINEAR = 1,
-    ALWAN_WARP_BICUBIC = 2
+    ALWAN_WARP_BICUBIC = 2,
+    ALWAN_WARP_LANCZOS4 = 3,
+    ALWAN_WARP_BSPLINE3 = 4,
+    ALWAN_WARP_BSPLINE5 = 5
 } alwan_warp_method;
 
 /* Where each output point takes its source point from. */

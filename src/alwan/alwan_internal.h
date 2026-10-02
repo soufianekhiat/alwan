@@ -70,6 +70,10 @@ alwan_status alwan__l0_run(void *out, size_t out_rs, void const *src, size_t src
 /* alwan_warp.c: alwan_warp's engine for alwan_resize's integration; kind 0 f64, 1 f32, 2 u8 */
 alwan_status alwan__warp_run(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
                             alwan_warp_method method, alwan_warp_params const *params, int kind);
+/* alwan_resize_opencv.c: cv::resize INTER_CUBIC (area 0) or INTER_AREA (area 1), the whole
+ * image; kind 0 f64, 1 f32, 2 u8 */
+alwan_status alwan__cv_resize(void *out, size_t out_rs, size_t ow, size_t oh, void const *src, size_t src_rs, size_t ch, size_t w, size_t h,
+                              int area, int kind);
 /* alwan_denoise_nlm.c: ALWAN_DENOISE_NL_MEANS_DARBON (buades 0) and _BUADES (1); kind 0 f64,
  * 1 f32, 2 u8 (through double in 0..1, rounded back) */
 alwan_status alwan__denoise_nlm(void *out, size_t out_rs, void const *src, size_t src_rs, size_t ch, size_t w, size_t h, int buades,
