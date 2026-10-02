@@ -296,6 +296,402 @@ static alwan_status alwan_mkl_run(void *out, size_t out_stride, void const *src,
     return ALWAN_OK;
 }
 
+/* ---- IDT: Pitie, Kokaram and Dahyot, iterative distribution transfer ----
+ *
+ * F. Pitie, A. Kokaram, R. Dahyot, "N-dimensional probability density function transfer
+ * and its application to colour transfer", ICCV 2005, and "Automated colour grading using
+ * colour distribution transfer", CVIU 107(1-2), 2007. alwan's own code from the papers.
+ *
+ * Each iteration takes a rotation R (rows are the axes), projects the current source and
+ * the reference on every axis, matches the source's 1D distribution to the reference's on
+ * that axis, and moves each pixel by R' (matched - projected). The 1D transfer:
+ *
+ *   lo, hi        the smallest and largest projection of either image (an axis on which
+ *                 hi <= lo moves nothing)
+ *   e_k           lo + k step, step = (hi - lo) / (bins - 1), k = 0 .. bins - 1
+ *   bin of v      the largest k with e_k <= v (a binary search over e: no float-to-index
+ *                 cast), at most bins - 1
+ *   C_k           the running sum of (count_k + 1e-6), divided by its last value: the eps
+ *                 keeps C strictly increasing, so its inverse exists everywhere
+ *   F_k           lo + f step, f where C_ref reaches C_src[k] (linear between the ref's
+ *                 bins; 0 at or below C_ref[0], bins - 1 at or above C_ref[last])
+ *   v'            F_k + ((v - e_k) / step) (F_{k+1} - F_k), k the bin of v at most bins - 2
+ *
+ * The rotations: iteration 0 is the identity; iteration i > 0 draws n x n values uniform in
+ * [-1, 1) from splitmix64 (state = seed, value (x >> 11) * 2^-53 * 2 - 1, row major) and
+ * orthonormalises the rows by modified Gram-Schmidt, redrawing a row whose norm falls under
+ * 1e-6. Every sum runs in index order, so a numpy transcription reproduces it to the bit
+ * (suite 299). */
+
+static uint64_t alwan_idt_next(uint64_t *state) {
+    uint64_t z;
+    *state += 0x9E3779B97F4A7C15ull;
+    z = *state;
+    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+    z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+    return z ^ (z >> 31);
+}
+
+static double alwan_idt_uniform(uint64_t *state) {
+    return (double)(alwan_idt_next(state) >> 11) * (1.0 / 9007199254740992.0) * 2.0 - 1.0;
+}
+
+static void alwan_idt_rotation(double r[16], size_t n, size_t it, uint64_t *state) {
+    size_t a, b, k;
+    if (it == 0) {
+        for (a = 0; a < n; a++) {
+            for (b = 0; b < n; b++) r[a * n + b] = a == b ? 1.0 : 0.0;
+        }
+        return;
+    }
+    for (a = 0; a < n * n; a++) r[a] = alwan_idt_uniform(state);
+    for (a = 0; a < n; a++) {
+        for (;;) {
+            double norm = 0.0;
+            for (b = 0; b < a; b++) {
+                double dot = 0.0;
+                for (k = 0; k < n; k++) dot += r[a * n + k] * r[b * n + k];
+                for (k = 0; k < n; k++) r[a * n + k] -= dot * r[b * n + k];
+            }
+            for (k = 0; k < n; k++) norm += r[a * n + k] * r[a * n + k];
+            norm = ALWAN_SQRT_F64(norm);
+            if (norm >= 1e-6) {
+                for (k = 0; k < n; k++) r[a * n + k] /= norm;
+                break;
+            }
+            for (k = 0; k < n; k++) r[a * n + k] = alwan_idt_uniform(state);
+        }
+    }
+}
+
+/* The largest k in [0, count) with e[k] <= v; 0 when v < e[0] (never, here). */
+static size_t alwan_idt_find(double const *e, size_t count, double v) {
+    size_t lo = 0, hi = count;   /* invariant: answer in [lo, hi) once e[0] <= v */
+    while (hi - lo > 1) {
+        size_t const mid = lo + (hi - lo) / 2;
+        if (e[mid] <= v) lo = mid;
+        else hi = mid;
+    }
+    return lo;
+}
+
+/* One axis: d[i] = matched - p[i] for the count source projections p against the ref's q. */
+static void alwan_idt_axis(double *d, double const *p, size_t count, double const *q, size_t rcount, size_t bins,
+                           double *e, double *cx, double *cy, double *f) {
+    double lo = p[0], hi = p[0], step, s;
+    size_t i, k;
+    for (i = 0; i < count; i++) {
+        if (p[i] < lo) lo = p[i];
+        if (p[i] > hi) hi = p[i];
+    }
+    for (i = 0; i < rcount; i++) {
+        if (q[i] < lo) lo = q[i];
+        if (q[i] > hi) hi = q[i];
+    }
+    if (!(hi > lo)) {
+        for (i = 0; i < count; i++) d[i] = 0.0;
+        return;
+    }
+    step = (hi - lo) / (double)(bins - 1);
+    for (k = 0; k < bins; k++) {
+        e[k] = lo + (double)k * step;
+        cx[k] = 0.0;
+        cy[k] = 0.0;
+    }
+    for (i = 0; i < count; i++) cx[alwan_idt_find(e, bins, p[i])] += 1.0;
+    for (i = 0; i < rcount; i++) cy[alwan_idt_find(e, bins, q[i])] += 1.0;
+    s = 0.0;
+    for (k = 0; k < bins; k++) { s += cx[k] + 1e-6; cx[k] = s; }
+    for (k = 0; k < bins; k++) cx[k] /= s;
+    s = 0.0;
+    for (k = 0; k < bins; k++) { s += cy[k] + 1e-6; cy[k] = s; }
+    for (k = 0; k < bins; k++) cy[k] /= s;
+    for (k = 0; k < bins; k++) {
+        double const t = cx[k];
+        double pos;
+        if (t <= cy[0]) {
+            pos = 0.0;
+        } else if (t >= cy[bins - 1]) {
+            pos = (double)(bins - 1);
+        } else {
+            size_t const j = alwan_idt_find(cy, bins, t);
+            pos = (double)j + (t - cy[j]) / (cy[j + 1] - cy[j]);
+        }
+        f[k] = lo + pos * step;
+    }
+    for (i = 0; i < count; i++) {
+        size_t kk = alwan_idt_find(e, bins, p[i]);
+        double frac;
+        if (kk > bins - 2) kk = bins - 2;
+        frac = (p[i] - e[kk]) / step;
+        d[i] = (f[kk] + frac * (f[kk + 1] - f[kk])) - p[i];
+    }
+}
+
+/* x (count x n, row major) and y (rcount x n) in double; x is moved in place. */
+static alwan_status alwan_idt_core(double *x, size_t count, double const *y, size_t rcount, size_t n,
+                                   size_t iterations, size_t bins, uint64_t seed) {
+    double r[16];
+    double *p, *q, *d, *e, *cx, *cy, *f;
+    uint64_t state = seed;
+    size_t it, a, i, k;
+    size_t const nmax = count > rcount ? count : rcount;
+    p = (double *)ALWAN_ALLOC(alwan_safe_array_size(nmax, sizeof(double)), sizeof(double));
+    q = (double *)ALWAN_ALLOC(alwan_safe_array_size(rcount, sizeof(double)), sizeof(double));
+    d = (double *)ALWAN_ALLOC(alwan_safe_array_size(count, n * sizeof(double)), sizeof(double));
+    e = (double *)ALWAN_ALLOC(alwan_safe_array_size(bins, 4 * sizeof(double)), sizeof(double));
+    if (!p || !q || !d || !e) {
+        if (p) ALWAN_FREE(p);
+        if (q) ALWAN_FREE(q);
+        if (d) ALWAN_FREE(d);
+        if (e) ALWAN_FREE(e);
+        return ALWAN_E_NOMEM;
+    }
+    cx = e + bins;
+    cy = cx + bins;
+    f = cy + bins;
+    for (it = 0; it < iterations; it++) {
+        alwan_idt_rotation(r, n, it, &state);
+        for (a = 0; a < n; a++) {
+            for (i = 0; i < count; i++) {
+                double s = 0.0;
+                for (k = 0; k < n; k++) s += r[a * n + k] * x[i * n + k];
+                p[i] = s;
+            }
+            for (i = 0; i < rcount; i++) {
+                double s = 0.0;
+                for (k = 0; k < n; k++) s += r[a * n + k] * y[i * n + k];
+                q[i] = s;
+            }
+            alwan_idt_axis(p, p, count, q, rcount, bins, e, cx, cy, f); /* p becomes the delta */
+            for (i = 0; i < count; i++) d[i * n + a] = p[i];
+        }
+        for (i = 0; i < count; i++) {
+            for (k = 0; k < n; k++) {
+                double t = 0.0;
+                for (a = 0; a < n; a++) t += r[a * n + k] * d[i * n + a];
+                x[i * n + k] += t;
+            }
+        }
+    }
+    ALWAN_FREE(p);
+    ALWAN_FREE(q);
+    ALWAN_FREE(d);
+    ALWAN_FREE(e);
+    return ALWAN_OK;
+}
+
+/* Pixels to a packed double buffer, refusing a non-finite value. */
+static double *alwan_ct_pack(void const *px, size_t stride, size_t count, size_t n, int is_f32, int *bad) {
+    double *b = (double *)ALWAN_ALLOC(alwan_safe_array_size(count, n * sizeof(double)), sizeof(double));
+    size_t i, c;
+    *bad = 0;
+    if (!b) return NULL;
+    for (i = 0; i < count; i++) {
+        char const *p = (char const *)px + i * stride;
+        for (c = 0; c < n; c++) {
+            double const v = is_f32 ? (double)((alwan_f32 const *)p)[c] : ((alwan_f64 const *)p)[c];
+            if (!alwan_ct_finite(v)) *bad = 1;
+            b[i * n + c] = v;
+        }
+    }
+    return b;
+}
+
+static void alwan_ct_unpack(void *out, size_t stride, double const *b, size_t count, size_t n, int is_f32) {
+    size_t i, c;
+    for (i = 0; i < count; i++) {
+        char *p = (char *)out + i * stride;
+        for (c = 0; c < n; c++) {
+            if (is_f32) ((alwan_f32 *)p)[c] = (alwan_f32)b[i * n + c];
+            else ((alwan_f64 *)p)[c] = b[i * n + c];
+        }
+    }
+}
+
+static alwan_status alwan_idt_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
+                                  void const *ref, size_t ref_stride, size_t ref_count, size_t n, size_t iterations,
+                                  size_t bins, uint64_t seed, int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    double *x, *y;
+    int bad_x, bad_y;
+    alwan_status st;
+    if (ref_count == 0 || ref_stride / elem < n) return ALWAN_E_INVALID;
+    x = alwan_ct_pack(src, src_stride, src_count, n, is_f32, &bad_x);
+    y = alwan_ct_pack(ref, ref_stride, ref_count, n, is_f32, &bad_y);
+    if (!x || !y) {
+        if (x) ALWAN_FREE(x);
+        if (y) ALWAN_FREE(y);
+        return ALWAN_E_NOMEM;
+    }
+    if (bad_x || bad_y) {
+        st = ALWAN_E_INVALID;
+    } else {
+        st = alwan_idt_core(x, src_count, y, ref_count, n, iterations, bins, seed);
+        if (st == ALWAN_OK) alwan_ct_unpack(out, out_stride, x, src_count, n, is_f32);
+    }
+    ALWAN_FREE(x);
+    ALWAN_FREE(y);
+    return st;
+}
+
+/* ---- Xiao and Ma 2006 ----
+ *
+ * X. Xiao, L. Ma, "Color transfer in correlated color space", VRCIA 2006. The source's
+ * colour distribution, seen as an ellipsoid (mean and covariance), is translated, rotated
+ * and scaled onto the reference's in RGB itself, with no decorrelating space:
+ *
+ *   out = m_r + U_r S_r S_s^-1 U_s' (x - m_s),   cov = U L U', S = sqrt(L)
+ *
+ * The paper takes U and L from an SVD, which leaves each eigenvector's sign and the order
+ * of equal eigenvalues open; here the eigenvalues are sorted largest first and each
+ * eigenvector is signed so its component of largest magnitude is positive (the first such
+ * component on a tie). Sample covariances (n - 1); a source eigenvalue under 1e-12 of the
+ * largest gives a scale of 0, as MKL's pseudo-inverse. */
+
+static void alwan_xiao_sorted(double l[4], double u[16], double a[16], size_t n) {
+    double v[16];
+    size_t idx[4], i, j, k;
+    alwan_mkl_jacobi(a, v, n);
+    for (i = 0; i < n; i++) idx[i] = i;
+    for (i = 1; i < n; i++) { /* insertion sort, largest first; stable */
+        size_t const t = idx[i];
+        j = i;
+        while (j > 0 && a[idx[j - 1] * n + idx[j - 1]] < a[t * n + t]) {
+            idx[j] = idx[j - 1];
+            j--;
+        }
+        idx[j] = t;
+    }
+    for (j = 0; j < n; j++) {
+        size_t const c = idx[j];
+        size_t big = 0;
+        double sign;
+        l[j] = a[c * n + c];
+        for (k = 1; k < n; k++) {
+            if (ALWAN_ABS_F64(v[k * n + c]) > ALWAN_ABS_F64(v[big * n + c])) big = k;
+        }
+        sign = v[big * n + c] < 0.0 ? -1.0 : 1.0;
+        for (k = 0; k < n; k++) u[k * n + j] = sign * v[k * n + c];
+    }
+}
+
+static alwan_status alwan_xiao_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
+                                   void const *ref, size_t ref_stride, size_t ref_count, size_t n, int is_f32) {
+    size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
+    double ms[4], mr[4], cs[16], cr[16], us[16], ur[16], ls[4], lr[4], scale[4], m[16], big = 0.0;
+    size_t i, a, b, k;
+    if (src_count < 2 || ref_count < 2) return ALWAN_E_INVALID;
+    if (ref_stride / elem < n) return ALWAN_E_INVALID;
+    if (!alwan_mkl_stats(ms, cs, src, src_stride, src_count, n, is_f32)) return ALWAN_E_INVALID;
+    if (!alwan_mkl_stats(mr, cr, ref, ref_stride, ref_count, n, is_f32)) return ALWAN_E_INVALID;
+    alwan_xiao_sorted(ls, us, cs, n);
+    alwan_xiao_sorted(lr, ur, cr, n);
+    for (a = 0; a < n; a++) {
+        if (ls[a] > big) big = ls[a];
+    }
+    for (a = 0; a < n; a++) {
+        double const s = ls[a] > 1e-12 * big && ls[a] > 0.0 ? ALWAN_SQRT_F64(ls[a]) : 0.0;
+        double const r = lr[a] > 0.0 ? ALWAN_SQRT_F64(lr[a]) : 0.0;
+        scale[a] = s > 0.0 ? r / s : 0.0;
+    }
+    /* M = U_r diag(scale) U_s' */
+    for (a = 0; a < n; a++) {
+        for (b = 0; b < n; b++) {
+            double s = 0.0;
+            for (k = 0; k < n; k++) s += ur[a * n + k] * scale[k] * us[b * n + k];
+            m[a * n + b] = s;
+        }
+    }
+    for (i = 0; i < src_count; i++) {
+        char const *p = (char const *)src + i * src_stride;
+        char *dst = (char *)out + i * out_stride;
+        double x[4], y[4];
+        for (a = 0; a < n; a++) x[a] = (is_f32 ? (double)((alwan_f32 const *)p)[a] : ((alwan_f64 const *)p)[a]) - ms[a];
+        for (a = 0; a < n; a++) {
+            double s = mr[a];
+            for (b = 0; b < n; b++) s += m[a * n + b] * x[b];
+            y[a] = s;
+        }
+        for (a = 0; a < n; a++) {
+            if (is_f32) ((alwan_f32 *)dst)[a] = (alwan_f32)y[a];
+            else ((alwan_f64 *)dst)[a] = y[a];
+        }
+    }
+    return ALWAN_OK;
+}
+
+/* ---- regrain: Pitie, Kokaram and Dahyot 2007 ----
+ *
+ * The transfer t can stretch the source I's small variations into grain. The regrain
+ * looks for J close to t where the source has detail and with the source's gradients where
+ * it is flat, minimising sum psi |J - t|^2 + phi |grad J - grad I|^2, by Jacobi sweeps of
+ * its Euler-Lagrange equation from J = t:
+ *
+ *   J'(p) = (psi_p t(p) + sum_q phi_pq (J(q) - I(q) + I(p))) / (psi_p + sum_q phi_pq)
+ *
+ * over the four neighbours q (x-1, x+1, y-1, y+1, in that order; a neighbour past the edge
+ * is p itself), phi_pq = (phi_p + phi_q) / 2. With g the source's gradient magnitude at p
+ * (central differences over every channel, clamped at the edge, the sum of squares taken
+ * channel by channel), psi_p = min(1, 51.2 g) and phi_p = 30 / (1 + 10 g / smoothness):
+ * the weights Pitie et al. give for images in [0, 1]. One scale only. */
+static alwan_status alwan_ct_regrain(double *j, double const *src0, size_t w, size_t h, size_t n, size_t sweeps,
+                                     double smooth) {
+    size_t const count = w * h;
+    double *t = (double *)ALWAN_ALLOC(alwan_safe_array_size(count, n * sizeof(double)), sizeof(double));
+    double *nj = (double *)ALWAN_ALLOC(alwan_safe_array_size(count, n * sizeof(double)), sizeof(double));
+    double *psi = (double *)ALWAN_ALLOC(alwan_safe_array_size(count, 2 * sizeof(double)), sizeof(double));
+    double *phi;
+    size_t x, y, c, it;
+    if (!t || !nj || !psi) {
+        if (t) ALWAN_FREE(t);
+        if (nj) ALWAN_FREE(nj);
+        if (psi) ALWAN_FREE(psi);
+        return ALWAN_E_NOMEM;
+    }
+    phi = psi + count;
+    for (x = 0; x < count * n; x++) t[x] = j[x];
+    for (y = 0; y < h; y++) {
+        size_t const ym = y > 0 ? y - 1 : 0, yp = y + 1 < h ? y + 1 : h - 1;
+        for (x = 0; x < w; x++) {
+            size_t const xm = x > 0 ? x - 1 : 0, xp = x + 1 < w ? x + 1 : w - 1;
+            double g = 0.0;
+            for (c = 0; c < n; c++) {
+                double const gx = (src0[(y * w + xp) * n + c] - src0[(y * w + xm) * n + c]) / 2.0;
+                double const gy = (src0[(yp * w + x) * n + c] - src0[(ym * w + x) * n + c]) / 2.0;
+                g += gx * gx + gy * gy;
+            }
+            g = ALWAN_SQRT_F64(g);
+            psi[y * w + x] = 51.2 * g < 1.0 ? 51.2 * g : 1.0;
+            phi[y * w + x] = 30.0 / (1.0 + 10.0 * g / smooth);
+        }
+    }
+    for (it = 0; it < sweeps; it++) {
+        for (y = 0; y < h; y++) {
+            size_t const ym = y > 0 ? y - 1 : 0, yp = y + 1 < h ? y + 1 : h - 1;
+            for (x = 0; x < w; x++) {
+                size_t const xm = x > 0 ? x - 1 : 0, xp = x + 1 < w ? x + 1 : w - 1;
+                size_t const pi = y * w + x;
+                size_t const nb[4] = { y * w + xm, y * w + xp, ym * w + x, yp * w + x };
+                double ph[4], den;
+                size_t q;
+                for (q = 0; q < 4; q++) ph[q] = (phi[pi] + phi[nb[q]]) / 2.0;
+                den = psi[pi] + ph[0] + ph[1] + ph[2] + ph[3];
+                for (c = 0; c < n; c++) {
+                    double num = psi[pi] * t[pi * n + c];
+                    for (q = 0; q < 4; q++) num += ph[q] * (j[nb[q] * n + c] - src0[nb[q] * n + c] + src0[pi * n + c]);
+                    nj[pi * n + c] = num / den;
+                }
+            }
+        }
+        for (x = 0; x < count * n; x++) j[x] = nj[x];
+    }
+    ALWAN_FREE(t);
+    ALWAN_FREE(nj);
+    ALWAN_FREE(psi);
+    return ALWAN_OK;
+}
+
 /* ---- the family: alwan_color_transfer_{T} ---- */
 
 static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src, size_t src_stride, size_t src_count,
@@ -304,6 +700,12 @@ static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src,
                                   int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
     double const amount = params && params->amount != 0.0 ? params->amount : 1.0;
+    size_t const iterations = params && params->iterations ? params->iterations : 20;
+    size_t const bins = params && params->bins ? params->bins : 300;
+    uint64_t const seed = params ? params->seed : 0;
+    size_t const sweeps = params ? params->regrain_iterations : 0;
+    double const smooth = params && params->regrain_smoothness != 0.0 ? params->regrain_smoothness : 1.0;
+    size_t const width = params ? params->width : 0;
     double *keep = NULL;
     alwan_status st;
     size_t i, c;
@@ -311,11 +713,16 @@ static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src,
     if (!(amount == amount) || amount < 0.0 || amount > 1.0) return ALWAN_E_RANGE;
     if (method == ALWAN_COLOR_TRANSFER_REINHARD2001 && channels != 3) return ALWAN_E_INVALID;
     if (method != ALWAN_COLOR_TRANSFER_REINHARD2001 && method != ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH &&
-        method != ALWAN_COLOR_TRANSFER_MKL) {
+        method != ALWAN_COLOR_TRANSFER_MKL && method != ALWAN_COLOR_TRANSFER_IDT &&
+        method != ALWAN_COLOR_TRANSFER_XIAO2006) {
         return ALWAN_E_INVALID;
     }
+    if (bins < 2) return ALWAN_E_INVALID;
+    if (iterations > 10000 || sweeps > 10000) return ALWAN_E_RANGE;
+    if (!(smooth > 0.0) || !alwan_ct_finite(smooth)) return ALWAN_E_INVALID;
+    if (sweeps > 0 && (width == 0 || src_count % width != 0)) return ALWAN_E_INVALID;
     if (src_stride / elem < channels || out_stride / elem < channels) return ALWAN_E_INVALID;
-    if (amount != 1.0) { /* out may be src: keep the source for the blend */
+    if (amount != 1.0 || sweeps > 0) { /* out may be src: keep the source for the blend and the regrain */
         keep = (double *)ALWAN_ALLOC(alwan_safe_array_size(src_count, channels * sizeof(double)), sizeof(double));
         if (!keep) return ALWAN_E_NOMEM;
         for (i = 0; i < src_count; i++) {
@@ -329,8 +736,28 @@ static alwan_status alwan_ctf_run(void *out, size_t out_stride, void const *src,
         st = alwan_ct_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, is_f32);
     } else if (method == ALWAN_COLOR_TRANSFER_MKL) {
         st = alwan_mkl_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, is_f32);
+    } else if (method == ALWAN_COLOR_TRANSFER_IDT) {
+        st = alwan_idt_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels,
+                           iterations, bins, seed, is_f32);
+    } else if (method == ALWAN_COLOR_TRANSFER_XIAO2006) {
+        st = alwan_xiao_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, is_f32);
     } else {
         st = alwan__hm_run(out, out_stride, src, src_stride, src_count, ref, ref_stride, ref_count, channels, is_f32);
+    }
+    if (st == ALWAN_OK && sweeps > 0) {
+        int bad;
+        double *jbuf = alwan_ct_pack(out, out_stride, src_count, channels, is_f32, &bad);
+        if (!jbuf) {
+            st = ALWAN_E_NOMEM;
+        } else {
+            st = alwan_ct_regrain(jbuf, keep, width, src_count / width, channels, sweeps, smooth);
+            if (st == ALWAN_OK) alwan_ct_unpack(out, out_stride, jbuf, src_count, channels, is_f32);
+            ALWAN_FREE(jbuf);
+        }
+    }
+    if (amount == 1.0 && keep) {   /* kept only for the regrain */
+        ALWAN_FREE(keep);
+        keep = NULL;
     }
     if (st == ALWAN_OK && keep) {
         for (i = 0; i < src_count; i++) {

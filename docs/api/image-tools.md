@@ -3059,8 +3059,20 @@ admissible cut (no pixels left, or every score NaN, which only negative luminanc
 typedef enum {
     ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH = 0,
     ALWAN_COLOR_TRANSFER_REINHARD2001 = 1,
-    ALWAN_COLOR_TRANSFER_MKL = 2
+    ALWAN_COLOR_TRANSFER_MKL = 2,
+    ALWAN_COLOR_TRANSFER_IDT = 3,
+    ALWAN_COLOR_TRANSFER_XIAO2006 = 4
 } alwan_color_transfer_method;
+
+typedef struct {
+    double amount;             /* 0 reads as 1 */
+    size_t iterations;         /* IDT, 0 reads as 20 */
+    size_t bins;               /* IDT, 0 reads as 300 */
+    uint64_t seed;             /* IDT rotation sequence */
+    size_t regrain_iterations; /* 0 = no regrain */
+    double regrain_smoothness; /* 0 reads as 1 */
+    size_t width;              /* pixels a row, for the regrain */
+} alwan_color_transfer_params;
 
 alwan_status alwan_color_transfer_{T}(alwan_{T} *out, size_t out_stride,
                                       alwan_{T} const *src, size_t src_stride, size_t src_count,
@@ -3070,9 +3082,13 @@ alwan_status alwan_color_transfer_{T}(alwan_{T} *out, size_t out_stride,
 ```
 
 The look of a reference image carried onto a source. The two need not be the same size,
-and pixels are passed as counts, since no method looks at neighbours. `out` may be
+and pixels are passed as counts, since no method looks at neighbours (only the optional
+regrain does, and it takes the row width in `params.width`). `out` may be
 `src`. `params.amount` blends the result with the source,
 `source + amount (transfer - source)`; 0 (or NULL params) reads as 1, the full transfer.
+Zero the whole params struct (`= { 0 }` or memset) before setting the fields you want: every
+field reads 0 as its default, and since 3.0.0 the struct has more fields than `amount`, so
+one left uninitialised (stack garbage in `regrain_iterations`, say) is no longer harmless.
 
 ### `HISTOGRAM_MATCH`
 
@@ -3131,6 +3147,87 @@ different sizes, linear light running past 1, and 4- and 2-channel pairs, to 5.5
 relative. It also checks the property that defines the method, that the result's mean and
 covariance are the reference's (to 2.3e-15), and the identity, one-channel, grey-source,
 float32 and blend cases.
+
+`MKL` is Pitie and Kokaram's linear Monge-Kantorovich mapping; there is no second method for
+it.
+
+### `IDT`
+
+Pitie, Kokaram and Dahyot's iterative distribution transfer (ICCV 2005; CVIU 2007), alwan's
+own code from the papers. Where `MKL` matches two moments of the joint distribution, IDT
+moves the whole of it: each iteration rotates the 1 to 4 channel space, matches the source
+to the reference along every rotated axis with a 1D CDF transfer, and rotates back. The
+marginals along more and more directions agree, and with them the joint distribution.
+
+The 1D transfer, per axis:
+
+- `lo`, `hi`: the smallest and largest projection of either image; an axis on which
+  `hi <= lo` moves nothing.
+- `bins` edges `e_k = lo + k step`, `step = (hi - lo) / (bins - 1)`. A value's bin is the
+  largest `k` with `e_k <= v` (a binary search), at most `bins - 1`.
+- `C_k`: the running sum of `count_k + 1e-6`, divided by its last value. The small constant
+  keeps `C` strictly increasing, so its inverse exists everywhere.
+- `F_k = lo + f step`, where `f` is the position at which the reference's `C` reaches the
+  source's `C_k`, linear between bins; 0 at or below the reference's first value, `bins - 1`
+  at or above its last.
+- `v' = F_k + ((v - e_k) / step) (F_{k+1} - F_k)`, `k` the bin of `v` at most `bins - 2`.
+
+Each pixel then moves by `R' (v' - v)` over the axes, with `R` the rotation (its rows are
+the axes). The rotations are a fixed, documented sequence: iteration 0 is the identity, so
+one iteration is a per-channel histogram transfer; iteration `i > 0` draws `n x n` values
+from splitmix64 (state = `seed`, value `(x >> 11) 2^-53 2 - 1`, row major) and makes the
+rows orthonormal by modified Gram-Schmidt, redrawing a row whose norm falls under 1e-6. The
+papers draw random rotations and do not fix them; a fixed sequence makes the result
+repeatable and lets a test reproduce it. Defaults: 20 iterations, 300 bins, seed 0. Not
+clamped.
+
+color-matcher (GPL) implements IDT with numpy's random rotations and its own histogram
+details, so it cannot reproduce alwan's result and is not used. Suite 299 compares with a
+numpy transcription of the rules above, driven by the same rotations: bit for bit in f64
+over ten cases of 1 to 4 channels, bin counts from 40 to 300, several seeds and iteration
+counts, with and without the regrain; f32 differs from f64 on the same float inputs by
+2.5e-8. It also checks the property that defines the method: on 16 fixed projections the
+distance between the result's and the reference's distributions is 0.256 untransferred,
+0.0089 after one iteration, 0.0038 after ten and 0.0030 after twenty, never growing.
+
+### `XIAO2006`
+
+Xiao and Ma, "Color transfer in correlated color space" (VRCIA 2006). The source's colour
+ellipsoid is translated, rotated and scaled onto the reference's in the space it is given
+(RGB in the paper), with no decorrelating space in between:
+
+```
+out = m_r + U_r S_r S_s^-1 U_s' (x - m_s),   cov = U L U',   S = sqrt(L)
+```
+
+The paper takes `U` and `L` from an SVD, which leaves each eigenvector's sign and the order
+of equal eigenvalues open, and the result depends on both. Here the eigenvalues are sorted
+largest first and each eigenvector is signed so its component of largest magnitude is
+positive (the first such on a tie). Sample covariances (n - 1); a source eigenvalue under
+1e-12 of the largest scales by 0. Unlike `MKL` this is not the least-motion map: it lines up
+the principal axes by their order, which can turn colours where `MKL` would not. 1 to 4
+channels, two pixels at least, not clamped. Suite 299 compares with numpy's `eigh` under the
+same order and sign rule, to 1.2e-15.
+
+### Regrain
+
+Any method's result can be regrained, Pitie, Kokaram and Dahyot's step (CVIU 2007) against
+the grain a transfer leaves when it stretches the source's small variations. Set
+`regrain_iterations` (0 is off) and `width` (pixels a row; `src_count` must be a multiple).
+It looks for `J` close to the transfer `t` where the source `I` has detail and with the
+source's gradients where it is flat, by Jacobi sweeps from `J = t`:
+
+```
+J'(p) = (psi_p t(p) + sum_q phi_pq (J(q) - I(q) + I(p))) / (psi_p + sum_q phi_pq)
+```
+
+over the four neighbours `q` (left, right, up, down; past the edge the neighbour is `p`),
+`phi_pq = (phi_p + phi_q) / 2`, with `g` the source's gradient magnitude (central
+differences over every channel), `psi_p = min(1, 51.2 g)` and `phi_p = 30 / (1 + 10 g /
+smoothness)`. These are the weights Pitie et al. use for images in [0, 1]; for other ranges
+scale `regrain_smoothness`, or the image. One scale only. Suite 299 checks the sweeps to the
+bit and that a regrain moves the transfer by a little (0.021 on average for 25 sweeps on its
+test pair).
 
 ## Sharpening
 

@@ -5467,20 +5467,59 @@ alwan_status alwan_inertia_tensor(double *tensor, double *eigvals, double const 
  *                                         so cross-channel structure moves too. Sample
  *                                         covariances (n - 1), at least two pixels each; a
  *                                         singular source covariance takes a pseudo-inverse;
- *                                         not clamped (color-matcher's mkl, suite 209)
+ *                                         not clamped (color-matcher's mkl, suite 209). This
+ *                                         IS Pitie and Kokaram's linear Monge-Kantorovich
+ *                                         mapping; there is no separate method for it
+ *   ALWAN_COLOR_TRANSFER_IDT              Pitie, Kokaram and Dahyot 2005/2007, iterative
+ *                                         distribution transfer: each iteration rotates the
+ *                                         1 to 4 channel space, matches the source's
+ *                                         distribution to the reference's along each rotated
+ *                                         axis by a 1D CDF transfer on `bins` histogram bins,
+ *                                         and rotates back, so the whole joint distribution
+ *                                         converges, not only the marginals. The rotations are
+ *                                         alwan's own deterministic sequence: the identity
+ *                                         first, then rows drawn uniform in [-1, 1) from
+ *                                         splitmix64 at `seed` and orthonormalised by
+ *                                         Gram-Schmidt (docs/api/image-tools.md has the exact
+ *                                         rules). Not clamped (suite 299)
+ *   ALWAN_COLOR_TRANSFER_XIAO2006         Xiao and Ma 2006, colour transfer in a correlated
+ *                                         colour space: the source's covariance ellipsoid
+ *                                         turned and scaled onto the reference's, out = m_r +
+ *                                         U_r sqrt(L_r) sqrt(L_s)^-1 U_s' (x - m_s), sample
+ *                                         covariances, eigenvalues largest first and each
+ *                                         eigenvector signed so its largest component is
+ *                                         positive (the paper's SVD leaves the sign open); a
+ *                                         zero source eigenvalue takes 0. Not clamped
+ *
+ * Any method's result can then be regrained (regrain_iterations > 0): Pitie, Kokaram and
+ * Dahyot 2007's gradient-preserving step, which keeps the transferred colours while
+ * restoring the source's gradients where the transfer stretched them into grain. It needs
+ * the pixels as an image: `width` pixels a row, src_count a multiple of it.
  *
  * params NULL is the full transfer. ALWAN_E_INVALID for a NULL, no pixels, a channel count
- * out of range (REINHARD2001 takes 3), fewer than two pixels for MKL, a stride too small,
- * a non-finite value or an unknown method; ALWAN_E_RANGE for an amount outside 0..1. */
+ * out of range (REINHARD2001 takes 3), fewer than two pixels for MKL or XIAO2006, a stride
+ * too small, a non-finite value, an unknown method, bins of 1, or a regrain without a
+ * width that divides src_count; ALWAN_E_RANGE for an amount outside 0..1 or more than
+ * 10000 iterations. */
 typedef enum {
     ALWAN_COLOR_TRANSFER_HISTOGRAM_MATCH = 0,
     ALWAN_COLOR_TRANSFER_REINHARD2001 = 1,
-    ALWAN_COLOR_TRANSFER_MKL = 2
+    ALWAN_COLOR_TRANSFER_MKL = 2,
+    ALWAN_COLOR_TRANSFER_IDT = 3,
+    ALWAN_COLOR_TRANSFER_XIAO2006 = 4
 } alwan_color_transfer_method;
 
+/* Zero the struct before setting fields: every field reads 0 as its default, and a field
+ * left uninitialised is read (since 3.0.0 there is more than `amount`). */
 typedef struct {
-    double amount; /* the result blended with the source, source + amount (transfer - source), in
-                    * 0..1; 0 reads as 1, the full transfer */
+    double amount;             /* the result blended with the source, source + amount (transfer -
+                                * source), in 0..1; 0 reads as 1, the full transfer */
+    size_t iterations;         /* IDT: rotations, 0 reads as 20 */
+    size_t bins;               /* IDT: histogram bins per axis, 0 reads as 300 */
+    uint64_t seed;             /* IDT: the rotation sequence's seed (0 is a valid seed) */
+    size_t regrain_iterations; /* regrain sweeps after the transfer, 0 = no regrain */
+    double regrain_smoothness; /* regrain: larger keeps more of the transfer, 0 reads as 1 */
+    size_t width;              /* pixels a row, needed only by the regrain */
 } alwan_color_transfer_params;
 
 alwan_status alwan_color_transfer_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *src, size_t src_stride, size_t src_count, alwan_f32 const *ref, size_t ref_stride, size_t ref_count, size_t channels, alwan_color_transfer_method method, alwan_color_transfer_params const *params);

@@ -1,5 +1,27 @@
 ## [Unreleased]
 
+### Added: iterative distribution transfer, regrain and Xiao 2006 (batch 14)
+
+- **`ALWAN_COLOR_TRANSFER_IDT`** (value 3) in `alwan_color_transfer_{T}`: Pitie, Kokaram and
+  Dahyot's iterative distribution transfer (ICCV 2005, CVIU 2007), alwan's own code from the
+  papers, 1 to 4 channels. Each iteration rotates the colour space, matches the source to
+  the reference along every axis with a 1D CDF transfer on `bins` bins, and rotates back.
+  The rotations are a fixed, documented sequence (the identity, then splitmix64 rows made
+  orthonormal by Gram-Schmidt) so the result repeats and a test can reproduce it: suite 299
+  is bit for bit against a numpy transcription over ten cases.
+- **`ALWAN_COLOR_TRANSFER_XIAO2006`** (value 4): Xiao and Ma 2006, the source's covariance
+  ellipsoid turned and scaled onto the reference's, with the eigenvector sign and order
+  rules the paper leaves open written down; 1.2e-15 from numpy's `eigh`.
+- **Regrain** after any method (Pitie et al. 2007): Jacobi sweeps that keep the transferred
+  colours and restore the source's gradients. New `alwan_color_transfer_params` fields:
+  `iterations` (20), `bins` (300), `seed`, `regrain_iterations` (0, off),
+  `regrain_smoothness` (1) and `width`. `MKL` already is Pitie and Kokaram's linear
+  Monge-Kantorovich mapping; the docs now say so.
+- **Source compatibility:** `alwan_color_transfer_params` had only `amount` before. Code that
+  declares the struct without initialising it and sets `amount` alone now passes garbage in
+  the new fields (suite 209 did, and a stray `regrain_iterations` made the call refuse).
+  Zero the struct first (`= { 0 }`), as the header and docs now say.
+
 ### Added: bilateral, Wiener, CAS and bilateral texture filters (batch 11)
 
 - **`ALWAN_DENOISE_BILATERAL_OPENCV`, `BILATERAL_SKIMAGE`, `WIENER_LOCAL`** (values 10 to 12)
