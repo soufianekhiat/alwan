@@ -754,9 +754,28 @@ typedef enum {
     ALWAN_INTERP_SPRAGUE,         /* Sprague 5th order, colour-science's */
     ALWAN_INTERP_LAGRANGE,        /* Four-point Lagrange */
     ALWAN_INTERP_AKIMA,           /* Akima, scipy's Akima1DInterpolator */
-    ALWAN_INTERP_PCHIP            /* Fritsch-Carlson monotone cubic */
+    ALWAN_INTERP_PCHIP,           /* Fritsch-Carlson monotone cubic */
+    ALWAN_INTERP_MAKIMA,          /* modified Akima, scipy's method="makima" */
+    ALWAN_INTERP_NATURAL_SPLINE,  /* C2 spline, zero second derivative at the ends */
+    ALWAN_INTERP_CLAMPED_SPLINE,  /* C2 spline, zero first derivative at the ends */
+    ALWAN_INTERP_NEAREST,         /* the nearest sample, a midpoint to the lower */
+    ALWAN_INTERP_PREVIOUS         /* the last sample at or before x: a step */
 } alwan_interp_method;
 ```
+
+The five added on 2026-10-02 match scipy (suite 296): `MAKIMA` is
+`Akima1DInterpolator(method="makima")` to 4.6e-15, where Akima's weights gain half the
+absolute sum of the two secants, so a flat run beside a slope keeps its flatness without the
+plain Akima's ringing on repeated values. `NATURAL_SPLINE` and `CLAMPED_SPLINE` are
+`CubicSpline(bc_type="natural")` and `bc_type="clamped"`, to 1.6e-14 and 7.6e-13 (the latter
+on three samples whose flat ends swing the cubic to 480: rounding, amplified). Being global,
+the two splines solve for every node at once and allocate twice `count_in` values from the
+default allocator; the readers that pass a window of samples (the refractive-index tables,
+the spectral film's CMFs) refuse them with `ALWAN_E_INVALID`, since a spline over a window is
+not the spline over the table. `NEAREST` and `PREVIOUS` are `interp1d(kind="nearest")` and
+`kind="previous"` exactly; a point half way between two samples takes the lower one, as
+scipy rounds a midpoint down. `alwan_interpolate_cubic_spline_{T}` takes the new
+`ALWAN_SPLINE_CLAMPED` boundary too.
 
 `ALWAN_INTERP_CUBIC` is Catmull-Rom, a local four-point curve, not a cubic spline. It is
 smooth and it overshoots: where the data turns, the interpolant swings past the samples.

@@ -51,9 +51,12 @@ static double alwan__rx_tv(alwan__rx_tab const *t, size_t i) { return t->vf ? (d
 
 #define ALWAN__RX_HALF 8   /* samples read on either side of the wavelength */
 
+/* Every local method. The two global splines are not: this reader passes a window of
+ * samples, and a spline over a window is not the spline over the table. */
 static int alwan__rx_interp_ok(alwan_interp_method m) {
     return m == ALWAN_INTERP_LINEAR || m == ALWAN_INTERP_CUBIC || m == ALWAN_INTERP_LANCZOS || m == ALWAN_INTERP_SPRAGUE ||
-           m == ALWAN_INTERP_LAGRANGE || m == ALWAN_INTERP_AKIMA || m == ALWAN_INTERP_PCHIP;
+           m == ALWAN_INTERP_LAGRANGE || m == ALWAN_INTERP_AKIMA || m == ALWAN_INTERP_PCHIP ||
+           m == ALWAN_INTERP_MAKIMA || m == ALWAN_INTERP_NEAREST || m == ALWAN_INTERP_PREVIOUS;
 }
 
 /* The value at x inside [first, last] sample. */

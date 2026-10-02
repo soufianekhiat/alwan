@@ -264,6 +264,39 @@ ALWAN_INLINE alwan_scalar alwan_table_blend_tetrahedral_v(
     return r;
 }
 
+/* Prism: the triangle 000 -> P1 -> P2 in the r-g plane, P1 the corner along the
+ * larger of the two fractions (f1 >= f2), and the same triangle one blue step up
+ * (Q0, Q1, Q2); barycentric in the triangle, linear in fb. */
+ALWAN_INLINE alwan_scalar alwan_table_blend_prism_v(
+        alwan_scalar p0, alwan_scalar p1, alwan_scalar p2,
+        alwan_scalar q0, alwan_scalar q1, alwan_scalar q2,
+        alwan_scalar f1, alwan_scalar f2, alwan_scalar fb) {
+    ALWAN_DET_PRECISE alwan_scalar r = p0
+         + f1 * (p1 - p0)
+         + f2 * (p2 - p1)
+         + fb * (q0 - p0)
+         + f1 * fb * ((q1 - q0) - (p1 - p0))
+         + f2 * fb * ((q2 - q1) - (p2 - p1));
+    return r;
+}
+
+/* Pyramid: base square v000, vA, vB, vAB on the face where the smallest fraction s
+ * is zero, apex v111. pa = fA - s, pb = fB - s, d = 1 - s; the base is read
+ * bilinearly at (pa / d, pb / d) and blended towards the apex by s. Written out so
+ * the only division is the bilinear cross term, which vanishes at the apex. */
+ALWAN_INLINE alwan_scalar alwan_table_blend_pyramid_v(
+        alwan_scalar v000, alwan_scalar vA, alwan_scalar vB, alwan_scalar vAB, alwan_scalar v111,
+        alwan_scalar pa, alwan_scalar pb, alwan_scalar s) {
+    const alwan_scalar d = ALWAN_LITERAL(1.0) - s;
+    const alwan_scalar q = ALWAN_SELECT(d > ALWAN_LITERAL(0.0), pa * pb / ALWAN_SELECT(d > ALWAN_LITERAL(0.0), d, ALWAN_LITERAL(1.0)), ALWAN_LITERAL(0.0));
+    ALWAN_DET_PRECISE alwan_scalar r = v000 * (d - pa - pb)
+         + vA * pa
+         + vB * pb
+         + v111 * s
+         + ((v000 - vA) - (vB - vAB)) * q;
+    return r;
+}
+
 /* Flat index of channel 0 of one node, per layout. The three layouts differ in
  * which axis is fastest and in whether the channels are interleaved, and a
  * mismatch between them compiles and returns plausible colours, so each has

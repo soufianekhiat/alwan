@@ -189,16 +189,26 @@ density `p / (2 pi^2 sin theta)`.
 alwan_status alwan_env_equirect_direction_{T}(alwan_vec3_{T} *dir_out, alwan_vec2_{T} const *xy);
 alwan_status alwan_env_equirect_position_{T}(alwan_vec2_{T} *xy_out, alwan_vec3_{T} const *dir);
 
-typedef enum { ALWAN_ENV_LOBE_COSINE = 0, ALWAN_ENV_LOBE_PHONG = 1 } alwan_env_lobe_kind;
+typedef enum { ALWAN_ENV_LOBE_COSINE = 0, ALWAN_ENV_LOBE_PHONG = 1, ALWAN_ENV_LOBE_GGX = 2 } alwan_env_lobe_kind;
 typedef struct {
     alwan_env_lobe_kind kind;
     alwan_scalar_{T} axis_x, axis_y, axis_z;   /* the normal, or the reflected direction */
     alwan_scalar_{T} exponent;                 /* PHONG; 0 for 1 */
+    alwan_scalar_{T} alpha;                    /* GGX; 0 for 0.25 */
 } alwan_env_lobe_{T};
 ```
 
 A lobe is what the light is weighed by at a surface: COSINE, `max(0, axis . w)`, gives
-irradiance; PHONG raises it to `exponent`. Two ways to sample light times lobe:
+irradiance; PHONG raises it to `exponent`; GGX (2026-10-02) is the Trowbridge-Reitz
+distribution around the axis, `D(c) / D(1) = alpha^4 / (c^2 (alpha^2 - 1) + 1)^2` at
+`c = axis . w > 0` and 0 behind it, `alpha` in (0, 1] (0 reads as 0.25, roughness 0.5):
+the lobe of a GGX reflection when the axis is the mirror direction. Every lobe is 1 on its
+axis, falls monotonically with the angle (which the samplers' cell bounds rely on), and only
+steers the samples; the density stays exact. Suite 282 adds two GGX lobes, alpha 0.3 and
+0.6: unbiased against the closed-form sphere integral
+`pi alpha^2 (1 + alpha^2 / (2 sqrt k) ln((1 + sqrt k) / (1 - sqrt k))) / 2`, `k = 1 - alpha^2`
+(on the constant map), and on the overcast sky the product sampler's error at alpha 0.3 is
+0.90% against 6.8% for sampling the light alone. Two ways to sample light times lobe:
 
 **Per-normal weights.** `alwan_env_weight_equirect_{T}` turns a luminance map into weights
 for `alwan_importance_sampling_2d_prepare_{T}`: each pixel's luminance x `sin(theta)` at
@@ -291,3 +301,41 @@ Validation (suite 282): the samplers against ground truth on a constant map (cos
 integral pi L, Phong 2 pi L / (e + 1)) and two synthetic skies whose integrals the suite
 computes pixel by pixel; the map position and direction round trip to 3e-15; the f32
 sampler to 7.6e-6.
+
+## Low-discrepancy points
+
+```c
+typedef enum {
+    ALWAN_LOW_DISCREPANCY_HALTON = 0,
+    ALWAN_LOW_DISCREPANCY_HALTON_SCRAMBLED = 1,
+    ALWAN_LOW_DISCREPANCY_R = 2
+} alwan_low_discrepancy_method;
+
+typedef struct {
+    size_t start_index;   /* the index of the first point */
+    unsigned seed;        /* HALTON_SCRAMBLED only */
+} alwan_low_discrepancy_params;
+
+alwan_status alwan_low_discrepancy_points_{T}(alwan_scalar_{T} *out, size_t row_stride, size_t count,
+                                              size_t dimensions, alwan_low_discrepancy_method method,
+                                              alwan_low_discrepancy_params const *params);
+```
+
+`count` points of up to 64 coordinates in [0, 1), the point of index `start_index + i` on
+row `i` (`row_stride` bytes apart, 0 for packed), for the `u` the samplers above take.
+
+- `HALTON`: the radical inverse of the index in the first `dimensions` primes, computed as
+  `scipy.stats.qmc.Halton(scramble=False)` computes it; suite 296 finds every coordinate
+  equal to scipy's, from index 0 and from 1000, up to 64 dimensions. The point of index 0 is
+  all zeros, as scipy's is.
+- `HALTON_SCRAMBLED`: every digit position of every coordinate goes through a permutation of
+  the digits, the index's leading zeros included, out to what a double resolves: the
+  structure of Owen's randomized Halton (2017) that scipy's `scramble=True` uses. The
+  permutations come from a hash of `seed`, not numpy's generator, so the points are not
+  scipy's; the strata are, and suite 296 checks them: the first `b^k` points of a base-`b`
+  coordinate fall one to each interval of width `b^-k` (bases 2, 3, 5, 7).
+- `R`: Roberts' R_d, `frac(1/2 + n phi_d^-j)` for coordinate `j`, `phi_d` the positive root of
+  `x^(d+1) = x + 1`. Any count covers evenly: 1000 points of R_2 put 8 to 13 in each cell of
+  a 10 x 10 grid.
+
+`HALTON_SCRAMBLED` allocates its permutations from the default allocator.

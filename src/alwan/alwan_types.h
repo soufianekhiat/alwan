@@ -109,6 +109,15 @@ typedef enum {
     ALWAN_SAMPLE_TRILINEAR   = 3,
     ALWAN_SAMPLE_TETRAHEDRAL = 4,
     ALWAN_SAMPLE_CATMULL_ROM = 5,
+    /* Rank 3 only. Kasson, Nin, Plouffe and Hafner 1995: the cell split by the plane
+     * r = g into two triangular prisms along blue; barycentric over the R-G triangle,
+     * linear along blue. Exact on any function linear in r and g within a blue slice. */
+    ALWAN_SAMPLE_PRISM       = 6,
+    /* Rank 3 only. Kasson et al. 1995: the cell split into three square pyramids with
+     * their apex at the far corner (1,1,1) and their bases on the three faces through
+     * the near corner; the smallest fraction picks the pyramid. Bilinear over the base,
+     * linear towards the apex. */
+    ALWAN_SAMPLE_PYRAMID     = 7,
     /* OR into the mode argument of a SCALAR reader. A non-finite or
      * out-of-[0,1] coordinate then returns ALWAN_E_RANGE and leaves *result
      * untouched instead of addressing the clamped edge. An enumerator rather
@@ -202,6 +211,8 @@ ALWAN_TYPE_DEF uint   alwan_uint8;
 #define ALWAN_SAMPLE_TRILINEAR   3
 #define ALWAN_SAMPLE_TETRAHEDRAL 4
 #define ALWAN_SAMPLE_CATMULL_ROM 5
+#define ALWAN_SAMPLE_PRISM       6
+#define ALWAN_SAMPLE_PYRAMID     7
 #define ALWAN_SAMPLE_STRICT      256
 
 /* Math Types */

@@ -15,7 +15,23 @@
 
 #define ALWAN_ENV_LOBE_KIND_COSINE 0
 #define ALWAN_ENV_LOBE_KIND_PHONG  1
+#define ALWAN_ENV_LOBE_KIND_GGX    2
 #define ALWAN_ENV_LOBE_KIND_NONE   (-1)
+
+/* The lobe's shape at c = axis . w > 0 (unit axis). COSINE c; PHONG c^e; GGX the
+ * Trowbridge-Reitz distribution D(c) over its peak D(1), alpha = e in (0, 1]:
+ *     D(c) / D(1) = alpha^4 / (c^2 (alpha^2 - 1) + 1)^2
+ * Each is 1 at the axis and falls monotonically with the angle, which is what the
+ * cell bound below relies on. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_env_lobe_shape)(int kind, ALWAN_CORE_T c, ALWAN_CORE_T e) {
+    if (kind == ALWAN_ENV_LOBE_KIND_PHONG && e != ALWAN_CORE_LITERAL(1.0)) return ALWAN_CORE_POW(c, e);
+    if (kind == ALWAN_ENV_LOBE_KIND_GGX) {
+        const ALWAN_CORE_T a2 = e * e;
+        const ALWAN_CORE_T t = c * c * (a2 - ALWAN_CORE_LITERAL(1.0)) + ALWAN_CORE_LITERAL(1.0);
+        return (a2 * a2) / (t * t);
+    }
+    return c;
+}
 
 /* The cell of n that holds v, v in cell units: the floor, clamped to [0, n - 1],
  * NaN to 0. Every float that becomes an index goes through here. */
@@ -84,8 +100,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_env_lobe_bound)(ALWAN_CORE_T x
     if (g <= ALWAN_CORE_LITERAL(0.0)) return ALWAN_CORE_LITERAL(1.0);
     if (g >= half_pi) return ALWAN_CORE_LITERAL(0.0);
     b = ALWAN_CORE_COS(g);
-    if (kind == ALWAN_ENV_LOBE_KIND_PHONG && e != ALWAN_CORE_LITERAL(1.0)) b = ALWAN_CORE_POW(b, e);
-    return b;
+    return ALWAN_CORE_FNVLIT(alwan_env_lobe_shape)(kind, b, e);
 }
 
 /* What a cell weighs in the sampler: the lobe's mean over the cell, by solid
@@ -112,7 +127,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_env_lobe_weight)(ALWAN_CORE_T 
             const ALWAN_CORE_T phi = ALWAN_CORE_LITERAL(2.0) * ALWAN_CORE_PI * (xa + fx * (xb - xa));
             ALWAN_CORE_T c = ax * st * ALWAN_CORE_COS(phi) + ay * ct + az * st * ALWAN_CORE_SIN(phi);
             if (!(c > ALWAN_CORE_LITERAL(0.0))) c = ALWAN_CORE_LITERAL(0.0);
-            else if (kind == ALWAN_ENV_LOBE_KIND_PHONG && e != ALWAN_CORE_LITERAL(1.0)) c = ALWAN_CORE_POW(c, e);
+            else c = ALWAN_CORE_FNVLIT(alwan_env_lobe_shape)(kind, c, e);
             num = num + c * st;
             den = den + st;
         }
@@ -122,7 +137,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_env_lobe_weight)(ALWAN_CORE_T 
     return mean > floor_w ? mean : floor_w;
 }
 
-/* The lobe itself at a direction (unit axis): max(0, axis . w)^e. */
+/* The lobe itself at a direction (unit axis): its shape at max(0, axis . w). */
 ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_env_lobe_value)(int kind, ALWAN_CORE_T ax, ALWAN_CORE_T ay, ALWAN_CORE_T az,
                                                                  ALWAN_CORE_T e, ALWAN_CORE_T wx, ALWAN_CORE_T wy,
                                                                  ALWAN_CORE_T wz) {
@@ -130,8 +145,7 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_env_lobe_value)(int kind, ALWA
     if (kind == ALWAN_ENV_LOBE_KIND_NONE) return ALWAN_CORE_LITERAL(1.0);
     c = ax * wx + ay * wy + az * wz;
     if (!(c > ALWAN_CORE_LITERAL(0.0))) return ALWAN_CORE_LITERAL(0.0);
-    if (kind == ALWAN_ENV_LOBE_KIND_PHONG && e != ALWAN_CORE_LITERAL(1.0)) c = ALWAN_CORE_POW(c, e);
-    return c;
+    return ALWAN_CORE_FNVLIT(alwan_env_lobe_shape)(kind, c, e);
 }
 
 /* ----------------------------------------------------------------

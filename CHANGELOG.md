@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### Added: small numerical methods (batch 8)
+
+- `alwan_interpolate_{T}`: `ALWAN_INTERP_MAKIMA`, `ALWAN_INTERP_NATURAL_SPLINE`,
+  `ALWAN_INTERP_CLAMPED_SPLINE`, `ALWAN_INTERP_NEAREST` and `ALWAN_INTERP_PREVIOUS`, matching
+  scipy's `Akima1DInterpolator(method="makima")` (4.6e-15), `CubicSpline(bc_type="natural")`
+  (1.6e-14) and `bc_type="clamped"` (7.6e-13 on an ill-conditioned three-sample case) and
+  `interp1d(kind="nearest")` and `"previous"` (exact). The two splines allocate and are refused
+  by the readers that interpolate through a window (refractive index, spectral film).
+  `alwan_spline_boundary` gains `ALWAN_SPLINE_CLAMPED`.
+- `ALWAN_INTEGRATE_RECTANGLE`: CIE 15's summation, colour-science's `sd_to_XYZ_integration`
+  to 1.5e-15.
+- `ALWAN_SAMPLE_PRISM` and `ALWAN_SAMPLE_PYRAMID` for 3-D cubes (Kasson, Nin, Plouffe and
+  Hafner 1995), from their definitions; both give a linear function back exactly and run in
+  shaders.
+- `ALWAN_ENV_LOBE_GGX`: the Trowbridge-Reitz lobe for the environment samplers (a new `alpha`
+  field ends `alwan_env_lobe_{T}`); unbiased in suite 282, 0.90% error against 6.8% for light
+  alone on an overcast sky.
+- `ALWAN_PIXEL_KERNEL_MITCHELL`, `ALWAN_PIXEL_KERNEL_LANCZOS` and
+  `ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS` for warp and resize integration; the sampled
+  integrators weigh their points by these kernels.
+- `alwan_low_discrepancy_points_{T}`: Halton (scipy's `qmc.Halton(scramble=False)` to the bit),
+  scrambled Halton (Owen's per-digit permutations from a seed hash) and Roberts' R_d.
+- Suite 296.
+
 ### Added: demosaicing on 8- and 16-bit planes, and OpenCV's VNG and edge-aware methods
 
 - `alwan_cfa_bayer_demosaic_u8` and `_u16` demosaic integer Bayer planes. Two new methods,

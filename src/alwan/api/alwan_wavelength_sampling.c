@@ -50,6 +50,9 @@ static alwan_status alwan__wl_cmf_load(alwan__wl_cmf *c, alwan_observer_type obs
     memset(&xb, 0, sizeof(xb));
     memset(&yb, 0, sizeof(yb));
     memset(&zb, 0, sizeof(zb));
+    /* the CMFs are read through a window of samples, and a global spline over a window
+     * is not the spline over the table */
+    if (interp == ALWAN_INTERP_NATURAL_SPLINE || interp == ALWAN_INTERP_CLAMPED_SPLINE) return ALWAN_E_INVALID;
     st = alwan_spd_observer_f64(&xb, &yb, &zb, observer, ctx);
     if (st != ALWAN_OK) return st;
     if (xb.count != ALWAN__WL_CMF_N || yb.count != ALWAN__WL_CMF_N || zb.count != ALWAN__WL_CMF_N) {

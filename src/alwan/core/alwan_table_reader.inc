@@ -317,12 +317,92 @@ ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_TABLE_FN_(alwan_table3d_sample_nearest)(
     return result;
 }
 
+/* Prism (Kasson et al. 1995), split by r = g, prism axis blue. The corner names
+ * follow the larger of fr and fg, so one blend serves both prisms. */
+#define ALWAN_TABLE_PRISM_CH_(k) \
+    ALWAN_CORE_FNVLIT(alwan_table_blend_prism)( \
+        ALWAN_TABLE_READ(c000 + (k)), ALWAN_TABLE_READ(cP1 + (k)), ALWAN_TABLE_READ(c110 + (k)), \
+        ALWAN_TABLE_READ(c001 + (k)), ALWAN_TABLE_READ(cQ1 + (k)), ALWAN_TABLE_READ(c111 + (k)), \
+        f1, f2, cb.frac)
+
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_TABLE_FN_(alwan_table3d_sample_prism)(
+        ALWAN_TABLE_PARAMS_ int size, ALWAN_CORE_VEC3 coord) {
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const int r_major = cr.frac >= cg.frac;
+
+    const size_t c000 = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i0, cb.i0);
+    const size_t c110 = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i1, cb.i0);
+    const size_t c001 = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i0, cb.i1);
+    const size_t c111 = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i1, cb.i1);
+    const size_t cP1 = r_major ? ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i0, cb.i0)
+                               : ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i1, cb.i0);
+    const size_t cQ1 = r_major ? ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i0, cb.i1)
+                               : ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i1, cb.i1);
+    const ALWAN_CORE_T f1 = r_major ? cr.frac : cg.frac;
+    const ALWAN_CORE_T f2 = r_major ? cg.frac : cr.frac;
+
+    ALWAN_CORE_VEC3 result;
+    result.v[0] = ALWAN_TABLE_PRISM_CH_(0);
+    result.v[1] = ALWAN_TABLE_PRISM_CH_(1);
+    result.v[2] = ALWAN_TABLE_PRISM_CH_(2);
+    return result;
+}
+
+/* Pyramid (Kasson et al. 1995): the smallest fraction picks the base face. A and B
+ * are the other two axes, in r, g, b order. */
+#define ALWAN_TABLE_PYRAMID_CH_(k) \
+    ALWAN_CORE_FNVLIT(alwan_table_blend_pyramid)( \
+        ALWAN_TABLE_READ(c000 + (k)), ALWAN_TABLE_READ(cA + (k)), ALWAN_TABLE_READ(cB + (k)), \
+        ALWAN_TABLE_READ(cAB + (k)), ALWAN_TABLE_READ(c111 + (k)), pa, pb, smin)
+
+ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_TABLE_FN_(alwan_table3d_sample_pyramid)(
+        ALWAN_TABLE_PARAMS_ int size, ALWAN_CORE_VEC3 coord) {
+    const ALWAN_CORE_TABLE_CELL cr = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[0], size);
+    const ALWAN_CORE_TABLE_CELL cg = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[1], size);
+    const ALWAN_CORE_TABLE_CELL cb = ALWAN_CORE_FNVLIT(alwan_table_cell)(coord.v[2], size);
+    const ALWAN_CORE_T fr = cr.frac, fg = cg.frac, fb = cb.frac;
+
+    const size_t c000 = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i0, cb.i0);
+    const size_t c111 = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i1, cb.i1);
+    size_t cA, cB, cAB;
+    ALWAN_CORE_T pa, pb, smin;
+
+    if (fb <= fr && fb <= fg) {            /* base on b = 0: A = r, B = g */
+        cA  = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i0, cb.i0);
+        cB  = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i1, cb.i0);
+        cAB = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i1, cb.i0);
+        smin = fb; pa = fr - fb; pb = fg - fb;
+    } else if (fg <= fr) {                 /* base on g = 0: A = r, B = b */
+        cA  = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i0, cb.i0);
+        cB  = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i0, cb.i1);
+        cAB = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i1, cg.i0, cb.i1);
+        smin = fg; pa = fr - fg; pb = fb - fg;
+    } else {                               /* base on r = 0: A = g, B = b */
+        cA  = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i1, cb.i0);
+        cB  = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i0, cb.i1);
+        cAB = ALWAN_CORE_FNVLIT(alwan_table3d_index)(size, cr.i0, cg.i1, cb.i1);
+        smin = fr; pa = fg - fr; pb = fb - fr;
+    }
+
+    ALWAN_CORE_VEC3 result;
+    result.v[0] = ALWAN_TABLE_PYRAMID_CH_(0);
+    result.v[1] = ALWAN_TABLE_PYRAMID_CH_(1);
+    result.v[2] = ALWAN_TABLE_PYRAMID_CH_(2);
+    return result;
+}
+
 ALWAN_INLINE ALWAN_CORE_VEC3 ALWAN_TABLE_FN_(alwan_table3d_sample)(
         ALWAN_TABLE_PARAMS_ int size, ALWAN_CORE_VEC3 coord, alwan_sample_mode mode) {
     if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_NEAREST)
         return ALWAN_TABLE_FN_(alwan_table3d_sample_nearest)(ALWAN_TABLE_ARGS_ size, coord);
     if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_TETRAHEDRAL)
         return ALWAN_TABLE_FN_(alwan_table3d_sample_tetrahedral)(ALWAN_TABLE_ARGS_ size, coord);
+    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_PRISM)
+        return ALWAN_TABLE_FN_(alwan_table3d_sample_prism)(ALWAN_TABLE_ARGS_ size, coord);
+    if (ALWAN_SAMPLE_BASE(mode) == ALWAN_SAMPLE_PYRAMID)
+        return ALWAN_TABLE_FN_(alwan_table3d_sample_pyramid)(ALWAN_TABLE_ARGS_ size, coord);
     return ALWAN_TABLE_FN_(alwan_table3d_sample_trilinear)(ALWAN_TABLE_ARGS_ size, coord);
 }
 

@@ -244,6 +244,39 @@ ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table_blend_tetrahedral)(
     return r;
 }
 
+/* Prism: the triangle 000 -> P1 -> P2 in the r-g plane, P1 the corner along the
+ * larger of the two fractions (f1 >= f2), and the same triangle one blue step up
+ * (Q0, Q1, Q2); barycentric in the triangle, linear in fb. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table_blend_prism)(
+        ALWAN_CORE_T p0, ALWAN_CORE_T p1, ALWAN_CORE_T p2,
+        ALWAN_CORE_T q0, ALWAN_CORE_T q1, ALWAN_CORE_T q2,
+        ALWAN_CORE_T f1, ALWAN_CORE_T f2, ALWAN_CORE_T fb) {
+    ALWAN_DET_PRECISE ALWAN_CORE_T r = p0
+         + f1 * (p1 - p0)
+         + f2 * (p2 - p1)
+         + fb * (q0 - p0)
+         + f1 * fb * ((q1 - q0) - (p1 - p0))
+         + f2 * fb * ((q2 - q1) - (p2 - p1));
+    return r;
+}
+
+/* Pyramid: base square v000, vA, vB, vAB on the face where the smallest fraction s
+ * is zero, apex v111. pa = fA - s, pb = fB - s, d = 1 - s; the base is read
+ * bilinearly at (pa / d, pb / d) and blended towards the apex by s. Written out so
+ * the only division is the bilinear cross term, which vanishes at the apex. */
+ALWAN_INLINE ALWAN_CORE_T ALWAN_CORE_FNVLIT(alwan_table_blend_pyramid)(
+        ALWAN_CORE_T v000, ALWAN_CORE_T vA, ALWAN_CORE_T vB, ALWAN_CORE_T vAB, ALWAN_CORE_T v111,
+        ALWAN_CORE_T pa, ALWAN_CORE_T pb, ALWAN_CORE_T s) {
+    const ALWAN_CORE_T d = ALWAN_CORE_LITERAL(1.0) - s;
+    const ALWAN_CORE_T q = ALWAN_CORE_SELECT(d > ALWAN_CORE_LITERAL(0.0), pa * pb / ALWAN_CORE_SELECT(d > ALWAN_CORE_LITERAL(0.0), d, ALWAN_CORE_LITERAL(1.0)), ALWAN_CORE_LITERAL(0.0));
+    ALWAN_DET_PRECISE ALWAN_CORE_T r = v000 * (d - pa - pb)
+         + vA * pa
+         + vB * pb
+         + v111 * s
+         + ((v000 - vA) - (vB - vAB)) * q;
+    return r;
+}
+
 /* Flat index of channel 0 of one node, per layout. The three layouts differ in
  * which axis is fastest and in whether the channels are interleaved, and a
  * mismatch between them compiles and returns plausible colours, so each has

@@ -64,6 +64,8 @@ static void ALWAN_CORE_FN(spline_row)(ALWAN_CORE_T const *x, ALWAN_CORE_T const 
         ALWAN_CORE_T const h0 = x[1] - x[0], m0 = (y[1] - y[0]) / h0;
         if (boundary == ALWAN_SPLINE_NATURAL) {
             *diag = two; *sup = ALWAN_CORE_LITERAL(1.0); *rhs = three * m0;
+        } else if (boundary == ALWAN_SPLINE_CLAMPED) {
+            *diag = ALWAN_CORE_LITERAL(1.0); *rhs = ALWAN_CORE_LITERAL(0.0);   /* s0 = 0 */
         } else if (n == 3) {
             /* Not-a-knot on three samples states one condition twice, so scipy fits
              * the parabola through them instead: s0 + s1 = 2 m0. */
@@ -82,6 +84,8 @@ static void ALWAN_CORE_FN(spline_row)(ALWAN_CORE_T const *x, ALWAN_CORE_T const 
         ALWAN_CORE_T const hl = x[n - 1] - x[n - 2], ml = (y[n - 1] - y[n - 2]) / hl;
         if (boundary == ALWAN_SPLINE_NATURAL) {
             *sub = ALWAN_CORE_LITERAL(1.0); *diag = two; *rhs = three * ml;
+        } else if (boundary == ALWAN_SPLINE_CLAMPED) {
+            *diag = ALWAN_CORE_LITERAL(1.0); *rhs = ALWAN_CORE_LITERAL(0.0);   /* s[n-1] = 0 */
         } else if (n == 3) {
             *sub = ALWAN_CORE_LITERAL(1.0); *diag = ALWAN_CORE_LITERAL(1.0); *rhs = two * ml;
         } else {
@@ -103,7 +107,9 @@ alwan_status ALWAN_CORE_FNLIT(alwan_interpolate_cubic_spline)(ALWAN_CORE_T const
     ALWAN_CORE_T *scratch, *cp, *s;
 
     if (!x_in || !y_in || !x_out || !y_out || count_in < 2 || count_out == 0) return ALWAN_E_INVALID;
-    if (boundary != ALWAN_SPLINE_NOT_A_KNOT && boundary != ALWAN_SPLINE_NATURAL) return ALWAN_E_INVALID;
+    if (boundary != ALWAN_SPLINE_NOT_A_KNOT && boundary != ALWAN_SPLINE_NATURAL && boundary != ALWAN_SPLINE_CLAMPED) {
+        return ALWAN_E_INVALID;
+    }
     /* Strictly increasing. Written as !(>) so a NaN abscissa is refused too, where a
      * repeated one would otherwise divide by a zero interval. */
     for (i = 1; i < count_in; i++) {
@@ -118,8 +124,11 @@ alwan_status ALWAN_CORE_FNLIT(alwan_interpolate_cubic_spline)(ALWAN_CORE_T const
     cp = scratch;              /* normalised super-diagonal */
     s = scratch + count_in;    /* normalised right-hand side, then the slopes */
 
-    if (count_in == 2) {
-        /* One interval: both boundary conditions reduce to the straight line. */
+    if (count_in == 2 && boundary == ALWAN_SPLINE_CLAMPED) {
+        /* One interval with both ends flat: the cubic, as scipy solves it. */
+        s[0] = s[1] = ALWAN_CORE_LITERAL(0.0);
+    } else if (count_in == 2) {
+        /* One interval: not-a-knot and natural both reduce to the straight line. */
         ALWAN_CORE_T const m = (y_in[1] - y_in[0]) / (x_in[1] - x_in[0]);
         s[0] = s[1] = m;
     } else {

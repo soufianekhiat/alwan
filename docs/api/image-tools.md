@@ -2108,6 +2108,18 @@ under the box. `ADAPTIVE` with Sobol went from 0.0195 to 0.0150 there.
 | `BOX` | 1: the pixel's mean | the pixel |
 | `TENT` | `(1 - abs(dx)) (1 - abs(dy))` | two pixels each way |
 | `GAUSSIAN` | `exp(-r^2 / (2 s^2))`, `s = 0.5` | a disk of radius 1.5 |
+| `MITCHELL` | Mitchell-Netravali `B = C = 1/3` per axis | two pixels each way |
+| `LANCZOS` | `sinc(d) sinc(d / 2)` per axis (Lanczos-2) | two pixels each way |
+| `BLACKMAN_HARRIS` | four-term Blackman-Harris window per axis, `t = d / 1.5` | 1.5 pixels each way |
+
+The last three (2026-10-02) are separable. Mitchell and Lanczos dip below zero, which no
+density can, so for them and for Blackman-Harris `QMC`, `ADAPTIVE` and `AUTO` spread their
+points evenly over the support square and weigh each by the kernel, dividing by the
+weights' sum; `GRID` keeps a cell whatever its weight's sign. Suite 296 holds `GRID` to the
+kernels' definitions exactly, and the weighted `QMC` sums give a constant back to 1.2e-15 and
+a ramp (R2's antithetic pairs) to 1.8e-15. They are sharper than the Gaussian, at the cost of
+a little ringing for Mitchell and Lanczos; Blackman-Harris, the filter Cycles uses at its
+default width, does not ring.
 
 `GRID` lays its cells over the kernel's support and weights them; `QMC` draws its points
 from the kernel through its inverse distribution (Box-Muller for the Gaussian, cut at

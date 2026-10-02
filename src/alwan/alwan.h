@@ -3548,22 +3548,29 @@ alwan_status alwan_summed_area_table_get_layout(alwan_summed_area_table_layout *
  * density p / (2 pi^2 sin theta).
  *
  * A lobe is what light is weighed by at a surface: COSINE, max(0, axis . w) (axis the
- * normal: irradiance); PHONG, max(0, axis . w)^exponent (exponent 0 for 1). The axis
- * need not be unit length but must not be 0. Suite 282. */
+ * normal: irradiance); PHONG, max(0, axis . w)^exponent (exponent 0 for 1); GGX, the
+ * Trowbridge-Reitz (GGX) distribution around the axis (a reflection direction or a
+ * half-vector), D(c) / D(1) = alpha^4 / (c^2 (alpha^2 - 1) + 1)^2 at c = axis . w > 0
+ * and 0 behind, alpha in (0, 1] (0 for 0.25, the usual roughness 0.5 squared). Every
+ * lobe is 1 on the axis; only its shape steers the samples, the density stays exact.
+ * The axis need not be unit length but must not be 0. Suite 282. */
 typedef enum {
     ALWAN_ENV_LOBE_COSINE = 0,
-    ALWAN_ENV_LOBE_PHONG = 1
+    ALWAN_ENV_LOBE_PHONG = 1,
+    ALWAN_ENV_LOBE_GGX = 2
 } alwan_env_lobe_kind;
 
 typedef struct {
     alwan_env_lobe_kind kind;
     alwan_f32 axis_x, axis_y, axis_z;
     alwan_f32 exponent;
+    alwan_f32 alpha;    /* GGX only */
 } alwan_env_lobe_f32;
 typedef struct {
     alwan_env_lobe_kind kind;
     alwan_f64 axis_x, axis_y, axis_z;
     alwan_f64 exponent;
+    alwan_f64 alpha;    /* GGX only */
 } alwan_env_lobe_f64;
 
 /* The direction of a map position (x, y in [0, 1], else ALWAN_E_RANGE), and the map
@@ -4604,11 +4611,25 @@ typedef enum {
 
 /* The weight integration gives each point around the output pixel's centre, in output pixels.
  * A box stops at the pixel's edge, and its flat response lets detail finer than a pixel fold
- * back as moire; the others overlap the neighbours and fall off smoothly. */
+ * back as moire; the others overlap the neighbours and fall off smoothly.
+ *
+ * BOX, TENT and GAUSSIAN are drawn from (QMC, ADAPTIVE and AUTO place their points by the
+ * kernel's inverse CDF, every point counting alike). MITCHELL and LANCZOS dip below zero,
+ * which no density can, so for them and for BLACKMAN_HARRIS the points spread evenly over
+ * the support square and each is weighted by the kernel, the sum divided by the weights'
+ * sum; GRID weighs its cell centres the same way for every kernel. The three are separable,
+ * k(dx) k(dy), and sharper than the Gaussian at the cost of a little ringing (none for
+ * Blackman-Harris). */
 typedef enum {
     ALWAN_PIXEL_KERNEL_BOX = 0,       /* 1 over the pixel: the pixel's mean */
     ALWAN_PIXEL_KERNEL_TENT = 1,      /* (1 - |dx|) (1 - |dy|) over two pixels each way */
-    ALWAN_PIXEL_KERNEL_GAUSSIAN = 2   /* exp(-r^2 / (2 s^2)), s = 0.5 pixel, cut at r = 1.5 */
+    ALWAN_PIXEL_KERNEL_GAUSSIAN = 2,  /* exp(-r^2 / (2 s^2)), s = 0.5 pixel, cut at r = 1.5 */
+    ALWAN_PIXEL_KERNEL_MITCHELL = 3,  /* Mitchell-Netravali B = C = 1/3 per axis, radius 2 */
+    ALWAN_PIXEL_KERNEL_LANCZOS = 4,   /* sinc(d) sinc(d / 2) per axis, radius 2 (Lanczos-2) */
+    /* The four-term Blackman-Harris window per axis over radius 1.5 (Harris 1978:
+     * 0.35875 + 0.48829 cos(pi t) + 0.14128 cos(2 pi t) + 0.01168 cos(3 pi t), t = d / 1.5),
+     * the pixel filter Cycles uses at its default width */
+    ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS = 5
 } alwan_pixel_kernel;
 
 /* The low-discrepancy points QMC, ADAPTIVE and AUTO draw. */
@@ -4620,6 +4641,43 @@ typedef enum {
                                       * power of two the points form a (0, m, 2)-net, and under the box kernel
                                       * the error falls faster than R2's (a third of it at 1024 points) */
 } alwan_pixel_sequence;
+
+/* Low-discrepancy point sets: count points of dimensions coordinates in [0, 1), written row
+ * by row (row_stride bytes apart, 0 for packed), the point of index start_index + i on row i.
+ *
+ *   HALTON            the radical inverse of the index in the first `dimensions` primes, as
+ *                     scipy.stats.qmc.Halton(scramble=False) computes it, to the bit
+ *                     (suite 296); the point of index 0 is all zeros, as scipy's is
+ *   HALTON_SCRAMBLED  the same with every digit position of every dimension passed through a
+ *                     permutation of the digits, leading zeros included, out to what a double
+ *                     resolves (Owen 2017's randomized Halton, scipy's scramble=True
+ *                     structure). The permutations come from a hash of seed, not from numpy,
+ *                     so the points differ from scipy's; the first b^k points of a base-b
+ *                     coordinate still fall one to each interval of width b^-k
+ *   R                 Roberts' R_d: frac(1/2 + n phi_d^-j) for coordinate j = 1 .. d, phi_d
+ *                     the positive root of x^(d+1) = x + 1; any count covers evenly
+ *
+ * At most 64 dimensions. ALWAN_E_INVALID for a NULL out, count or dimensions 0 or more than
+ * 64, a row stride shorter than a point or an unknown method; ALWAN_E_RANGE when the indices
+ * would pass 2^64; ALWAN_E_NOMEM (HALTON_SCRAMBLED allocates its permutations). */
+typedef enum {
+    ALWAN_LOW_DISCREPANCY_HALTON = 0,
+    ALWAN_LOW_DISCREPANCY_HALTON_SCRAMBLED = 1,
+    ALWAN_LOW_DISCREPANCY_R = 2
+} alwan_low_discrepancy_method;
+
+/* A zero field is its default. */
+typedef struct {
+    size_t start_index;   /* the index of the first point */
+    unsigned seed;        /* HALTON_SCRAMBLED only */
+} alwan_low_discrepancy_params;
+
+alwan_status alwan_low_discrepancy_points_f32(alwan_f32 *out, size_t row_stride, size_t count, size_t dimensions,
+                                              alwan_low_discrepancy_method method,
+                                              alwan_low_discrepancy_params const *params);
+alwan_status alwan_low_discrepancy_points_f64(alwan_f64 *out, size_t row_stride, size_t count, size_t dimensions,
+                                              alwan_low_discrepancy_method method,
+                                              alwan_low_discrepancy_params const *params);
 
 typedef int (*alwan_warp_callback)(double x, double y, double *source_x, double *source_y, void *user);
 
@@ -6133,7 +6191,11 @@ typedef enum {
 /* SPD integration method for computing XYZ */
 typedef enum {
     ALWAN_INTEGRATE_TRAPEZOID = 0,  /* Trapezoidal rule (fast) */
-    ALWAN_INTEGRATE_SIMPSON = 1     /* Simpson's rule (more accurate) */
+    ALWAN_INTEGRATE_SIMPSON = 1,    /* Simpson's rule (more accurate) */
+    /* CIE 15's summation: the sum of the products times the sample interval, every sample
+     * weighted alike (no half weights at the ends). What colour-science's
+     * sd_to_XYZ_integration computes, and what CIE 15 prescribes for tabulated data. */
+    ALWAN_INTEGRATE_RECTANGLE = 2
 } alwan_integrate_method;
 
 /* Create SPD with uniform sampling
@@ -10401,7 +10463,30 @@ typedef enum {
      * outside the range the data never left.
      *
      * Matches scipy's PchipInterpolator, which is what colour-science wraps. */
-    ALWAN_INTERP_PCHIP = 6
+    ALWAN_INTERP_PCHIP = 6,
+    /* Modified Akima (makima): Akima's weights with half the absolute sum of the two
+     * secants added, |m1 - m0| + |m1 + m0| / 2, so a flat run next to a slope no longer
+     * pulls the node slope to zero and repeated values do not ring. Matches scipy's
+     * Akima1DInterpolator(method="makima"). */
+    ALWAN_INTERP_MAKIMA = 7,
+    /* The C2 cubic spline through every sample with zero second derivative at both ends,
+     * scipy's CubicSpline(bc_type="natural"). Global: the node slopes come from one
+     * tridiagonal solve over all the samples, so this method allocates count_in x 2
+     * values from the default allocator (ALWAN_E_NOMEM if that fails); with a ctx, use
+     * alwan_interpolate_cubic_spline. A caller that reads a table through a window of
+     * samples (the refractive-index and spectral-film readers) refuses it, since a
+     * spline over a window is not the spline over the table. */
+    ALWAN_INTERP_NATURAL_SPLINE = 8,
+    /* The same spline with zero first derivative at both ends, scipy's
+     * CubicSpline(bc_type="clamped"). Allocates, and is refused by windowed readers, as
+     * NATURAL_SPLINE. */
+    ALWAN_INTERP_CLAMPED_SPLINE = 9,
+    /* The nearest sample; half way between two, the lower one, as scipy's
+     * interp1d(kind="nearest") rounds a midpoint down. */
+    ALWAN_INTERP_NEAREST = 10,
+    /* The last sample at or before x, scipy's interp1d(kind="previous"): a step that
+     * holds each value until the next sample. */
+    ALWAN_INTERP_PREVIOUS = 11
 } alwan_interp_method;
 
 /* Extrapolation method types */
@@ -10484,7 +10569,10 @@ alwan_status alwan_interpolate_f32(alwan_f32 const *x_in, alwan_f32 const *y_in,
  * scipy does. */
 typedef enum {
     ALWAN_SPLINE_NOT_A_KNOT = 0,
-    ALWAN_SPLINE_NATURAL = 1
+    ALWAN_SPLINE_NATURAL = 1,
+    /* zero first derivative at both ends, scipy's bc_type="clamped"; two samples give
+     * the cubic with flat ends, not the line */
+    ALWAN_SPLINE_CLAMPED = 2
 } alwan_spline_boundary;
 
 /* x_in strictly increasing (a repeat or a NaN is ALWAN_E_INVALID), count_in >= 2,
@@ -14475,7 +14563,14 @@ alwan_status alwan_bake_2dlut_f64(alwan_f64 *out, int size, alwan_rgb_space_desc
  *   rank 2 grid      NEAREST, BILINEAR (LINEAR is accepted and resolves to it)
  *   rank 2 strip     NEAREST, TRILINEAR (default) -- BILINEAR is rejected here,
  *                    because the strip is a flattened cube and not a 2-d grid
- *   rank 3 cube      NEAREST, TRILINEAR (default), TETRAHEDRAL
+ *   rank 3 cube      NEAREST, TRILINEAR (default), TETRAHEDRAL, PRISM, PYRAMID
+ *
+ * PRISM and PYRAMID are Kasson, Nin, Plouffe and Hafner 1995 ("Performing color
+ * space conversions with three-dimensional linear interpolation"), from their
+ * definitions: PRISM splits the cell by r = g into two triangular prisms along blue,
+ * barycentric across and linear along; PYRAMID splits it into three square pyramids
+ * with their apex at (1,1,1), bilinear over the base and linear to the apex. Both are
+ * continuous across cell faces and reproduce a function linear in r, g and b exactly.
  * ---------------------------------------------------------------- */
 
 /* Caller-supplied 1D table.
@@ -14536,8 +14631,8 @@ alwan_status alwan_table2d_sample_f64(alwan_rgb_f64 *result,
  * cube: size^3 * 3 values
  * size: cube edge length (>= 2)
  * coord: input [0,1] RGB coordinate
- * mode: LINEAR (0, the default, resolves to trilinear), NEAREST, TRILINEAR
- *       or TETRAHEDRAL, optionally | ALWAN_SAMPLE_STRICT */
+ * mode: LINEAR (0, the default, resolves to trilinear), NEAREST, TRILINEAR,
+ *       TETRAHEDRAL, PRISM or PYRAMID, optionally | ALWAN_SAMPLE_STRICT */
 alwan_status alwan_table3d_sample_f32(alwan_rgb_f32 *result,
                         alwan_f32 const *cube, int size,
                         alwan_rgb_f32 const *coord, alwan_sample_mode mode);

@@ -25,11 +25,14 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__env_lobe)(ALWAN_ENVP_LOBE const *lob
         *e = ALWAN_CORE_LITERAL(1.0);
         return ALWAN_OK;
     }
-    if (lobe->kind != ALWAN_ENV_LOBE_COSINE && lobe->kind != ALWAN_ENV_LOBE_PHONG) return ALWAN_E_INVALID;
+    if (lobe->kind != ALWAN_ENV_LOBE_COSINE && lobe->kind != ALWAN_ENV_LOBE_PHONG && lobe->kind != ALWAN_ENV_LOBE_GGX) {
+        return ALWAN_E_INVALID;
+    }
     len = ALWAN_SQRT((double)lobe->axis_x * lobe->axis_x + (double)lobe->axis_y * lobe->axis_y +
                      (double)lobe->axis_z * lobe->axis_z);
     if (!(len > 0.0 && len <= 1.7976931348623157e308)) return ALWAN_E_INVALID;
-    *kind = lobe->kind == ALWAN_ENV_LOBE_PHONG ? ALWAN_ENV_LOBE_KIND_PHONG : ALWAN_ENV_LOBE_KIND_COSINE;
+    *kind = lobe->kind == ALWAN_ENV_LOBE_PHONG ? ALWAN_ENV_LOBE_KIND_PHONG
+          : lobe->kind == ALWAN_ENV_LOBE_GGX ? ALWAN_ENV_LOBE_KIND_GGX : ALWAN_ENV_LOBE_KIND_COSINE;
     *ax = (ALWAN_CORE_T)(lobe->axis_x / len);
     *ay = (ALWAN_CORE_T)(lobe->axis_y / len);
     *az = (ALWAN_CORE_T)(lobe->axis_z / len);
@@ -37,6 +40,14 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__env_lobe)(ALWAN_ENVP_LOBE const *lob
     if (*kind == ALWAN_ENV_LOBE_KIND_PHONG && lobe->exponent != ALWAN_CORE_LITERAL(0.0)) {
         if (!(lobe->exponent > ALWAN_CORE_LITERAL(0.0) && (double)lobe->exponent <= 1.0e6)) return ALWAN_E_INVALID;
         *e = lobe->exponent;
+    }
+    if (*kind == ALWAN_ENV_LOBE_KIND_GGX) {
+        /* alpha, 0 for 0.25; above 1 the distribution peaks at grazing, not at the axis */
+        *e = ALWAN_CORE_LITERAL(0.25);
+        if (lobe->alpha != ALWAN_CORE_LITERAL(0.0)) {
+            if (!(lobe->alpha > ALWAN_CORE_LITERAL(0.0) && lobe->alpha <= ALWAN_CORE_LITERAL(1.0))) return ALWAN_E_INVALID;
+            *e = lobe->alpha;
+        }
     }
     return ALWAN_OK;
 }

@@ -307,7 +307,7 @@ static alwan_status alwan_rs_run(void *out, size_t out_rs, size_t ow, size_t oh,
     if (w > 1u << 24 || h > 1u << 24 || ow > 1u << 24 || oh > 1u << 24) return ALWAN_E_RANGE;
     if (!(bx0 >= 0.0f) || !(by0 >= 0.0f) || !(bx1 <= (float)w) || !(by1 <= (float)h) || !(bx1 > bx0) || !(by1 > by0)) return ALWAN_E_RANGE;
     if ((unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_AUTO || (unsigned)p->subpixel > (unsigned)ALWAN_SUBPIXEL_VBGR ||
-        (unsigned)p->kernel > (unsigned)ALWAN_PIXEL_KERNEL_GAUSSIAN)
+        (unsigned)p->kernel > (unsigned)ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS)
         return ALWAN_E_INVALID;
     if (p->subpixel != ALWAN_SUBPIXEL_NONE && ch < 3) return ALWAN_E_INVALID;
     for (y = 0; y < h; y++) {

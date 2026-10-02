@@ -1324,6 +1324,8 @@ EXPORTS
     alwan_local_contrast_f64
     alwan_local_contrast_u16
     alwan_local_contrast_u8
+    alwan_low_discrepancy_points_f32
+    alwan_low_discrepancy_points_f64
     alwan_luminaire_angles
     alwan_luminaire_destroy
     alwan_luminaire_flux

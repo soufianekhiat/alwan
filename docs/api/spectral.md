@@ -264,11 +264,19 @@ set, so either name works. The 2015 names are the standard's.
 ```c
 typedef enum {
     ALWAN_INTEGRATE_TRAPEZOID = 0,  /* Trapezoidal rule (fast) */
-    ALWAN_INTEGRATE_SIMPSON = 1     /* Simpson's rule (more accurate) */
+    ALWAN_INTEGRATE_SIMPSON = 1,    /* Simpson's rule (more accurate) */
+    ALWAN_INTEGRATE_RECTANGLE = 2   /* CIE 15's summation: the plain sum times the interval */
 } alwan_integrate_method;
 ```
 
-> **Reference-matching note.** alwan integrates with the trapezoidal or **Simpson** rule. Some reference libraries (e.g. colour-science) compute the tristimulus integral as a plain **Riemann summation** of `CMF * SPD * Deltalambda`. To reproduce such reference values exactly, match the quadrature on the reference side (colour-science exposes `scipy.integrate.simpson`) and use linear interpolation / matched wavelength sampling; see the project gendata notes.
+`ALWAN_INTEGRATE_RECTANGLE` (2026-10-02) weighs every sample alike, the CIE 15 summation of
+`cmf x spd x interval`, with no half weights at the ends. It is what colour-science's
+`sd_to_XYZ_integration` computes: suite 296 holds it to colour on 1 nm and 5 nm grids, for
+emission and for a reflectance under D65 and A, to 1.5e-15 (colour divides its result by
+100, so the plain sum is colour with `k = 100`). It applies to `alwan_xyz_from_spd_{T}`,
+`alwan_camera_rgb_from_spd_{T}` and the spectral weights.
+
+> **Reference-matching note.** Besides RECTANGLE, alwan integrates with the trapezoidal or **Simpson** rule. Some reference libraries (e.g. colour-science) compute the tristimulus integral as a plain **Riemann summation** of `CMF * SPD * Deltalambda`. To reproduce such reference values exactly, match the quadrature on the reference side (colour-science exposes `scipy.integrate.simpson`) and use linear interpolation / matched wavelength sampling; see the project gendata notes.
 
 **Example:**
 ```c

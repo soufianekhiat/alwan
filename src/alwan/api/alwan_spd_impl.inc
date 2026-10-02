@@ -1627,6 +1627,15 @@ static ALWAN_CORE_T ALWAN_CORE_FN(integrate_trapezoid)(ALWAN_CORE_T const *value
     return sum * dx;
 }
 
+/* CIE 15 summation: every sample weighted alike, times the interval */
+static ALWAN_CORE_T ALWAN_CORE_FN(integrate_rectangle)(ALWAN_CORE_T const *values, size_t count, ALWAN_CORE_T dx) {
+    ALWAN_CORE_T sum = ALWAN_CORE_LITERAL(0.0);
+    for (size_t i = 0; i < count; i++) {
+        sum += values[i];
+    }
+    return sum * dx;
+}
+
 /* Simpson's 1/3 rule integration */
 static ALWAN_CORE_T ALWAN_CORE_FN(integrate_simpson)(ALWAN_CORE_T const *values, size_t count, ALWAN_CORE_T dx) {
     if (count == 0) return ALWAN_CORE_LITERAL(0.0);
@@ -1659,8 +1668,9 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
     if (!spd || !xyz_out) {
         return ALWAN_E_INVALID;
     }
-    /* Anything but the two rules used to fall through to Simpson. */
-    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON) {
+    /* Anything but the three rules used to fall through to Simpson. */
+    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON &&
+        (int)method != (int)ALWAN_INTEGRATE_RECTANGLE) {
         return ALWAN_E_INVALID;
     }
 
@@ -1805,6 +1815,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_from_spd)(ALWAN_CORE_XYZ *xyz_out, ALWAN
         xyz_out->x = ALWAN_CORE_FN(integrate_trapezoid)(prod_x, spd->count, dx);
         xyz_out->y = ALWAN_CORE_FN(integrate_trapezoid)(prod_y, spd->count, dx);
         xyz_out->z = ALWAN_CORE_FN(integrate_trapezoid)(prod_z, spd->count, dx);
+    } else if (method == ALWAN_INTEGRATE_RECTANGLE) {
+        xyz_out->x = ALWAN_CORE_FN(integrate_rectangle)(prod_x, spd->count, dx);
+        xyz_out->y = ALWAN_CORE_FN(integrate_rectangle)(prod_y, spd->count, dx);
+        xyz_out->z = ALWAN_CORE_FN(integrate_rectangle)(prod_z, spd->count, dx);
     } else {
         xyz_out->x = ALWAN_CORE_FN(integrate_simpson)(prod_x, spd->count, dx);
         xyz_out->y = ALWAN_CORE_FN(integrate_simpson)(prod_y, spd->count, dx);
@@ -2195,6 +2209,10 @@ static alwan_status ALWAN_CORE_FN(camera_rgb_integrate)(ALWAN_CORE_T rgb[3], ALW
         rgb[0] = ALWAN_CORE_FN(integrate_trapezoid)(prod_r, spd->count, dx);
         rgb[1] = ALWAN_CORE_FN(integrate_trapezoid)(prod_g, spd->count, dx);
         rgb[2] = ALWAN_CORE_FN(integrate_trapezoid)(prod_b, spd->count, dx);
+    } else if (method == ALWAN_INTEGRATE_RECTANGLE) {
+        rgb[0] = ALWAN_CORE_FN(integrate_rectangle)(prod_r, spd->count, dx);
+        rgb[1] = ALWAN_CORE_FN(integrate_rectangle)(prod_g, spd->count, dx);
+        rgb[2] = ALWAN_CORE_FN(integrate_rectangle)(prod_b, spd->count, dx);
     } else {
         rgb[0] = ALWAN_CORE_FN(integrate_simpson)(prod_r, spd->count, dx);
         rgb[1] = ALWAN_CORE_FN(integrate_simpson)(prod_g, spd->count, dx);
@@ -2455,7 +2473,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_led_ohno2005)(ALWAN_CORE_SPD *out, ALWAN
  * the weights below reproduce it: trapezoid, or Simpson's 1/3 rule with a closing
  * trapezoid when the sample count is even. Multiply by the sample interval. */
 static ALWAN_CORE_T ALWAN_CORE_FN(integration_coefficient)(size_t i, size_t n, alwan_integrate_method method) {
-    if (n == 1) return ALWAN_CORE_LITERAL(1.0);
+    if (n == 1 || method == ALWAN_INTEGRATE_RECTANGLE) return ALWAN_CORE_LITERAL(1.0);
     if (method == ALWAN_INTEGRATE_TRAPEZOID || n == 2) {
         return (i == 0 || i == n - 1) ? ALWAN_CORE_LITERAL(0.5) : ALWAN_CORE_LITERAL(1.0);
     } else {
@@ -2489,7 +2507,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spectral_weights)(ALWAN_CORE_T *weights_out,
     if (band_count > 1 && !(wavelength_max > wavelength_min)) {
         return ALWAN_E_INVALID;
     }
-    if (method != ALWAN_INTEGRATE_TRAPEZOID && method != ALWAN_INTEGRATE_SIMPSON) {
+    if (method != ALWAN_INTEGRATE_TRAPEZOID && method != ALWAN_INTEGRATE_SIMPSON && method != ALWAN_INTEGRATE_RECTANGLE) {
         return ALWAN_E_INVALID;
     }
     resp[0] = response_0; resp[1] = response_1; resp[2] = response_2;
@@ -2591,7 +2609,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_camera_rgb_from_spd)(ALWAN_CORE_RGB *rgb_out
     if (!rgb_out || !spd) {
         return ALWAN_E_INVALID;
     }
-    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON) {
+    if ((int)method != (int)ALWAN_INTEGRATE_TRAPEZOID && (int)method != (int)ALWAN_INTEGRATE_SIMPSON &&
+        (int)method != (int)ALWAN_INTEGRATE_RECTANGLE) {
         return ALWAN_E_INVALID;
     }
     st = ALWAN_CORE_FNLIT(alwan_camera_sensitivities)(&sens_r, &sens_g, &sens_b, camera, ctx);

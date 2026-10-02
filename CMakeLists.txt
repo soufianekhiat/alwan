@@ -106,6 +106,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_gradient_edit.c
   src/alwan/api/alwan_stylize.c
   src/alwan/api/alwan_importance_sampling.c
+  src/alwan/api/alwan_low_discrepancy.c
   src/alwan/api/alwan_summed_area_table.c
   src/alwan/api/alwan_env_sampling.c
   src/alwan/api/alwan_ibl.c

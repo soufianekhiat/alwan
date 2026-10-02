@@ -639,10 +639,46 @@ static void alwan_wp_sobol2(uint32_t index, uint32_t seed, double *u, double *v)
     *v = (double)y / 4294967296.0;
 }
 
+/* The kernels a point cannot be drawn from (Mitchell and Lanczos go negative): their
+ * points spread evenly over the support square and carry the kernel as a weight. */
+static int alwan_wp_kernel_weighted(alwan_pixel_kernel kernel) {
+    return kernel == ALWAN_PIXEL_KERNEL_MITCHELL || kernel == ALWAN_PIXEL_KERNEL_LANCZOS ||
+           kernel == ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS;
+}
+
+/* One axis of the separable kernels, d in output pixels. */
+static double alwan_wp_kernel_1d(alwan_pixel_kernel kernel, double d) {
+    double const x = ALWAN_ABS_F64(d);
+    if (kernel == ALWAN_PIXEL_KERNEL_MITCHELL) {
+        /* Mitchell and Netravali (1988), B = C = 1/3, over 6 */
+        double const B = 1.0 / 3.0, C = 1.0 / 3.0;
+        if (x < 1.0) return ((12.0 - 9.0 * B - 6.0 * C) * x * x * x + (-18.0 + 12.0 * B + 6.0 * C) * x * x + (6.0 - 2.0 * B)) / 6.0;
+        if (x < 2.0) return ((-B - 6.0 * C) * x * x * x + (6.0 * B + 30.0 * C) * x * x + (-12.0 * B - 48.0 * C) * x + (8.0 * B + 24.0 * C)) / 6.0;
+        return 0.0;
+    }
+    if (kernel == ALWAN_PIXEL_KERNEL_LANCZOS) {
+        double const pi = 3.14159265358979323846;
+        if (x >= 2.0) return 0.0;
+        if (x < 1e-12) return 1.0;
+        return 2.0 * ALWAN_SIN_F64(pi * x) * ALWAN_SIN_F64(pi * x / 2.0) / (pi * pi * x * x);
+    }
+    if (kernel == ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS) {
+        double const pi = 3.14159265358979323846, t = x / 1.5;
+        if (t >= 1.0) return 0.0;
+        return 0.35875 + 0.48829 * ALWAN_COS_F64(pi * t) + 0.14128 * ALWAN_COS_F64(2.0 * pi * t) + 0.01168 * ALWAN_COS_F64(3.0 * pi * t);
+    }
+    return 1.0;
+}
+
 /* A point of the unit square carried to an offset drawn from the kernel (inverse CDFs), so
- * a set of points spread evenly over the square spreads by the kernel's weight around 0. */
+ * a set of points spread evenly over the square spreads by the kernel's weight around 0.
+ * The weighted kernels spread it evenly over their support instead. */
 static void alwan_wp_kernel_offset(alwan_pixel_kernel kernel, double u, double v, double *ox, double *oy) {
-    if (kernel == ALWAN_PIXEL_KERNEL_TENT) {
+    if (alwan_wp_kernel_weighted(kernel)) {
+        double const r = kernel == ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS ? 1.5 : 2.0;
+        *ox = (2.0 * u - 1.0) * r;
+        *oy = (2.0 * v - 1.0) * r;
+    } else if (kernel == ALWAN_PIXEL_KERNEL_TENT) {
         *ox = u < 0.5 ? -1.0 + ALWAN_SQRT_F64(2.0 * u) : 1.0 - ALWAN_SQRT_F64(2.0 * (1.0 - u));
         *oy = v < 0.5 ? -1.0 + ALWAN_SQRT_F64(2.0 * v) : 1.0 - ALWAN_SQRT_F64(2.0 * (1.0 - v));
     } else if (kernel == ALWAN_PIXEL_KERNEL_GAUSSIAN) {
@@ -658,10 +694,12 @@ static void alwan_wp_kernel_offset(alwan_pixel_kernel kernel, double u, double v
 
 /* The kernel's half support and its weight at (dx, dy), for the grid. */
 static double alwan_wp_kernel_radius(alwan_pixel_kernel kernel) {
-    return kernel == ALWAN_PIXEL_KERNEL_TENT ? 1.0 : kernel == ALWAN_PIXEL_KERNEL_GAUSSIAN ? 1.5 : 0.5;
+    if (kernel == ALWAN_PIXEL_KERNEL_MITCHELL || kernel == ALWAN_PIXEL_KERNEL_LANCZOS) return 2.0;
+    return kernel == ALWAN_PIXEL_KERNEL_TENT ? 1.0 : (kernel == ALWAN_PIXEL_KERNEL_GAUSSIAN || kernel == ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS) ? 1.5 : 0.5;
 }
 
 static double alwan_wp_kernel_weight(alwan_pixel_kernel kernel, double dx, double dy) {
+    if (alwan_wp_kernel_weighted(kernel)) return alwan_wp_kernel_1d(kernel, dx) * alwan_wp_kernel_1d(kernel, dy);
     if (kernel == ALWAN_PIXEL_KERNEL_TENT) return (1.0 - ALWAN_ABS_F64(dx)) * (1.0 - ALWAN_ABS_F64(dy));
     if (kernel == ALWAN_PIXEL_KERNEL_GAUSSIAN) {
         double const r2 = dx * dx + dy * dy;
@@ -882,7 +920,7 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                     for (i = 0; i < grid_n; i++) {
                         double const dx = -kr + ((double)i + 0.5) * step, dy = -kr + ((double)j + 0.5) * step;
                         double const wk = alwan_wp_kernel_weight(kernel, dx, dy);
-                        if (wk <= 0.0) continue;
+                        if (wk == 0.0) continue;   /* Mitchell and Lanczos weigh some points negative */
                         alwan_wp_subsample(v, &m, im, method, px + dx, py + dy);
                         if (alpha)
                             for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
@@ -897,6 +935,8 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                  * unbiased as it stands, and pairing it with its reflection breaks its strata
                  * (at 1024 points on a swirl, 0.0009 RMS paired against 0.0006 unpaired) */
                 uint32_t const hs = alwan_wp_hash((uint32_t)x * 73856093U ^ (uint32_t)y * 19349663U ^ p->seed);
+                int const weighted = alwan_wp_kernel_weighted(kernel) && !disk;
+                double wsum_w = 0.0;
                 if (sobol) {
                     for (k = 0; k < n; k++) {
                         double u, w2, ox, oy;
@@ -910,7 +950,13 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                         alwan_wp_subsample(v, &m, im, method, px + ox, py + oy);
                         if (alpha)
                             for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
-                        for (c = 0; c < ch; c++) acc[c] += v[c];
+                        if (weighted) {
+                            double const wk = alwan_wp_kernel_weight(kernel, ox, oy);
+                            for (c = 0; c < ch; c++) acc[c] += wk * v[c];
+                            wsum_w += wk;
+                        } else {
+                            for (c = 0; c < ch; c++) acc[c] += v[c];
+                        }
                     }
                 } else {
                     double const h1 = (double)hs / 4294967296.0, h2 = (double)alwan_wp_hash(hs ^ 0x9e3779b9U) / 4294967296.0;
@@ -918,10 +964,12 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                     double const cs = ALWAN_COS_F64(phi), sn = ALWAN_SIN_F64(phi);
                     size_t const pairs = n / 2;
                     if (n % 2) {
+                        double const wk = weighted ? alwan_wp_kernel_weight(kernel, 0.0, 0.0) : 1.0;
                         alwan_wp_subsample(v, &m, im, method, px, py);
                         if (alpha)
                             for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
-                        for (c = 0; c < ch; c++) acc[c] += v[c];
+                        for (c = 0; c < ch; c++) acc[c] += wk * v[c];
+                        wsum_w += wk;
                     }
                     for (k = 0; k < pairs; k++) {
                         double ox, oy;
@@ -934,13 +982,16 @@ static alwan_status alwan_wp_general(void *out, size_t out_rs, size_t ow, size_t
                             alwan_wp_kernel_offset(kernel, u - ALWAN_FLOOR_F64(u), w2 - ALWAN_FLOOR_F64(w2), &ox, &oy);
                         }
                         for (sg = -1; sg <= 1; sg += 2) {
+                            double const wk = weighted ? alwan_wp_kernel_weight(kernel, sg * ox, sg * oy) : 1.0;
                             alwan_wp_subsample(v, &m, im, method, px + sg * ox, py + sg * oy);
                             if (alpha)
                                 for (c = 0; c + 1 < ch; c++) v[c] *= v[ch - 1];
-                            for (c = 0; c < ch; c++) acc[c] += v[c];
+                            for (c = 0; c < ch; c++) acc[c] += wk * v[c];
+                            wsum_w += wk;
                         }
                     }
                 }
+                if (weighted) wsum = wsum_w;
             }
             if (n == 1 && alpha && !ewa_done)
                 for (c = 0; c + 1 < ch; c++) acc[c] *= acc[ch - 1];
@@ -970,7 +1021,7 @@ static alwan_status alwan_wp_run(void *out, size_t out_rs, size_t ow, size_t oh,
     if (src_rs / elem / ch < w || out_rs / elem / ch < ow) return ALWAN_E_INVALID;
     if ((unsigned)method > (unsigned)ALWAN_WARP_BSPLINE5) return ALWAN_E_INVALID;
     if ((unsigned)p->map > (unsigned)ALWAN_WARP_MAP_CALLBACK || (unsigned)p->integration > (unsigned)ALWAN_PIXEL_INTEGRATE_AUTO ||
-        (unsigned)p->kernel > (unsigned)ALWAN_PIXEL_KERNEL_GAUSSIAN)
+        (unsigned)p->kernel > (unsigned)ALWAN_PIXEL_KERNEL_BLACKMAN_HARRIS)
         return ALWAN_E_INVALID;
     if (p->map == ALWAN_WARP_MAP_FIELD) {
         size_t const gw = p->field_width ? p->field_width : ow, gh = p->field_height ? p->field_height : oh;

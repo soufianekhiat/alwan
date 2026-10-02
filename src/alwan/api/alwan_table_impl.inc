@@ -56,7 +56,8 @@ static int ALWAN_CORE_FN(table_mode_ok_strip)(alwan_sample_mode mode) {
 static int ALWAN_CORE_FN(table_mode_ok_rank3)(alwan_sample_mode mode) {
     int const base = ALWAN_SAMPLE_BASE(mode);
     return base == ALWAN_SAMPLE_NEAREST || base == ALWAN_SAMPLE_TRILINEAR ||
-           base == ALWAN_SAMPLE_TETRAHEDRAL || base == ALWAN_SAMPLE_LINEAR;
+           base == ALWAN_SAMPLE_TETRAHEDRAL || base == ALWAN_SAMPLE_LINEAR ||
+           base == ALWAN_SAMPLE_PRISM || base == ALWAN_SAMPLE_PYRAMID;
 }
 
 /* ----------------------------------------------------------------

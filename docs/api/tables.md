@@ -39,9 +39,22 @@ typedef enum {
     ALWAN_SAMPLE_TRILINEAR   = 3,
     ALWAN_SAMPLE_TETRAHEDRAL = 4,
     ALWAN_SAMPLE_CATMULL_ROM = 5,
+    ALWAN_SAMPLE_PRISM       = 6,     /* cube only: Kasson et al. 1995 */
+    ALWAN_SAMPLE_PYRAMID     = 7,     /* cube only: Kasson et al. 1995 */
     ALWAN_SAMPLE_STRICT      = 0x100  /* OR into the mode, scalar readers only */
 } alwan_sample_mode;
 ```
+
+`PRISM` and `PYRAMID` are the other two linear subdivisions of Kasson, Nin, Plouffe and
+Hafner 1995 ("Performing color space conversions with three-dimensional linear
+interpolation"), from their definitions. PRISM cuts the cell by the plane `r = g` into two
+triangular prisms along blue: barycentric across the R-G triangle, linear along blue.
+PYRAMID cuts it into three square pyramids with their apex at the far corner `(1,1,1)` and
+their bases on the three faces through `(0,0,0)`, the smallest of the three fractions
+picking the pyramid: bilinear over the base, linear towards the apex. Both are continuous
+across cell faces and give a function linear in r, g and b back exactly (suite 296, to
+3.3e-16, and to its numpy definitions to 5.6e-17). Like TETRAHEDRAL they run in shaders
+through the table reader.
 
 `ALWAN_SAMPLE_LINEAR` is `0` so a zero-initialised or `memset` mode interpolates
 rather than snapping to the nearest sample. Banding from an accidental NEAREST is
@@ -55,7 +68,7 @@ Accepted modes by rank:
 | 1-D mat3x3 ramp | NEAREST, LINEAR | LINEAR |
 | 2-D grid | NEAREST, BILINEAR, LINEAR | bilinear |
 | 2-D strip | NEAREST, TRILINEAR, LINEAR | trilinear |
-| 3-D cube | NEAREST, TRILINEAR, TETRAHEDRAL, LINEAR | trilinear |
+| 3-D cube | NEAREST, TRILINEAR, TETRAHEDRAL, PRISM, PYRAMID, LINEAR | trilinear |
 
 LINEAR is accepted at every rank and **resolves to that rank's linear member**:
 bilinear on a grid, trilinear on a strip or cube. It is the zero value, so
