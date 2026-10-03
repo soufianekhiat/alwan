@@ -12614,8 +12614,9 @@ alwan_status alwan_refractive_slab_rgb_f32(alwan_rgb_f32 *reflect_rgb, alwan_rgb
  * blood. Absorption: eumelanin 6.6e10 lambda^-3.33 and pheomelanin 2.9e14 lambda^-4.75
  * mm^-1 (Donner and Jensen 2006), the bloodless tissue baseline
  * 0.0244 + 8.53 exp(-(lambda - 154) / 66.2) mm^-1 (Jacques 2013), haemoglobin from its
- * decadic molar extinction (Prahl's values, data/skin/haemoglobin.csv) as
- * ln(10) eps c. Reduced scattering a (lambda / 500 nm)^-b in both layers (Jacques 2013,
+ * decadic molar extinction as ln(10) eps c, eps SUPPLIED BY THE CALLER (alwan ships no
+ * haemoglobin table: the usual source, Prahl's omlc.org compilation, carries no licence).
+ * Reduced scattering a (lambda / 500 nm)^-b in both layers (Jacques 2013,
  * skin: 4.6 mm^-1, 1.421), K = 2 mu_a and S = 3/4 mu_s' - 1/4 mu_a (Star et al. 1988).
  * The result is the body reflectance under diffuse light, without the surface's specular
  * reflection (about 2.8 % for an index of 1.4: add it in the BRDF). It is a model with
@@ -12629,7 +12630,18 @@ typedef enum {
 
 /* The chromophore fractions are taken as given (0 is none: a zeroed struct is bloodless,
  * unpigmented tissue); the remaining fields read 0 as their default.
- * alwan_skin_params_default fills a lightly pigmented example. */
+ * alwan_skin_params_default fills a lightly pigmented example (with blood, so it needs the
+ * haemoglobin spectra below before it can be evaluated).
+ *
+ * Haemoglobin: the caller's decadic molar extinction spectra of oxy- (HbO2) and
+ * deoxyhaemoglobin (Hb), in cm^-1 / M, on one strictly increasing wavelength grid in nm
+ * (Prahl's compilation spans 250 to 1000 nm; the model reads 350 to 850, the colour
+ * function 360 to 830). Read between samples with `interpolation`, beyond the grid with
+ * `haemoglobin_extrapolation` (0 is ALWAN_EXTRAPOLATE_ZERO: no blood absorption outside the
+ * grid, so give a grid that covers the wavelengths you ask for, or CONSTANT). With
+ * haemoglobin_count 0 the model has no blood term: a blood_fraction of exactly 0 still
+ * evaluates, anything above it returns ALWAN_E_NODATA. The arrays are read during the call
+ * only. */
 typedef struct {
     alwan_skin_model model;
     alwan_f64 melanin_fraction;        /* epidermis volume fraction of melanosomes, 0..1 */
@@ -12640,7 +12652,12 @@ typedef struct {
     alwan_f64 haemoglobin_g_per_l;     /* in whole blood; 0 = 150 g/L */
     alwan_f64 scattering_per_mm;       /* reduced scattering at 500 nm; 0 = 4.6 mm^-1 */
     alwan_f64 scattering_power;        /* b; 0 = 1.421 */
-    alwan_interp_method interpolation; /* how the haemoglobin table is read; 0 = LINEAR */
+    alwan_interp_method interpolation; /* how the haemoglobin spectra are read; 0 = LINEAR */
+    alwan_f64 const *haemoglobin_wavelengths_nm; /* the grid, haemoglobin_count samples */
+    alwan_f64 const *haemoglobin_oxy;            /* HbO2 extinction, cm^-1 / M */
+    alwan_f64 const *haemoglobin_deoxy;          /* Hb extinction, cm^-1 / M */
+    size_t haemoglobin_count;                    /* 0 = no spectra (see above); else at least 2 */
+    alwan_extrapolate_mode haemoglobin_extrapolation; /* beyond the grid; 0 = ZERO */
 } alwan_skin_params;
 
 /* melanin 0.03 (70 % eumelanin), blood 0.02 at 75 % oxygenation, the other fields 0 */
@@ -12649,7 +12666,9 @@ void alwan_skin_params_default(alwan_skin_params *params);
 /* The absorption of each layer and the reduced scattering, mm^-1, at each wavelength (nm).
  * Any output may be NULL; params NULL is alwan_skin_params_default. ALWAN_E_RANGE for a
  * wavelength outside 350-850 nm, ALWAN_E_INVALID for a fraction outside [0, 1], a negative
- * or non-finite field, or an interpolation the table does not allow. */
+ * or non-finite field, haemoglobin spectra that are malformed (a NULL array, fewer than 2
+ * samples, a grid not strictly increasing, a negative or non-finite value) or an
+ * interpolation the grid does not allow, ALWAN_E_NODATA for blood without spectra. */
 alwan_status alwan_skin_absorption_f64(double *mua_epidermis, double *mua_dermis, double *musp, double const *wavelengths_nm, size_t count, alwan_skin_params const *params);
 alwan_status alwan_skin_absorption_f32(float *mua_epidermis, float *mua_dermis, float *musp, float const *wavelengths_nm, size_t count, alwan_skin_params const *params);
 
@@ -12659,8 +12678,8 @@ alwan_status alwan_skin_reflectance_f32(float *reflectance_out, float const *wav
 
 /* The skin's colour: its reflectance from 360 to 830 nm at 1 nm through
  * alwan_reflectance_to_rgb (normalised to a perfect diffuser under the illuminant, adapted
- * to the space's white). The model's table starts at 350 nm and ends at 850, so the whole
- * visible range is covered. xyz_out may be NULL; ctx may be NULL. */
+ * to the space's white). The haemoglobin grid should cover 360 to 830 nm (see the
+ * extrapolation note above). xyz_out may be NULL; ctx may be NULL. */
 alwan_status alwan_skin_rgb_f64(alwan_rgb_f64 *rgb_out, alwan_xyz_f64 *xyz_out, alwan_skin_params const *params, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
 alwan_status alwan_skin_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyz_f32 *xyz_out, alwan_skin_params const *params, alwan_rgb_space space, alwan_illuminant illuminant, alwan_observer_type observer, alwan_ctx *ctx);
 
@@ -12674,7 +12693,8 @@ alwan_status alwan_skin_rgb_f32(alwan_rgb_f32 *rgb_out, alwan_xyz_f32 *xyz_out, 
  * Levenberg-Marquardt from params' values (a reasonable start matters: begin from
  * alwan_skin_params_default), each fraction held in [0, 1], the fields not fitted kept.
  * rms_out (may be NULL) is the root mean square residual. The model is not every skin:
- * the residual says how far this one is from it. Errors as alwan_skin_reflectance. */
+ * the residual says how far this one is from it. Errors as alwan_skin_reflectance; fitting
+ * BLOOD or OXYGENATION without haemoglobin spectra is ALWAN_E_NODATA. */
 alwan_status alwan_skin_fit_f64(alwan_skin_params *params, double *rms_out, double const *reflectance, double const *wavelengths_nm, size_t count, unsigned fit);
 alwan_status alwan_skin_fit_f32(alwan_skin_params *params, float *rms_out, float const *reflectance, float const *wavelengths_nm, size_t count, unsigned fit);
 /* ----------------------------------------------------------------

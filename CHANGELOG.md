@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+### Changed: the skin model takes haemoglobin spectra from the caller
+
+- **Removed: the built-in haemoglobin extinction table** (`src/alwan/data/skin/haemoglobin.csv`,
+  Scott Prahl's omlc.org compilation via the Virtual Tissue Simulator's MIT copy). Prahl's page
+  carries a copyright notice and no licence, and alwan ships nothing whose MIT compatibility is
+  not plain. `licenses/VTS-MIT.txt` and the VTS notice go with it.
+- **`alwan_skin_params` gains** `haemoglobin_wavelengths_nm`, `haemoglobin_oxy`,
+  `haemoglobin_deoxy` (decadic molar extinction, cm^-1 / M), `haemoglobin_count` and
+  `haemoglobin_extrapolation` (0 is ALWAN_EXTRAPOLATE_ZERO), read with the existing
+  `interpolation`. Without spectra a `blood_fraction` of exactly 0 still evaluates; any blood,
+  and fitting `ALWAN_SKIN_FIT_BLOOD` or `_OXYGENATION`, returns ALWAN_E_NODATA. Source
+  compatible for callers who zero the struct, but `alwan_skin_params_default` (which has blood)
+  and NULL params now need the spectra supplied. With Prahl's values supplied, the results are
+  identical to before (suite 289 passes them from its test data).
+
 ### Added: optical flow and ECC registration (batch 15)
 
 - **`ALWAN_REGISTER_ECC`** in `alwan_register_{T}`: OpenCV 5.0.0's `findTransformECC`

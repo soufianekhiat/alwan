@@ -17,7 +17,7 @@ diffuse. alwan's own code from published coefficients:
 | Eumelanin absorption | 6.6e10 lambda^-3.33 mm^-1 (lambda in nm) | Donner and Jensen 2006 |
 | Pheomelanin absorption | 2.9e14 lambda^-4.75 mm^-1 | Donner and Jensen 2006 |
 | Bloodless tissue | 0.0244 + 8.53 exp(-(lambda - 154) / 66.2) mm^-1 | Jacques 2013 |
-| Blood | ln(10) eps(lambda) c, c = haemoglobin / 64458 g/mol | Prahl's eps table |
+| Blood | ln(10) eps(lambda) c, c = haemoglobin / 64458 g/mol | the caller's eps spectra |
 | Reduced scattering, both layers | 4.6 (lambda / 500)^-1.421 mm^-1 | Jacques 2013, skin |
 | Kubelka-Munk K, S | K = 2 mu_a, S = 3/4 mu_s' - 1/4 mu_a | Star et al. 1988 |
 
@@ -28,10 +28,30 @@ b = sqrt(a^2 - 1), the epidermis reflects R1 = sinh(bSd) / (a sinh(bSd) + b cosh
 transmits T1 = b / (a sinh(bSd) + b cosh(bSd)); the dermis reflects R2 = a - b; together
 R = R1 + T1^2 R2 / (1 - R1 R2).
 
-The haemoglobin table (`src/alwan/data/skin/haemoglobin.csv`) is Scott Prahl's compilation
-of the molar extinction of oxy- and deoxyhaemoglobin (from W. B. Gratzer and N. Kollias),
-as the Virtual Tissue Simulator distributes it under MIT; see THIRD_PARTY_NOTICES.md. It
-runs from 350 to 850 nm every 2 nm, and that is the model's range.
+## Haemoglobin spectra: supplied by the caller
+
+alwan ships no haemoglobin table. The usual source, Scott Prahl's compilation of the molar
+extinction of oxy- and deoxyhaemoglobin (omlc.org, "Tabulated Molar Extinction Coefficient
+for Hemoglobin in Water", from W. B. Gratzer and N. Kollias), carries a copyright notice and
+no licence, so it is not something an MIT library can redistribute. Until 3.0.0 alwan shipped
+it through the Virtual Tissue Simulator's MIT-licensed copy; that table was removed.
+
+Give the model the two spectra in `alwan_skin_params`:
+
+- `haemoglobin_wavelengths_nm`: one strictly increasing grid, in nm;
+- `haemoglobin_oxy` and `haemoglobin_deoxy`: decadic molar extinction of HbO2 and Hb on that
+  grid, in cm^-1 / M (Prahl's tables use these units; a table in cm^-1 / (mg/mL) or per
+  millimolar needs converting);
+- `haemoglobin_count`: the number of samples, at least 2;
+- `interpolation` reads between samples (0 is LINEAR), `haemoglobin_extrapolation` beyond
+  the grid (0 is ALWAN_EXTRAPOLATE_ZERO, no blood absorption there: give a grid covering
+  the wavelengths you evaluate, 350 to 850 nm for the model and 360 to 830 for `rgb`, or
+  choose CONSTANT).
+
+The arrays are read during each call and not kept. With `haemoglobin_count` 0 the model has
+no blood term: a `blood_fraction` of exactly 0 still evaluates, anything above it returns
+ALWAN_E_NODATA, and so does fitting `_BLOOD` or `_OXYGENATION`. The model's own range stays
+350 to 850 nm.
 
 ## Limits
 
@@ -70,7 +90,12 @@ typedef struct {
     alwan_f64 haemoglobin_g_per_l;     /* 0 = 150 g/L */
     alwan_f64 scattering_per_mm;       /* reduced scattering at 500 nm; 0 = 4.6 */
     alwan_f64 scattering_power;        /* 0 = 1.421 */
-    alwan_interp_method interpolation; /* the haemoglobin table; 0 = LINEAR */
+    alwan_interp_method interpolation; /* the haemoglobin spectra; 0 = LINEAR */
+    alwan_f64 const *haemoglobin_wavelengths_nm; /* grid, nm */
+    alwan_f64 const *haemoglobin_oxy;            /* HbO2, cm^-1 / M */
+    alwan_f64 const *haemoglobin_deoxy;          /* Hb, cm^-1 / M */
+    size_t haemoglobin_count;                    /* 0 = none */
+    alwan_extrapolate_mode haemoglobin_extrapolation; /* 0 = ZERO */
 } alwan_skin_params;
 
 void alwan_skin_params_default(alwan_skin_params *params);
@@ -79,7 +104,8 @@ void alwan_skin_params_default(alwan_skin_params *params);
 The four fractions are taken as given: 0 means none, so a zeroed struct is unpigmented,
 bloodless tissue. The other fields read 0 as the default in the comment.
 `alwan_skin_params_default` gives melanin 0.03 (70 % eumelanin), blood 0.02 at 75 %
-oxygenation, the remaining fields 0. Passing NULL for params means those defaults.
+oxygenation, the remaining fields 0 and no haemoglobin spectra: set them before evaluating
+(passing NULL for params means those defaults, so it returns ALWAN_E_NODATA).
 
 For orientation, S. L. Jacques's "Skin Optics Summary" (omlc.org, 1998) gives epidermal
 melanosome volume fractions of 1.3 to 6.3 % in lightly pigmented adults, 11 to 16 % in
@@ -115,10 +141,15 @@ alwan_status alwan_skin_fit_{T}(alwan_skin_params *params, T *rms_out, T const *
   spectrum is not one this model can make.
 
 Errors: ALWAN_E_RANGE for a wavelength outside 350-850 nm; ALWAN_E_INVALID for a fraction
-outside [0, 1], a negative or non-finite field, a NULL buffer, a zero count or an
-interpolation the table does not allow. The f32 forms compute in f64.
+outside [0, 1], a negative or non-finite field, a NULL buffer, a zero count, malformed
+haemoglobin spectra (a NULL array, fewer than 2 samples, a grid not strictly increasing, a
+negative or non-finite value, an unknown extrapolation mode) or an interpolation the grid
+does not allow; ALWAN_E_NODATA for blood without spectra. The f32 forms compute in f64.
 
 ## Measured (suite 289)
+
+The suite passes Prahl's spectra (fetched by alwan_dev's gendata at test-data time, not
+shipped), 350 to 850 nm every 2 nm, so these are the model's numbers with that data.
 
 - Coefficients at fixed points against the published formulas: exact to rounding;
   oxygenated blood at 576 nm 29.760 mm^-1 from Prahl's 55540 cm^-1/M.

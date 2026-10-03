@@ -13,9 +13,9 @@
  *             (Donner and Jensen 2006, "A spectral BSSRDF for shading human skin")
  *   mu_base = 0.0244 + 8.53 exp(-(lambda - 154) / 66.2) mm^-1 (Jacques 2013, "Optical
  *             properties of biological tissues: a review", Phys. Med. Biol. 58)
- *   mu_blood = ln(10) eps(lambda) c, c = haemoglobin g/L / 64458 g/mol, eps from
- *             data/skin/haemoglobin.csv (Prahl's compilation, via the Virtual Tissue
- *             Simulator, MIT)
+ *   mu_blood = ln(10) eps(lambda) c, c = haemoglobin g/L / 64458 g/mol, eps the caller's
+ *             extinction spectra (alwan ships no haemoglobin table: Prahl's omlc.org
+ *             compilation, the usual source, carries no licence)
  *   mu_s'   = a (lambda / 500)^-b, a = 4.6 mm^-1, b = 1.421 (Jacques 2013, skin)
  *   K = 2 mu_a, S = 3/4 mu_s' - 1/4 mu_a (Star, Marijnissen and van Gemert 1988)
  *
@@ -29,19 +29,11 @@
 #include "../alwan_internal.h"
 #include <string.h>
 
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-/* wavelength nm, HbO2, Hb: decadic molar extinction, cm^-1 / M */
-static double const skin_hb[] = {
-#include "../data/skin/haemoglobin.csv"
-};
-ALWAN_DIAG_POP
-
-#define SKIN_HB_ROWS (sizeof(skin_hb) / sizeof(skin_hb[0]) / 3)
 #define SKIN_LN10 2.302585092994045684
 #define SKIN_HB_MOLAR_MASS 64458.0       /* g/mol, the value Prahl's conversion uses */
 #define SKIN_WMIN 350.0
 #define SKIN_WMAX 850.0
+#define SKIN_BLOCK 256   /* wavelengths evaluated per stack block */
 
 void alwan_skin_params_default(alwan_skin_params *params) {
     if (!params) return;
@@ -56,6 +48,9 @@ void alwan_skin_params_default(alwan_skin_params *params) {
 typedef struct {
     double cm, bm, ch, g, d_mm, hb_molar, a, b;
     alwan_interp_method interp;
+    double const *hb_w, *hb_oxy, *hb_deoxy;   /* the caller's spectra, NULL when absent */
+    size_t hb_n;
+    alwan_extrapolate_mode hb_extrap;
 } skin_resolved;
 
 static int skin_fraction_ok(double v) {
@@ -88,24 +83,77 @@ static alwan_status skin_resolve(skin_resolved *r, alwan_skin_params const *para
     r->a = params->scattering_per_mm > 0.0 ? params->scattering_per_mm : 4.6;
     r->b = params->scattering_power > 0.0 ? params->scattering_power : 1.421;
     r->interp = params->interpolation;
+    r->hb_w = r->hb_oxy = r->hb_deoxy = NULL;
+    r->hb_n = 0;
+    r->hb_extrap = params->haemoglobin_extrapolation;
+    if (params->haemoglobin_count > 0) {
+        size_t i;
+        if (params->haemoglobin_count < 2 || !params->haemoglobin_wavelengths_nm || !params->haemoglobin_oxy ||
+            !params->haemoglobin_deoxy) {
+            return ALWAN_E_INVALID;
+        }
+        if ((int)r->hb_extrap < (int)ALWAN_EXTRAPOLATE_ZERO || (int)r->hb_extrap > (int)ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO) {
+            return ALWAN_E_INVALID;
+        }
+        for (i = 0; i < params->haemoglobin_count; i++) {
+            double const w = params->haemoglobin_wavelengths_nm[i];
+            if (!(w >= -1e300 && w <= 1e300) || !skin_nonneg_ok(params->haemoglobin_oxy[i]) ||
+                !skin_nonneg_ok(params->haemoglobin_deoxy[i])) {
+                return ALWAN_E_INVALID;
+            }
+            if (i > 0 && !(w > params->haemoglobin_wavelengths_nm[i - 1])) return ALWAN_E_INVALID;
+        }
+        r->hb_w = params->haemoglobin_wavelengths_nm;
+        r->hb_oxy = params->haemoglobin_oxy;
+        r->hb_deoxy = params->haemoglobin_deoxy;
+        r->hb_n = params->haemoglobin_count;
+    } else if (r->ch > 0.0) {
+        return ALWAN_E_NODATA;   /* blood, but nothing to say how it absorbs */
+    }
     return ALWAN_OK;
 }
 
-/* Haemoglobin's two extinction spectra at the wavelengths, read with the interpolation. */
-static alwan_status skin_hb_at(double *oxy, double *deoxy, double const *w, size_t count, alwan_interp_method interp) {
-    double x[SKIN_HB_ROWS], yo[SKIN_HB_ROWS], yd[SKIN_HB_ROWS];
+/* one spectrum beyond its grid, by the extrapolation mode */
+static double skin_hb_extrap(double const *x, double const *y, size_t n, double w, alwan_extrapolate_mode ex) {
+    int const below = w < x[0];
+    size_t const e = below ? 0 : n - 1, in = below ? 1 : n - 2;
+    double v;
+    switch (ex) {
+    case ALWAN_EXTRAPOLATE_CONSTANT: return y[e];
+    case ALWAN_EXTRAPOLATE_LINEAR:
+    case ALWAN_EXTRAPOLATE_LINEAR_CLAMP_ZERO:
+        v = y[e] + (y[e] - y[in]) / (x[e] - x[in]) * (w - x[e]);
+        return v;   /* a negative value is clamped below, as an interpolant's overshoot is */
+    case ALWAN_EXTRAPOLATE_ZERO:
+    default: return 0.0;
+    }
+}
+
+/* Haemoglobin's two extinction spectra at the wavelengths: inside the caller's grid with the
+ * interpolation, beyond it with the extrapolation mode. Without spectra both are 0 (only
+ * reached with no blood, where they are multiplied by 0). */
+static alwan_status skin_hb_at(double *oxy, double *deoxy, double const *w, size_t count, skin_resolved const *r) {
+    double q[SKIN_BLOCK];
     size_t i;
     alwan_status st;
-    for (i = 0; i < SKIN_HB_ROWS; i++) {
-        x[i] = skin_hb[3 * i];
-        yo[i] = skin_hb[3 * i + 1];
-        yd[i] = skin_hb[3 * i + 2];
+    if (r->hb_n == 0) {
+        for (i = 0; i < count; i++) oxy[i] = deoxy[i] = 0.0;
+        return ALWAN_OK;
     }
-    st = alwan_interpolate_f64(x, yo, SKIN_HB_ROWS, w, oxy, count, interp);
-    if (st == ALWAN_OK) st = alwan_interpolate_f64(x, yd, SKIN_HB_ROWS, w, deoxy, count, interp);
-    if (st != ALWAN_OK) return ALWAN_E_INVALID;
-    /* an overshooting interpolant must not make an absorber emit */
+    /* the interpolators are only ever asked inside the grid */
     for (i = 0; i < count; i++) {
+        double const lo = r->hb_w[0], hi = r->hb_w[r->hb_n - 1];
+        q[i] = w[i] < lo ? lo : (w[i] > hi ? hi : w[i]);
+    }
+    st = alwan_interpolate_f64(r->hb_w, r->hb_oxy, r->hb_n, q, oxy, count, r->interp);
+    if (st == ALWAN_OK) st = alwan_interpolate_f64(r->hb_w, r->hb_deoxy, r->hb_n, q, deoxy, count, r->interp);
+    if (st != ALWAN_OK) return ALWAN_E_INVALID;
+    for (i = 0; i < count; i++) {
+        if (w[i] < r->hb_w[0] || w[i] > r->hb_w[r->hb_n - 1]) {
+            oxy[i] = skin_hb_extrap(r->hb_w, r->hb_oxy, r->hb_n, w[i], r->hb_extrap);
+            deoxy[i] = skin_hb_extrap(r->hb_w, r->hb_deoxy, r->hb_n, w[i], r->hb_extrap);
+        }
+        /* an overshooting interpolant (or a linear continuation) must not make an absorber emit */
         if (oxy[i] < 0.0) oxy[i] = 0.0;
         if (deoxy[i] < 0.0) deoxy[i] = 0.0;
     }
@@ -175,7 +223,6 @@ static alwan_status skin_check_wavelengths(double const *w, size_t count) {
 }
 
 /* the work of both entry points, on a block small enough for the stack */
-#define SKIN_BLOCK 256
 
 static alwan_status skin_eval(double *R, double *mua_e, double *mua_d, double *musp, double const *w, size_t count,
                               skin_resolved const *r) {
@@ -183,7 +230,7 @@ static alwan_status skin_eval(double *R, double *mua_e, double *mua_d, double *m
     size_t start, i;
     for (start = 0; start < count; start += SKIN_BLOCK) {
         size_t const n = (count - start < SKIN_BLOCK) ? count - start : SKIN_BLOCK;
-        alwan_status const st = skin_hb_at(oxy, deoxy, w + start, n, r->interp);
+        alwan_status const st = skin_hb_at(oxy, deoxy, w + start, n, r);
         if (st != ALWAN_OK) return st;
         for (i = 0; i < n; i++) {
             double e, dm, s;
@@ -324,6 +371,10 @@ alwan_status alwan_skin_fit_f64(alwan_skin_params *params, double *rms_out, doub
     }
     st = skin_check_wavelengths(wavelengths_nm, count);
     if (st != ALWAN_OK) return st;
+    /* varying blood or its oxygenation needs the spectra even from a bloodless start */
+    if ((fit & (ALWAN_SKIN_FIT_BLOOD | ALWAN_SKIN_FIT_OXYGENATION)) && params->haemoglobin_count == 0) {
+        return ALWAN_E_NODATA;
+    }
     for (i = 0; i < count; i++) {
         if (!(reflectance[i] >= -1e300 && reflectance[i] <= 1e300)) return ALWAN_E_INVALID;
     }
