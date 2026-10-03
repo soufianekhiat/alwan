@@ -33,8 +33,6 @@ GPL code is never ported into alwan.
     `edgeaware_filters_common.cpp`.
   - 3-clause BSD (Intel, Willow Garage, Itseez), `licenses/OpenCV-imgproc-resize-BSD-3-Clause.txt`:
     `modules/imgproc/src/resize.cpp`.
-  - 3-clause BSD (Copyright (C) 2014, Beat Kueng, Lukas Vogel, Morten Lysgaard),
-    `licenses/OpenCV-ximgproc-niblack-BSD-3-Clause.txt`: `modules/ximgproc/src/niblack_thresholding.cpp`.
   - 3-clause BSD (Intel, Willow Garage, Itseez) with the original Bayer code's BSD-style
     notice (Copyright (c) 2002, MD-Mathematische Dienste GmbH, Dirk Schaefer),
     `licenses/OpenCV-imgproc-demosaicing-BSD.txt`: `modules/imgproc/src/demosaicing.cpp`.
@@ -57,7 +55,6 @@ What alwan takes:
 | `src/alwan/api/alwan_am_filter.c` | `ximgproc` adaptive manifold filter |
 | `src/alwan/api/alwan_wmf.c` | `ximgproc` weighted median filter |
 | `src/alwan/api/alwan_resize_opencv.c`, `alwan_resize_opencv_impl.inc` | `imgproc/src/resize.cpp` (INTER_CUBIC and INTER_AREA: `resizeGeneric_`, `resizeAreaFast_`, `resizeArea_`, `computeResizeAreaTab`) |
-| `src/alwan/api/alwan_threshold_local.c` | `ximgproc/src/niblack_thresholding.cpp` (Wolf and NICK binarisation), with `imgproc` boxFilter and sqrBoxFilter's double sums |
 | `src/alwan/api/alwan_demosaic_opencv.c` | `imgproc/src/demosaicing.cpp` (`Bayer2RGB_VNG_8u`, `Bayer2RGB_EdgeAware_T`) |
 | `src/alwan/api/alwan_denoise_bilateral.c` | `imgproc/src/bilateral_filter.dispatch.cpp`, `bilateral_filter.simd.hpp` (`cv::bilateralFilter`, 8u and 32f, the AVX2 kernel's order and fused multiply-adds) |
 | `src/alwan/api/alwan_bilateral_texture.c` | `ximgproc/src/bilateral_texture_filter.cpp` (`bilateralTextureFilter`), with `imgproc` box filter's double sums and `core` `accumulateProduct` |
@@ -125,22 +122,9 @@ What alwan takes:
 
 What alwan takes: routines reproduced from scikit-image's code, among them the TV-L1 and
 iterative Lucas-Kanade optical flow solvers and their coarse-to-fine pyramid
-(`registration/_optical_flow.py`, `_optical_flow_utils.py`; `alwan_optical_flow.c`), the watershed
-heap, `find_contours` and `approximate_polygon` (`alwan_contour.c`), the skeletonisation
-passes transcribed from `_skeletonize_various_cy.pyx` and the medial axis from
-`_skeletonize.py` (`alwan_morphology.c`), the convex hull's `possible_hull` and
-`point_in_polygon` (`_convex_hull.pyx`, `_shared/geometry.pyx`; `alwan_morphology.c`), the
-Moravec and FAST corner loops (`feature/corner_cy.pyx`, `alwan_corner.c`), the multi-Otsu
-search (`filters/_multiotsu.pyx`, `alwan_threshold.c`), Felzenszwalb's graph segmentation and
-quick shift (`segmentation/_felzenszwalb_cy.pyx`, `segmentation/_quickshift_cy.pyx`,
-`alwan_segment_ext.c`, which also follows `_chan_vese.py` and
-`random_walker_segmentation.py`), the co-occurrence loop and properties
-(`feature/_texture.pyx`, `feature/texture.py`), the HOG gradients, cell histograms, block
-norms and visualisation lines (`feature/_hog.py`, `feature/_hoghistogram.pyx`,
-`draw/_draw.pyx`; `alwan_texture_descriptors.c`), the Gabor kernel and filter
-(`filters/_gabor.py`, `alwan_texture.c`), total
+(`registration/_optical_flow.py`, `_optical_flow_utils.py`; `alwan_optical_flow.c`), total
 variation denoising (`alwan_denoise.c`), the bilateral filter of `restoration/_denoise_cy.pyx`
-and `_denoise.py` (`alwan_denoise_bilateral.c`), the thresholds, and the stain and video matrices in
+and `_denoise.py` (`alwan_denoise_bilateral.c`), and the stain and video matrices in
 `src/alwan/data/stain/` and `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
 
 ## SciPy

@@ -160,22 +160,13 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_register.c
   src/alwan/api/alwan_optical_flow.c
   src/alwan/api/alwan_colormap.c
-  src/alwan/api/alwan_contour.c
-  src/alwan/api/alwan_peaks.c
   src/alwan/api/alwan_match_template.c
-  src/alwan/api/alwan_moments.c
   src/alwan/api/alwan_luminaire.c
   src/alwan/api/alwan_l0_smooth.c
   src/alwan/api/alwan_deconvolve.c
   src/alwan/api/alwan_inpaint.c
   src/alwan/api/alwan_inpaint_opencv.c
-  src/alwan/api/alwan_morphology.c
   src/alwan/api/alwan_background.c
-  src/alwan/api/alwan_threshold.c
-  src/alwan/api/alwan_threshold_local.c
-  src/alwan/api/alwan_segment.c
-  src/alwan/api/alwan_segment_ext.c
-  src/alwan/api/alwan_distance.c
   src/alwan/api/alwan_vignette.c
   src/alwan/api/alwan_light_probe.c
   src/alwan/api/alwan_spectrum_meng2015.c
@@ -185,14 +176,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_fluorescence.c
   src/alwan/api/alwan_sky.c
   src/alwan/api/alwan_corresponding.c
-  src/alwan/api/alwan_gradient.c
-  src/alwan/api/alwan_edge_detect.c
-  src/alwan/api/alwan_region_props.c
-  src/alwan/api/alwan_corner.c
-  src/alwan/api/alwan_texture.c
-  src/alwan/api/alwan_texture_descriptors.c
   src/alwan/api/alwan_denoise_nlm.c
-  src/alwan/api/alwan_ridge.c
   src/alwan/api/alwan_resize.c
   src/alwan/api/alwan_resize_opencv.c
   src/alwan/api/alwan_warp.c
@@ -252,7 +236,6 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_prolab.c
   src/alwan/api/alwan_xyb.c
   src/alwan/api/alwan_stain.c
-  src/alwan/api/alwan_label_overlay.c
   src/alwan/api/alwan_video_spaces.c
   src/alwan/api/alwan_image_metrics.c
   src/alwan/api/alwan_macadam.c

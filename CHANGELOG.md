@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+### Removed: image analysis moved to suwar
+
+alwan is a colour-science library; the image-analysis families now live in suwar, the image
+processing library built on alwan (suwar_ names, same behaviour, same methods). Gone from
+alwan, with their suites: morphology (including reconstruction, area and diameter operators,
+skeletonisation, medial axis and convex hulls), peak_local_max, global and local
+thresholds, gradient, edge_detect (Canny), corner_response, ridge filters, texture codes
+and descriptors (LBP, GLCM, HOG, Gabor), distance_transform, segmentation (connected
+components, watershed, SLIC, Felzenszwalb, Quickshift, Chan-Vese, random walker), label
+overlays (label2rgb, find_boundaries, mark_boundaries), region_props, moments and contours
+(find_contours, approximate_polygon). Template matching stays until the FFT moves with the
+filters.
+
 ### Added: the foundation header
 
 - **`alwan_foundation.h`** and **`docs/foundation.md`**: the part of alwan's machinery a library
