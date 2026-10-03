@@ -1,5 +1,30 @@
 ## [Unreleased]
 
+### Added: the foundation header
+
+- **`alwan_foundation.h`** and **`docs/foundation.md`**: the part of alwan's machinery a library
+  built on alwan may use beside `alwan.h`, supported from 3.0.0 (suwar, the image-processing
+  library released with alwan 3.0.0, is built on it): allocation, `alwan_safe_array_size`, the
+  platform and deterministic math macros, the f32/f64 core templating, the table reader seam,
+  the half-float and microfacet cores, and (opt-in) the typed map layer and SIMD wrappers.
+  `alwan_internal.h` stays alwan's own.
+- **`alwan_ctx_alloc` / `alwan_ctx_free`**: allocate through a context's allocator (the default
+  one for `NULL`) without reading the context's fields.
+
+### Changed: groundwork for the alwan / suwar split (no output changes)
+
+- `alwan_wavelength_sampler_params_{T}.tabulated_mode` is now `alwan_wavelength_tabulated_mode`
+  (`ALWAN_WAVELENGTH_TABULATED_DIRECT`, `_SEARCH`, `_ALIAS`, the same values as before). The
+  TABULATED density reads alwan's own piecewise-constant tables, a renamed copy of the 2D
+  importance sampler's, so its samples, densities and inverses are unchanged bit for bit.
+- The GGX and Smith terms live in `core/alwan_microfacet_core.h`, which iridescence uses;
+  image-based lighting keeps its names as wrappers over them.
+- Exposure-bracket merging is now `api/alwan_hdr_merge.c` and the highlight recoveries
+  `api/alwan_highlights.c` (split from `alwan_exposure.c` and `alwan_dng.c`); the
+  image-processing internals are declared in `alwan_internal_image.h`. Colour checker detection
+  builds its orientation reference through `alwan_color_checker_data` instead of a table of its
+  own, and `data/colorchecker/classic_post2014_srgb_linear.csv` is gone.
+
 ### Added: compositing, blend modes and colour maps
 
 - **`alwan_composite_{f64,f32,u8,u16}`**: the Porter-Duff operators (Porter and Duff 1984:

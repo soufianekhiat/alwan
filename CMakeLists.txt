@@ -119,6 +119,8 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_white_balance.c
   src/alwan/api/alwan_dng.c
   src/alwan/api/alwan_exposure.c
+  src/alwan/api/alwan_hdr_merge.c
+  src/alwan/api/alwan_highlights.c
   src/alwan/api/alwan_crf.c
   src/alwan/api/alwan_demosaic.c
   src/alwan/api/alwan_demosaic_opencv.c

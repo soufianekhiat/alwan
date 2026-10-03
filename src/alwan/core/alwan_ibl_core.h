@@ -18,6 +18,7 @@
 
 #include "../alwan_platform.h"
 #include "../alwan_types.h"
+#include "alwan_microfacet_core.h"
 
 #if ALWAN_BACKEND == ALWAN_BACKEND_C
 

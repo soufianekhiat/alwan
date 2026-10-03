@@ -20,8 +20,8 @@
  *             spectral sampling": wavelength j of n is the hero rotated by j / n of
  *             the range, wrapped into [lo, hi).
  *
- * The tabulated density (any weight) reads the 2D sampler's tables; see
- * core/alwan_importance_sampling_reader.inc.
+ * The tabulated density (any weight) reads alwan's private piecewise-constant tables; see
+ * core/alwan_wavelength_table_reader.inc.
  */
 
 /* A uniform u in [0, 1] to a wavelength in [lo, hi], uniformly. */

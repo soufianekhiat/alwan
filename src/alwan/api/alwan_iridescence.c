@@ -24,7 +24,7 @@
 #include "../alwan_internal.h"
 #include <string.h>
 #include "../core/alwan_table_core.h"
-#include "../core/alwan_ibl_core.h"
+#include "../core/alwan_microfacet_core.h"
 #include "../core/alwan_iridescence_core.h"
 
 #define ALWAN__IR_PI 3.14159265358979323846
@@ -524,7 +524,7 @@ alwan_status alwan_iridescence_ggx_f64(alwan_rgb_f64 *out, alwan_f64 nov, alwan_
     if (!(nov > 0.0) || !(nol > 0.0) || !(voh > 0.0)) return alwan__ir_films(film, s->bands);
     st = alwan_iridescence_fresnel_rgb_f64(&f, NULL, voh, film, s);
     if (st != ALWAN_OK) return st;
-    scale = alwan_ibl_ggx_d_f64_v(noh, alpha) * alwan_ibl_smith_g2_f64_v(nov, nol, alpha) / (4.0 * nov * nol);
+    scale = alwan_microfacet_ggx_d_f64_v(noh, alpha) * alwan_microfacet_smith_g2_f64_v(nov, nol, alpha) / (4.0 * nov * nol);
     out->r = f.r * scale;
     out->g = f.g * scale;
     out->b = f.b * scale;
@@ -543,7 +543,7 @@ alwan_status alwan_iridescence_ggx_f32(alwan_rgb_f32 *out, alwan_f32 nov, alwan_
     if (!(nov > 0.0f) || !(nol > 0.0f) || !(voh > 0.0f)) return alwan__ir_films(film, s->bands);
     st = alwan_iridescence_fresnel_rgb_f32(&f, NULL, voh, film, s);
     if (st != ALWAN_OK) return st;
-    scale = alwan_ibl_ggx_d_f32_v(noh, alpha) * alwan_ibl_smith_g2_f32_v(nov, nol, alpha) / (4.0f * nov * nol);
+    scale = alwan_microfacet_ggx_d_f32_v(noh, alpha) * alwan_microfacet_smith_g2_f32_v(nov, nol, alpha) / (4.0f * nov * nol);
     out->r = f.r * scale;
     out->g = f.g * scale;
     out->b = f.b * scale;

@@ -65,6 +65,23 @@ ctx = NULL;  // Good practice
 
 ---
 
+### alwan_ctx_alloc / alwan_ctx_free
+
+```c
+void *alwan_ctx_alloc(alwan_ctx *ctx, size_t bytes, size_t align);
+void alwan_ctx_free(alwan_ctx *ctx, void *ptr);
+```
+
+Allocate and free through a context's allocator: the callbacks given to `alwan_create`, or the
+default allocator when `ctx` is `NULL` (or was created without callbacks). `align` is a power of
+two; 0 takes the platform's malloc alignment. `alwan_ctx_free(ctx, NULL)` does nothing. Free a
+block with the same `ctx` it was allocated with (or `NULL` for both).
+
+These exist for libraries built on alwan, which allocate the way alwan's own functions do
+without reading the context's fields; see [the foundation](../foundation.md).
+
+---
+
 ## Types
 
 ### alwan_ctx

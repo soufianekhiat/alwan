@@ -8,9 +8,6 @@ rendering, BabelColor average xyY and reflectance, the Ohta reflectances, PMC,
 Digital SG, and the Image Engineering TE226 v2 D65 set.
 Written by gendata/data/reference_data.py and colorchecker_names.py.
 
-classic_post2014_srgb_linear.csv: the Classic after November 2014 in linear sRGB (CAT02 from
-D50), colour-checker-detection's orientation reference, written by
-gendata/data/checker_detect_reference.py.
 
 template_classic_size.csv, template_classic_centroids.csv, template_classic_colours.csv,
 template_classic_correspondences.csv: the ColorChecker Classic template of

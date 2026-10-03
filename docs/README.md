@@ -20,6 +20,7 @@ the library around that API surface.
 
 - [configuration.md](configuration.md) - the build matrix (optimisation, linkage, math, precision), every compile-time switch, the allocator hooks, and the f64-facade exceptions
 - [determinism.md](determinism.md) - what `ALWAN_DETERMINISTIC` changes and why
+- [foundation.md](foundation.md) - `alwan_foundation.h`: what a library built on alwan (suwar) may use beside `alwan.h`
 - [alwan_decisions.md](alwan_decisions.md) - where alwan knowingly differs from colour-science or a standard, and why
 
 ## Backends

@@ -38,7 +38,7 @@ The densities, over `[lambda_min, lambda_max]` (360 to 830 nm when both are 0):
 |---|---|---|
 | `UNIFORM` | 1 / (max - min) | linear |
 | `VISIBLE` | a sech²(a (λ - b)) / (tanh(a (max - b)) - tanh(a (min - b))) | exact inverse CDF: λ = b + atanh(t0 + u (t1 - t0)) / a |
-| `TABULATED` | the caller's weights, constant on equal bins | through `alwan_importance_sampling_2d` |
+| `TABULATED` | the caller's weights, constant on equal bins | a piecewise-constant table (`alwan_wavelength_tabulated_mode`) |
 
 `VISIBLE` is the density of Radziszewski, Boryczko and Alda 2009, "An improved technique
 for full spectral rendering" (Journal of WSCG 17), a = 0.0072 per nm and b = 538 nm by
@@ -46,7 +46,8 @@ default (`visible_a`, `visible_b`). It is a smooth bump that covers the three CM
 its CDF is a tanh, so the inverse is closed form.
 
 `TABULATED` takes `weight_count` weights, one per bin of equal width, and draws with the
-2D sampler's modes (`tabulated_mode`): `SEARCH` and `ALIAS` exact and with the same pdf to
+modes of `alwan_wavelength_tabulated_mode` (`tabulated_mode`: `ALWAN_WAVELENGTH_TABULATED_DIRECT`,
+`_SEARCH`, `_ALIAS`, the same values the 2D importance sampler used): `SEARCH` and `ALIAS` exact and with the same pdf to
 the bit, `DIRECT` a tabulated inverse whose pdf is the density it actually draws (so
 estimates stay unbiased). The weights can come from an observer and a light:
 

@@ -15,15 +15,18 @@
 #include "../alwan_internal.h"
 #include <string.h>
 #include "../core/alwan_wavelength_sampling_core.h"
+#include "../core/alwan_wavelength_table_core.h"
 
 #if ALWAN_WITH_F32
 #include "alwan_api_f32_setup.h"
+#include "alwan_wavelength_table_impl.inc"
 #include "alwan_wavelength_sampling_impl.inc"
 #include "alwan_api_teardown.h"
 #endif
 
 #if ALWAN_WITH_F64
 #include "alwan_api_f64_setup.h"
+#include "alwan_wavelength_table_impl.inc"
 #include "alwan_wavelength_sampling_impl.inc"
 #include "alwan_api_teardown.h"
 #endif

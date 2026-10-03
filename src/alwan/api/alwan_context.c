@@ -147,6 +147,19 @@ void alwan_destroy(alwan_ctx *ctx) {
     ctx->free_fn(ctx);
 }
 
+void *alwan_ctx_alloc(alwan_ctx *ctx, size_t bytes, size_t align) {
+    return ctx ? ctx->alloc_fn(bytes, align) : ALWAN_ALLOC(bytes, align);
+}
+
+void alwan_ctx_free(alwan_ctx *ctx, void *ptr) {
+    if (!ptr) return;
+    if (ctx) {
+        ctx->free_fn(ptr);
+    } else {
+        ALWAN_FREE(ptr);
+    }
+}
+
 /* The ACES 1.x tone curve method the view transform reads. A NULL context is
  * the default, so the view entry points need no NULL branch of their own. */
 alwan_status alwan_ctx_set_aces_interp(alwan_ctx *ctx, alwan_aces_interp method) {

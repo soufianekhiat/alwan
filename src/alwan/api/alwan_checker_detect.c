@@ -47,13 +47,29 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The orientation reference: colour-checker-detection's _COLOURCHECKER_VALUES. */
-ALWAN_DIAG_PUSH
-ALWAN_DIAG_DISABLE_FLOAT_CONV
-static double const ccd_reference_default[24 * 3] = {
-#include "../data/colorchecker/classic_post2014_srgb_linear.csv"
-};
-ALWAN_DIAG_POP
+/* The orientation reference, the ColorChecker Classic (after November 2014) in linear sRGB,
+ * read through alwan's public chart API rather than a table of the detector's own:
+ * alwan_color_checker_data (xyY under D50, Bradford to D65) then sRGB's matrix.
+ * colour-checker-detection builds its _COLOURCHECKER_VALUES with CAT02 and colour's own
+ * matrix; the two agree to about 1e-5, and the reference only picks which of four corner
+ * orders is nearest (mean squared), where the candidates differ by far more. */
+static alwan_status ccd_reference_from_alwan(double out[24 * 3]) {
+    alwan_rgb_space_desc_f64 srgb;
+    size_t i;
+    if (alwan_rgb_get_space_descriptor_f64(&srgb, ALWAN_RGB_SPACE_SRGB, NULL) != ALWAN_OK) return ALWAN_E_INVALID;
+    for (i = 0; i < 24; i++) {
+        alwan_xyz_f64 xyz;
+        alwan_rgb_f64 rgb;
+        alwan_status st = alwan_color_checker_data_f64(&xyz, ALWAN_COLORCHECKER_CLASSIC_POST2014, ALWAN_ILLUMINANT_D65, i);
+        if (st != ALWAN_OK) return st;
+        st = alwan_xyz_to_rgb_f64(&rgb, &srgb, &xyz);
+        if (st != ALWAN_OK) return st;
+        out[i * 3 + 0] = rgb.r;
+        out[i * 3 + 1] = rgb.g;
+        out[i * 3 + 2] = rgb.b;
+    }
+    return ALWAN_OK;
+}
 
 /* ------------------------------------------------------------------------------------ */
 /* Small helpers                                                                        */
@@ -1907,6 +1923,7 @@ typedef struct {
     double approx_factor, dbscan_eps, cost_threshold;   /* TEMPLATED */
     int dbscan_min_samples;
     double const *reference;
+    double reference_default[24 * 3];   /* filled from the chart API when the caller gives none */
 } ccd_settings;
 
 static alwan_status ccd_settings_from(ccd_settings *s, alwan_checker_detect_params const *p) {
@@ -1943,8 +1960,11 @@ static alwan_status ccd_settings_from(ccd_settings *s, alwan_checker_detect_para
     if (p->dbscan_min_samples > (size_t)INT_MAX) return ALWAN_E_INVALID;
     s->reference = p->reference_values;
     if (!s->reference) {
+        alwan_status st;
         if (sw != 24) return ALWAN_E_INVALID;
-        s->reference = ccd_reference_default;
+        st = ccd_reference_from_alwan(s->reference_default);
+        if (st != ALWAN_OK) return st;
+        s->reference = s->reference_default;
     }
     if (s->block < 3 || s->block % 2 == 0 || s->working_width < 16) return ALWAN_E_INVALID;
     return ALWAN_OK;

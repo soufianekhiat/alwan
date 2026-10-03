@@ -120,6 +120,15 @@ alwan_ctx *alwan_create(alwan_config const *cfg);
 /* Destroy context and release all resources */
 void alwan_destroy(alwan_ctx *ctx);
 
+/* Allocate and free through a context's allocator: the callbacks alwan_create was given, or
+ * the default allocator when ctx is NULL or was created without callbacks. align is a power of
+ * two (0 means the platform's malloc alignment). alwan_ctx_free(ctx, NULL) does nothing. Free
+ * a block with the same ctx (or NULL for both) it was allocated with. These are for libraries
+ * built on alwan (see alwan_foundation.h and docs/foundation.md): alwan's own functions
+ * allocate the same way. */
+void *alwan_ctx_alloc(alwan_ctx *ctx, size_t bytes, size_t align);
+void alwan_ctx_free(alwan_ctx *ctx, void *ptr);
+
 /* Version of the linked library binary ("major.minor.patch").
  * Compiled into the library, not the header: when a dynamically loaded
  * alwan is older or newer than the headers you built against, this
@@ -14440,17 +14449,25 @@ alwan_status alwan_hero_wavelength_batch_f32(alwan_f32 *lambda_out,
  *   ALWAN_WAVELENGTH_PDF_TABULATED  proportional to the caller's weights, constant over
  *                                   weight_count bins of equal width between lambda_min
  *                                   and lambda_max (alwan_wavelength_weights_{T} makes
- *                                   them from an observer and an illuminant). Built on
- *                                   alwan_importance_sampling_2d, drawn with its
- *                                   tabulated_mode: SEARCH and ALIAS exact, DIRECT a
+ *                                   them from an observer and an illuminant). Drawn from
+ *                                   a piecewise-constant table with tabulated_mode
+ *                                   (alwan_wavelength_tabulated_mode): SEARCH and ALIAS exact, DIRECT a
  *                                   tabulated inverse (tabulated_resolution intervals,
  *                                   0 for weight_count) whose pdf is the density it draws.
  *
  * Every field 0 is the default: lambda_min = lambda_max = 0 for 360 to 830 nm, a = 0 and
  * b = 0 for the paper's 0.0072 and 538. params may be NULL. ALWAN_E_INVALID for an
  * unknown density, a range that is not finite or not increasing, a negative or non-finite
- * a, or (TABULATED) missing weights or weights the 2D sampler refuses (negative, not
+ * a, or (TABULATED) missing weights or weights the table refuses (negative, not
  * finite, all 0). ctx may be NULL. Suite 287. */
+/* How a TABULATED density is drawn: DIRECT a tabulated inverse CDF (its pdf is the density
+ * it draws), SEARCH a bisection of the CDF, ALIAS Vose's alias table (no inverse). */
+typedef enum {
+    ALWAN_WAVELENGTH_TABULATED_DIRECT = 0,
+    ALWAN_WAVELENGTH_TABULATED_SEARCH = 1,
+    ALWAN_WAVELENGTH_TABULATED_ALIAS = 2
+} alwan_wavelength_tabulated_mode;
+
 typedef enum {
     ALWAN_WAVELENGTH_PDF_UNIFORM = 0,
     ALWAN_WAVELENGTH_PDF_VISIBLE = 1,
@@ -14462,7 +14479,7 @@ typedef struct {
     alwan_f32 visible_a, visible_b;            /* VISIBLE: 1/nm and nm; 0 for 0.0072 and 538 */
     alwan_f32 const *weights;                  /* TABULATED: weight_count bins */
     size_t weight_count, weight_stride;        /* stride in bytes, 0 for packed */
-    alwan_importance_sampling_2d_mode tabulated_mode;
+    alwan_wavelength_tabulated_mode tabulated_mode;
     size_t tabulated_resolution;               /* DIRECT: 0 for weight_count */
 } alwan_wavelength_sampler_params_f32;
 typedef struct {
@@ -14470,7 +14487,7 @@ typedef struct {
     alwan_f64 visible_a, visible_b;
     alwan_f64 const *weights;
     size_t weight_count, weight_stride;
-    alwan_importance_sampling_2d_mode tabulated_mode;
+    alwan_wavelength_tabulated_mode tabulated_mode;
     size_t tabulated_resolution;
 } alwan_wavelength_sampler_params_f64;
 

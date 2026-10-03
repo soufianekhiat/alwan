@@ -3,9 +3,9 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Exposure (ISO 2720, ISO 12232, Lagarde 2014). Native dual precision: the
- * implementation is templated in alwan_exposure_impl.inc and instantiated once
- * per precision. Bracket merging is alwan_hdr_merge.c.
+ * Exposure-bracket merging (colour-hdri's weighted radiance merge). Native dual precision:
+ * templated in alwan_hdr_merge_impl.inc and instantiated once per precision. Split from
+ * alwan_exposure.c so it moves to suwar as a file.
  */
 
 #include "../alwan.h"
@@ -16,7 +16,7 @@ ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 #include "alwan_api_f32_setup.h"
-#include "alwan_exposure_impl.inc"
+#include "alwan_hdr_merge_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
 #endif
@@ -27,7 +27,7 @@ ALWAN_DIAG_POP
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_UNUSED_FUNCTION
 #include "alwan_api_f64_setup.h"
-#include "alwan_exposure_impl.inc"
+#include "alwan_hdr_merge_impl.inc"
 #include "alwan_api_teardown.h"
 ALWAN_DIAG_POP
 #endif

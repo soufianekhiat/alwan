@@ -463,6 +463,8 @@ EXPORTS
     alwan_css_gamut_map_planar_ex
     alwan_css_gamut_space_f32
     alwan_css_gamut_space_f64
+    alwan_ctx_alloc
+    alwan_ctx_free
     alwan_ctx_get_aces_interp
     alwan_ctx_set_aces_interp
     alwan_cube_export_1d_f32
