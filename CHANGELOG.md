@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+### Added: compositing, blend modes and colour maps
+
+- **`alwan_composite_{f64,f32,u8,u16}`**: the Porter-Duff operators (Porter and Duff 1984:
+  clear, copy, destination, source/destination over, in, out, atop, xor) plus plus-lighter, and
+  the 16 blend modes of W3C Compositing and Blending Level 1 (the separable modes, W3C's soft
+  light, and hue, saturation, color and luminosity with SetLum/SetSat/ClipColor), with the
+  Photoshop, pegtop and illusions.hu soft lights as further modes. W3C's general formula, straight
+  or premultiplied RGBA (or RGB), blended as given (as CSS does) or decoded with a transfer
+  function first. Written from the two documents. Suite 301: every operator x mode against the
+  formulas in numpy to 1.1e-16; Pillow's ImageChops identical for difference, darker, lighter and
+  add, within one code for multiply, screen, overlay and hard light (Pillow's integer rounding and
+  its /127), and Pillow's soft light is the pegtop formula, within two codes.
+- **`alwan_colormap_apply_{f64,f32}`**, **`alwan_colormap_table`**: viridis, magma, inferno and
+  plasma (mpl-colormaps, Nathaniel Smith and Stefan van der Walt, CC0) and turbo (Anton
+  Mikhailov, Copyright 2019 Google LLC, Apache-2.0), the 256-entry tables matplotlib ships, to
+  U8, U16, F32 or F64, RGB or RGBA, with vmin/vmax, under/over/bad colours and an optional sRGB
+  decode. A linear lookup by default; LOOKUP_MATPLOTLIB reproduces matplotlib.colormaps[name]
+  exactly, floats and bytes (suite 302). twilight and cividis are not shipped: their upstream
+  states no licence beyond matplotlib's own. THIRD_PARTY_NOTICES.md and
+  `licenses/turbo-Apache-2.0.txt` carry the notices.
+
 ### Changed: the skin model takes haemoglobin spectra from the caller
 
 - **Removed: the built-in haemoglobin extinction table** (`src/alwan/data/skin/haemoglobin.csv`,

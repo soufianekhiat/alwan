@@ -306,6 +306,19 @@ the experimental halation model.
 
 What alwan takes: the 48^3 display transform cube, `src/alwan/data/tony_mcmapface_lut3d.csv`.
 
+## Colour maps (mpl-colormaps, Turbo)
+
+- viridis, magma, inferno, plasma: mpl-colormaps by Nathaniel Smith and Stefan van der Walt,
+  https://github.com/BIDS/colormap, CC0 1.0 (no notice required; credited here).
+- turbo: Anton Mikhailov, Copyright 2019 Google LLC, Apache-2.0,
+  https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f,
+  `licenses/turbo-Apache-2.0.txt`.
+
+What alwan takes: the 256-entry tables as matplotlib ships them (`_cm_listed.py`),
+`src/alwan/data/colormaps/{viridis,magma,inferno,plasma,turbo}.csv`, read by
+`src/alwan/api/alwan_colormap.c`. twilight and cividis are not shipped: their upstream
+states no licence beyond matplotlib's own.
+
 ## BakingLab (MJP), Stephen Hill's ACES fit
 
 - Upstream: https://github.com/TheRealMJP/BakingLab, BakingLab/ACES.hlsl (the fit by Stephen Hill).

@@ -386,6 +386,9 @@ EXPORTS
     alwan_color_transfer_f64
     alwan_colorimetric_purity_f32
     alwan_colorimetric_purity_f64
+    alwan_colormap_apply_f32
+    alwan_colormap_apply_f64
+    alwan_colormap_table
     alwan_colour_correct_cheung2004_f32
     alwan_colour_correct_cheung2004_f32_map_interleave
     alwan_colour_correct_cheung2004_f32_map_planar
@@ -416,6 +419,10 @@ EXPORTS
     alwan_colour_solid_white_f64
     alwan_complementary_wavelength_f32
     alwan_complementary_wavelength_f64
+    alwan_composite_f32
+    alwan_composite_f64
+    alwan_composite_u16
+    alwan_composite_u8
     alwan_constancy_params_init
     alwan_content_light_level_compute_f32
     alwan_content_light_level_compute_f64

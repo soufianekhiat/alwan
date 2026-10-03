@@ -987,6 +987,142 @@ alwan_status alwan_blue_noise_mask_generate(uint32_t *ranks_out, size_t width, s
  * data), copied into ranks_out (side x side values). ALWAN_E_RANGE for another side. */
 alwan_status alwan_blue_noise_mask_builtin(uint32_t *ranks_out, size_t side);
 
+/* ----------------------------------------------------------------
+ * Compositing and blend modes: the Porter-Duff operators (Porter and Duff, "Compositing
+ * Digital Images", SIGGRAPH 1984) and the blend modes of W3C Compositing and Blending
+ * Level 1, written from those documents.
+ *
+ * Each source pixel (colour Cs, alpha as) is first blended with the backdrop (Cb, ab):
+ * Cs' = (1 - ab) Cs + ab B(Cb, Cs), W3C's general formula, so where the backdrop is
+ * transparent the source shows unblended. Cs' is then composited with the operator's
+ * fractions Fa and Fb on premultiplied values: co = as Fa Cs' + ab Fb Cb, ao = as Fa + ab Fb.
+ * NORMAL with SOURCE_OVER is ordinary alpha compositing.
+ *
+ * The values are blended as given, encoded, which is what CSS, SVG and canvas do. Set
+ * transfer to an encoding (ALWAN_TF_SRGB for sRGB-encoded pixels) to decode both inputs
+ * with that EOTF first, blend and composite in linear light, and re-encode the result;
+ * alpha is never decoded. The two differ: a 50 % sRGB grey screened with itself is 0.75
+ * blended encoded and 0.65 (encoded) blended in linear light.
+ *
+ * The blend functions are defined on [0, 1]. Values outside it go through the same
+ * formulas and are not clamped (SOFT_LIGHT's square root is taken only above 0.25, so a
+ * negative backdrop is finite); integer outputs clamp to their range, as storing must.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_COMPOSITE_SOURCE_OVER = 0,       /* Fa 1, Fb 1 - as: the source over the backdrop */
+    ALWAN_COMPOSITE_CLEAR = 1,             /* Fa 0, Fb 0 */
+    ALWAN_COMPOSITE_COPY = 2,              /* Fa 1, Fb 0: the source alone */
+    ALWAN_COMPOSITE_DESTINATION = 3,       /* Fa 0, Fb 1: the backdrop alone */
+    ALWAN_COMPOSITE_DESTINATION_OVER = 4,  /* Fa 1 - ab, Fb 1 */
+    ALWAN_COMPOSITE_SOURCE_IN = 5,         /* Fa ab, Fb 0 */
+    ALWAN_COMPOSITE_DESTINATION_IN = 6,    /* Fa 0, Fb as */
+    ALWAN_COMPOSITE_SOURCE_OUT = 7,        /* Fa 1 - ab, Fb 0 */
+    ALWAN_COMPOSITE_DESTINATION_OUT = 8,   /* Fa 0, Fb 1 - as */
+    ALWAN_COMPOSITE_SOURCE_ATOP = 9,       /* Fa ab, Fb 1 - as */
+    ALWAN_COMPOSITE_DESTINATION_ATOP = 10, /* Fa 1 - ab, Fb as */
+    ALWAN_COMPOSITE_XOR = 11,              /* Fa 1 - ab, Fb 1 - as */
+    ALWAN_COMPOSITE_LIGHTER = 12           /* Fa 1, Fb 1, colour and alpha each clamped to 1 (plus-lighter) */
+} alwan_composite_operator;
+
+typedef enum {
+    /* W3C Compositing and Blending Level 1, separable */
+    ALWAN_BLEND_NORMAL = 0,        /* B = Cs */
+    ALWAN_BLEND_MULTIPLY = 1,      /* Cb Cs */
+    ALWAN_BLEND_SCREEN = 2,        /* Cb + Cs - Cb Cs */
+    ALWAN_BLEND_OVERLAY = 3,       /* HARD_LIGHT with the inputs swapped */
+    ALWAN_BLEND_DARKEN = 4,        /* min(Cb, Cs) */
+    ALWAN_BLEND_LIGHTEN = 5,       /* max(Cb, Cs) */
+    ALWAN_BLEND_COLOR_DODGE = 6,   /* 0 if Cb = 0, 1 if Cs = 1, else min(1, Cb / (1 - Cs)) */
+    ALWAN_BLEND_COLOR_BURN = 7,    /* 1 if Cb = 1, 0 if Cs = 0, else 1 - min(1, (1 - Cb) / Cs) */
+    ALWAN_BLEND_HARD_LIGHT = 8,    /* MULTIPLY(Cb, 2 Cs) for Cs <= 0.5, else SCREEN(Cb, 2 Cs - 1) */
+    ALWAN_BLEND_SOFT_LIGHT = 9,    /* W3C's soft light, with D(Cb) a cubic below 0.25 and sqrt(Cb) above */
+    ALWAN_BLEND_DIFFERENCE = 10,   /* |Cb - Cs| */
+    ALWAN_BLEND_EXCLUSION = 11,    /* Cb + Cs - 2 Cb Cs */
+    /* W3C, non-separable: on the RGB triple, with Lum = 0.3 R + 0.59 G + 0.11 B and W3C's
+     * SetLum, SetSat and ClipColor */
+    ALWAN_BLEND_HUE = 12,          /* the source's hue, the backdrop's saturation and luminosity */
+    ALWAN_BLEND_SATURATION = 13,   /* the source's saturation, the backdrop's hue and luminosity */
+    ALWAN_BLEND_COLOR = 14,        /* the source's hue and saturation, the backdrop's luminosity */
+    ALWAN_BLEND_LUMINOSITY = 15,   /* the source's luminosity, the backdrop's hue and saturation */
+    /* Other soft lights, which applications use in place of W3C's */
+    ALWAN_BLEND_SOFT_LIGHT_PHOTOSHOP = 16, /* 2 Cb Cs + Cb^2 (1 - 2 Cs) below Cs 0.5, 2 Cb (1 - Cs) + sqrt(Cb) (2 Cs - 1) above */
+    ALWAN_BLEND_SOFT_LIGHT_PEGTOP = 17,    /* (1 - 2 Cs) Cb^2 + 2 Cs Cb, continuous everywhere */
+    ALWAN_BLEND_SOFT_LIGHT_ILLUSIONS = 18  /* Cb^(2^(2 (0.5 - Cs))) (illusions.hu) */
+} alwan_blend_mode;
+
+/* A zero field is its default; NULL params is all defaults (NORMAL over, straight alpha, encoded). */
+typedef struct {
+    alwan_composite_operator op;        /* [SOURCE_OVER] */
+    alwan_blend_mode blend;             /* [NORMAL] */
+    int premultiplied;                  /* non-zero: src, dst and out hold premultiplied RGBA [0: straight] */
+    alwan_transfer_function transfer;   /* the encoding to decode before blending and re-encode after
+                                         * [ALWAN_TF_LINEAR: blend the values as given] */
+} alwan_composite_params;
+
+/* out = src composited over (or with) dst, width x height pixels of channels interleaved
+ * values, each buffer row_stride bytes apart. channels is 4 (RGBA) or 3 (RGB, every alpha
+ * 1, so out has no alpha either). out may be src or dst. Integer formats read as code /
+ * (2^n - 1) and store rounded to nearest. ALWAN_E_INVALID for a NULL, a zero size, channels
+ * other than 3 or 4, a stride too small, or an unknown operator or mode. */
+alwan_status alwan_composite_f64(alwan_f64 *out, size_t out_row_stride, alwan_f64 const *src, size_t src_row_stride, alwan_f64 const *dst, size_t dst_row_stride, size_t channels, size_t width, size_t height, alwan_composite_params const *params);
+alwan_status alwan_composite_f32(alwan_f32 *out, size_t out_row_stride, alwan_f32 const *src, size_t src_row_stride, alwan_f32 const *dst, size_t dst_row_stride, size_t channels, size_t width, size_t height, alwan_composite_params const *params);
+alwan_status alwan_composite_u8(uint8_t *out, size_t out_row_stride, uint8_t const *src, size_t src_row_stride, uint8_t const *dst, size_t dst_row_stride, size_t channels, size_t width, size_t height, alwan_composite_params const *params);
+alwan_status alwan_composite_u16(uint16_t *out, size_t out_row_stride, uint16_t const *src, size_t src_row_stride, uint16_t const *dst, size_t dst_row_stride, size_t channels, size_t width, size_t height, alwan_composite_params const *params);
+
+/* ----------------------------------------------------------------
+ * Colour maps: a scalar to a colour, for false colour and data display.
+ * VIRIDIS, MAGMA, INFERNO and PLASMA are Nathaniel Smith and Stefan van der Walt's
+ * mpl-colormaps (CC0), perceptually uniform in CAM02-UCS; TURBO is Anton Mikhailov's
+ * improved rainbow (Copyright 2019 Google LLC, Apache-2.0). Each is the 256-entry table
+ * matplotlib ships, sRGB encoded.
+ *
+ * LOOKUP_LINEAR (the default) interpolates linearly between the 256 entries, which sit at
+ * x = i / 255, so a continuous input gives a continuous colour. LOOKUP_MATPLOTLIB reads the
+ * table as matplotlib's ListedColormap does: entry floor(x 256), x = 1 the last entry, x * 256
+ * computed in the input's precision (float for an f32 input, as numpy does for a float32
+ * array), and integer outputs truncated as matplotlib's bytes=True does, so it reproduces
+ * matplotlib.colormaps[name] value for value.
+ *
+ * x is (value - vmin) / (vmax - vmin), the identity when both are 0. Below 0 the under
+ * colour, above 1 the over colour, NaN the bad colour: by default the first entry, the
+ * last entry and transparent black (0, 0, 0, 0), as matplotlib's defaults. linear_output
+ * decodes the table's colours with the sRGB EOTF; under, over and bad colours the caller
+ * set are written as given.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_COLORMAP_VIRIDIS = 0,
+    ALWAN_COLORMAP_MAGMA = 1,
+    ALWAN_COLORMAP_INFERNO = 2,
+    ALWAN_COLORMAP_PLASMA = 3,
+    ALWAN_COLORMAP_TURBO = 4
+} alwan_colormap;
+
+typedef enum {
+    ALWAN_COLORMAP_LOOKUP_LINEAR = 0,
+    ALWAN_COLORMAP_LOOKUP_MATPLOTLIB = 1
+} alwan_colormap_lookup;
+
+/* A zero field is its default; NULL params is all defaults. */
+typedef struct {
+    alwan_colormap_lookup lookup;   /* [LINEAR] */
+    alwan_f64 vmin, vmax;           /* the input range mapped to [0, 1] [0 and 0: the input is x] */
+    int linear_output;              /* non-zero: the colours sRGB-decoded to linear [0: encoded, as the table] */
+    int use_under, use_over, use_bad;     /* non-zero: the colour below holds RGBA to use [0: the defaults above] */
+    alwan_f64 under[4], over[4], bad[4];
+} alwan_colormap_params;
+
+/* out: width x height pixels of out_channels (3 RGB or 4 RGBA, alpha 1 for a mapped value)
+ * in out_fmt (U8, U16, F32 or F64), out_row_stride bytes apart; in: one scalar per pixel,
+ * in_row_stride bytes apart. ALWAN_E_INVALID for a NULL, a zero size, an unknown map,
+ * lookup or format, out_channels other than 3 or 4, a stride too small, or vmin equal to
+ * vmax (other than both 0). */
+alwan_status alwan_colormap_apply_f64(void *out, size_t out_row_stride, alwan_pixel_format out_fmt, size_t out_channels, alwan_f64 const *in, size_t in_row_stride, size_t width, size_t height, alwan_colormap map, alwan_colormap_params const *params);
+alwan_status alwan_colormap_apply_f32(void *out, size_t out_row_stride, alwan_pixel_format out_fmt, size_t out_channels, alwan_f32 const *in, size_t in_row_stride, size_t width, size_t height, alwan_colormap map, alwan_colormap_params const *params);
+
+/* The map's table: *count entries of sRGB-encoded RGB, row-major. With rgb_out NULL, *count
+ * receives the entry count (256); otherwise *count must be at least that. */
+alwan_status alwan_colormap_table(alwan_f64 *rgb_out, size_t *count, alwan_colormap map);
+
 /* Convert a 2D RGBA image between RGB color spaces with format conversion.
  * Same pipeline as alwan_image_convert_f64 but with 4-channel (RGBA) pixels.
  * The alpha channel is preserved through the conversion:

@@ -1,0 +1,8 @@
+Colour map tables, written by alwan_dev/gendata/data/colormaps.py from matplotlib 3.10.9
+(_cm_listed.py).
+
+viridis, magma, inferno, plasma: mpl-colormaps by Nathaniel Smith and Stefan van der Walt,
+CC0 1.0 (https://github.com/BIDS/colormap).
+turbo: Anton Mikhailov, Copyright 2019 Google LLC, Apache-2.0
+(https://gist.github.com/mikhailov-work/ee72ba4191942acecc03fe6da94fc73f);
+see THIRD_PARTY_NOTICES.md and licenses/turbo-Apache-2.0.txt.

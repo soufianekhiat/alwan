@@ -103,6 +103,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_camera.c
   src/alwan/api/alwan_decolor.c
   src/alwan/api/alwan_dither.c
+  src/alwan/api/alwan_composite.c
   src/alwan/api/alwan_gradient_edit.c
   src/alwan/api/alwan_stylize.c
   src/alwan/api/alwan_importance_sampling.c
@@ -156,6 +157,7 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_filter.c
   src/alwan/api/alwan_register.c
   src/alwan/api/alwan_optical_flow.c
+  src/alwan/api/alwan_colormap.c
   src/alwan/api/alwan_contour.c
   src/alwan/api/alwan_peaks.c
   src/alwan/api/alwan_match_template.c
