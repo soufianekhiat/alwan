@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Added: image comparison metrics MAE, RMSE, AE, NCC, DSSIM
+
+- **`alwan_image_compare_{T}` and `alwan_image_compare_u8`.** One family beside PSNR, SSIM
+  and FLIP: MAE and RMSE as fractions of the data range (ImageMagick's `-metric` MAE and
+  RMSE), AE as a count of pixels or values differing by more than a fuzz (per pixel the
+  Euclidean distance over its channels), NCC per channel with their mean, NCC pooled over
+  every value, and DSSIM `(1 - SSIM) / 2` on `alwan_structural_similarity`. Combined and
+  per-channel results. Suite 306: within 1.2e-15 of the definitions in numpy and of
+  scikit-image's SSIM on f64, f32 and u8 images, AE counts exact, plus ground truth
+  (identical, offset, affine and negated images; constant channels).
+
 ### Added: FLIP, tonal adjustments, Hald CLUTs
 
 - **FLIP.** `alwan_flip_{T}` and `alwan_flip_ppd`: NVIDIA's perceptual difference evaluator,

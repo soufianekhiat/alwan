@@ -770,6 +770,62 @@ In suite 256 on a 3-channel pair:
 normalisation or window, or a data range that is not finite and positive. `ALWAN_E_RANGE` for
 an even window, a window larger than the image, a negative `k1` or `k2`, or a sigma over 64.
 
+### alwan_image_compare_{T}: MAE, RMSE, AE, NCC, DSSIM
+
+```c
+typedef enum {
+    ALWAN_IMAGE_COMPARE_MAE = 0, ALWAN_IMAGE_COMPARE_RMSE = 1, ALWAN_IMAGE_COMPARE_AE = 2,
+    ALWAN_IMAGE_COMPARE_NCC = 3, ALWAN_IMAGE_COMPARE_NCC_POOLED = 4, ALWAN_IMAGE_COMPARE_DSSIM = 5
+} alwan_image_compare_metric;
+
+typedef struct {
+    double data_range;               /* 0: 1 for f32/f64, 255 for u8 */
+    double fuzz;                     /* AE: fraction of data_range; 0 counts every difference */
+    alwan_ssim_params const *ssim;   /* DSSIM: NULL for alwan_ssim's settings */
+} alwan_image_compare_params;
+
+alwan_status alwan_image_compare_{T}(double *combined, double *per_channel,
+                                     alwan_{T} const *a, size_t a_row_stride,
+                                     alwan_{T} const *b, size_t b_row_stride,
+                                     size_t width, size_t height, size_t channels,
+                                     alwan_image_compare_metric metric,
+                                     alwan_image_compare_params const *params);
+alwan_status alwan_image_compare_u8(...);   /* same arguments, unsigned char pixels */
+```
+
+One family for the comparison figures the functions above don't give, written from their
+definitions and computed in double for every input type. `combined` is the figure over every
+channel and `per_channel` one value per channel; either may be NULL, not both.
+
+| Metric | Definition |
+|---|---|
+| `MAE` | `mean |a - b| / data_range`, ImageMagick's `-metric MAE` |
+| `RMSE` | `sqrt(mean (a - b)^2) / data_range`, ImageMagick's `-metric RMSE` (the scikit-image NRMSE is `alwan_normalized_root_mse`) |
+| `AE` | the number of pixels (combined) or values (per channel) differing by more than `fuzz x data_range`: per channel `|a - b|`, per pixel the Euclidean distance over its channels |
+| `NCC` | Pearson's correlation per channel (population moments), combined as their mean, as ImageMagick reports its composite NCC |
+| `NCC_POOLED` | Pearson's correlation of every value of every channel as one sample, numpy's `corrcoef` of the flattened images |
+| `DSSIM` | `(1 - SSIM) / 2` per channel on `alwan_structural_similarity` with `params->ssim`, combined from the mean SSIM |
+
+A channel constant in both images correlates as 1 when the two are equal and 0 otherwise, and
+a channel constant in only one as 0. Constancy is tested on the values, not on the centred
+sums, which can come out a few ulps from zero.
+
+ImageMagick itself was not run: the formulas are its documented definitions. Its composite
+AE accumulates the squared distance channel by channel and compares the running sum with the
+fuzz, which this does not reproduce; the per-pixel Euclidean distance here is the definition
+the documentation gives.
+
+**Validated against** (suite 306): the definitions in numpy float64 and scikit-image's
+`structural_similarity` per channel, on f64, f32 and u8 images of 1, 3 and 4 channels, worst
+1.2e-15, AE counts exact. Ground truth: identical images give MAE, RMSE and AE 0, NCC 1 and
+DSSIM 0; a constant offset of 0.1 gives MAE and RMSE 0.1 and NCC 1; `2a + 0.3` gives NCC 1
+and `-a` gives -1; at fuzz 0.15 an offset of 0.1 counts every pixel (0.1 sqrt 3 = 0.173) and
+no channel.
+
+**Returns:** `ALWAN_E_INVALID` for NULL images, both outputs NULL, channels outside 1 to 4, a
+data range or fuzz that is negative or not finite, or an unknown metric. `DSSIM` passes on
+`alwan_structural_similarity`'s `ALWAN_E_RANGE`.
+
 ## FLIP
 
 ```c

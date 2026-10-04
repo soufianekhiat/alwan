@@ -10357,6 +10357,51 @@ alwan_status alwan_structural_similarity_f64(double *ssim, alwan_f64 const *test
 alwan_status alwan_structural_similarity_f32(double *ssim, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
 alwan_status alwan_structural_similarity_u8(double *ssim, unsigned char const *test, size_t test_row_stride, unsigned char const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
 
+/* Comparison metrics beside PSNR and SSIM, one family. width x height pixels of channels
+ * values each (1 to 4), rows row_stride bytes apart. combined receives the figure over every
+ * channel, per_channel (may be NULL; one of the two must be given) one value per channel.
+ * Computed in double for every input type, written from the definitions (suite 306):
+ *
+ *   MAE         mean |a - b| / data_range (ImageMagick's -metric MAE).
+ *   RMSE        sqrt(mean (a - b)^2) / data_range (ImageMagick's -metric RMSE); the
+ *               skimage-style NRMSE is alwan_normalized_root_mse.
+ *   AE          a count of pixels (combined) or of values (per channel) that differ by more
+ *               than fuzz x data_range: per channel |a - b|, per pixel the Euclidean
+ *               distance over its channels. fuzz 0 counts every difference. This is
+ *               ImageMagick's documented -metric AE with -fuzz; its composite count, which
+ *               accumulates the distance channel by channel, is not reproduced.
+ *   NCC         Pearson's correlation of each channel (population moments), combined as
+ *               their mean, as ImageMagick reports its composite NCC.
+ *   NCC_POOLED  Pearson's correlation of every value of every channel taken as one sample
+ *               (numpy's corrcoef of the flattened arrays); per_channel as for NCC.
+ *   DSSIM       (1 - SSIM) / 2 per channel on alwan_structural_similarity with params->ssim
+ *               (NULL: alwan_ssim's settings), combined from the mean SSIM.
+ *
+ * A channel constant in both images correlates as 1 when the two are equal and 0 otherwise;
+ * a channel constant in only one correlates as 0. data_range 0 reads as 1 for f32 and f64
+ * and 255 for u8. ALWAN_E_INVALID for NULL images, both outputs NULL, channels outside 1 to
+ * 4, a data_range or fuzz that is negative or not finite, or an unknown metric; DSSIM
+ * passes on alwan_structural_similarity's ALWAN_E_RANGE. */
+typedef enum {
+    ALWAN_IMAGE_COMPARE_MAE = 0,
+    ALWAN_IMAGE_COMPARE_RMSE = 1,
+    ALWAN_IMAGE_COMPARE_AE = 2,
+    ALWAN_IMAGE_COMPARE_NCC = 3,
+    ALWAN_IMAGE_COMPARE_NCC_POOLED = 4,
+    ALWAN_IMAGE_COMPARE_DSSIM = 5
+} alwan_image_compare_metric;
+
+/* A zero field is the default named above. */
+typedef struct {
+    double data_range;                /* 0: 1 for f32/f64, 255 for u8 */
+    double fuzz;                      /* AE: fraction of data_range; 0 counts every difference */
+    alwan_ssim_params const *ssim;    /* DSSIM: NULL for alwan_ssim's settings */
+} alwan_image_compare_params;
+
+alwan_status alwan_image_compare_f64(double *combined, double *per_channel, alwan_f64 const *a, size_t a_row_stride, alwan_f64 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, alwan_image_compare_metric metric, alwan_image_compare_params const *params);
+alwan_status alwan_image_compare_f32(double *combined, double *per_channel, alwan_f32 const *a, size_t a_row_stride, alwan_f32 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, alwan_image_compare_metric metric, alwan_image_compare_params const *params);
+alwan_status alwan_image_compare_u8(double *combined, double *per_channel, unsigned char const *a, size_t a_row_stride, unsigned char const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, alwan_image_compare_metric metric, alwan_image_compare_params const *params);
+
 /* PU-SSIM, pu21_metric.m's SSIM: luminance from RGB with its weights (0.212656,
  * 0.715158, 0.072186) when channels is 3, or the values themselves when it is 1, in
  * cd/m2; limited to [0.005, 10000] and PU21 encoded; then alwan_ssim with a data range

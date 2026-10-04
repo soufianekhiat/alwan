@@ -1013,6 +1013,9 @@ EXPORTS
     alwan_illuminance_to_exposure_value_f64
     alwan_illuminant_white_point_f32
     alwan_illuminant_white_point_f64
+    alwan_image_compare_f32
+    alwan_image_compare_f64
+    alwan_image_compare_u8
     alwan_image_convert_data_f32
     alwan_image_convert_data_f64
     alwan_image_convert_f32

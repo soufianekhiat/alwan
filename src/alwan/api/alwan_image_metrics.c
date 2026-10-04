@@ -5,7 +5,8 @@
  *
  * Image comparison metrics as scikit-image's skimage.metrics computes them:
  * mean_squared_error, normalized_root_mse, normalized_mutual_information, and
- * structural_similarity with every channel and either window.
+ * structural_similarity with every channel and either window; and, at the end, the
+ * alwan_image_compare family (MAE, RMSE, AE, NCC, DSSIM) written from the definitions.
  *
  * The sums follow numpy's orders, since that is where two correct implementations
  * part in the last bits: a mean over a contiguous array is numpy's pairwise sum (blocks
@@ -514,9 +515,9 @@ static alwan_status alwan__im_ssim_plane(double *out, double const *a, double co
     return ALWAN_OK;
 }
 
-static alwan_status alwan__im_ssim(double *out, void const *a, size_t ars, void const *b, size_t brs, size_t w,
-                                   size_t h, size_t ch, double range, alwan_ssim_params const *params,
-                                   alwan__im_type t) {
+static alwan_status alwan__im_ssim(double *out, double *per_out, void const *a, size_t ars, void const *b,
+                                   size_t brs, size_t w, size_t h, size_t ch, double range,
+                                   alwan_ssim_params const *params, alwan__im_type t) {
     alwan_ssim_params p;
     size_t win, c, x, y, n;
     int uniform;
@@ -558,6 +559,8 @@ static alwan_status alwan__im_ssim(double *out, void const *a, size_t ars, void 
         double s = 0.0;
         for (c = 0; c < ch; c++) s += per[c];
         *out = ch == 1 ? per[0] : s / (double)ch;
+        if (per_out)
+            for (c = 0; c < ch; c++) per_out[c] = per[c];
     }
     return ALWAN_OK;
 }
@@ -568,7 +571,7 @@ static alwan_status alwan__im_ssim(double *out, void const *a, size_t ars, void 
                                                    size_t height, size_t channels, double data_range,            \
                                                    alwan_ssim_params const *params) {                            \
         if (!ssim || !test || !ref || !alwan__im_dims_ok(width, height, channels)) return ALWAN_E_INVALID;       \
-        return alwan__im_ssim(ssim, test, test_row_stride, ref, ref_row_stride, width, height, channels,         \
+        return alwan__im_ssim(ssim, NULL, test, test_row_stride, ref, ref_row_stride, width, height, channels,         \
                               data_range, params, TT);                                                           \
     }
 
@@ -579,3 +582,161 @@ ALWAN__IM_ENTRY_SSIM(f64, alwan_f64, ALWAN__IM_F64)
 ALWAN__IM_ENTRY_SSIM(f32, alwan_f32, ALWAN__IM_F32)
 #endif
 ALWAN__IM_ENTRY_SSIM(u8, unsigned char, ALWAN__IM_U8)
+
+/* ---------------------------------------------------------------- *
+ * Comparison metrics beside PSNR and SSIM: MAE, RMSE, AE, NCC, DSSIM
+ *
+ * These are written from their definitions, computed in double for every input type:
+ * MAE and RMSE as fractions of the data range (ImageMagick's -metric MAE and RMSE
+ * normalise by the quantum range the same way), AE as a count, NCC as Pearson's
+ * correlation, DSSIM as (1 - SSIM) / 2 on alwan's SSIM above.
+ * ---------------------------------------------------------------- */
+
+/* Pearson correlation from centred sums. Constancy is tested on the values themselves, not
+ * on the centred sums: a mean of n copies of 0.4 is not exactly 0.4, so a constant channel's
+ * centred sum can come out a few ulps from 0. Both constant reads as 1 when they are equal
+ * and 0 otherwise; one constant as 0. */
+static double alwan__im_corr_of(double sab, double saa, double sbb, int a_const, int b_const, int equal) {
+    if (a_const && b_const) return equal ? 1.0 : 0.0;
+    if (a_const || b_const || !(saa > 0.0) || !(sbb > 0.0)) return 0.0;
+    return sab / ALWAN_SQRT_F64(saa * sbb);
+}
+
+static alwan_status alwan__im_compare(double *combined, double *per_channel, void const *a, size_t ars,
+                                      void const *b, size_t brs, size_t w, size_t h, size_t ch,
+                                      alwan_image_compare_metric metric,
+                                      alwan_image_compare_params const *params, alwan__im_type t) {
+    alwan_image_compare_params p;
+    double range, per[4] = {0.0, 0.0, 0.0, 0.0}, comb = 0.0;
+    double const npix = (double)w * (double)h;
+    size_t x, y, c;
+    if (params) p = *params;
+    else memset(&p, 0, sizeof p);
+    range = p.data_range != 0.0 ? p.data_range : (t == ALWAN__IM_U8 ? 255.0 : 1.0);
+    if (!(range > 0.0) || range - range != 0.0) return ALWAN_E_INVALID;
+    if (!(p.fuzz >= 0.0) || p.fuzz - p.fuzz != 0.0) return ALWAN_E_INVALID;
+    switch (metric) {
+    case ALWAN_IMAGE_COMPARE_MAE:
+    case ALWAN_IMAGE_COMPARE_RMSE: {
+        int const sq = metric == ALWAN_IMAGE_COMPARE_RMSE;
+        double total = 0.0;
+        for (c = 0; c < ch; c++) {
+            double s = 0.0;
+            for (y = 0; y < h; y++)
+                for (x = 0; x < w; x++) {
+                    double const d = (alwan__im_at(a, ars, t, y, x * ch + c) - alwan__im_at(b, brs, t, y, x * ch + c)) / range;
+                    s += sq ? d * d : (d < 0.0 ? -d : d);
+                }
+            total += s;
+            per[c] = sq ? ALWAN_SQRT_F64(s / npix) : s / npix;
+        }
+        comb = sq ? ALWAN_SQRT_F64(total / (npix * (double)ch)) : total / (npix * (double)ch);
+    } break;
+    case ALWAN_IMAGE_COMPARE_AE: {
+        double const thr = p.fuzz * range, thr2 = thr * thr;
+        for (y = 0; y < h; y++)
+            for (x = 0; x < w; x++) {
+                double d2 = 0.0;
+                for (c = 0; c < ch; c++) {
+                    double const d = alwan__im_at(a, ars, t, y, x * ch + c) - alwan__im_at(b, brs, t, y, x * ch + c);
+                    double const ad = d < 0.0 ? -d : d;
+                    if (ad > thr) per[c] += 1.0;
+                    d2 += d * d;
+                }
+                if (d2 > thr2) comb += 1.0;
+            }
+    } break;
+    case ALWAN_IMAGE_COMPARE_NCC:
+    case ALWAN_IMAGE_COMPARE_NCC_POOLED: {
+        double pma = 0.0, pmb = 0.0, psab = 0.0, psaa = 0.0, psbb = 0.0, mean_sum = 0.0;
+        double const fa = alwan__im_at(a, ars, t, 0, 0), fb = alwan__im_at(b, brs, t, 0, 0);
+        int pequal = 1, pa_const = 1, pb_const = 1;
+        for (c = 0; c < ch; c++)
+            for (y = 0; y < h; y++)
+                for (x = 0; x < w; x++) {
+                    pma += alwan__im_at(a, ars, t, y, x * ch + c);
+                    pmb += alwan__im_at(b, brs, t, y, x * ch + c);
+                }
+        pma /= npix * (double)ch;
+        pmb /= npix * (double)ch;
+        for (c = 0; c < ch; c++) {
+            double ma = 0.0, mb = 0.0, sab = 0.0, saa = 0.0, sbb = 0.0;
+            double const ca = alwan__im_at(a, ars, t, 0, c), cb = alwan__im_at(b, brs, t, 0, c);
+            int equal = 1, a_const = 1, b_const = 1;
+            for (y = 0; y < h; y++)
+                for (x = 0; x < w; x++) {
+                    ma += alwan__im_at(a, ars, t, y, x * ch + c);
+                    mb += alwan__im_at(b, brs, t, y, x * ch + c);
+                }
+            ma /= npix;
+            mb /= npix;
+            for (y = 0; y < h; y++)
+                for (x = 0; x < w; x++) {
+                    double const va = alwan__im_at(a, ars, t, y, x * ch + c);
+                    double const vb = alwan__im_at(b, brs, t, y, x * ch + c);
+                    double const da = va - ma, db = vb - mb, ea = va - pma, eb = vb - pmb;
+                    sab += da * db;
+                    saa += da * da;
+                    sbb += db * db;
+                    psab += ea * eb;
+                    psaa += ea * ea;
+                    psbb += eb * eb;
+                    if (va != vb) equal = 0;
+                    if (va != ca) a_const = 0;
+                    if (vb != cb) b_const = 0;
+                    if (va != fa) pa_const = 0;
+                    if (vb != fb) pb_const = 0;
+                }
+            if (!equal) pequal = 0;
+            per[c] = alwan__im_corr_of(sab, saa, sbb, a_const, b_const, equal);
+            mean_sum += per[c];
+        }
+        comb = metric == ALWAN_IMAGE_COMPARE_NCC ? mean_sum / (double)ch
+                                                 : alwan__im_corr_of(psab, psaa, psbb, pa_const, pb_const, pequal);
+    } break;
+    case ALWAN_IMAGE_COMPARE_DSSIM: {
+        double ssim = 0.0, sper[4];
+        alwan_status const st = alwan__im_ssim(&ssim, sper, a, ars, b, brs, w, h, ch, range, p.ssim, t);
+        if (st != ALWAN_OK) return st;
+        for (c = 0; c < ch; c++) per[c] = (1.0 - sper[c]) / 2.0;
+        comb = (1.0 - ssim) / 2.0;
+    } break;
+    default:
+        return ALWAN_E_INVALID;
+    }
+    if (combined) *combined = comb;
+    if (per_channel)
+        for (c = 0; c < ch; c++) per_channel[c] = per[c];
+    return ALWAN_OK;
+}
+
+#if ALWAN_WITH_F64
+alwan_status alwan_image_compare_f64(double *combined, double *per_channel, alwan_f64 const *a, size_t a_row_stride,
+                                     alwan_f64 const *b, size_t b_row_stride, size_t width, size_t height,
+                                     size_t channels, alwan_image_compare_metric metric,
+                                     alwan_image_compare_params const *params) {
+    if ((!combined && !per_channel) || !a || !b || !alwan__im_dims_ok(width, height, channels)) return ALWAN_E_INVALID;
+    return alwan__im_compare(combined, per_channel, a, a_row_stride, b, b_row_stride, width, height, channels, metric,
+                             params, ALWAN__IM_F64);
+}
+#endif
+
+#if ALWAN_WITH_F32
+alwan_status alwan_image_compare_f32(double *combined, double *per_channel, alwan_f32 const *a, size_t a_row_stride,
+                                     alwan_f32 const *b, size_t b_row_stride, size_t width, size_t height,
+                                     size_t channels, alwan_image_compare_metric metric,
+                                     alwan_image_compare_params const *params) {
+    if ((!combined && !per_channel) || !a || !b || !alwan__im_dims_ok(width, height, channels)) return ALWAN_E_INVALID;
+    return alwan__im_compare(combined, per_channel, a, a_row_stride, b, b_row_stride, width, height, channels, metric,
+                             params, ALWAN__IM_F32);
+}
+#endif
+
+alwan_status alwan_image_compare_u8(double *combined, double *per_channel, unsigned char const *a, size_t a_row_stride,
+                                    unsigned char const *b, size_t b_row_stride, size_t width, size_t height,
+                                    size_t channels, alwan_image_compare_metric metric,
+                                    alwan_image_compare_params const *params) {
+    if ((!combined && !per_channel) || !a || !b || !alwan__im_dims_ok(width, height, channels)) return ALWAN_E_INVALID;
+    return alwan__im_compare(combined, per_channel, a, a_row_stride, b, b_row_stride, width, height, channels, metric,
+                             params, ALWAN__IM_U8);
+}
