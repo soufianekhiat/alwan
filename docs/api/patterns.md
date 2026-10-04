@@ -160,28 +160,11 @@ them with the RGB conversion functions ([color-spaces.md](color-spaces.md)); to 
 integer or half-float buffers, the `_ex` pixel formats of the map API take the rendered
 floats ([map.md](map.md)).
 
-## A pattern to print: convert the palette, not the pixels
+## A pattern to print
 
-```c
-alwan_f64 palette[64 * 3], cmyk_of[64 * 4];
-size_t n;
-alwan_palette_extract_f64(palette, 64, &n, rgb, 0, width * height);   /* the bars: 8 colours */
-/* convert the n entries: decode, to XYZ, adapt to D50, to Lab, alwan_cmyk_inverse_eval */
-alwan_palette_apply_f64(cmyk, 0, rgb, 0, width * height, palette, n, cmyk_of, 4);
-```
-
-A colour bar, a card or any flat artwork is a handful of colours, and the conversions
-worth having on the way to a press are expensive per pixel and cheap per colour: the
-CMYK inverse ([reference-data.md](reference-data.md)), a spectral upsampling. So the
-route is the palette's. `alwan_palette_extract_{T}` collects the distinct colours of an
-image in order of first appearance, comparing exactly, which is what a rendered pattern
-allows; more than `max_colors` returns `ALWAN_E_RANGE` with `count_out = max_colors + 1`,
-because a sweep or a photograph is not a palette and the scan stops rather than growing
-quadratically (the BT.1729 sweeps have 320 and 180 distinct values on a 320 x 180 render,
-the ARIB card 163, the bars 8, the PLUGE 4). `alwan_palette_apply_{T}` writes, per pixel,
-the `channels` converted values of the entry the pixel's colour has in the palette, so
-the converted palette becomes the converted image in one pass, four channels for CMYK.
-Suite 138.
+To print a pattern, convert its palette rather than its pixels: suwar's
+`suwar_palette_extract_{T}` and `suwar_palette_apply_{T}` (moved there in the alwan/suwar
+split) collect a render's distinct colours and write converted entries back per pixel.
 
 ## Getting a pattern to Y'CbCr codes
 

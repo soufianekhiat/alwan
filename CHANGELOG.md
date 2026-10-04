@@ -1,5 +1,31 @@
 ## [Unreleased]
 
+### Removed: camera pipeline, HDR merging and image colour statistics moved to suwar
+
+The third part of the split, with suwar_ names and the same results. Gone from alwan, with
+their suites, reference tables and generators: illuminant estimation from an image
+(alwan_illuminant_estimate, alwan_illuminant_correct, Grey Pixel and weighted Grey-Edge),
+OpenCV's white balance (alwan_white_balance) with its LearningBasedWB model; palette
+extraction and application (alwan_palette_extract, alwan_palette_apply) and the quantisers
+(alwan_quantize_u8, alwan_quantize_ex_u8: median cut, octree, maximum coverage, k-means, Wu,
+the classic octree); colour checker detection in photographs (alwan_color_checker_detect,
+both methods, with the ColorChecker Classic template); vignetting; light probes and
+upper-hemisphere illuminance; highlight recovery (blend and LCHab, with the blend's planar
+twins); Bayer mosaicing and demosaicing (the colour-demosaicing and OpenCV methods); Mantiuk
+2006 local tone mapping (alwan_tonemap_local_params went with it); bracket merging and the
+merge weights, camera response recovery, Grossberg sampling and exposure fusion. The notices
+and licence texts used only by that code moved too (OpenCV, with its demosaicing, resize and
+bilateral headers; colour-checker-detection; SciPy; Pillow), and `src/alwan/data/opencv/`
+and `data/vignette/` went with it. `docs/api/constancy.md` and `docs/api/image-tools.md`
+are gone; their sections, the highlight and demosaicing sections of `spectral.md` and the
+merging, camera response, fusion and Mantiuk sections of `hdr.md` are suwar's
+`docs/api/camera.md` and `colour-statistics.md`.
+
+Staying in alwan: the chart data and CCM solving, the DNG colour model, exposure
+photometry, per-pixel white balance (alwan_white_balance_apply), best-illuminant selection,
+the test patterns, and the global tone mapping operators. alwan_internal_image.h is gone:
+nothing image-only is left in alwan's internals.
+
 ### Removed: filters, restoration, editing and geometry moved to suwar
 
 The second part of the split: these families now live in suwar with suwar_ names, the same

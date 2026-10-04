@@ -110,15 +110,8 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_ibl.c
   src/alwan/api/alwan_iridescence.c
   src/alwan/api/alwan_wavelength_sampling.c
-  src/alwan/api/alwan_white_balance.c
   src/alwan/api/alwan_dng.c
   src/alwan/api/alwan_exposure.c
-  src/alwan/api/alwan_hdr_merge.c
-  src/alwan/api/alwan_highlights.c
-  src/alwan/api/alwan_crf.c
-  src/alwan/api/alwan_demosaic.c
-  src/alwan/api/alwan_demosaic_opencv.c
-  src/alwan/api/alwan_fusion.c
   src/alwan/api/alwan_ssim.c
   src/alwan/api/alwan_psnr.c
   src/alwan/api/alwan_tonemap.c
@@ -127,7 +120,6 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_locus.c
   src/alwan/api/alwan_colour_models.c
   src/alwan/api/alwan_palette.c
-  src/alwan/api/alwan_checker_detect.c
   src/alwan/api/alwan_cmyk.c
   src/alwan/api/alwan_pattern.c
 src/alwan/api/alwan_difference.c
@@ -142,16 +134,9 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_color_correction.c
   src/alwan/api/alwan_tonescale_grade.c
   src/alwan/api/alwan_select.c
-  src/alwan/api/alwan_constancy.c
   src/alwan/api/alwan_grading_ocio.c
-  src/alwan/api/alwan_palette_median_cut.c
-  src/alwan/api/alwan_quantize_ext.c
-  src/alwan/api/alwan_quantize_max_coverage.c
-  src/alwan/api/alwan_quantize_octree.c
   src/alwan/api/alwan_colormap.c
   src/alwan/api/alwan_luminaire.c
-  src/alwan/api/alwan_vignette.c
-  src/alwan/api/alwan_light_probe.c
   src/alwan/api/alwan_spectrum_meng2015.c
   src/alwan/api/alwan_thin_film.c
   src/alwan/api/alwan_refractive.c
@@ -233,7 +218,6 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_michaelis_menten.c
   src/alwan/api/alwan_display_gog.c
   src/alwan/api/alwan_display_model.c
-  src/alwan/api/alwan_tonemap_local.c
   src/alwan/api/alwan_half.c
   src/alwan/api/alwan_video.c
   src/alwan/map/alwan_vision_map.c

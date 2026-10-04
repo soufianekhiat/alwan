@@ -193,7 +193,7 @@ take, and they are not owed one:
 | nine-field correlates out or in | the appearance models' forward and inverse | a correlates struct is not three planes |
 | one scalar out | the sixteen colour-difference metrics, relative luminance | three in, three in, one out is a different shape |
 | a spectrum in or out | the RGB and XYZ upsamplers, `alwan_spectral_to_tristimulus`, `alwan_film_render` | 36 to 85 bands would need a pointer per band |
-| several images in | `alwan_hdr_merge`, the gain maps | more than one input buffer |
+| several images in | the gain maps (and suwar's `suwar_hdr_merge`) | more than one input buffer |
 
 Two implementations sit behind the planar twins, and a caller cannot tell
 them apart. Where the interleave form is a loop over a scalar function, the

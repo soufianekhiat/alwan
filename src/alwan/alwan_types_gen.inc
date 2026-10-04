@@ -167,13 +167,6 @@ typedef struct {
     ALWAN_T drago_bias;           /* Drago 2003 b, the bias of the log base; 0 reads as 0.85 */
 } ALWAN_TN(alwan_tonemap_params);
 
-/* Parameters of the local tone mapping operators. A zero field is its default. */
-typedef struct {
-    ALWAN_T luminance_weights[3]; /* zero is the sRGB primaries' Y row */
-    ALWAN_T scale;                /* Mantiuk 2006: how far contrasts are pulled in; 0 reads as 0.7 */
-    ALWAN_T saturation;           /* exponent on each channel's ratio to luminance; 0 reads as 1 */
-} ALWAN_TN(alwan_tonemap_local_params);
-
 /* Parameters of alwan_lightness_{T} and alwan_luminance_from_lightness_{T}. A zero
  * field is colour-science's default. */
 typedef struct {

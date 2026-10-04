@@ -39,10 +39,6 @@ alwan_status alwan__planckian_table_create_range(alwan_planckian_table **out, al
 alwan_status alwan__cqs_compute(alwan_cqs_f64 *spec, alwan_spd_f64 const *test_spd, alwan_cqs_version version, alwan_ctx *ctx);
 alwan_status alwan__cie2017_compute(alwan_tm30_f64 *spec, alwan_spd_f64 const *test_spd, alwan_ctx *ctx);
 
-/* The image-processing internals (filters, segmentation, geometry, OpenCV ports, the
- * DFT, local contrast, colour statistics, quantisers) are declared in
- * alwan_internal_image.h, kept apart so they move to suwar as a unit. */
-#include "alwan_internal_image.h"
 
 /* Batch workers behind the CIECAM02 / CAM16 maps (api/alwan_cam_impl.inc): the
  * viewing-condition terms once, the scalar's _v core per pixel, bit-identical to

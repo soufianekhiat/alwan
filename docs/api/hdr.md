@@ -677,8 +677,8 @@ in double in both precisions, and in a deterministic build the logarithm routes 
 `data_range` that is not finite and positive, a zero dimension, or a `border` that leaves
 no pixels.
 
-Comparing demosaicing methods is what this is for; see `alwan_cfa_bayer_demosaic_{T}` in
-[spectral.md](spectral.md).
+Comparing demosaicing methods is what this is for; suwar's demosaicers (`suwar_cfa_bayer_demosaic_{T}`,
+moved there in the alwan/suwar split) are ranked by it in suwar_dev suite 069.
 
 ## SSIM and PU-SSIM
 
@@ -770,155 +770,6 @@ In suite 256 on a 3-channel pair:
 normalisation or window, or a data range that is not finite and positive. `ALWAN_E_RANGE` for
 an even window, a window larger than the image, a negative `k1` or `k2`, or a sigma over 64.
 
-## Exposure and Bracket Merging
-
-```c
-alwan_exposure_settings_f64 bracket[3] = {
-    { 8.0, 1.0 / 500.0, 100.0 }, { 8.0, 1.0 / 60.0, 100.0 }, { 8.0, 1.0 / 8.0, 100.0 },
-};
-alwan_f64 const *images[3] = { short_exposure, mid_exposure, long_exposure };
-alwan_hdr_merge_f64_map_interleave(radiance, 3 * sizeof(alwan_f64),
-                                   images, 3 * sizeof(alwan_f64), pixel_count,
-                                   bracket, 3, ALWAN_MERGE_WEIGHT_DEBEVEC1997, NULL, 0);
-```
-
-The exposure functions take N, t and S as EXIF records them. `alwan_average_luminance`
-is the ISO 2720 reflected-light meter, N^2 / t / S x k with k = 12.5, and the merge
-reports radiance on that scale. The bracket is ordered from the shortest exposure
-to the longest: the shortest is trusted fully at and above 0.5, the longest at and
-below it. Values are normalised sensor data, limited to [2.2e-16, 1]. A response
-curve, when given, is sampled on [0, 1] per channel after weighting.
-
-The four weights are colour-hdri's: Debevec 1997's triangle (the default), the hat,
-a Gaussian and an anchored double sigmoid. The Debevec triangle is normalised by
-its own peak; colour-hdri normalises by the image's largest weight, which is the
-same number whenever the image holds a value at 0.5.
-
----
-
-## Camera Response Recovery
-
-```c
-typedef enum {
-    ALWAN_CAMERA_RESPONSE_DEBEVEC1997 = 0,
-    ALWAN_CAMERA_RESPONSE_ROBERTSON2003 = 1
-} alwan_camera_response_method;
-
-alwan_status alwan_camera_response_{T}(alwan_{T} *response_out, alwan_{T} const *const *images,
-                                       size_t in_stride, size_t count,
-                                       alwan_exposure_settings_{T} const *settings, size_t image_count,
-                                       alwan_camera_response_method method,
-                                       alwan_camera_response_params const *params);
-```
-
-The camera response of an exposure bracket, the curve that `alwan_hdr_merge` takes: per
-channel, the exposure each normalised pixel value records, `bins` values per channel,
-planar, R then G then B. One entry point with a method enum; each method reads its own
-fields of `alwan_camera_response_params`, and a zero field is its default (colour-hdri's
-for Debevec, OpenCV's for Robertson). `params` NULL is every default.
-
-| Field | Method | 0 reads as |
-|---|---|---|
-| `bins` | both | 256 |
-| `samples` | `DEBEVEC1997` | 1000 |
-| `smoothing` | `DEBEVEC1997` | 30 |
-| `weight` | `DEBEVEC1997` | `ALWAN_MERGE_WEIGHT_DEBEVEC1997` |
-| `extrapolation_degree` | `DEBEVEC1997` | 7; negative leaves the solved values |
-| `keep_scale` | `DEBEVEC1997` | 0: scaled to peak at 1 |
-| `iterations` | `ROBERTSON2003` | 30 |
-| `threshold` | `ROBERTSON2003` | 0.01 |
-
-```c
-alwan_f64 response[3 * 256];
-alwan_camera_response_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
-                          bracket, 3, ALWAN_CAMERA_RESPONSE_DEBEVEC1997, NULL);
-alwan_hdr_merge_f64_map_interleave(radiance, 3 * sizeof(alwan_f64), images,
-                                   3 * sizeof(alwan_f64), pixel_count, bracket, 3,
-                                   ALWAN_MERGE_WEIGHT_DEBEVEC1997, response, 256);
-```
-
-Debevec and Malik 1997: per channel, the log exposure each pixel value records is
-the least-squares solution over sampled pixels of every exposure, with a smoothness
-term weighted by lambda (30) and the middle value pinned at 0. The samples are
-Grossberg and Nayar's 2003 histogram points, 1000 per exposure. Where the weight is
-zero the response is extrapolated with a degree 7 polynomial, and each channel is
-scaled to peak at 1. The params fields change any of these; their zero value is
-colour-hdri's default, which suite 119 matches.
-
-```c
-alwan_camera_response_f64(response, images, 3 * sizeof(alwan_f64), pixel_count,
-                          bracket, 3, ALWAN_CAMERA_RESPONSE_ROBERTSON2003, NULL);
-```
-
-Robertson, Borman and Stevenson 2003 uses every pixel instead of samples. Starting
-from a linear response, it merges the bracket with the current response, takes the
-new response at each value as the mean exposure of the pixels holding it, pins the
-middle value at 1, and repeats: 30 rounds, or fewer once the change is below 0.01.
-The weight is OpenCV's, a Gaussian over the values, 0 at both ends. Only the ratios
-of the exposures matter. `bins`, `iterations` and `threshold` set the resolution, the
-rounds and the threshold; their zero value is OpenCV's default, and the result matches
-OpenCV's CalibrateRobertson to its float rounding, 5e-6.
-
-Robertson's estimate has no smoothness term. The response is tied down only where
-exposures overlap, and between those ties it keeps the shape of its linear start, so
-it needs closely spaced exposures. On a fairground bracket from an 8-bit 2.2 power
-camera, merged afterwards with the Debevec weight:
-
-| bracket | Robertson, merge error p90 | Debevec, merge error p90 |
-|---|---|---|
-| 3 exposures, 3 stops apart | 0.51 stops, a sawtooth | 0.035 stops |
-| 7 exposures, 1 stop apart | 0.027 stops | 0.019 stops |
-| 13 exposures, 1/2 stop apart | 0.009 stops | 0.021 stops |
-
-At 3 stops more rounds do not help (1000 rounds leave 0.46 stops of response error),
-and OpenCV gives the same curve. For widely spaced brackets use Debevec.
-
-A value no pixel holds is filled linearly from its neighbours, and held beyond the
-first and last value seen. OpenCV leaves it NaN, and that NaN also stops its
-convergence test from ever passing, so OpenCV always runs every round on such a
-bracket. Without a pixel at the middle value there is nothing to pin, and the call
-returns `ALWAN_E_RANGE`.
-
----
-
-## Exposure Fusion
-
-```c
-alwan_f64 const *images[3] = { under, metered, over };   /* display-encoded RGB */
-alwan_exposure_fusion_f64(fused, 3 * width * sizeof(alwan_f64),
-                                      images, 3 * width * sizeof(alwan_f64), 3,
-                                      width, height, ALWAN_EXPOSURE_FUSION_MERTENS2007, NULL);
-```
-
-Mertens, Kautz and Van Reeth 2007. Where merging recovers radiance and still needs a
-tone curve, fusion goes straight from a bracket of finished pictures to one finished
-picture: no response curve, no exposure settings, and the images in any order. Every
-pixel of every exposure is weighted by three measures: contrast, the absolute 3 x 3
-Laplacian of its BT.601 luma; saturation, the spread of R, G and B about their mean;
-and well-exposedness, a Gaussian of width 0.2 around 0.5 per channel. The weights
-are normalised per pixel, and the images blend as Laplacian pyramids, each level
-under that level of the weights' Gaussian pyramid. Blending a single level instead
-leaves visible seams where the weights change quickly.
-
-`alwan_exposure_fusion_params` sets each measure's exponent (0 is 1), leaves a measure
-out through `ignore`, and sets sigma and the number of pyramid levels. Its zero value
-is the paper's weighting. OpenCV's `createMergeMertens()` default leaves
-well-exposedness out, which is `ignore = ALWAN_FUSION_IGNORE_EXPOSURE`. Borders are
-OpenCV's. The result is not clamped, and the pyramid can overshoot [0, 1] next to
-strong edges.
-
-Given 8-bit images divided by 255, the result matches OpenCV's MergeMertens to 4e-6
-on the synthetic brackets of the tests. Photographs differ more. Where a region is
-flat in every exposure, every weight falls to OpenCV's floor of 1e-12, and OpenCV's
-float32 rounding in the three measures is of the same order, so its rounding decides
-the blend there. alwan computes the weights in the working precision. On a 960 x 540
-fairground bracket the two agree to 2e-3 at the 99th percentile and differ by up to
-0.06 in flat saturated areas. Computing the weights in float32 the way OpenCV does
-closes the difference to 4e-7, so the pyramids and borders agree and the difference
-is the weights' precision.
-
----
-
 ## Error Codes
 
 - `ALWAN_OK` (0) -- Success
@@ -928,6 +779,10 @@ is the weights' precision.
 ---
 
 ## Exposure, ISO 12232 and ISO 2720
+
+The exposure functions take N, t and S as EXIF records them. `alwan_average_luminance`
+is the ISO 2720 reflected-light meter, N^2 / t / S x k with k = 12.5; suwar's bracket merge
+(`suwar_hdr_merge`, moved there in the alwan/suwar split) reports radiance on that scale.
 
 Photometric exposure as the camera standards define it. Every function is
 `ALWAN_E_INVALID` for a NULL output or a luminance, illuminance, ISO, f-number
@@ -971,30 +826,7 @@ Pinned against colour-science's `exposure` module in suite 118.
 
 ---
 
-## Merge weights, camera-response sampling, PU21 decode, Mantiuk 2006
-
-### alwan_hdr_merge_weight_{T}
-
-```c
-alwan_status alwan_hdr_merge_weight_{T}(alwan_{T} *weight_out, alwan_{T} value, alwan_merge_weight fn);
-```
-
-One weighting function of `alwan_hdr_merge` at one value, so a caller can see
-the curve the merge is applying.
-
-### alwan_crf_samples_grossberg2003_{T}
-
-```c
-alwan_status alwan_crf_samples_grossberg2003_{T}(size_t *bins_out, alwan_{T} const *const *images,
-                                                 size_t in_stride, size_t count, size_t image_count,
-                                                 size_t samples, size_t bins);
-```
-
-Grossberg and Nayar 2003: the pixel values to sample for a camera-response
-recovery, chosen so that each sample sits at the same point of every exposure's
-histogram. For each of `samples` points u on [0, 1], the bin whose cumulative
-histogram is nearest u, per exposure and channel. `bins_out` receives
-`samples x image_count x 3` bin indices.
+## PU21 decode
 
 ### alwan_pu21_decode_{T}
 
@@ -1006,45 +838,6 @@ alwan_status alwan_pu21_decode_{T}_map_interleave(alwan_{T} *out, size_t out_str
 
 The inverse of `alwan_pu21_encode`: PU21 units back to luminance, for the same
 four variants. `ALWAN_E_INVALID` for an unknown variant.
-
-### alwan_tonemap_mantiuk2006_{T}
-
-```c
-alwan_status alwan_tonemap_mantiuk2006_{T}(alwan_{T} *rgb_out, size_t out_row_stride,
-                                           alwan_{T} const *rgb_in, size_t in_row_stride,
-                                           size_t width, size_t height,
-                                           alwan_tonemap_local_params_{T} const *params, int *iterations_out);
-```
-
-Local tone mapping. Every other operator on this page is a curve: a pixel's
-result depends on that pixel and on statistics of the image. This one takes the
-log luminance apart into contrasts at every scale, shrinks each through a
-response curve, and solves for the image whose contrasts those are, so a
-pixel's result depends on its neighbours, which is what lets it hold local
-texture while losing global range, and why it takes a width and a height rather
-than a count.
-
-`rgb_in` and `rgb_out` are interleaved RGB, rows a stride apart; `out` may be
-`in`. `params` NULL is every default: `scale` is how hard contrasts are pulled
-in, 0 reading as 0.7, larger meaning flatter; `saturation` is the exponent on
-each channel's ratio to luminance, 0 reading as 1. `iterations_out`, which may
-be NULL, receives how many conjugate-gradient steps the solve took; it stops on
-a relative residual of 1e-3 and caps at 100, and in practice takes five to ten,
-so a result at the cap is worth looking at. The luminance weights follow the
-rest of alwan: zero is the sRGB primaries' Y row; OpenCV uses Rec.601 luma,
-which is a different quantity and the wrong one for linear light, and suite 170
-passes it explicitly to compare.
-
-The output is not normalised: the solve is anchored at the image's own mean log
-luminance, so the result has a level and the caller decides what to do with it.
-An image smaller than 2 x 2 is `ALWAN_E_RANGE`; a negative or non-finite
-luminance is `ALWAN_E_INVALID`. Reproduces OpenCV's TonemapMantiuk to 2e-06 in
-float32 once OpenCV's own rescaling of input and output to [0, 1], which is not
-in the paper, is taken off. Mantiuk, Myszkowski and Seidel, "A Perceptual
-Framework for Contrast Processing of High Dynamic Range Images", ACM TAP 3(3),
-2006.
-
----
 
 ## See Also
 

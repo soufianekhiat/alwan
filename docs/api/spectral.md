@@ -806,95 +806,6 @@ matrix and a chromatic adaptation. It matches colour-hdri's `colour_hdri.models.
 to 2e-15; [alwan_decisions.md](../alwan_decisions.md) lists the two places alwan
 reads a profile differently.
 
-### alwan_highlights_recovery_blend_{T}_map_interleave
-
-dcraw's highlight blend for white-balanced camera RGB: channels clipped at
-min(multipliers) x threshold, each pixel keeping its lightness and taking the chroma
-magnitude of its clipped version, so clipped highlights stay neutral.
-
-### alwan_highlights_recovery_lchab_{T}_map_interleave
-
-colour-hdri's `highlights_recovery_LCHab` (colour-hdri 0.2.6, BSD-3-Clause). Each pixel
-keeps its own CIE L\* and hue and takes the chroma of its version clipped to
-[0, threshold], so a blown highlight keeps its brightness and loses the colour that
-clipping one channel gave it. The RGB is linear in `space`. The space's own matrices are
-used when `has_matrices` is set, otherwise the ones its primaries derive. `space` NULL is
-colour-hdri's default, colour's sRGB, which uses IEC 61966-2-1's four-decimal matrices;
-those are not each other's exact inverse, so even an unclipped pixel moves by up to 1e-4,
-in colour-hdri as here. `threshold` 0 is colour-hdri's `None`: the clip only floors at 0.
-Suite 277 matches colour-hdri to 6e-15 on synthetic pixels and on SRIC crops exposed two
-stops up.
-
----
-
-## Bayer Demosaicing
-
-```c
-alwan_cfa_bayer_demosaic_f64(rgb, 3 * width * sizeof(alwan_f64),
-                             cfa, width * sizeof(alwan_f64), width, height,
-                             ALWAN_CFA_RGGB, ALWAN_DEMOSAIC_MENON2007);
-```
-
-The input is a linear, black-subtracted CFA plane; decoding raw files stays with
-LibRaw or the DNG SDK. Bilinear averages each channel's own sites. Malvar, He and
-Cutler 2004 adds a gradient correction from the other channels with fixed 5 x 5
-filters. Menon, Andriani and Calvagno 2007 interpolates green horizontally and
-vertically, keeps the direction with the smaller colour-difference gradient, and
-can refine all three channels afterwards.
-
-The borders are colour-demosaicing's, the reference: bilinear and Malvar extend the
-image by repeating the edge sample, Menon's one-dimensional filters mirror it
-without repeating it, and its direction decision reads zero outside. The sums run
-in scipy's order, and the results match colour-demosaicing bit for bit.
-
-To compare the methods, use `alwan_psnr_{T}` in [hdr.md](hdr.md), which reports CPSNR
-with a border crop because the edges are where demosaicing is least reliable and where
-the literature stops measuring. On alwan's own test image: bilinear 30.4 dB, Malvar
-33.6, Menon 33.9 without its refining step and 34.2 with it.
-
-### 8- and 16-bit planes, and OpenCV's two methods
-
-```c
-alwan_cfa_bayer_demosaic_u8(rgb, 3 * width, cfa, width, width, height,
-                            ALWAN_CFA_RGGB, ALWAN_DEMOSAIC_VNG_OPENCV);
-```
-
-`alwan_cfa_bayer_demosaic_u8` and `alwan_cfa_bayer_demosaic_u16` take integer codes and return RGB codes of the
-same type. Two methods exist only here, because OpenCV defines them on integers:
-
-| Method | What it is | Types |
-|---|---|---|
-| `ALWAN_DEMOSAIC_VNG_OPENCV` | Chang, Cheung and Pang 1999's variable number of gradients: eight directional gradients, and the average taken over the directions below a threshold set by the smallest and largest | 8-bit, both sides at least 8 |
-| `ALWAN_DEMOSAIC_EDGE_AWARE_OPENCV` | green along the smaller of the horizontal and vertical gradients, red and blue from their neighbours' averages | 8- and 16-bit |
-
-Both are ports of OpenCV 5.0.0's `modules/imgproc/src/demosaicing.cpp` (cv::demosaicing
-with `COLOR_Bayer*2BGR_VNG` and `_EA`; the file's 3-clause BSD notice and the notice of the
-original Bayer code by MD-Mathematische Dienste GmbH are kept in
-`api/alwan_demosaic_opencv.c` and `licenses/OpenCV-imgproc-demosaicing-BSD.txt`), and give
-cv2's codes exactly, borders included (suite 295: 156 cases on every pattern; plate 161:
-three whole frames). OpenCV names a pattern by its second row's second and third sites,
-so alwan's `ALWAN_CFA_RGGB` is OpenCV's `BayerBG`, `BGGR` is `BayerRG`, `GRBG` is
-`BayerGB` and `GBRG` is `BayerGR`; and alwan returns RGB where OpenCV returns BGR.
-
-- VNG pads the plane by two pixels with OpenCV's `BORDER_REFLECT_101` and computes every
-  pixel. OpenCV's x64 build computes most of each row eight pixels at a time and divides
-  there by `0.5f / ng`, while its scalar columns read a table whose 1/14 entry is
-  `0.0714286f`, a different float; the port reproduces which columns take which path,
-  which is what makes it exact. Under 8 pixels a side OpenCV switches to its plain
-  bilinear interpolation, which is not ported: alwan returns `ALWAN_E_INVALID` there.
-- Edge-aware computes the interior and copies the outer rows and columns from their
-  inner neighbours; a plane 2 pixels high or wide comes out all zeros, as OpenCV's.
-
-The other four methods run on the codes as given, in double, and are rounded to nearest
-with ties up and clamped to the type: they equal the float functions' result rounded
-(suite 295). The float functions return `ALWAN_E_INVALID` for the two OpenCV methods.
-
-On 8-bit sRGB codes of three SRIC frames (plate 161) the mean CPSNR is VNG 29.83 dB,
-Malvar 29.45, Menon 28.78, edge-aware 28.43 and bilinear 28.42: on display-encoded codes,
-which is how OpenCV users demosaic, the ranking differs from the linear test image above.
-
----
-
 ## Error Codes
 
 Spectral functions return the `alwan_status` enum:
@@ -1001,19 +912,6 @@ tag at a CCT: `m1` at or below `cct_1`, `m2` at or above `cct_2`, linear in
 CameraCalibration x ColorMatrix, each interpolated at the white's CCT.
 `xy_to_camera_neutral` is the camera neutral of a white, what AsShotNeutral
 stores, with G = 1.
-
-### alwan_cfa_bayer_mosaic_{T}
-
-```c
-alwan_status alwan_cfa_bayer_mosaic_{T}(alwan_{T} *cfa_out, size_t cfa_row_stride,
-                                        alwan_{T} const *rgb, size_t rgb_row_stride,
-                                        size_t width, size_t height, alwan_cfa_pattern pattern);
-```
-
-The mosaic an RGB image would record: each site keeps its layout's channel.
-The inverse of the demosaicers, and what their tests mosaic their inputs with.
-
----
 
 ## See Also
 

@@ -5,8 +5,6 @@ EXPORTS
     alwan_3dl_export_f64
     alwan_3dl_import_f32
     alwan_3dl_import_f64
-    alwan_absolute_luminance_calibrate_f32
-    alwan_absolute_luminance_calibrate_f64
     alwan_aces1_output_transform_f32
     alwan_aces1_output_transform_f32_map_interleave
     alwan_aces1_output_transform_f32_map_planar
@@ -175,8 +173,6 @@ EXPORTS
     alwan_camera_count
     alwan_camera_find
     alwan_camera_info
-    alwan_camera_response_f32
-    alwan_camera_response_f64
     alwan_camera_rgb_from_spd_f32
     alwan_camera_rgb_from_spd_f64
     alwan_camera_rgb_to_aces2065_1_f32_map_interleave
@@ -231,12 +227,6 @@ EXPORTS
     alwan_cct_to_uv_planck1900_f64
     alwan_cct_to_xy_kang_f32
     alwan_cct_to_xy_kang_f64
-    alwan_cfa_bayer_demosaic_f32
-    alwan_cfa_bayer_demosaic_f64
-    alwan_cfa_bayer_demosaic_u16
-    alwan_cfa_bayer_demosaic_u8
-    alwan_cfa_bayer_mosaic_f32
-    alwan_cfa_bayer_mosaic_f64
     alwan_chart_destroy_f32
     alwan_chart_destroy_f64
     alwan_chart_device_model_f32
@@ -358,8 +348,6 @@ EXPORTS
     alwan_collect3_f64
     alwan_color_checker_data_f32
     alwan_color_checker_data_f64
-    alwan_color_checker_detect_f32
-    alwan_color_checker_detect_f64
     alwan_color_checker_grid
     alwan_color_checker_native_illuminant
     alwan_color_checker_num_patch_names
@@ -417,7 +405,6 @@ EXPORTS
     alwan_composite_f64
     alwan_composite_u16
     alwan_composite_u8
-    alwan_constancy_params_init
     alwan_content_light_level_compute_f32
     alwan_content_light_level_compute_f64
     alwan_corresponding_chromaticities_breneman1987
@@ -426,8 +413,6 @@ EXPORTS
     alwan_cqs_specification_f32
     alwan_cqs_specification_f64
     alwan_create
-    alwan_crf_samples_grossberg2003_f32
-    alwan_crf_samples_grossberg2003_f64
     alwan_cri_ra_f32
     alwan_cri_ra_f64
     alwan_cri_specification_f32
@@ -670,8 +655,6 @@ EXPORTS
     alwan_eotf_apply_f64
     alwan_excitation_purity_f32
     alwan_excitation_purity_f64
-    alwan_exposure_fusion_f32
-    alwan_exposure_fusion_f64
     alwan_exposure_index_f32
     alwan_exposure_index_f64
     alwan_exposure_tonemap_f32
@@ -844,10 +827,6 @@ EXPORTS
     alwan_hdr_ipt_to_xyz_f64_map_planar
     alwan_hdr_ipt_to_xyz_map_interleave_ex
     alwan_hdr_ipt_to_xyz_map_planar_ex
-    alwan_hdr_merge_f32_map_interleave
-    alwan_hdr_merge_f64_map_interleave
-    alwan_hdr_merge_weight_f32
-    alwan_hdr_merge_weight_f64
     alwan_hellwig2022_forward_f32
     alwan_hellwig2022_forward_f32_map_interleave
     alwan_hellwig2022_forward_f64
@@ -864,12 +843,6 @@ EXPORTS
     alwan_hero_wavelength_to_xyz_f64
     alwan_hex_to_rgb_f32
     alwan_hex_to_rgb_f64
-    alwan_highlights_recovery_blend_f32_map_interleave
-    alwan_highlights_recovery_blend_f32_map_planar
-    alwan_highlights_recovery_blend_f64_map_interleave
-    alwan_highlights_recovery_blend_f64_map_planar
-    alwan_highlights_recovery_lchab_f32_map_interleave
-    alwan_highlights_recovery_lchab_f64_map_interleave
     alwan_hke_luminous_nayatani1997_f32
     alwan_hke_luminous_nayatani1997_f64
     alwan_hke_object_nayatani1997_f32
@@ -1046,10 +1019,6 @@ EXPORTS
     alwan_ihls_to_rgb_map_planar_ex
     alwan_illuminance_to_exposure_value_f32
     alwan_illuminance_to_exposure_value_f64
-    alwan_illuminant_correct_f32_map_interleave
-    alwan_illuminant_correct_f64_map_interleave
-    alwan_illuminant_estimate_f32
-    alwan_illuminant_estimate_f64
     alwan_illuminant_white_point_f32
     alwan_illuminant_white_point_f64
     alwan_image_convert_data_f32
@@ -1242,9 +1211,6 @@ EXPORTS
     alwan_lgg_apply_f64_map_planar
     alwan_lgg_apply_map_interleave_ex
     alwan_lgg_apply_map_planar_ex
-    alwan_light_probe_sample_f32
-    alwan_light_probe_sample_f64
-    alwan_light_probe_sample_u8
     alwan_lightness_f32
     alwan_lightness_f64
     alwan_linear_srgb_to_hsl_f32
@@ -1460,11 +1426,7 @@ EXPORTS
     alwan_osa_ucs_to_xyz_f64_map_planar
     alwan_osa_ucs_to_xyz_map_interleave_ex
     alwan_osa_ucs_to_xyz_map_planar_ex
-    alwan_palette_apply_f32
-    alwan_palette_apply_f64
     alwan_palette_entry_at
-    alwan_palette_extract_f32
-    alwan_palette_extract_f64
     alwan_palette_find
     alwan_palette_nearest_f32
     alwan_palette_nearest_f64
@@ -1579,8 +1541,6 @@ EXPORTS
     alwan_pu21_ssim_f64
     alwan_pupil_diameter_barten1999_f32
     alwan_pupil_diameter_barten1999_f64
-    alwan_quantize_ex_u8
-    alwan_quantize_u8
     alwan_rayleigh_cross_section_f32
     alwan_rayleigh_cross_section_f64
     alwan_rayleigh_optical_depth_f32
@@ -2087,8 +2047,6 @@ EXPORTS
     alwan_tm30_specification_f64
     alwan_tonemap_global_f32
     alwan_tonemap_global_f64
-    alwan_tonemap_mantiuk2006_f32
-    alwan_tonemap_mantiuk2006_f64
     alwan_tonescale_grade_f32
     alwan_tonescale_grade_f32_map_interleave
     alwan_tonescale_grade_f32_map_planar
@@ -2116,10 +2074,6 @@ EXPORTS
     alwan_ucs_to_xyz_map_planar_ex
     alwan_uint_to_float_f32
     alwan_uint_to_float_f64
-    alwan_upper_hemisphere_illuminance_f32
-    alwan_upper_hemisphere_illuminance_f64
-    alwan_upper_hemisphere_illuminance_u8
-    alwan_upper_hemisphere_illuminance_weights
     alwan_uv_to_cct_krystek1985_f32
     alwan_uv_to_cct_krystek1985_f64
     alwan_uv_to_cct_ohno2013_f32
@@ -2154,15 +2108,6 @@ EXPORTS
     alwan_view_transform_f64_map_interleave
     alwan_view_transform_f64_map_planar
     alwan_view_transform_map_interleave_ex
-    alwan_vignette_characterise_f32
-    alwan_vignette_characterise_f64
-    alwan_vignette_characterise_u8
-    alwan_vignette_correct_f32
-    alwan_vignette_correct_f64
-    alwan_vignette_correct_u8
-    alwan_vignette_destroy
-    alwan_vignette_evaluate
-    alwan_vignette_principal_point
     alwan_water_refractive_index_f32
     alwan_water_refractive_index_f64
     alwan_wavelength_invert_f32
@@ -2185,7 +2130,6 @@ EXPORTS
     alwan_wcag_contrast_ratio_f64
     alwan_weber_contrast_f32
     alwan_weber_contrast_f64
-    alwan_white_balance
     alwan_white_balance_apply_f32
     alwan_white_balance_apply_f32_map_interleave
     alwan_white_balance_apply_f32_map_planar

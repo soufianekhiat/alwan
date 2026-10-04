@@ -176,26 +176,6 @@ alwan_status alwan_clf_apply_f32_map_planar(alwan_f32 *out_ch0, size_t out_strid
     return ALWAN_OK;
 }
 
-alwan_status alwan_highlights_recovery_blend_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
-        alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
-        alwan_rgb_f32 const *multipliers, alwan_f32 threshold) {
-    alwan_f32 tin[ALWAN_PLANAR_TILE * 3], tout[ALWAN_PLANAR_TILE * 3];
-    size_t done = 0;
-    alwan_status st;
-    if (!out_ch0 || !out_ch1 || !out_ch2 || !in_ch0 || !in_ch1 || !in_ch2) return ALWAN_E_INVALID;
-    if (count == 0) return alwan_highlights_recovery_blend_f32_map_interleave(tout, 3 * sizeof(alwan_f32), tin, 3 * sizeof(alwan_f32), 0, multipliers, threshold);
-    while (done < count) {
-        size_t n = count - done;
-        if (n > ALWAN_PLANAR_TILE) n = ALWAN_PLANAR_TILE;
-        ALWAN_PLANAR_GATHER(alwan_f32, tin, in_ch0, in_ch1, in_ch2, in_stride, done, n);
-        st = alwan_highlights_recovery_blend_f32_map_interleave(tout, 3 * sizeof(alwan_f32), tin, 3 * sizeof(alwan_f32), n, multipliers, threshold);
-        if (st != ALWAN_OK) return st;
-        ALWAN_PLANAR_SCATTER(alwan_f32, tout, out_ch0, out_ch1, out_ch2, out_stride, done, n);
-        done += n;
-    }
-    return ALWAN_OK;
-}
-
 alwan_status alwan_bt2408_hlg_to_pq_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
         alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
         alwan_f32 hlg_peak_nits) {
@@ -613,26 +593,6 @@ alwan_status alwan_clf_apply_f64_map_planar(alwan_f64 *out_ch0, size_t out_strid
         if (n > ALWAN_PLANAR_TILE) n = ALWAN_PLANAR_TILE;
         ALWAN_PLANAR_GATHER(alwan_f64, tin, in_ch0, in_ch1, in_ch2, in_stride, done, n);
         st = alwan_clf_apply_f64_map_interleave(tout, 3 * sizeof(alwan_f64), tin, 3 * sizeof(alwan_f64), n, clf);
-        if (st != ALWAN_OK) return st;
-        ALWAN_PLANAR_SCATTER(alwan_f64, tout, out_ch0, out_ch1, out_ch2, out_stride, done, n);
-        done += n;
-    }
-    return ALWAN_OK;
-}
-
-alwan_status alwan_highlights_recovery_blend_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2,
-        alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,
-        alwan_rgb_f64 const *multipliers, alwan_f64 threshold) {
-    alwan_f64 tin[ALWAN_PLANAR_TILE * 3], tout[ALWAN_PLANAR_TILE * 3];
-    size_t done = 0;
-    alwan_status st;
-    if (!out_ch0 || !out_ch1 || !out_ch2 || !in_ch0 || !in_ch1 || !in_ch2) return ALWAN_E_INVALID;
-    if (count == 0) return alwan_highlights_recovery_blend_f64_map_interleave(tout, 3 * sizeof(alwan_f64), tin, 3 * sizeof(alwan_f64), 0, multipliers, threshold);
-    while (done < count) {
-        size_t n = count - done;
-        if (n > ALWAN_PLANAR_TILE) n = ALWAN_PLANAR_TILE;
-        ALWAN_PLANAR_GATHER(alwan_f64, tin, in_ch0, in_ch1, in_ch2, in_stride, done, n);
-        st = alwan_highlights_recovery_blend_f64_map_interleave(tout, 3 * sizeof(alwan_f64), tin, 3 * sizeof(alwan_f64), n, multipliers, threshold);
         if (st != ALWAN_OK) return st;
         ALWAN_PLANAR_SCATTER(alwan_f64, tout, out_ch0, out_ch1, out_ch2, out_stride, done, n);
         done += n;

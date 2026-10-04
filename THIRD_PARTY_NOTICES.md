@@ -13,37 +13,6 @@ GPL code is never ported into alwan.
 
 ---
 
-## OpenCV and opencv_contrib
-
-- Upstream: https://github.com/opencv/opencv and https://github.com/opencv/opencv_contrib,
-  tag 5.0.0.
-- Copyright: see `licenses/OpenCV-COPYRIGHT.txt` (Intel Corporation, Willow Garage, NVIDIA,
-  AMD, OpenCV Foundation, Itseez, Xperience AI and others).
-- Licence: Apache License 2.0 (`src/alwan/data/opencv/LICENSE-opencv.txt`,
-  `src/alwan/data/opencv/LICENSE-opencv_contrib.txt`). Some ported files carry older
-  BSD-style headers instead, kept as their conditions ask:
-  - 3-clause BSD (Intel, Willow Garage, Itseez), `licenses/OpenCV-imgproc-resize-BSD-3-Clause.txt`:
-    `modules/imgproc/src/resize.cpp`.
-  - 3-clause BSD (Intel, Willow Garage, Itseez) with the original Bayer code's BSD-style
-    notice (Copyright (c) 2002, MD-Mathematische Dienste GmbH, Dirk Schaefer),
-    `licenses/OpenCV-imgproc-demosaicing-BSD.txt`: `modules/imgproc/src/demosaicing.cpp`.
-  - 3-clause BSD (Intel, Willow Garage, Itseez, Advanced Micro Devices),
-    `licenses/OpenCV-imgproc-bilateral-BSD-3-Clause.txt`:
-    `modules/imgproc/src/bilateral_filter.dispatch.cpp`, `bilateral_filter.simd.hpp`.
-- OpenCV ships no NOTICE file at that tag.
-
-What alwan takes:
-
-| alwan file | From OpenCV |
-|---|---|
-| `src/alwan/api/alwan_white_balance.c` | `xphoto/src/simple_color_balance.cpp`, `grayworld_white_balance.cpp`, `learning_based_color_balance.cpp` |
-| `src/alwan/api/alwan_demosaic_opencv.c` | `imgproc/src/demosaicing.cpp` (`Bayer2RGB_VNG_8u`, `Bayer2RGB_EdgeAware_T`) |
-| `src/alwan/api/alwan_checker_detect.c` | the cv2 operations the colour checker detector calls (resize, bilateral filter, threshold, contours, minAreaRect, approxPolyDP, warpPerspective) |
-| `src/alwan/data/opencv/lbwb_*.csv` | the LearningBasedWB trained model, verbatim |
-
-The filters, restoration, editing and geometry ported from OpenCV moved to suwar with their
-notices.
-
 ## OpenColorIO
 
 - Upstream: https://github.com/AcademySoftwareFoundation/OpenColorIO, v2.5.0.
@@ -63,15 +32,13 @@ OCIO's matrix inverse is Imath's `Matrix44::gjInverse`, reproduced in `alwan_ace
 Imath, Copyright Contributors to the OpenEXR Project, BSD-3-Clause,
 `licenses/Imath-BSD-3-Clause.txt`.
 
-## colour-science (colour, colour-hdri, colour-checker-detection)
+## colour-science (colour, colour-hdri)
 
 - Upstream: https://github.com/colour-science.
 - colour: Copyright 2013 Colour Developers, BSD-3-Clause,
   `src/alwan/data/LICENSE-colour-science.txt`.
 - colour-hdri: Copyright 2015 Colour Developers, BSD-3-Clause,
   `licenses/colour-hdri-BSD-3-Clause.txt`.
-- colour-checker-detection: Copyright 2018 Colour Developers, BSD-3-Clause,
-  `licenses/colour-checker-detection-BSD-3-Clause.txt`.
 
 What alwan takes:
 - Data generated with colour 0.4.7 and shipped under `src/alwan/data/`: colour matching
@@ -85,11 +52,10 @@ What alwan takes:
   `SOURCE.txt` names the colour object and the generator.
 - Code that follows colour's implementation step for step, the Munsell conversion
   (`src/alwan/api/alwan_munsell.c`) first among them.
-- `src/alwan/api/alwan_dng.c`: `highlights_recovery_LCHab` from colour-hdri 0.2.6.
-- `src/alwan/api/alwan_checker_detect.c`: the segmentation and templated detectors of
-  colour-checker-detection 0.2.3, and its ColorChecker Classic template
-  (`src/alwan/data/colorchecker/template_classic_*.csv`, copied from
-  `template_colorchecker_classic.npz` by `gendata/data/checker_templates.py`).
+- The global tone mapping operators (`src/alwan/api/alwan_tonemap*`) and the DNG colour model
+  (`src/alwan/api/alwan_dng.c`) follow colour-hdri's implementations.
+
+Highlight recovery and the colour checker detector moved to suwar with their notices.
 
 ## scikit-image
 
@@ -101,28 +67,6 @@ What alwan takes:
 
 What alwan takes: the stain and video matrices in `src/alwan/data/stain/` and
 `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
-
-## SciPy
-
-- Upstream: https://github.com/scipy/scipy, v1.16.3.
-- Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.
-- Licence: BSD-3-Clause, `licenses/scipy-BSD-3-Clause.txt`.
-
-What alwan takes: the rectangular linear sum assignment of
-`scipy/optimize/rectangular_lsap/rectangular_lsap.cpp` (PM Larsen, after Crouse 2016) for the
-templated checker detector (`src/alwan/api/alwan_checker_detect.c`, which carries that file's
-notice).
-
-## Pillow
-
-- Upstream: https://github.com/python-pillow/Pillow.
-- Copyright 1997-2011 Secret Labs AB, 1995-2011 Fredrik Lundh and contributors, 2010
-  Jeffrey A. Clark and contributors.
-- Licence: MIT-CMU (HPND), `licenses/Pillow-MIT-CMU.txt`.
-
-What alwan takes: routines reproduced from Pillow's libImaging to its arithmetic: the median
-cut, octree and maximum coverage quantisers (`alwan_palette_median_cut.c`,
-`alwan_quantize_octree.c`, `alwan_quantize_max_coverage.c`), all in `src/alwan/api/`.
 
 ## Bjorn Ottosson: Oklab gamut clipping, Okhsl and Okhsv
 

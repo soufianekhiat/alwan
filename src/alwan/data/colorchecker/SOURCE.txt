@@ -7,10 +7,3 @@ BabelColor's own tables: Classic pre-2014 and post-2014 D50, the 1976 C
 rendering, BabelColor average xyY and reflectance, the Ohta reflectances, PMC,
 Digital SG, and the Image Engineering TE226 v2 D65 set.
 Written by gendata/data/reference_data.py and colorchecker_names.py.
-
-
-template_classic_size.csv, template_classic_centroids.csv, template_classic_colours.csv,
-template_classic_correspondences.csv: the ColorChecker Classic template of
-colour-checker-detection 0.2.3 (detection/templates/template_colorchecker_classic.npz,
-Copyright 2018 Colour Developers, BSD-3-Clause), copied verbatim by
-gendata/data/checker_templates.py for the templated checker detector.
