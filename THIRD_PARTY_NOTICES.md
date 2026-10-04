@@ -173,6 +173,26 @@ What alwan takes: the film stock profiles in `src/alwan/data/film/`.
 What alwan takes: the per-layer additive halation form of `Effects/Halation.dctl`, followed by
 the experimental halation model.
 
+## color.js (Lea Verou, Chris Lilley)
+
+- Upstream: https://github.com/color-js/color.js (0.5.2).
+- Copyright (c) 2021 Lea Verou, Chris Lilley.
+- Licence: MIT, `licenses/colorjs-MIT.txt`.
+
+What alwan takes: the CSS colour spaces' matrices and transfer functions, their tree of base
+spaces, the handling of missing components, the interpolation of color-mix() and steps(),
+and the L* and DeltaPhi* contrasts (`src/alwan/api/alwan_css_color.c`).
+
+## material-color-utilities (Google)
+
+- Upstream: https://github.com/material-foundation/material-color-utilities (0.3.0).
+- Copyright 2021 Google LLC.
+- Licence: Apache-2.0, `licenses/material-color-utilities-Apache-2.0.txt`.
+
+What alwan takes: HCT (Cam16.fromInt in Material's viewing conditions, HctSolver) and the
+tonal palette (`src/alwan/api/alwan_hct.c`), and the solver's critical planes
+(`src/alwan/data/hct/critical_planes.csv`), translated from JavaScript to C.
+
 ## Tony McMapface
 
 - Upstream: https://github.com/h3r2tic/tony-mc-mapface.

@@ -4078,6 +4078,135 @@ alwan_status alwan_hdr_gamut_map_ictcp_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64
 alwan_status alwan_css_gamut_space_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_space_desc_f32 const *target_space, alwan_rgb_f32 const *rgb_in);
 alwan_status alwan_css_gamut_space_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_space_desc_f64 const *target_space, alwan_rgb_f64 const *rgb_in);
 
+/* ----------------------------------------------------------------
+ * CSS Color 4/5: colours in the CSS colour spaces, color-mix(), steps
+ *
+ * A colour is a space, three coordinates and an alpha; a coordinate or the alpha may be
+ * NaN, which is CSS's `none` (a missing component). The spaces and the conversions between
+ * them follow color.js 0.5.2 (MIT, Lea Verou and Chris Lilley; notice in
+ * alwan_css_color.c): the same matrices, transfer functions and the same tree of base
+ * spaces (XYZ D65 at the root, Lab and ProPhoto under XYZ D50, HWB under HSV under HSL
+ * under sRGB), so a conversion goes up to the two spaces' common base and down again.
+ * Converting between two different spaces first turns every missing component into 0, as
+ * color.js does; a polar space reports a powerless hue as missing (Oklch for |a|, |b| <
+ * 0.0002, LCH for |a|, |b| < 0.02, HSL and HWB for an achromatic colour). Suite 303.
+ *
+ * Coordinates are in each space's CSS units: RGB spaces 0..1 (extended beyond), Lab and
+ * LCH L 0..100, Oklab and Oklch L 0..1, hues in degrees, HSL saturation and lightness and
+ * HWB whiteness and blackness 0..100. XYZ is relative, Y = 1 for the white.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_CSS_SPACE_DEFAULT = 0,        /* in a params field: Oklab for interpolation (CSS
+                                         * Color 5's default), the interpolation space for
+                                         * the output */
+    ALWAN_CSS_SPACE_OKLAB = 1,
+    ALWAN_CSS_SPACE_OKLCH = 2,
+    ALWAN_CSS_SPACE_SRGB = 3,
+    ALWAN_CSS_SPACE_SRGB_LINEAR = 4,
+    ALWAN_CSS_SPACE_DISPLAY_P3 = 5,
+    ALWAN_CSS_SPACE_A98_RGB = 6,
+    ALWAN_CSS_SPACE_PROPHOTO_RGB = 7,
+    ALWAN_CSS_SPACE_REC2020 = 8,
+    ALWAN_CSS_SPACE_LAB = 9,            /* CIE Lab, D50 white */
+    ALWAN_CSS_SPACE_LCH = 10,
+    ALWAN_CSS_SPACE_XYZ_D50 = 11,
+    ALWAN_CSS_SPACE_XYZ_D65 = 12,       /* CSS `xyz` */
+    ALWAN_CSS_SPACE_HSL = 13,
+    ALWAN_CSS_SPACE_HWB = 14
+} alwan_css_space;
+
+/* How two hues are interpolated (CSS Color 4, sec. 12.4); 0 = shorter. */
+typedef enum {
+    ALWAN_CSS_HUE_SHORTER = 0,
+    ALWAN_CSS_HUE_LONGER = 1,
+    ALWAN_CSS_HUE_INCREASING = 2,
+    ALWAN_CSS_HUE_DECREASING = 3
+} alwan_css_hue_method;
+
+typedef struct { alwan_css_space space; alwan_f64 coords[3]; alwan_f64 alpha; } alwan_css_color_f64;
+typedef struct { alwan_css_space space; alwan_f32 coords[3]; alwan_f32 alpha; } alwan_css_color_f32;
+
+/* Zero the struct: every field's 0 is the default. */
+typedef struct {
+    alwan_css_space space;              /* interpolation space; 0 = Oklab */
+    alwan_css_space output_space;       /* 0 = the interpolation space */
+    alwan_css_hue_method hue;           /* for the polar spaces; 0 = shorter */
+    int premultiplied;                  /* non-zero: interpolate premultiplied alpha */
+} alwan_css_mix_params;
+
+/* The colour in another space. ALWAN_E_INVALID for a NULL or an unknown space. */
+alwan_status alwan_css_color_convert_f64(alwan_css_color_f64 *out, alwan_css_space space, alwan_css_color_f64 const *in);
+alwan_status alwan_css_color_convert_f32(alwan_css_color_f32 *out, alwan_css_space space, alwan_css_color_f32 const *in);
+
+/* Interpolation between a (p = 0) and b (p = 1), as color.js's mix() and CSS Color 5's
+ * color-mix() do it: both colours converted to the interpolation space; a missing
+ * component takes the other colour's value (a hue missing in one only, the other's hue,
+ * before the hue arc is chosen); the hues brought onto the chosen arc; then every
+ * component, and the alpha, interpolated linearly. With premultiplied, the components
+ * other than the hue are multiplied by the alpha first and divided by the interpolated
+ * alpha after, as CSS Color 4 sec. 12.3 says (color.js 0.5.2 also premultiplies the hue
+ * in a polar space; alwan follows the specification). The endpoints are not gamut mapped
+ * into a bounded interpolation space (color.js maps them first): inside the gamut the two
+ * agree. The result is in params->output_space. params may be NULL. */
+alwan_status alwan_css_color_mix_f64(alwan_css_color_f64 *out, alwan_css_color_f64 const *a, alwan_css_color_f64 const *b,
+                                     alwan_f64 p, alwan_css_mix_params const *params);
+alwan_status alwan_css_color_mix_f32(alwan_css_color_f32 *out, alwan_css_color_f32 const *a, alwan_css_color_f32 const *b,
+                                     alwan_f32 p, alwan_css_mix_params const *params);
+
+/* color-mix() with CSS's two percentages, NaN for an omitted one (CSS Color 5 sec. 2.1):
+ * both omitted is 50 / 50, one omitted is 100 minus the other; two that do not sum to 100
+ * are scaled to, and a sum below 100 multiplies the result's alpha by sum / 100.
+ * ALWAN_E_INVALID for a percentage outside [0, 100] or a sum of 0. */
+alwan_status alwan_css_color_mix_percent_f64(alwan_css_color_f64 *out, alwan_css_color_f64 const *a, alwan_f64 percent_a,
+                                             alwan_css_color_f64 const *b, alwan_f64 percent_b,
+                                             alwan_css_mix_params const *params);
+alwan_status alwan_css_color_mix_percent_f32(alwan_css_color_f32 *out, alwan_css_color_f32 const *a, alwan_f32 percent_a,
+                                             alwan_css_color_f32 const *b, alwan_f32 percent_b,
+                                             alwan_css_mix_params const *params);
+
+/* count evenly spaced colours from a to b, p = i / (count - 1) (one colour: p = 0.5), as
+ * color.js's steps() without its deltaE refinement. */
+alwan_status alwan_css_color_steps_f64(alwan_css_color_f64 *out, size_t count, alwan_css_color_f64 const *a,
+                                       alwan_css_color_f64 const *b, alwan_css_mix_params const *params);
+alwan_status alwan_css_color_steps_f32(alwan_css_color_f32 *out, size_t count, alwan_css_color_f32 const *a,
+                                       alwan_css_color_f32 const *b, alwan_css_mix_params const *params);
+
+/* Two lightness contrasts between colours in any CSS space (alpha ignored), as color.js
+ * computes them: the absolute difference of CIE L* (Lab, D50 white), and Somers'
+ * DeltaPhi*, | L1^phi - L2^phi |^(1/phi) sqrt(2) - 40 on L* with a D65 white, phi the
+ * golden ratio, below 7.5 reported as 0. Neither is APCA, which alwan does not provide. */
+alwan_status alwan_css_contrast_lstar_f64(alwan_f64 *out, alwan_css_color_f64 const *a, alwan_css_color_f64 const *b);
+alwan_status alwan_css_contrast_lstar_f32(alwan_f32 *out, alwan_css_color_f32 const *a, alwan_css_color_f32 const *b);
+alwan_status alwan_css_contrast_delta_phi_f64(alwan_f64 *out, alwan_css_color_f64 const *a, alwan_css_color_f64 const *b);
+alwan_status alwan_css_contrast_delta_phi_f32(alwan_f32 *out, alwan_css_color_f32 const *a, alwan_css_color_f32 const *b);
+
+/* Okhwb: HWB built on Ottosson's Okhsv the way CSS's hwb() is built on hsv, w = (1 - s) v,
+ * b = 1 - v (and back, w + b >= 1 being the grey w / (w + b)). h, w, b in [0, 1], h in
+ * turns as Okhsv's. Input and output sRGB encoded, through alwan_srgb_to_okhsv_{T} and
+ * alwan_okhsv_to_srgb_{T}. */
+typedef struct { alwan_f64 h, w, b; } alwan_okhwb_f64;
+typedef struct { alwan_f32 h, w, b; } alwan_okhwb_f32;
+void alwan_srgb_to_okhwb_f64(alwan_okhwb_f64 *out, alwan_rgb_f64 const *srgb);
+void alwan_srgb_to_okhwb_f32(alwan_okhwb_f32 *out, alwan_rgb_f32 const *srgb);
+void alwan_okhwb_to_srgb_f64(alwan_rgb_f64 *out, alwan_okhwb_f64 const *okhwb);
+void alwan_okhwb_to_srgb_f32(alwan_rgb_f32 *out, alwan_okhwb_f32 const *okhwb);
+
+/* HCT (Google's Material colour system): CAM16 hue and chroma in Material's viewing
+ * conditions with CIE L* as the tone. A port of material-color-utilities 0.3.0
+ * (Apache-2.0, Copyright 2021 Google LLC; notice in alwan_hct.c): Hct.fromInt for an
+ * 8-bit 0xAARRGGBB colour (alpha ignored), and HctSolver.solveToInt for the colour of a
+ * hue (degrees), chroma and tone, which returns the in-gamut colour of that hue and tone
+ * with the chroma closest to the one asked for, as 0xFFRRGGBB. A tonal palette is one hue
+ * and chroma at several tones (TonalPalette.tone). Suite 303. */
+typedef struct { alwan_f64 hue, chroma, tone; } alwan_hct_f64;
+typedef struct { alwan_f32 hue, chroma, tone; } alwan_hct_f32;
+alwan_status alwan_hct_from_argb_f64(alwan_hct_f64 *out, uint32_t argb);
+alwan_status alwan_hct_from_argb_f32(alwan_hct_f32 *out, uint32_t argb);
+alwan_status alwan_hct_to_argb_f64(uint32_t *out, alwan_hct_f64 const *hct);
+alwan_status alwan_hct_to_argb_f32(uint32_t *out, alwan_hct_f32 const *hct);
+alwan_status alwan_hct_tonal_palette_f64(uint32_t *out, alwan_f64 const *tones, size_t count, alwan_f64 hue, alwan_f64 chroma);
+alwan_status alwan_hct_tonal_palette_f32(uint32_t *out, alwan_f32 const *tones, size_t count, alwan_f32 hue, alwan_f32 chroma);
+
 /* Spatial picture-formation gamut mapping (docs/gamut_spatial_formation.md).
  * Image-aware: reshapes the whole record field to fit [0,peak]^3 while
  * preserving local per-channel gradient structure (no increment<->decrement

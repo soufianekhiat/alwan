@@ -78,6 +78,7 @@ Key entry points:
 - [`docs/api/refractive-index.md`](api/refractive-index.md)
 - [`docs/api/sky.md`](api/sky.md)
 - [`docs/api/iridescence.md`](api/iridescence.md)
+- [`docs/api/css-color.md`](api/css-color.md)
 - [`docs/api/skin.md`](api/skin.md)
 - [`docs/api/fluorescence.md`](api/fluorescence.md)
 - [`docs/api/spectral-rendering.md`](api/spectral-rendering.md)

@@ -129,6 +129,8 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_tonescale_grade.c
   src/alwan/api/alwan_select.c
   src/alwan/api/alwan_grading_ocio.c
+  src/alwan/api/alwan_css_color.c
+  src/alwan/api/alwan_hct.c
   src/alwan/api/alwan_luminaire.c
   src/alwan/api/alwan_spectrum_meng2015.c
   src/alwan/api/alwan_thin_film.c

@@ -420,6 +420,18 @@ EXPORTS
     alwan_csp_import_3d_f64
     alwan_css_color_3_keyword_to_rgb_f32
     alwan_css_color_3_keyword_to_rgb_f64
+    alwan_css_color_convert_f32
+    alwan_css_color_convert_f64
+    alwan_css_color_mix_f32
+    alwan_css_color_mix_f64
+    alwan_css_color_mix_percent_f32
+    alwan_css_color_mix_percent_f64
+    alwan_css_color_steps_f32
+    alwan_css_color_steps_f64
+    alwan_css_contrast_delta_phi_f32
+    alwan_css_contrast_delta_phi_f64
+    alwan_css_contrast_lstar_f32
+    alwan_css_contrast_lstar_f64
     alwan_css_gamut_f32_map_interleave
     alwan_css_gamut_f32_map_planar
     alwan_css_gamut_f64_map_interleave
@@ -776,6 +788,12 @@ EXPORTS
     alwan_hcl_to_rgb_f64_map_planar
     alwan_hcl_to_rgb_map_interleave_ex
     alwan_hcl_to_rgb_map_planar_ex
+    alwan_hct_from_argb_f32
+    alwan_hct_from_argb_f64
+    alwan_hct_to_argb_f32
+    alwan_hct_to_argb_f64
+    alwan_hct_tonal_palette_f32
+    alwan_hct_tonal_palette_f64
     alwan_hdr_cielab_to_xyz_f32
     alwan_hdr_cielab_to_xyz_f32_map_interleave
     alwan_hdr_cielab_to_xyz_f32_map_planar
@@ -1325,6 +1343,8 @@ EXPORTS
     alwan_okhsl_to_srgb_f64
     alwan_okhsv_to_srgb_f32
     alwan_okhsv_to_srgb_f64
+    alwan_okhwb_to_srgb_f32
+    alwan_okhwb_to_srgb_f64
     alwan_oklab_to_oklch_f32
     alwan_oklab_to_oklch_f32_map_interleave
     alwan_oklab_to_oklch_f32_map_planar
@@ -1920,6 +1940,8 @@ EXPORTS
     alwan_srgb_to_okhsl_f64
     alwan_srgb_to_okhsv_f32
     alwan_srgb_to_okhsv_f64
+    alwan_srgb_to_okhwb_f32
+    alwan_srgb_to_okhwb_f64
     alwan_srgb_to_oklab_f32
     alwan_srgb_to_oklab_f32_map_interleave
     alwan_srgb_to_oklab_f32_map_planar
