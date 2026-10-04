@@ -106,9 +106,6 @@ EXPORTS
     alwan_average_illuminance_f64
     alwan_average_luminance_f32
     alwan_average_luminance_f64
-    alwan_background_f32
-    alwan_background_f64
-    alwan_background_u8
     alwan_bake_1dlut_f32
     alwan_bake_1dlut_f64
     alwan_bake_2dlut_f32
@@ -381,8 +378,6 @@ EXPORTS
     alwan_color_matrix_apply_map_planar_ex
     alwan_color_matrix_get_preset_f32
     alwan_color_matrix_get_preset_f64
-    alwan_color_transfer_f32
-    alwan_color_transfer_f64
     alwan_colorimetric_purity_f32
     alwan_colorimetric_purity_f64
     alwan_colormap_apply_f32
@@ -525,16 +520,9 @@ EXPORTS
     alwan_data_get_illuminant_xy_f64
     alwan_data_get_srgb_primaries_f32
     alwan_data_get_srgb_primaries_f64
-    alwan_decolor_f32
-    alwan_decolor_f64
-    alwan_deconvolve_f32
-    alwan_deconvolve_f64
     alwan_default_alloc
     alwan_default_free
     alwan_default_realloc
-    alwan_dehaze_f32
-    alwan_dehaze_f64
-    alwan_dehaze_params_init
     alwan_delta_e_2000_batch_ex
     alwan_delta_e_2000_f32
     alwan_delta_e_2000_f32_batch
@@ -615,9 +603,6 @@ EXPORTS
     alwan_delta_e_zcam_f32_map_interleave
     alwan_delta_e_zcam_f64
     alwan_delta_e_zcam_f64_map_interleave
-    alwan_denoise_f32
-    alwan_denoise_f64
-    alwan_denoise_u8
     alwan_destroy
     alwan_din99_to_lab_f32
     alwan_din99_to_lab_f32_map_interleave
@@ -657,8 +642,6 @@ EXPORTS
     alwan_dng_xyz_to_camera_matrix_f64
     alwan_dominant_wavelength_f32
     alwan_dominant_wavelength_f64
-    alwan_edge_filter_f32
-    alwan_edge_filter_f64
     alwan_ellipse_canonical_f32
     alwan_ellipse_canonical_f64
     alwan_ellipse_fit_halir1998_f32
@@ -752,9 +735,6 @@ EXPORTS
     alwan_film_stock_info
     alwan_film_transmittance_f32
     alwan_film_transmittance_f64
-    alwan_filter_f32
-    alwan_filter_f64
-    alwan_filter_u8
     alwan_float_to_half
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64
@@ -818,7 +798,6 @@ EXPORTS
     alwan_gamut_volume_ratio_f32
     alwan_gamut_volume_ratio_f64
     alwan_get_build_info
-    alwan_gradient_edit
     alwan_grading_apply_f32
     alwan_grading_apply_f64
     alwan_grading_f32_map_interleave
@@ -891,8 +870,6 @@ EXPORTS
     alwan_highlights_recovery_blend_f64_map_planar
     alwan_highlights_recovery_lchab_f32_map_interleave
     alwan_highlights_recovery_lchab_f64_map_interleave
-    alwan_histogram3d_f32
-    alwan_histogram3d_f64
     alwan_hke_luminous_nayatani1997_f32
     alwan_hke_luminous_nayatani1997_f64
     alwan_hke_object_nayatani1997_f32
@@ -1099,9 +1076,6 @@ EXPORTS
     alwan_importance_sampling_2d_sample_f64_map_interleave
     alwan_index_stress_f32
     alwan_index_stress_f64
-    alwan_inpaint
-    alwan_inpaint_f32
-    alwan_inpaint_f64
     alwan_interop_count
     alwan_interop_entry_at
     alwan_interop_format
@@ -1301,12 +1275,6 @@ EXPORTS
     alwan_llab_forward_f32_map_interleave
     alwan_llab_forward_f64
     alwan_llab_forward_f64_map_interleave
-    alwan_local_contrast_f32
-    alwan_local_contrast_f64
-    alwan_local_contrast_u16
-    alwan_local_contrast_u8
-    alwan_low_discrepancy_points_f32
-    alwan_low_discrepancy_points_f64
     alwan_luminaire_angles
     alwan_luminaire_destroy
     alwan_luminaire_flux
@@ -1368,9 +1336,6 @@ EXPORTS
     alwan_mat3_transform_f64_map_interleave
     alwan_mat3_transform_f64_map_planar
     alwan_mat3_transform_map_interleave_ex
-    alwan_match_template_f32
-    alwan_match_template_f64
-    alwan_match_template_u8
     alwan_maxcll_f32
     alwan_maxcll_f64
     alwan_maxfall_f32
@@ -1483,13 +1448,6 @@ EXPORTS
     alwan_oklch_to_rgb_f64
     alwan_oklch_to_xyz_f32
     alwan_oklch_to_xyz_f64
-    alwan_optical_flow_f32
-    alwan_optical_flow_f64
-    alwan_optical_flow_to_rgb_f32
-    alwan_optical_flow_to_rgb_f64
-    alwan_optical_flow_u8
-    alwan_optical_flow_warp_f32
-    alwan_optical_flow_warp_f64
     alwan_optical_mtf_barten1999_f32
     alwan_optical_mtf_barten1999_f64
     alwan_optimize_spectrum_for_xyz_f32
@@ -1648,9 +1606,6 @@ EXPORTS
     alwan_refractive_stack_f64
     alwan_refractive_stack_rgb_f32
     alwan_refractive_stack_rgb_f64
-    alwan_register_f32
-    alwan_register_f64
-    alwan_register_u8
     alwan_reinhard_calibrated_f32
     alwan_reinhard_calibrated_f64
     alwan_relative_luminance_f32
@@ -1663,9 +1618,6 @@ EXPORTS
     alwan_relative_luminance_space_f32_map_interleave
     alwan_relative_luminance_space_f64
     alwan_relative_luminance_space_f64_map_interleave
-    alwan_resize_f32
-    alwan_resize_f64
-    alwan_resize_u8
     alwan_retinal_illuminance_barten1999_f32
     alwan_retinal_illuminance_barten1999_f64
     alwan_rgb_convert_f32
@@ -1894,9 +1846,6 @@ EXPORTS
     alwan_sh_project_equirect_f64
     alwan_sh_render_equirect_f32
     alwan_sh_render_equirect_f64
-    alwan_sharpen_f32
-    alwan_sharpen_f64
-    alwan_sharpen_u8
     alwan_sigma_barten1999_f32
     alwan_sigma_barten1999_f64
     alwan_simulate_cvd_ex_f32
@@ -2106,7 +2055,6 @@ EXPORTS
     alwan_structural_similarity_f32
     alwan_structural_similarity_f64
     alwan_structural_similarity_u8
-    alwan_stylize
     alwan_sucs_to_xyz_f32
     alwan_sucs_to_xyz_f64
     alwan_summed_area_table_box_mean_f32
@@ -2215,9 +2163,6 @@ EXPORTS
     alwan_vignette_destroy
     alwan_vignette_evaluate
     alwan_vignette_principal_point
-    alwan_warp_f32
-    alwan_warp_f64
-    alwan_warp_u8
     alwan_water_refractive_index_f32
     alwan_water_refractive_index_f64
     alwan_wavelength_invert_f32

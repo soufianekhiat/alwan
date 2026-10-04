@@ -22,15 +22,6 @@ GPL code is never ported into alwan.
 - Licence: Apache License 2.0 (`src/alwan/data/opencv/LICENSE-opencv.txt`,
   `src/alwan/data/opencv/LICENSE-opencv_contrib.txt`). Some ported files carry older
   BSD-style headers instead, kept as their conditions ask:
-  - Intel License Agreement, `licenses/OpenCV-Intel-License-Agreement.txt`:
-    `modules/photo/src/inpaint.cpp`, `modules/core/src/dxt.cpp`, `modules/video/src/ecc.cpp`.
-  - 3-clause BSD (Intel, Willow Garage), `licenses/OpenCV-BSD-3-Clause-Intel-WillowGarage.txt`:
-    `modules/xphoto/src/dct_image_denoising.cpp`, `modules/ximgproc/src/bilateral_texture_filter.cpp`,
-    `modules/video/src/optflowgf.cpp` (its header reads Willow Garage 2009; the text, kept whole at
-    the top of `src/alwan/api/alwan_optical_flow.c`, is otherwise the same).
-  - 3-clause BSD, `licenses/OpenCV-ximgproc-BSD-3-Clause.txt`:
-    `modules/ximgproc/src/weighted_median_filter.cpp`, `adaptive_manifold_filter_n.cpp`,
-    `edgeaware_filters_common.cpp`.
   - 3-clause BSD (Intel, Willow Garage, Itseez), `licenses/OpenCV-imgproc-resize-BSD-3-Clause.txt`:
     `modules/imgproc/src/resize.cpp`.
   - 3-clause BSD (Intel, Willow Garage, Itseez) with the original Bayer code's BSD-style
@@ -45,25 +36,13 @@ What alwan takes:
 
 | alwan file | From OpenCV |
 |---|---|
-| `src/alwan/api/alwan_decolor.c` | `photo/src/contrast_preserve.cpp` (cv::decolor), the float BGR to Lab conversion |
-| `src/alwan/api/alwan_gradient_edit.c` | `photo/src/seamless_cloning*.cpp` (Poisson cloning and its edits) |
-| `src/alwan/api/alwan_stylize.c` | `photo/src/npr.cpp`, `npr.hpp`; `xphoto/src/oilpainting.cpp` |
 | `src/alwan/api/alwan_white_balance.c` | `xphoto/src/simple_color_balance.cpp`, `grayworld_white_balance.cpp`, `learning_based_color_balance.cpp` |
-| `src/alwan/api/alwan_inpaint_opencv.c` | `photo/src/inpaint.cpp` (Telea, Navier-Stokes) |
-| `src/alwan/api/alwan_dct_denoise_opencv.c` | `xphoto/src/dct_image_denoising.cpp` |
-| `src/alwan/api/alwan_cv_dxt.c` | `core/src/dxt.cpp` (DFT and DCT) |
-| `src/alwan/api/alwan_am_filter.c` | `ximgproc` adaptive manifold filter |
-| `src/alwan/api/alwan_wmf.c` | `ximgproc` weighted median filter |
-| `src/alwan/api/alwan_resize_opencv.c`, `alwan_resize_opencv_impl.inc` | `imgproc/src/resize.cpp` (INTER_CUBIC and INTER_AREA: `resizeGeneric_`, `resizeAreaFast_`, `resizeArea_`, `computeResizeAreaTab`) |
 | `src/alwan/api/alwan_demosaic_opencv.c` | `imgproc/src/demosaicing.cpp` (`Bayer2RGB_VNG_8u`, `Bayer2RGB_EdgeAware_T`) |
-| `src/alwan/api/alwan_denoise_bilateral.c` | `imgproc/src/bilateral_filter.dispatch.cpp`, `bilateral_filter.simd.hpp` (`cv::bilateralFilter`, 8u and 32f, the AVX2 kernel's order and fused multiply-adds) |
-| `src/alwan/api/alwan_bilateral_texture.c` | `ximgproc/src/bilateral_texture_filter.cpp` (`bilateralTextureFilter`), with `imgproc` box filter's double sums and `core` `accumulateProduct` |
-| `src/alwan/api/alwan_match_template.c` | `imgproc/src/templmatch.cpp` (`common_matchTemplate`, the six `TM_*` scores) |
 | `src/alwan/api/alwan_checker_detect.c` | the cv2 operations the colour checker detector calls (resize, bilateral filter, threshold, contours, minAreaRect, approxPolyDP, warpPerspective) |
-| `src/alwan/api/alwan_optical_flow.c` | `video/src/ecc.cpp` (`findTransformECC`), `video/src/optflowgf.cpp` (`calcOpticalFlowFarneback`), with `imgproc` GaussianBlur, warpAffine/warpPerspective, filter2D and `core` dot, norm, meanStdDev, invert and small gemm to their float arithmetic |
-| `src/alwan/api/alwan_clahe.c`, `src/alwan/api/alwan_denoise.c` | CLAHE, fast non-local means and anisotropic diffusion, reproduced to OpenCV's arithmetic |
-| `src/alwan/data/opencv/rgb2lab_lut_s16.csv`, `lab2srgb_float.csv` | colour conversion tables, read back from cv2 |
 | `src/alwan/data/opencv/lbwb_*.csv` | the LearningBasedWB trained model, verbatim |
+
+The filters, restoration, editing and geometry ported from OpenCV moved to suwar with their
+notices.
 
 ## OpenColorIO
 
@@ -120,12 +99,8 @@ What alwan takes:
   University of Wisconsin-Madison and others).
 - Licence: BSD-3-Clause, `licenses/scikit-image-BSD-3-Clause.txt`.
 
-What alwan takes: routines reproduced from scikit-image's code, among them the TV-L1 and
-iterative Lucas-Kanade optical flow solvers and their coarse-to-fine pyramid
-(`registration/_optical_flow.py`, `_optical_flow_utils.py`; `alwan_optical_flow.c`), total
-variation denoising (`alwan_denoise.c`), the bilateral filter of `restoration/_denoise_cy.pyx`
-and `_denoise.py` (`alwan_denoise_bilateral.c`), and the stain and video matrices in
-`src/alwan/data/stain/` and `src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
+What alwan takes: the stain and video matrices in `src/alwan/data/stain/` and
+`src/alwan/data/video/`, read from `skimage/color/colorconv.py`.
 
 ## SciPy
 
@@ -133,15 +108,10 @@ and `_denoise.py` (`alwan_denoise_bilateral.c`), and the stain and video matrice
 - Copyright (c) 2001-2002 Enthought, Inc. 2003, SciPy Developers.
 - Licence: BSD-3-Clause, `licenses/scipy-BSD-3-Clause.txt`.
 
-What alwan takes: the B-spline interpolation of `scipy.ndimage.map_coordinates` for
-`ALWAN_WARP_BSPLINE3` and `BSPLINE5` (`src/alwan/api/alwan_warp.c`), from
-`scipy/ndimage/src/ni_splines.c` (`get_spline_interpolation_weights`, the filter poles,
-`apply_filter` with its reflect initialisations) and the 12-pixel edge padding of
-`_interpolation.py`; the local Wiener filter of `scipy/signal/_signaltools.py` (`wiener`)
-for `ALWAN_DENOISE_WIENER_LOCAL` (`src/alwan/api/alwan_denoise_bilateral.c`); the rectangular
-linear sum assignment of `scipy/optimize/rectangular_lsap/rectangular_lsap.cpp` (PM Larsen,
-after Crouse 2016) for the templated checker detector (`src/alwan/api/alwan_checker_detect.c`,
-which carries that file's notice).
+What alwan takes: the rectangular linear sum assignment of
+`scipy/optimize/rectangular_lsap/rectangular_lsap.cpp` (PM Larsen, after Crouse 2016) for the
+templated checker detector (`src/alwan/api/alwan_checker_detect.c`, which carries that file's
+notice).
 
 ## Pillow
 
@@ -152,9 +122,7 @@ which carries that file's notice).
 
 What alwan takes: routines reproduced from Pillow's libImaging to its arithmetic: the median
 cut, octree and maximum coverage quantisers (`alwan_palette_median_cut.c`,
-`alwan_quantize_octree.c`, `alwan_quantize_max_coverage.c`), resampling (`alwan_resize.c`),
-`Image.transform` (`alwan_warp.c`) and the box-blur unsharp mask (`alwan_sharpen.c`), all in
-`src/alwan/api/`.
+`alwan_quantize_octree.c`, `alwan_quantize_max_coverage.c`), all in `src/alwan/api/`.
 
 ## Bjorn Ottosson: Oklab gamut clipping, Okhsl and Okhsv
 
@@ -224,27 +192,6 @@ sections (`src/alwan/data/sky/bruneton_ozone.csv`; Bremen IUP 233 K spectra aver
 
 Preetham, Shirley and Smits 1999 ("A Practical Analytic Model for Daylight") contributes its
 published equations and its Table 2 (`src/alwan/data/sky/preetham_table2.csv`); no code.
-
-## PyWavelets
-
-- Upstream: https://github.com/PyWavelets/pywt.
-- Copyright (c) 2006-2012 Filip Wasilewski, (c) 2012 onwards the PyWavelets Developers.
-- Licence: MIT, `licenses/PyWavelets-MIT.txt`.
-
-What alwan takes: the wavelet filter banks in `src/alwan/data/wavelets/`, exported from
-PyWavelets.
-
-## AMD FidelityFX Contrast Adaptive Sharpening
-
-- Upstream: https://github.com/GPUOpen-Effects/FidelityFX-CAS, commit
-  9fabcc9a2c45f958aff55ddfda337e74ef894b7f (CAS 1.20190610).
-- Copyright (c) 2017-2019 Advanced Micro Devices, Inc. (the header); Copyright (c) 2020
-  Advanced Micro Devices, Inc. (the repository's LICENSE.txt).
-- Licence: MIT, `licenses/AMD-FidelityFX-CAS-MIT.txt`.
-
-What alwan takes: `CasFilter` and the `ffx_a.h` helpers it calls (`ALerpF1`, `APrxLoRcpF1`,
-`APrxLoSqrtF1`, `APrxMedRcpF1`), ported to C for `ALWAN_SHARPEN_CAS` in
-`src/alwan/api/alwan_sharpen.c`.
 
 ## DaltonLens-Python
 

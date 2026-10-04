@@ -72,7 +72,6 @@ Key entry points:
 - [`docs/api/grading-ocio.md`](api/grading-ocio.md)
 - [`docs/api/patterns.md`](api/patterns.md)
 - [`docs/api/image-tools.md`](api/image-tools.md)
-- [`docs/api/optical-flow.md`](api/optical-flow.md)
 - [`docs/api/importance-sampling.md`](api/importance-sampling.md)
 - [`docs/api/summed-area-table.md`](api/summed-area-table.md)
 - [`docs/api/refractive-index.md`](api/refractive-index.md)

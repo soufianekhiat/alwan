@@ -12,7 +12,7 @@
  * of eight, then halves), a float32 array averaged in float64 is reduced in buffers of
  * 8192 values, and a reduction down the rows of a 2-D array adds the rows in turn.
  *
- * SSIM's windows: GAUSSIAN is scipy's gaussian_filter (through alwan_filter, which is
+ * SSIM's windows: GAUSSIAN is scipy's gaussian_filter (a private copy of suwar_filter's path, which is
  * bit-exact to it) with truncate 3.5 and reflected borders; UNIFORM is scipy's
  * uniform_filter, a running sum along each axis, transcribed below. An 8-bit image is
  * compared on its raw values, as scikit-image casts it without rescaling; the caller
@@ -21,6 +21,7 @@
 
 #include "../alwan.h"
 #include "../alwan_internal.h"
+#include <float.h>
 #include <math.h>
 #include <string.h>
 
@@ -397,20 +398,85 @@ static void alwan__im_uniform1d(double *dst, double const *src, size_t w, size_t
     }
 }
 
+/* scipy's gaussian_filter for SSIM's window: one f64 plane, the same sigma on both axes,
+ * truncate 3.5, reflected borders. A private copy of the path suwar_filter takes for these
+ * settings (alwan does not call suwar), with the same arithmetic: the kernel normalised by
+ * numpy's pairwise sum, scipy's symmetric correlate1d down the columns, then along the rows. */
+static long alwan__im_reflect(long j, long len) {
+    long const p = 2 * len;
+    long m;
+    if (j >= 0 && j < len) return j;
+    m = j % p;
+    if (m < 0) m += p;
+    return m < len ? m : p - 1 - m;
+}
+
+static void alwan__im_corr(double *out, double const *in, size_t count, size_t len, size_t lstep, size_t istep,
+                           double const *wts, size_t half, double *ext) {
+    double const *fw = wts + half;
+    size_t l, i, ii;
+    long j;
+    int sym = 1;
+    for (ii = 1; ii <= half; ii++)
+        if (ALWAN_ABS_F64(fw[ii] - fw[-(long)ii]) > DBL_EPSILON) {
+            sym = 0;
+            break;
+        }
+    for (l = 0; l < count; l++) {
+        for (j = -(long)half; j < (long)(len + half); j++)
+            ext[j + (long)half] = in[l * lstep + (size_t)alwan__im_reflect(j, (long)len) * istep];
+        for (i = 0; i < len; i++) {
+            double const *c = ext + half + i;
+            double acc;
+            if (sym) {
+                acc = c[0] * fw[0];
+                for (j = -(long)half; j < 0; j++) acc += (c[j] + c[-j]) * fw[j];
+            } else {
+                acc = c[half] * fw[half];
+                for (j = -(long)half; j < (long)half; j++) acc += c[j] * fw[j];
+            }
+            out[l * lstep + i * istep] = acc;
+        }
+    }
+}
+
+static alwan_status alwan__im_gauss(double *dst, double const *src, size_t w, size_t h, double sigma) {
+    size_t const n = w * h, lw = (size_t)(3.5 * sigma + 0.5), kn = 2 * lw + 1;
+    size_t const extn = (w > h ? w : h) + 2 * lw + 2;
+    double const a = -0.5 / (sigma * sigma);
+    double *buf, *tmp, *k, *phi, *ext, s;
+    size_t i;
+    if (!(sigma > 0.0) || 3.5 * sigma + 0.5 >= (double)((size_t)1 << 20)) return ALWAN_E_RANGE;
+    for (i = 0; i < n; i++)
+        if (!(src[i] - src[i] == 0.0)) return ALWAN_E_INVALID;
+    if (sigma <= 1e-15) {
+        memcpy(dst, src, n * sizeof(double));
+        return ALWAN_OK;
+    }
+    buf = (double *)ALWAN_ALLOC(alwan_safe_array_size(n + 2 * kn + extn, sizeof(double)), sizeof(double));
+    if (!buf) return ALWAN_E_NOMEM;
+    tmp = buf, k = tmp + n, phi = k + kn, ext = phi + kn;
+    for (i = 0; i < kn; i++) {
+        long const x = (long)i - (long)lw;
+        phi[i] = ALWAN_EXP_F64(a * (double)(x * x));
+    }
+    s = alwan__im_pairwise(phi, kn);
+    for (i = 0; i < kn; i++) phi[i] = phi[i] / s;
+    for (i = 0; i < kn; i++) k[kn - 1 - i] = phi[i];
+    alwan__im_corr(tmp, src, w, h, 1, w, k, lw, ext);
+    alwan__im_corr(dst, tmp, h, w, w, 1, k, lw, ext);
+    ALWAN_FREE(buf);
+    return ALWAN_OK;
+}
+
 static alwan_status alwan__im_window(double *dst, double const *src, size_t w, size_t h, int uniform, size_t win,
                                      double sigma, double *tmp, double *line) {
     if (uniform) {
         alwan__im_uniform1d(tmp, src, w, h, win, 0, line);
         alwan__im_uniform1d(dst, tmp, w, h, win, 1, line);
         return ALWAN_OK;
-    } else {
-        alwan_filter_params fp;
-        memset(&fp, 0, sizeof fp);
-        fp.sigma = sigma;
-        fp.truncate = 3.5;
-        fp.border = ALWAN_FILTER_BORDER_REFLECT;
-        return alwan_filter_f64(dst, w * sizeof(double), src, w * sizeof(double), 1, w, h, ALWAN_FILTER_GAUSSIAN, &fp);
     }
+    return alwan__im_gauss(dst, src, w, h, sigma);
 }
 
 /* One channel's mean SSIM, the map cropped by (win - 1) / 2 and averaged row by row. */

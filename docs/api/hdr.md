@@ -755,7 +755,7 @@ compare their raw values, as scikit-image casts them without rescaling.
 The sums follow numpy's orders, which is where two correct implementations part in the last
 bits. A mean over a contiguous array is numpy's pairwise sum. A float32 array averaged in
 float64, and a cropped view, are reduced through buffers of 8192 values. The Gaussian runs
-through `alwan_filter`, which is bit-exact to scipy, and the box is scipy's running sum
+through a private copy of scipy.ndimage's separable Gaussian, bit-exact to scipy, and the box is scipy's running sum
 transcribed from `ni_filters.c`.
 
 In suite 256 on a 3-channel pair:

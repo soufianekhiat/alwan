@@ -1,5 +1,29 @@
 ## [Unreleased]
 
+### Removed: filters, restoration, editing and geometry moved to suwar
+
+The second part of the split: these families now live in suwar with suwar_ names, the same
+methods and the same results. Gone from alwan, with their suites, reference tables and
+generators: alwan_filter (Gaussian, DoG, LoG, Laplace, Butterworth) and alwan_filter_border;
+the edge-aware filters of alwan_edge_filter (guided, joint bilateral, domain transform, fast
+global smoother, rolling guidance, L0, adaptive manifold, weighted median, bilateral
+texture); alwan_denoise and alwan_denoise_u8 (wavelet with the wavelet tables, NL-means, TV
+and split Bregman, both DCT denoisers, the OpenCV and scikit-image bilateral filters, Wiener,
+anisotropic diffusion, median); alwan_dehaze; alwan_sharpen (unsharp, CAS, box unsharp);
+alwan_deconvolve; alwan_inpaint (biharmonic, Telea, Navier-Stokes); gradient-domain editing;
+alwan_stylize (with oil painting); alwan_decolor; CLAHE, histogram equalisation and
+histogram matching; local contrast and the local Laplacian filter; rolling-ball background;
+alwan_histogram3d; colour transfer (Reinhard, MKL and the batch 14 methods); alwan_resize
+(Pillow and OpenCV resamplers), alwan_warp with its pixel kernels and integration,
+alwan_low_discrepancy_points; alwan_register, alwan_optical_flow and the flow helpers;
+alwan_match_template; and the internal FFT and DCT. `docs/api/optical-flow.md` went with
+them. The notices and licence texts used only by that code (the OpenCV Intel and Willow
+Garage BSD headers, the ximgproc BSD header, AMD FidelityFX CAS, PyWavelets) moved too.
+
+The structural similarity and the other image metrics stay in alwan; their Gaussian window
+is now a private copy of the separable filter they called, with the same arithmetic and the
+same results (suite 256 unchanged).
+
 ### Removed: image analysis moved to suwar
 
 alwan is a colour-science library; the image-analysis families now live in suwar, the image

@@ -101,21 +101,15 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_atd95.c
   src/alwan/api/alwan_cam.c
   src/alwan/api/alwan_camera.c
-  src/alwan/api/alwan_decolor.c
   src/alwan/api/alwan_dither.c
   src/alwan/api/alwan_composite.c
-  src/alwan/api/alwan_gradient_edit.c
-  src/alwan/api/alwan_stylize.c
   src/alwan/api/alwan_importance_sampling.c
-  src/alwan/api/alwan_low_discrepancy.c
   src/alwan/api/alwan_delta_e_dispatch.c
   src/alwan/api/alwan_summed_area_table.c
   src/alwan/api/alwan_env_sampling.c
   src/alwan/api/alwan_ibl.c
   src/alwan/api/alwan_iridescence.c
   src/alwan/api/alwan_wavelength_sampling.c
-  src/alwan/api/alwan_cv_dxt.c
-  src/alwan/api/alwan_dct_denoise_opencv.c
   src/alwan/api/alwan_white_balance.c
   src/alwan/api/alwan_dng.c
   src/alwan/api/alwan_exposure.c
@@ -154,19 +148,8 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_quantize_ext.c
   src/alwan/api/alwan_quantize_max_coverage.c
   src/alwan/api/alwan_quantize_octree.c
-  src/alwan/api/alwan_histogram3d.c
-  src/alwan/api/alwan_fft.c
-  src/alwan/api/alwan_filter.c
-  src/alwan/api/alwan_register.c
-  src/alwan/api/alwan_optical_flow.c
   src/alwan/api/alwan_colormap.c
-  src/alwan/api/alwan_match_template.c
   src/alwan/api/alwan_luminaire.c
-  src/alwan/api/alwan_l0_smooth.c
-  src/alwan/api/alwan_deconvolve.c
-  src/alwan/api/alwan_inpaint.c
-  src/alwan/api/alwan_inpaint_opencv.c
-  src/alwan/api/alwan_background.c
   src/alwan/api/alwan_vignette.c
   src/alwan/api/alwan_light_probe.c
   src/alwan/api/alwan_spectrum_meng2015.c
@@ -176,27 +159,6 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_fluorescence.c
   src/alwan/api/alwan_sky.c
   src/alwan/api/alwan_corresponding.c
-  src/alwan/api/alwan_denoise_nlm.c
-  src/alwan/api/alwan_resize.c
-  src/alwan/api/alwan_resize_opencv.c
-  src/alwan/api/alwan_warp.c
-  src/alwan/api/alwan_edge_filter.c
-  src/alwan/api/alwan_guided_filter.c
-  src/alwan/api/alwan_histogram_match.c
-  src/alwan/api/alwan_dehaze.c
-  src/alwan/api/alwan_color_transfer.c
-  src/alwan/api/alwan_bilateral.c
-  src/alwan/api/alwan_bilateral_texture.c
-  src/alwan/api/alwan_domain_transform.c
-  src/alwan/api/alwan_fast_global_smoother.c
-  src/alwan/api/alwan_am_filter.c
-  src/alwan/api/alwan_wmf.c
-  src/alwan/api/alwan_clahe.c
-  src/alwan/api/alwan_local_laplacian.c
-  src/alwan/api/alwan_local_contrast.c
-  src/alwan/api/alwan_denoise.c
-  src/alwan/api/alwan_denoise_bilateral.c
-  src/alwan/api/alwan_sharpen.c
   src/alwan/api/alwan_colorspace.c
   src/alwan/map/alwan_color_correction_map.c
   src/alwan/map/alwan_colorspace_map.c
