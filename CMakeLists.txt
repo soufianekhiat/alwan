@@ -180,6 +180,9 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_stain.c
   src/alwan/api/alwan_video_spaces.c
   src/alwan/api/alwan_image_metrics.c
+  src/alwan/api/alwan_flip.c
+  src/alwan/api/alwan_tone_adjust.c
+  src/alwan/api/alwan_hald.c
   src/alwan/api/alwan_macadam.c
   src/alwan/api/alwan_quality.c
   src/alwan/api/alwan_quality_colour.c

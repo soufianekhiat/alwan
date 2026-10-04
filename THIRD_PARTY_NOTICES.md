@@ -193,6 +193,19 @@ What alwan takes: HCT (Cam16.fromInt in Material's viewing conditions, HctSolver
 tonal palette (`src/alwan/api/alwan_hct.c`), and the solver's critical planes
 (`src/alwan/data/hct/critical_planes.csv`), translated from JavaScript to C.
 
+## FLIP (NVIDIA)
+
+- Upstream: https://github.com/NVlabs/flip (commit b475eb4, 2025-11-07; the flip-evaluator
+  1.7 package).
+- Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES.
+- Licence: BSD-3-Clause, `licenses/NVIDIA-FLIP-BSD-3-Clause.txt`; the notice is also at the
+  head of the ported file.
+
+What alwan takes: LDR-FLIP and HDR-FLIP from `src/cpp/FLIP.h`, translated from C++ to C
+(`src/alwan/api/alwan_flip.c`). That covers the YCxCz and CIELAB conversions with their
+constants, the contrast sensitivity and feature filters, the HyAB colour difference and its
+remapping, the tone mappers' coefficients and the automatic exposure range.
+
 ## Tony McMapface
 
 - Upstream: https://github.com/h3r2tic/tony-mc-mapface.

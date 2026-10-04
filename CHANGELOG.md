@@ -1,5 +1,33 @@
 ## [Unreleased]
 
+### Added: FLIP, tonal adjustments, Hald CLUTs
+
+- **FLIP.** `alwan_flip_{T}` and `alwan_flip_ppd`: NVIDIA's perceptual difference evaluator,
+  LDR and HDR (ACES, Hable or Reinhard tone mapping, automatic or given exposure range). It
+  returns a per-pixel error map, an exposure map and the mean, with pixels per degree as a
+  parameter. Ported from NVIDIA's reference implementation (BSD-3-Clause). Suite 304: the map,
+  the mean and the exposure range equal flip-evaluator 1.7 to the bit in 11 cases; identical
+  images give 0 and the error rises with the noise.
+- **Tonal adjustments.** `alwan_tone_adjust_{T}` and `alwan_tone_adjust_u8`, all per pixel:
+  - levels;
+  - posterize, ImageMagick's rounding by default, or Pillow's top-bits floor with
+    `pillow_bits`;
+  - solarize;
+  - sigmoidal contrast and its inverse;
+  - modulate in OKLCH (the default), HSL or HSV.
+
+  Suite 305: Pillow's `ImageOps.posterize` and `solarize` exact on 8-bit; ImageMagick's
+  formulas within 2.8e-16; modulate within 9.6e-15. Auto-level, auto-gamma and autocontrast
+  need image statistics and are suwar's.
+- **Hald CLUTs.** `alwan_hald_dimensions`, `alwan_hald_identity`,
+  `alwan_hald_to_lut3d_{T}`, `alwan_lut3d_to_hald_{T}` and `alwan_hald_apply_{T}`
+  (trilinear, tetrahedral, prism, pyramid or nearest, through `alwan_table3d_sample_{T}`).
+  Suite 305: the identity is ImageMagick's `hald:` layout to the bit, and round trips are
+  exact.
+- darktable's sigmoid and colour balance rgb were considered and left out. darktable's
+  manual describes them only in words, and its code is GPL, so there is no published
+  formula to implement from.
+
 ### Added: CSS Color 4/5, Okhwb, HCT
 
 - **CSS colour spaces and color-mix().** `alwan_css_color_convert_{T}`,

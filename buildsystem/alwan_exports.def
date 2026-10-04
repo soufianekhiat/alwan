@@ -703,6 +703,9 @@ EXPORTS
     alwan_film_stock_info
     alwan_film_transmittance_f32
     alwan_film_transmittance_f64
+    alwan_flip_f32
+    alwan_flip_f64
+    alwan_flip_ppd
     alwan_float_to_half
     alwan_float_to_uint_f32
     alwan_float_to_uint_f64
@@ -779,6 +782,12 @@ EXPORTS
     alwan_h273_matrix_coefficients_f64
     alwan_h273_transfer_from_tf
     alwan_h273_transfer_to_tf
+    alwan_hald_apply_f32
+    alwan_hald_apply_f64
+    alwan_hald_dimensions
+    alwan_hald_identity
+    alwan_hald_to_lut3d_f32
+    alwan_hald_to_lut3d_f64
     alwan_half_to_float
     alwan_hcl_to_rgb_f32
     alwan_hcl_to_rgb_f32_map_interleave
@@ -1233,6 +1242,8 @@ EXPORTS
     alwan_lut3d_invert_f64
     alwan_lut3d_to_2d_f32
     alwan_lut3d_to_2d_f64
+    alwan_lut3d_to_hald_f32
+    alwan_lut3d_to_hald_f64
     alwan_luv_to_lchuv_f32
     alwan_luv_to_lchuv_f32_map_interleave
     alwan_luv_to_lchuv_f32_map_planar
@@ -1997,6 +2008,9 @@ EXPORTS
     alwan_tm30_rf_f64
     alwan_tm30_specification_f32
     alwan_tm30_specification_f64
+    alwan_tone_adjust_f32
+    alwan_tone_adjust_f64
+    alwan_tone_adjust_u8
     alwan_tonemap_global_f32
     alwan_tonemap_global_f64
     alwan_tonescale_grade_f32

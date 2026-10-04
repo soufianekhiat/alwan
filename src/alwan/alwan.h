@@ -10366,6 +10366,146 @@ alwan_status alwan_pu21_ssim_f64(alwan_f64 *ssim_out, alwan_f64 const *test, siz
 alwan_status alwan_pu21_ssim_f32(alwan_f32 *ssim_out, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, alwan_pu21_variant variant);
 
 /* ----------------------------------------------------------------
+ * FLIP: perceptual difference of a test image from a reference, Andersson et al. 2020
+ * ("FLIP: A Difference Evaluator for Alternating Images") and its HDR extension,
+ * Andersson et al. 2021 ("Visualizing Errors in Rendered High Dynamic Range Images").
+ * A port of NVIDIA's reference implementation (BSD-3-Clause, THIRD_PARTY_NOTICES.md),
+ * kept to its float arithmetic: the error map agrees with the flip-evaluator package to
+ * float rounding (suite 304).
+ *
+ * reference and test: width x height RGB pixels, 3 values each, rows row_stride bytes
+ * apart. error_map (may be NULL): one float per pixel in [0, 1], 0 where the images
+ * agree. exposure_map (may be NULL; HDR): for each pixel, where in the exposure range
+ * its largest error was found, 0 at the start exposure and 1 at the stop (0 for LDR).
+ * result (may be NULL): the mean error (FLIP's float sum in raster order), and the ppd
+ * and exposures used. At least one output must be given. Both precisions compute in
+ * float, as FLIP does; the f64 form converts its input.
+ *
+ * LDR: values in [0, 1] (limited to it before comparing), sRGB-encoded by default as
+ * flip-evaluator assumes, or linear with input = ALWAN_FLIP_INPUT_LINEAR. HDR: linear
+ * values; each image is exposed over num_exposures stops between start and stop, tone
+ * mapped, limited to [0, 1], compared by LDR-FLIP, and the largest error kept. Without
+ * exposures_given the range comes from the reference as FLIP computes it (from its
+ * largest and median luminance); ALWAN_E_RANGE when it cannot (an all-black reference).
+ * ppd: pixels per degree of visual angle; 0 reads as FLIP's default, a 3840 pixel wide
+ * display 0.7 m wide seen from 0.7 m (67.0 ppd); alwan_flip_ppd computes it for other
+ * viewing conditions. ALWAN_E_INVALID on a NULL image, no output, a non-finite value or
+ * an unknown enum; ALWAN_E_RANGE for a ppd that is negative, below 0.01 or above 10000.
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_FLIP_LDR = 0,
+    ALWAN_FLIP_HDR = 1
+} alwan_flip_range;
+
+typedef enum {
+    ALWAN_FLIP_INPUT_SRGB = 0,    /* LDR values are sRGB-encoded (flip-evaluator's default) */
+    ALWAN_FLIP_INPUT_LINEAR = 1   /* LDR values are linear sRGB; HDR values always are */
+} alwan_flip_input;
+
+typedef enum {
+    ALWAN_FLIP_TONEMAP_ACES = 0,  /* FLIP's default: Narkowicz's fit, its 0.6 pre-exposure cancelled */
+    ALWAN_FLIP_TONEMAP_HABLE = 1,
+    ALWAN_FLIP_TONEMAP_REINHARD = 2
+} alwan_flip_tonemapper;
+
+typedef struct {
+    alwan_flip_range range;
+    alwan_flip_input input;           /* LDR only */
+    alwan_flip_tonemapper tonemapper; /* HDR only */
+    double ppd;                       /* 0 reads as 67.0 (FLIP's default viewing conditions) */
+    int exposures_given;              /* HDR: non-zero uses start/stop_exposure below */
+    double start_exposure, stop_exposure;
+    int num_exposures;                /* HDR: 0 reads as max(2, ceil(stop - start)) */
+} alwan_flip_params;
+
+typedef struct {
+    double mean;                      /* mean of the error map */
+    double ppd;                       /* the ppd used */
+    double start_exposure, stop_exposure; /* HDR: the range used (computed or given) */
+    int num_exposures;                /* HDR: the number of exposures; 0 for LDR */
+} alwan_flip_result;
+
+/* Pixels per degree for a display display_width_px pixels and display_width_m metres
+ * wide seen from distance_m metres, as FLIP computes it (in float). */
+alwan_f32 alwan_flip_ppd(alwan_f32 distance_m, alwan_f32 display_width_px, alwan_f32 display_width_m);
+
+alwan_status alwan_flip_f32(alwan_f32 *error_map, size_t error_row_stride, alwan_f32 *exposure_map, size_t exposure_row_stride, alwan_flip_result *result, alwan_f32 const *reference, size_t reference_row_stride, alwan_f32 const *test, size_t test_row_stride, size_t width, size_t height, alwan_flip_params const *params, alwan_ctx *ctx);
+alwan_status alwan_flip_f64(alwan_f32 *error_map, size_t error_row_stride, alwan_f32 *exposure_map, size_t exposure_row_stride, alwan_flip_result *result, alwan_f64 const *reference, size_t reference_row_stride, alwan_f64 const *test, size_t test_row_stride, size_t width, size_t height, alwan_flip_params const *params, alwan_ctx *ctx);
+
+/* ----------------------------------------------------------------
+ * Per-pixel tonal adjustments
+ *
+ * Each maps a pixel's values to new values on its own: no neighbours, no image
+ * statistics (auto-level, auto-gamma and autocontrast with a cutoff need the image's
+ * histogram and are suwar's). count pixels of channels values (1 to 4), each pixel
+ * stride bytes from the last (0 for packed); the alpha (the 2nd of 2, the 4th of 4) is
+ * copied. out may be in. Values are in [0, 1] (8-bit codes / 255 for the u8 form, which
+ * rounds to nearest when it stores). Nothing is clamped unless the method says so.
+ *
+ *   LEVELS       out_black + (out_white - out_black) g(x), x = (v - in_black) /
+ *                (in_white - in_black), g(x) = x^(1/gamma) and x below 0 passing
+ *                linearly, as ImageMagick's -level. clamp limits x to [0, 1].
+ *                in_white, out_white and gamma read 0 as 1.
+ *   POSTERIZE    levels per channel (0 reads as 4): floor(v (levels - 1) + 0.5) /
+ *                (levels - 1), ImageMagick's -posterize. pillow_bits (1 to 8; u8 only)
+ *                is Pillow's ImageOps.posterize instead: it keeps the top bits of each
+ *                code, a floor that never reaches white (bits 2 gives 0, 64, 128, 192).
+ *   SOLARIZE     v >= threshold becomes 1 - v (Pillow's ImageOps.solarize; ImageMagick
+ *                inverts only above it). threshold 0 reads as 0.5; Pillow's default
+ *                128 is 128 / 255.
+ *   SIGMOIDAL_CONTRAST  ImageMagick's -sigmoidal-contrast: with Sig(x) = 1 / (1 +
+ *                exp(contrast (midpoint - x))), (Sig(v) - Sig(0)) / (Sig(1) - Sig(0)).
+ *                contrast 0 is the identity; midpoint 0 reads as 0.5.
+ *   SIGMOIDAL_CONTRAST_INVERSE  its inverse (+sigmoidal-contrast), the logistic's
+ *                argument limited to (1e-12, 1 - 1e-12) as ImageMagick limits it.
+ *   MODULATE     brightness, saturation and hue on 3 colour channels (3 or 4 values).
+ *                brightness and saturation are relative changes: 0 unchanged, -1 to
+ *                zero, 0.5 for 1.5 times. hue is a rotation in [-1, 1] of half turns
+ *                (hue / pi: 1 and -1 are 180 degrees). OKLCH, the default, scales Oklab
+ *                L and chroma and turns the Oklab hue of sRGB-encoded values (linear
+ *                sRGB with input_linear): perceptual and hue-preserving. HSL and HSV are
+ *                ImageMagick's -modulate in those models (its default is HSL), on the
+ *                encoded values. Results may leave [0, 1]; nothing is clamped.
+ *
+ * ALWAN_E_INVALID on NULL buffers, channels outside 1 to 4, an unknown method or space,
+ * MODULATE without 3 colour channels, pillow_bits outside the u8 form; ALWAN_E_RANGE on
+ * a parameter that is not finite or is out of its range (in_white equal to in_black, a
+ * gamma that is not positive, fewer than 2 levels, a negative contrast, a brightness or
+ * saturation below -1).
+ * ---------------------------------------------------------------- */
+typedef enum {
+    ALWAN_TONE_ADJUST_LEVELS = 0,
+    ALWAN_TONE_ADJUST_POSTERIZE = 1,
+    ALWAN_TONE_ADJUST_SOLARIZE = 2,
+    ALWAN_TONE_ADJUST_SIGMOIDAL_CONTRAST = 3,
+    ALWAN_TONE_ADJUST_SIGMOIDAL_CONTRAST_INVERSE = 4,
+    ALWAN_TONE_ADJUST_MODULATE = 5
+} alwan_tone_adjust_method;
+
+typedef enum {
+    ALWAN_MODULATE_OKLCH = 0,
+    ALWAN_MODULATE_HSL = 1,
+    ALWAN_MODULATE_HSV = 2
+} alwan_modulate_space;
+
+/* A zero field is the default named above. */
+typedef struct {
+    double in_black, in_white, gamma, out_black, out_white; /* LEVELS */
+    int clamp;                                              /* LEVELS */
+    int levels;                                             /* POSTERIZE */
+    int pillow_bits;                                        /* POSTERIZE, u8 only */
+    double threshold;                                       /* SOLARIZE */
+    double contrast, midpoint;                              /* SIGMOIDAL_CONTRAST(_INVERSE) */
+    alwan_modulate_space space;                             /* MODULATE */
+    double brightness, saturation, hue;                     /* MODULATE */
+    int input_linear;                                       /* MODULATE OKLCH */
+} alwan_tone_adjust_params;
+
+alwan_status alwan_tone_adjust_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t channels, alwan_tone_adjust_method method, alwan_tone_adjust_params const *params);
+alwan_status alwan_tone_adjust_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t channels, alwan_tone_adjust_method method, alwan_tone_adjust_params const *params);
+alwan_status alwan_tone_adjust_u8(unsigned char *out, size_t out_stride, unsigned char const *in, size_t in_stride, size_t count, size_t channels, alwan_tone_adjust_method method, alwan_tone_adjust_params const *params);
+
+/* ----------------------------------------------------------------
  * ISO 21496-1 gain maps
  *
  * A gain map stores, per pixel and channel, the log2 ratio between a base rendition
@@ -11494,6 +11634,32 @@ alwan_status alwan_lut3d_invert_f64(alwan_f64 *out, int out_size,
 alwan_status alwan_lut3d_invert_f32(alwan_f32 *out, int out_size,
                         alwan_f32 const *lut, int size,
                         int iterations, alwan_f32 *out_worst_residual);
+
+/* ----------------------------------------------------------------
+ * Hald CLUTs
+ *
+ * A level-L Hald image (ImageMagick's hald:L and -hald-clut, G'MIC) is L^3 x L^3 RGB
+ * pixels holding a cube of edge N = L^2: pixel i in row-major order holds where the grid
+ * point (i mod N, (i / N) mod N, i / N^2) / (N - 1) goes. That is alwan's R-fastest
+ * cube, so a Hald image and a cube convert by a copy. level 2 to 16 (cube edge 4 to
+ * 256). Hald images have rows row_stride bytes apart (0 for packed) in any
+ * alwan_pixel_format; integer formats store rounded to nearest. Suite 305.
+ *
+ * alwan_hald_dimensions: the image's side (L^3) and the cube's edge (L^2).
+ * alwan_hald_identity: the image that maps every colour to itself.
+ * alwan_hald_to_lut3d_{T}, alwan_lut3d_to_hald_{T}: cube of (L^2)^3 * 3 values <-> image.
+ * alwan_hald_apply_{T}: count RGB pixels (stride bytes apart, 0 for packed) through the
+ *   cube, sampled with alwan_table3d_sample (0 is trilinear; TETRAHEDRAL, PRISM, PYRAMID,
+ *   NEAREST). out may be in.
+ * ---------------------------------------------------------------- */
+alwan_status alwan_hald_dimensions(size_t *side, size_t *cube_size, int level);
+alwan_status alwan_hald_identity(void *out, size_t row_stride, alwan_pixel_format fmt, int level);
+alwan_status alwan_hald_to_lut3d_f64(alwan_f64 *lut, void const *hald, size_t row_stride, alwan_pixel_format fmt, int level);
+alwan_status alwan_hald_to_lut3d_f32(alwan_f32 *lut, void const *hald, size_t row_stride, alwan_pixel_format fmt, int level);
+alwan_status alwan_lut3d_to_hald_f64(void *hald, size_t row_stride, alwan_pixel_format fmt, alwan_f64 const *lut, int level);
+alwan_status alwan_lut3d_to_hald_f32(void *hald, size_t row_stride, alwan_pixel_format fmt, alwan_f32 const *lut, int level);
+alwan_status alwan_hald_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const *lut, int level, alwan_sample_mode mode);
+alwan_status alwan_hald_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const *lut, int level, alwan_sample_mode mode);
 
 /* ----------------------------------------------------------------
  * .cube File Import / Export

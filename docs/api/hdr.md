@@ -770,6 +770,79 @@ In suite 256 on a 3-channel pair:
 normalisation or window, or a data range that is not finite and positive. `ALWAN_E_RANGE` for
 an even window, a window larger than the image, a negative `k1` or `k2`, or a sigma over 64.
 
+## FLIP
+
+```c
+alwan_status alwan_flip_{T}(alwan_f32 *error_map, size_t error_row_stride,
+                            alwan_f32 *exposure_map, size_t exposure_row_stride,
+                            alwan_flip_result *result,
+                            alwan_{T} const *reference, size_t reference_row_stride,
+                            alwan_{T} const *test, size_t test_row_stride,
+                            size_t width, size_t height,
+                            alwan_flip_params const *params, alwan_ctx *ctx);
+alwan_f32 alwan_flip_ppd(alwan_f32 distance_m, alwan_f32 display_width_px, alwan_f32 display_width_m);
+```
+
+FLIP (Andersson, Nilsson, Akenine-Moller, Oskarsson, Astrom and Fairchild, HPG 2020) and its
+HDR extension (Eurographics 2021): how visible the difference between a test image and a
+reference is when a viewer flips between them. It is a port of NVIDIA's reference
+implementation (BSD-3-Clause; the notice is in `THIRD_PARTY_NOTICES.md` and
+`licenses/NVIDIA-FLIP-BSD-3-Clause.txt`), kept to its float arithmetic.
+
+Each image is `width x height` RGB pixels; a row stride of 0 means packed rows. The outputs:
+
+- `error_map`: one float per pixel in `[0, 1]`, 0 where the images agree.
+- `exposure_map` (HDR): where in the exposure range each pixel's largest error was found, 0 at
+  the start exposure and 1 at the stop. It is all 0 for LDR.
+- `result`: the mean error (FLIP's float sum in raster order), and the ppd and exposures used.
+
+Any output may be `NULL`, but not all three. Both precisions compute in float, as FLIP does;
+`alwan_flip_f64` converts its input.
+
+**LDR-FLIP.** Values in `[0, 1]`, limited to it first. They are sRGB-encoded by default, as
+flip-evaluator assumes (`ALWAN_FLIP_INPUT_SRGB`), or linear sRGB with
+`ALWAN_FLIP_INPUT_LINEAR`. The colour pipeline:
+
+1. Opponent space YCxCz.
+2. The contrast sensitivity filters, as separable kernels with the edge sample repeated at
+   the borders.
+3. CIELAB with the Hunt adjustment, then HyAB.
+4. FLIP's remapping.
+
+The feature pipeline takes Gaussian first and second derivatives of the achromatic channel,
+at a width set by the ppd. The error is `colour ^ (1 - feature)`.
+
+**HDR-FLIP.** Linear values. Each image is:
+
+1. Exposed at `num_exposures` stops from `start_exposure` to `stop_exposure`.
+2. Tone mapped (ACES by default, Hable or Reinhard).
+3. Limited to `[0, 1]` and compared by LDR-FLIP.
+
+Each pixel keeps its largest error. Without `exposures_given`, the range comes from the
+reference as FLIP computes it: the exposures where the tone mapper takes the largest and the
+median luminance to 0.85. `num_exposures` 0 reads as `max(2, ceil(stop - start))`. An
+all-black reference has no range: `ALWAN_E_RANGE`.
+
+**Viewing conditions.** `ppd` is pixels per degree of visual angle. 0 reads as FLIP's default:
+a 3840 pixel wide display, 0.7 m wide, seen from 0.7 m, which is 67.02 ppd.
+`alwan_flip_ppd(distance, pixels, width)` computes it for other conditions. A lower ppd (a
+closer viewer or a larger display) widens the filters, and the same difference scores higher.
+
+FLIP sits beside PSNR and SSIM rather than replacing them. It is a perceptual map of where a
+viewer flipping between the images sees a difference, not a statistic of the values.
+
+In suite 304 the map, the mean and the automatic exposure range equal the flip-evaluator 1.7
+package to the bit. The cases cover sRGB and linear LDR input, ppd 20, 67 and 120, an edge
+displacement, every tone mapper and given ranges. The suite also checks that identical
+images give 0, and that the error rises with the noise amplitude (0.029 at 0.01 up to 0.217
+at 0.16). The deterministic build replaces pow and exp with its polynomials, and its map stays
+within 6.4e-6 of the package.
+
+**Returns:** `ALWAN_E_INVALID` for a NULL image, no output, a non-finite value or an unknown
+enum. `ALWAN_E_RANGE` for a ppd that is negative, below 0.01 or over 10000, a start exposure above the
+stop, or an all-black HDR reference with automatic exposures. `ALWAN_E_NOMEM` when the
+working buffers (about 130 bytes a pixel) cannot be allocated.
+
 ## Error Codes
 
 - `ALWAN_OK` (0) -- Success

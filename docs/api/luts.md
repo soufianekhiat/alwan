@@ -1,8 +1,8 @@
 # LUT Baking, Interchange And Sampling API
 
 Bake a colour pipeline into a lookup table, move that table in and out of
-`.cube`, `.spi1d`, `.spi3d`, `.3dl`, `.csp`, `.spimtx` and CLF, sample it, and
-invert it.
+`.cube`, `.spi1d`, `.spi3d`, `.3dl`, `.csp`, `.spimtx`, CLF and Hald CLUT
+images, sample it, and invert it.
 
 > **Precision variants:** Every function shown as `name_{T}` exists in two forms:
 > `name_f32` (single precision, `float`) and `name_f64` (double precision, `double`).
@@ -166,6 +166,57 @@ alwan_lut2d_dimensions(33, &w, &h);          /* 1089 x 33 */
 alwan_f32 *strip = malloc((size_t)w * h * 3 * sizeof *strip);
 alwan_lut3d_to_2d_f32(strip, lut, 33);
 ```
+
+---
+
+## Hald CLUTs
+
+```c
+alwan_status alwan_hald_dimensions(size_t *side, size_t *cube_size, int level);
+alwan_status alwan_hald_identity(void *out, size_t row_stride, alwan_pixel_format fmt, int level);
+alwan_status alwan_hald_to_lut3d_{T}(alwan_{T} *lut, void const *hald, size_t row_stride,
+                                     alwan_pixel_format fmt, int level);
+alwan_status alwan_lut3d_to_hald_{T}(void *hald, size_t row_stride, alwan_pixel_format fmt,
+                                     alwan_{T} const *lut, int level);
+alwan_status alwan_hald_apply_{T}(alwan_{T} *out, size_t out_stride, alwan_{T} const *in, size_t in_stride,
+                                  size_t count, alwan_{T} const *lut, int level, alwan_sample_mode mode);
+```
+
+A Hald CLUT is a 3-D LUT stored as an ordinary image, so any image editor can grade it: run
+the identity image through a grade, save it, and the saved image is the grade's LUT.
+ImageMagick (`hald:` and `-hald-clut`), G'MIC and darktable read them. A level-L Hald image is
+`L^3 x L^3` RGB pixels holding a cube of edge `N = L^2`. Pixel `i` in row-major order holds
+the colour that the grid point `(i mod N, (i / N) mod N, i / N^2) / (N - 1)` maps to.
+
+That is alwan's red-fastest cube layout (see [Layout](#layout)). Converting between a Hald
+image and a cube is a copy that changes the pixel format and drops or adds row padding.
+Applying one is `alwan_table3d_sample_{T}`. Levels run from 2 to 16 (cube edge 4 to 256);
+level 8, a 512 x 512 image of a 64-point cube, is the common one.
+
+- `alwan_hald_dimensions` gives the image side (`L^3`) and the cube edge (`L^2`).
+- `alwan_hald_identity` writes the image that maps every colour to itself.
+- `alwan_hald_to_lut3d_{T}` and `alwan_lut3d_to_hald_{T}` convert, to and from a cube of
+  `(L^2)^3 x 3` values, in any `alwan_pixel_format` (8 and 16-bit integers, half, float,
+  double). A row stride of 0 means packed rows. Integer formats store rounded to nearest.
+- `alwan_hald_apply_{T}` passes `count` RGB pixels through the cube with the sampling mode:
+  `ALWAN_SAMPLE_TRILINEAR`, `ALWAN_SAMPLE_TETRAHEDRAL`, `ALWAN_SAMPLE_PRISM`,
+  `ALWAN_SAMPLE_PYRAMID` or `ALWAN_SAMPLE_NEAREST`. `out` may be `in`.
+
+An 8-bit Hald identity is exact only when `N - 1` divides 255, which is levels 2 and 4. At
+level 8 the grid values `i / 63` round to the nearest code, by up to half a code. A 16-bit
+identity is exact at levels 2, 4 and 16.
+
+In suite 305:
+
+- The identity is ImageMagick's `hald:` coder layout, transcribed, to the bit.
+- A level-3 CLUT samples within 2.2e-16 of colour's `table_interpolation_trilinear` and
+  `table_interpolation_tetrahedral`.
+- The level-4 identity moves a colour by at most 2.2e-16.
+- Cube to Hald to cube round trips are bit-identical in f64 and f32, and 8-bit Hald to cube to
+  8-bit Hald is bit-identical too.
+
+**Returns:** `ALWAN_E_RANGE` for a level outside 2 to 16. `ALWAN_E_INVALID` for a `NULL`, an
+unknown pixel format, or a row stride shorter than a row.
 
 ---
 
