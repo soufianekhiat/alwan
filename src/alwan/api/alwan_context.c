@@ -147,11 +147,11 @@ void alwan_destroy(alwan_ctx *ctx) {
     ctx->free_fn(ctx);
 }
 
-void *alwan_ctx_alloc(alwan_ctx *ctx, size_t bytes, size_t align) {
+void *alwan_ctx_alloc(size_t bytes, size_t align, alwan_ctx *ctx) {
     return ctx ? ctx->alloc_fn(bytes, align) : ALWAN_ALLOC(bytes, align);
 }
 
-void alwan_ctx_free(alwan_ctx *ctx, void *ptr) {
+void alwan_ctx_free(void *ptr, alwan_ctx *ctx) {
     if (!ptr) return;
     if (ctx) {
         ctx->free_fn(ptr);

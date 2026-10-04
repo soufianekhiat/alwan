@@ -635,7 +635,7 @@ ALWAN_INLINE alwan_scalar alwan_det_log2(alwan_scalar x) {
      * the polynomial made of a zero mantissa. Not reachable from the transfer
      * functions, which clamp first, but reachable the moment anything else on
      * a GPU path calls it, and a silent difference from the C path either way. */
-    if (x <= (alwan_scalar)0.0) return -ALWAN_LITERAL(1.0) / (alwan_scalar)0.0;
+    if (x <= (alwan_scalar)0.0) return ALWAN_DET_NEG_INF;
     {
     ALWAN_DET_EXPT e; alwan_scalar m = ALWAN_DET_FREXP(x, e);   /* m in [0.5,1), e = exponent */
     alwan_scalar u = (alwan_scalar)2.0 * (m - (alwan_scalar)0.5) / (alwan_scalar)0.5 - (alwan_scalar)1.0;

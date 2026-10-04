@@ -122,12 +122,12 @@ void alwan_destroy(alwan_ctx *ctx);
 
 /* Allocate and free through a context's allocator: the callbacks alwan_create was given, or
  * the default allocator when ctx is NULL or was created without callbacks. align is a power of
- * two (0 means the platform's malloc alignment). alwan_ctx_free(ctx, NULL) does nothing. Free
+ * two (0 means the platform's malloc alignment). alwan_ctx_free(NULL, ctx) does nothing. Free
  * a block with the same ctx (or NULL for both) it was allocated with. These are for libraries
  * built on alwan (see alwan_foundation.h and docs/foundation.md): alwan's own functions
  * allocate the same way. */
-void *alwan_ctx_alloc(alwan_ctx *ctx, size_t bytes, size_t align);
-void alwan_ctx_free(alwan_ctx *ctx, void *ptr);
+void *alwan_ctx_alloc(size_t bytes, size_t align, alwan_ctx *ctx);
+void alwan_ctx_free(void *ptr, alwan_ctx *ctx);
 
 /* Version of the linked library binary ("major.minor.patch").
  * Compiled into the library, not the header: when a dynamically loaded

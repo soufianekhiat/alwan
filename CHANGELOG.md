@@ -80,8 +80,9 @@ iridescence uses and suwar's image-based lighting shares.
   platform and deterministic math macros, the f32/f64 core templating, the table reader seam,
   the half-float and microfacet cores, and (opt-in) the typed map layer and SIMD wrappers.
   `alwan_internal.h` stays alwan's own.
-- **`alwan_ctx_alloc` / `alwan_ctx_free`**: allocate through a context's allocator (the default
-  one for `NULL`) without reading the context's fields.
+- **`alwan_ctx_alloc(bytes, align, ctx)` / `alwan_ctx_free(ptr, ctx)`**: allocate through a
+  context's allocator (the default one for `NULL`) without reading the context's fields. The
+  context comes last, as in every alwan function that takes one.
 
 ### Changed: groundwork for the alwan / suwar split (no output changes)
 

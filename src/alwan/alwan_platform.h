@@ -282,24 +282,35 @@
 /* ALWAN_DET_EXPT is the fourth: the type the exponent is carried in. OpenCL
  * follows C and makes it `int`; HLSL makes it the same float as the mantissa.
  * That is why frexp and ldexp both need a spelling rather than just frexp. */
+/* ALWAN_DET_NEG_INF is the fifth: minus infinity as a constant. Writing it as
+ * -1.0 / 0.0 is what the C twin's -INFINITY means, but fxc rejects a constant
+ * division by zero as an error-level warning (X4008), so each language gets
+ * the bit pattern or the macro it has instead. */
 #if ALWAN_BACKEND == ALWAN_BACKEND_OPENCL
 # define ALWAN_DET_EXPT         int
 # define ALWAN_DET_FREXP(x, e)  frexp((x), &(e))
 # define ALWAN_DET_LDEXP(x, e)  ldexp((x), (int)(e))
 # define ALWAN_DET_PRECISE
 # define ALWAN_DET_UNROLL
+# define ALWAN_DET_NEG_INF      (-INFINITY)
 #elif ALWAN_BACKEND == ALWAN_BACKEND_HLSL || ALWAN_BACKEND == ALWAN_BACKEND_GLSL
 # define ALWAN_DET_EXPT         alwan_scalar
 # define ALWAN_DET_FREXP(x, e)  frexp((x), (e))
 # define ALWAN_DET_LDEXP(x, e)  ldexp((x), (e))
 # define ALWAN_DET_PRECISE      precise
 # define ALWAN_DET_UNROLL       [unroll]
+# if ALWAN_BACKEND == ALWAN_BACKEND_HLSL
+#  define ALWAN_DET_NEG_INF     asfloat(0xFF800000u)
+# else
+#  define ALWAN_DET_NEG_INF     uintBitsToFloat(0xFF800000u)
+# endif
 #else
 # define ALWAN_DET_EXPT         int
 # define ALWAN_DET_FREXP(x, e)  frexp((x), &(e))
 # define ALWAN_DET_LDEXP(x, e)  ldexp((x), (int)(e))
 # define ALWAN_DET_PRECISE
 # define ALWAN_DET_UNROLL
+# define ALWAN_DET_NEG_INF      (-INFINITY)
 #endif
 
 /* ================================================================
