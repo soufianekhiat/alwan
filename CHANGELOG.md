@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+### Fixed: the CMake install could not be compiled against
+
+- `cmake --install` installed only `alwan.h` and `alwan_config.h`, which include
+  `alwan_types.h`, `alwan_platform.h`, `alwan_build_config.h`, `alwan_types_gen.inc` and the
+  SIMD types, so nothing compiled against an installed alwan, and `alwan_foundation.h`
+  (with the core templating, table reader, microfacet, map and SIMD headers it names) was
+  not installed at all. The install now carries the whole closure of `alwan.h`,
+  `alwan_foundation.h` and the foundation's computed includes, 35 headers, under
+  `include/alwan/` with their subdirectories; the `Alwan::alwan` target's install include
+  directory and `alwan.pc` point there, and `alwan.pc` now also carries the precision,
+  refractive-data and determinism definitions the target exports.
+  `alwan_dev/tools/check_install_headers.py` fails when an include is added that the
+  install list does not carry. Checked end to end: alwan installed to a prefix, suwar
+  built against it with `find_package(Alwan)`, and a consumer using only
+  `find_package(Suwar)` compiled, linked and ran against both.
+
 ### Added: image comparison metrics MAE, RMSE, AE, NCC, DSSIM
 
 - **`alwan_image_compare_{T}` and `alwan_image_compare_u8`.** One family beside PSNR, SSIM

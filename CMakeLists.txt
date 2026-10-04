@@ -264,7 +264,7 @@ target_include_directories(
   alwan
   PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/alwan>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/alwan>
 )
 
 target_compile_definitions(
@@ -429,12 +429,56 @@ if(ALWAN_INSTALL)
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
   )
 
-  install(
-    FILES
-      src/alwan/alwan.h
-      src/alwan/alwan_config.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  # The public header and the foundation SDK (docs/foundation.md) with every header
+  # they include, directly or by the foundation's computed includes, installed under
+  # include/alwan/ with their subdirectories so the relative includes resolve. This is
+  # the closure of alwan.h, alwan_foundation.h and the ALWAN_FOUNDATION_* names;
+  # alwan_dev/tools/check_install_headers.py fails when an include is added that this
+  # list does not carry.
+  set(ALWAN_INSTALL_HEADERS
+    alwan.h
+    alwan_build_config.h
+    alwan_config.h
+    alwan_foundation.h
+    alwan_math.h
+    alwan_platform.h
+    alwan_types.h
+    alwan_types_gen.inc
+    core/alwan_core_f32_setup.h
+    core/alwan_core_f64_setup.h
+    core/alwan_core_teardown.h
+    core/alwan_det_bt2020_coeffs.h
+    core/alwan_det_math_coeffs.h
+    core/alwan_det_srgb_coeffs.h
+    core/alwan_det_trig_coeffs.h
+    core/alwan_deterministic.h
+    core/alwan_fast_pow.h
+    core/alwan_half_core.h
+    core/alwan_half_core.inc
+    core/alwan_microfacet_core.h
+    core/alwan_microfacet_core.inc
+    core/alwan_table_core.h
+    core/alwan_table_core.inc
+    core/alwan_table_reader.inc
+    map/alwan_map_fwd.h
+    map/alwan_map_internal.h
+    map/alwan_tile_typed_gen.inc
+    simd/alwan_simd.h
+    simd/alwan_simd_avx.h
+    simd/alwan_simd_avx2.h
+    simd/alwan_simd_neon.h
+    simd/alwan_simd_reduce.h
+    simd/alwan_simd_scalar.h
+    simd/alwan_simd_sse2.h
+    simd/alwan_simd_types.h
   )
+  foreach(_alwan_hdr IN LISTS ALWAN_INSTALL_HEADERS)
+    get_filename_component(_alwan_hdr_dir "${_alwan_hdr}" DIRECTORY)
+    install(
+      FILES "src/alwan/${_alwan_hdr}"
+      DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/alwan/${_alwan_hdr_dir}"
+    )
+  endforeach()
 
   set(ALWAN_CMAKE_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/Alwan")
 
@@ -468,6 +512,20 @@ if(ALWAN_INSTALL)
     set(_ALWAN_PKGCONFIG_LIBS_PRIVATE "")
     if(NOT WIN32)
       set(_ALWAN_PKGCONFIG_LIBS_PRIVATE "-lm")
+    endif()
+    # The public definitions the target carries, so a pkg-config consumer compiles
+    # against the same configuration the library was built with.
+    set(_ALWAN_PKGCONFIG_CFLAGS "")
+    if(NOT ALWAN_WITH_REFRACTIVE_DATA)
+      string(APPEND _ALWAN_PKGCONFIG_CFLAGS " -DALWAN_WITH_REFRACTIVE_DATA=0")
+    endif()
+    if(ALWAN_BUILD_PRECISION STREQUAL "f32")
+      string(APPEND _ALWAN_PKGCONFIG_CFLAGS " -DALWAN_BUILD_ONLY_F32=1")
+    elseif(ALWAN_BUILD_PRECISION STREQUAL "f64")
+      string(APPEND _ALWAN_PKGCONFIG_CFLAGS " -DALWAN_BUILD_ONLY_F64=1")
+    endif()
+    if(ALWAN_DETERMINISTIC)
+      string(APPEND _ALWAN_PKGCONFIG_CFLAGS " -DALWAN_DETERMINISTIC=1")
     endif()
 
     configure_file(

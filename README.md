@@ -150,8 +150,14 @@ find_package(Alwan REQUIRED)
 target_link_libraries(my_app PRIVATE Alwan::alwan)
 ```
 
-The `Alwan::alwan` target carries its include directory, so `#include "alwan.h"`
-works without extra `target_include_directories`. CMake build options
+`cmake --install build` puts the headers under `include/alwan/`: the public header
+`alwan.h`, the foundation SDK `alwan_foundation.h` (for libraries built on alwan, see
+[docs/foundation.md](docs/foundation.md)) and every header those two include, with their
+`core/`, `map/` and `simd/` subdirectories. The `Alwan::alwan` target carries that
+include directory and the configuration the library was built with (precision gates,
+`ALWAN_DETERMINISTIC`, the SIMD and floating-point flags), so `#include "alwan.h"`
+works without extra `target_include_directories` and a consumer compiles against the
+same configuration. A pkg-config file (`alwan.pc`) carries the same flags. CMake build options
 (`ALWAN_BUILD_PRECISION`, `ALWAN_DETERMINISTIC`, `ALWAN_SIMD_ARCH`, ...) are
 described under [Configuration](#configuration).
 
