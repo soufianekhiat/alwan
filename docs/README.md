@@ -2,6 +2,11 @@
 
 Top-level documentation for the Alwan colour science library.
 
+Image processing (filters, denoising, morphology, segmentation, geometry, demosaicing, HDR
+merging, image statistics, dithering, compositing, colour maps, image-based lighting) is not in
+alwan: it is in [Suwar](https://github.com/soufianekhiat/Suwar), which builds on alwan through
+[foundation.md](foundation.md). Its documentation lives in Suwar's `docs/`.
+
 `docs/api/` contains the module reference. The files in this directory are the
 guides, design notes, comparisons, and status documents that explain how to use
 the library around that API surface.

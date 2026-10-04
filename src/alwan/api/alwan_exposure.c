@@ -5,7 +5,7 @@
  *
  * Exposure (ISO 2720, ISO 12232, Lagarde 2014). Native dual precision: the
  * implementation is templated in alwan_exposure_impl.inc and instantiated once
- * per precision. Bracket merging is alwan_hdr_merge.c.
+ * per precision. Bracket merging moved to suwar (suwar_hdr_merge.c).
  */
 
 #include "../alwan.h"

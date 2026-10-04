@@ -13,6 +13,14 @@
 
 A small, dependency-free colour science library in pure C11, for applications that need precise, deterministic colour transforms.
 
+**Alwan is a colour science library, not an image-processing library.** It works on colours: one
+pixel at a time, or a buffer of them where each output depends only on its own input, plus the
+data and models of colour science. Anything that reads a pixel's neighbours or the structure of
+an image (filters, denoising, morphology, segmentation, resampling and warping, registration,
+demosaicing, HDR merging, image statistics, dithering, compositing) is in
+[Suwar](https://github.com/soufianekhiat/Suwar), the image-processing library built on alwan,
+which ships with alwan 3.0.0.
+
 **Alwan is a colour science library, not a colour management library.** It provides the mathematical foundations (colour space conversions, chromatic adaptation, appearance models, spectral operations) and leaves ICC profiles, device characterization, rendering intents, and profile connection spaces to dedicated tools. For ICC workflows, use Alwan for the math and a library such as LittleCMS for profile I/O.
 
 **Version: 2.0.0**, tagged
@@ -234,17 +242,12 @@ Support for modern display and camera encoding:
 - **HDR interchange:** BT.2408 HLG/PQ conversion and SDR placement at 203 cd/m2,
   ISO 21496-1 gain maps (display weight, measure, encode, apply)
 - **Exposure:** ISO 2720 / ISO 12232 exposure model, EV100, Lagarde 2014
-  absolute scale, weighted merge of exposure brackets
+  absolute scale
 - **PU21:** perceptually uniform HDR encoding, PU-PSNR and PU-SSIM (Mantiuk and
   Azimi 2021), matching the authors' reference
 - **SSIM:** Wang et al. 2004 with the paper's settings, matching scikit-image
-- **Exposure fusion:** Mertens 2007, a bracket of pictures to one picture with no
-  radiance map, matching OpenCV's MergeMertens
 - **Global tone mapping:** colour-hdri's eleven global operators, Schlick 1994,
   Tumblin 1999, Reinhard 2004 and Hable's filmic curve among them, matching it to 3e-15
-- **Camera response:** Robertson 2003 recovery from every pixel, matching OpenCV;
-  Debevec 1997 recovery from a bracket, Grossberg 2003
-  sampling
 - **Camera logs:** ARRI LogC3/LogC4, Sony S-Log/2/3, Canon C-Log/2/3,
   Panasonic V-Log, Nikon N-Log, RED REDLog/REDLogFilm/Log3G10,
   Fujifilm F-Log/F-Log2, DJI D-Log, Blackmagic Film Gen4/5, Leica
@@ -309,9 +312,7 @@ Low-level colour science operations:
   has measured, over the embedded basis or a caller's; the embedded one is
   measured out of sample, every one of its 52 cameras held out in turn
 - DNG colour model: profile tags to camera-to-XYZ matrices, AsShotNeutral to
-  white and back, dcraw's highlight blend
-- Bayer demosaicing: bilinear, Malvar 2004, Menon 2007, bit-exact to
-  colour-demosaicing
+  white and back
 - RGB->spectrum upsampling: Smits 1999, Mallett 2019, Jakob & Hanika 2019
 - Film: 87 profiled stocks, the whole spectral_film_lut catalogue (Vision3, Portra,
   Ektar, Gold, Eterna, Superia, Pro, the 5247 to 5293 era, Tri-X and 5222; 2383,
@@ -322,9 +323,6 @@ Low-level colour science operations:
   kernel and grain from the sheet's RMS granularity by Selwyn's law, with
   Newson's Boolean disc model for pictures (experimental); the profiles read
   against a second, independent digitisation of the same datasheets
-- Flat artwork as a palette: the distinct colours of a rendered pattern
-  extracted once, converted once, written back per pixel, which is how a
-  colour bar reaches CMYK through the FOGRA39 inverse in 237 calls
 - Hero wavelength sampling for spectral renderers
 - Gamut mapping (8 core algorithms + HDR ICtCp/JzCzHz mappers),
   matrix-determinant volume estimation, coverage analysis
@@ -367,8 +365,9 @@ with Troy Sobotka (creator of AgX):
 
 See [docs/picture_formation.md](docs/picture_formation.md).
 
-**Out of scope:** plotting, GUI, image codec I/O (JPEG/PNG/TIFF
-decoding), threading helpers. Use a dedicated library for those.
+**Out of scope:** image processing (in [Suwar](https://github.com/soufianekhiat/Suwar)),
+plotting, GUI, image codec I/O (JPEG/PNG/TIFF decoding), threading helpers. Use a dedicated
+library for those.
 
 ---
 
@@ -933,6 +932,11 @@ Development is incentivized through Patreon:
 Planned directions for the next major version. Open for PRs;
 contributions and design discussions are welcome.
 
+- **The alwan / suwar split**: image processing moved to
+  [Suwar](https://github.com/soufianekhiat/Suwar) (developed in
+  [suwar_dev](https://github.com/soufianekhiat/suwar_dev)), which builds on alwan through
+  `alwan.h` and the supported foundation header `alwan_foundation.h`
+  ([docs/foundation.md](docs/foundation.md)); the two release together as 3.0.0
 - **Smaller binaries**: opt in/out of data tables and feature families at
   compile time, so a build carries only the spaces, CMFs, and transforms it
   actually uses

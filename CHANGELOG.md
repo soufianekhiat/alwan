@@ -1,88 +1,62 @@
 ## [Unreleased]
 
-### Removed: rendering helpers moved to suwar
+### Removed: image processing moved to suwar
 
-The fourth part of the split, with suwar_ names and the same results. Gone from alwan, with
-their suites, reference tables and generators: dithering (alwan_dither_quantize,
-alwan_image_convert_dithered) and the blue noise masks (alwan_blue_noise_mask_generate,
-alwan_blue_noise_mask_builtin, `src/alwan/data/blue_noise/`); compositing and the blend
-modes (alwan_composite); the colour maps (alwan_colormap_apply, alwan_colormap_table,
-`src/alwan/data/colormaps/`, with the Turbo notice and licence text); 2D importance sampling
-(alwan_importance_sampling_2d_*); the summed-area table (alwan_summed_area_table_*);
-environment-map product sampling (alwan_env_*); spherical harmonics and image-based lighting
-(alwan_sh_*, alwan_ibl_*); and their header-only cores and shader readers
-(`core/alwan_{dither,env_sampling,ibl,importance_sampling,summed_area}_core.*` and the
-`_reader.inc` files). `docs/api/` colormaps, compositing, dithering, ibl,
-importance-sampling and summed-area-table are suwar's.
+alwan is a colour-science library. Everything in it that read a pixel's neighbours or the
+structure of an image moved to [suwar](https://github.com/soufianekhiat/Suwar), the
+image-processing library built on alwan that releases with it as 3.0.0. The families keep
+their methods and their results under suwar_ names (alwan_x became suwar_x, ALWAN_X became
+SUWAR_X), with their suites, reference tables, generators, docs, notices and licence texts;
+there are no forwarding shims. The entries further down that announce these families (the
+batch 1 to 16 additions, the image tools, sampling, IBL, dithering, compositing and colour
+maps) describe what is now suwar's.
 
-Staying in alwan: the microfacet terms (GGX, height-correlated Smith,
-`core/alwan_microfacet_core.h`, part of the foundation) that iridescence uses and suwar's
-image-based lighting shares, wavelength sampling with its private table copy, the neural-net
-layers, the image quality metrics, the global tone mapping operators and film halation and
-grain.
+- **Image analysis:** morphology (reconstruction, area and diameter operators,
+  skeletonisation, medial axis, convex hulls), peak_local_max, global and local thresholds,
+  gradient, edge_detect (Canny), corner_response, ridge filters, texture codes and
+  descriptors (LBP, GLCM, HOG, Gabor), distance_transform, segmentation (connected
+  components, watershed, SLIC, Felzenszwalb, quick shift, Chan-Vese, random walker), label
+  overlays (label2rgb, find_boundaries, mark_boundaries), region_props, moments, contours
+  (find_contours, approximate_polygon), template matching.
+- **Filters and restoration:** alwan_filter (Gaussian, DoG, LoG, Laplace, Butterworth) and
+  alwan_filter_border; alwan_edge_filter (guided, joint bilateral, domain transform, fast
+  global smoother, rolling guidance, L0, adaptive manifold, weighted median, bilateral
+  texture); alwan_denoise (wavelet with its tables, NL-means, TV and split Bregman, both DCT
+  denoisers, the OpenCV and scikit-image bilateral filters, Wiener, anisotropic diffusion,
+  median); dehaze; sharpen (unsharp, CAS, box unsharp); deconvolution; inpainting
+  (biharmonic, Telea, Navier-Stokes); CLAHE, histogram equalisation and matching; local
+  contrast and the local Laplacian filter; rolling-ball background; the internal FFT and DCT.
+- **Editing and geometry:** gradient-domain editing, stylize (with oil painting), decolor,
+  histogram3d, colour transfer (Reinhard, MKL, iterative distribution transfer, Xiao 2006);
+  resize (Pillow and OpenCV resamplers), warp with its pixel kernels and integration,
+  low-discrepancy points, registration (phase correlation, ECC), optical flow and its helpers.
+- **Camera pipeline, HDR and image colour statistics:** Bayer mosaicing and demosaicing,
+  highlight recovery (blend, LCHab), vignetting, light probes and upper-hemisphere
+  illuminance, colour checker detection in photographs (both methods, with the ColorChecker
+  Classic template), bracket merging and the merge weights, camera response recovery and
+  Grossberg sampling, exposure fusion, Mantiuk 2006 local tone mapping; illuminant estimation
+  from an image (Grey Pixel, weighted Grey-Edge included), OpenCV's white balance with its
+  LearningBasedWB model, palette extraction and application, the quantisers (median cut,
+  octree, maximum coverage, k-means, Wu, the classic octree).
+- **Rendering helpers:** dithering and alwan_image_convert_dithered, the blue noise masks,
+  compositing and the blend modes, the colour maps, 2D importance sampling, the summed-area
+  table, environment-map product sampling, spherical harmonics and image-based lighting, with
+  their header-only cores and shader readers.
+- **Docs that went with them:** `docs/api/` image-tools, constancy, optical-flow, colormaps,
+  compositing, dithering, ibl, importance-sampling, summed-area-table, and the image sections
+  of hdr, spectral and patterns (suwar's `docs/api/` image-analysis, filtering, editing,
+  geometry, camera, colour-statistics and the moved pages).
+- **Data that went with them:** `src/alwan/data/` blue_noise, colormaps, opencv, vignette,
+  wavelets and the ColorChecker template.
 
-### Removed: camera pipeline, HDR merging and image colour statistics moved to suwar
-
-The third part of the split, with suwar_ names and the same results. Gone from alwan, with
-their suites, reference tables and generators: illuminant estimation from an image
-(alwan_illuminant_estimate, alwan_illuminant_correct, Grey Pixel and weighted Grey-Edge),
-OpenCV's white balance (alwan_white_balance) with its LearningBasedWB model; palette
-extraction and application (alwan_palette_extract, alwan_palette_apply) and the quantisers
-(alwan_quantize_u8, alwan_quantize_ex_u8: median cut, octree, maximum coverage, k-means, Wu,
-the classic octree); colour checker detection in photographs (alwan_color_checker_detect,
-both methods, with the ColorChecker Classic template); vignetting; light probes and
-upper-hemisphere illuminance; highlight recovery (blend and LCHab, with the blend's planar
-twins); Bayer mosaicing and demosaicing (the colour-demosaicing and OpenCV methods); Mantiuk
-2006 local tone mapping (alwan_tonemap_local_params went with it); bracket merging and the
-merge weights, camera response recovery, Grossberg sampling and exposure fusion. The notices
-and licence texts used only by that code moved too (OpenCV, with its demosaicing, resize and
-bilateral headers; colour-checker-detection; SciPy; Pillow), and `src/alwan/data/opencv/`
-and `data/vignette/` went with it. `docs/api/constancy.md` and `docs/api/image-tools.md`
-are gone; their sections, the highlight and demosaicing sections of `spectral.md` and the
-merging, camera response, fusion and Mantiuk sections of `hdr.md` are suwar's
-`docs/api/camera.md` and `colour-statistics.md`.
-
-Staying in alwan: the chart data and CCM solving, the DNG colour model, exposure
-photometry, per-pixel white balance (alwan_white_balance_apply), best-illuminant selection,
-the test patterns, and the global tone mapping operators. alwan_internal_image.h is gone:
-nothing image-only is left in alwan's internals.
-
-### Removed: filters, restoration, editing and geometry moved to suwar
-
-The second part of the split: these families now live in suwar with suwar_ names, the same
-methods and the same results. Gone from alwan, with their suites, reference tables and
-generators: alwan_filter (Gaussian, DoG, LoG, Laplace, Butterworth) and alwan_filter_border;
-the edge-aware filters of alwan_edge_filter (guided, joint bilateral, domain transform, fast
-global smoother, rolling guidance, L0, adaptive manifold, weighted median, bilateral
-texture); alwan_denoise and alwan_denoise_u8 (wavelet with the wavelet tables, NL-means, TV
-and split Bregman, both DCT denoisers, the OpenCV and scikit-image bilateral filters, Wiener,
-anisotropic diffusion, median); alwan_dehaze; alwan_sharpen (unsharp, CAS, box unsharp);
-alwan_deconvolve; alwan_inpaint (biharmonic, Telea, Navier-Stokes); gradient-domain editing;
-alwan_stylize (with oil painting); alwan_decolor; CLAHE, histogram equalisation and
-histogram matching; local contrast and the local Laplacian filter; rolling-ball background;
-alwan_histogram3d; colour transfer (Reinhard, MKL and the batch 14 methods); alwan_resize
-(Pillow and OpenCV resamplers), alwan_warp with its pixel kernels and integration,
-alwan_low_discrepancy_points; alwan_register, alwan_optical_flow and the flow helpers;
-alwan_match_template; and the internal FFT and DCT. `docs/api/optical-flow.md` went with
-them. The notices and licence texts used only by that code (the OpenCV Intel and Willow
-Garage BSD headers, the ximgproc BSD header, AMD FidelityFX CAS, PyWavelets) moved too.
-
-The structural similarity and the other image metrics stay in alwan; their Gaussian window
-is now a private copy of the separable filter they called, with the same arithmetic and the
-same results (suite 256 unchanged).
-
-### Removed: image analysis moved to suwar
-
-alwan is a colour-science library; the image-analysis families now live in suwar, the image
-processing library built on alwan (suwar_ names, same behaviour, same methods). Gone from
-alwan, with their suites: morphology (including reconstruction, area and diameter operators,
-skeletonisation, medial axis and convex hulls), peak_local_max, global and local
-thresholds, gradient, edge_detect (Canny), corner_response, ridge filters, texture codes
-and descriptors (LBP, GLCM, HOG, Gabor), distance_transform, segmentation (connected
-components, watershed, SLIC, Felzenszwalb, Quickshift, Chan-Vese, random walker), label
-overlays (label2rgb, find_boundaries, mark_boundaries), region_props, moments and contours
-(find_contours, approximate_polygon). Template matching stays until the FFT moves with the
-filters.
+Staying in alwan, by decision: the global tone mapping operators, the image quality metrics
+(PSNR, SSIM, MSE, NRMSE, NMI, PU21's PSNR and SSIM; SSIM's Gaussian window is a private copy
+of the filter it called, same results), film halation and grain, the neural-net layers,
+wavelength sampling (with a private copy of the piecewise-constant tables), the chart data and
+CCM solving, the DNG colour model, exposure photometry, per-pixel white balance
+(alwan_white_balance_apply), best-illuminant selection, the test patterns, image_convert, the
+pixel formats and half floats, and the microfacet terms (GGX, height-correlated Smith) that
+iridescence uses and suwar's image-based lighting shares.
 
 ### Added: the foundation header
 
