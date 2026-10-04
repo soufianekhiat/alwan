@@ -179,14 +179,14 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_ch)(void *dst, alwan_pix
 #endif
             for (; j < n; j++) {
                 ALWAN_TILE_T v = src[j] * ALWAN_TILE_LIT(255.0) + ALWAN_TILE_LIT(0.5);
-                if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                 if (v > ALWAN_TILE_LIT(255.0)) v = ALWAN_TILE_LIT(255.0);
                 dst_u8[j] = (uint8_t)v;
             }
         } else {
             for (j = 0; j < n; j++) {
                 ALWAN_TILE_T v = src[j] * ALWAN_TILE_LIT(255.0) + ALWAN_TILE_LIT(0.5);
-                if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                 if (v > ALWAN_TILE_LIT(255.0)) v = ALWAN_TILE_LIT(255.0);
                 *(uint8_t *)((char *)dst + (offset + j) * stride) = (uint8_t)v;
             }
@@ -229,14 +229,14 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_ch)(void *dst, alwan_pix
 #endif
             for (; j < n; j++) {
                 ALWAN_TILE_T v = src[j] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
-                if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                 if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
                 dst_u16[j] = (uint16_t)v;
             }
         } else {
             for (j = 0; j < n; j++) {
                 ALWAN_TILE_T v = src[j] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
-                if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                 if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
                 *(uint16_t *)((char *)dst + (offset + j) * stride) = (uint16_t)v;
             }
@@ -481,7 +481,7 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_aos)(void *dst, alwan_pi
             for (; j < n; j++) {
                 int c; for (c = 0; c < 3; c++) {
                     ALWAN_TILE_T v = src[j * 3 + c] * ALWAN_TILE_LIT(255.0) + ALWAN_TILE_LIT(0.5);
-                    if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                    if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                     if (v > ALWAN_TILE_LIT(255.0)) v = ALWAN_TILE_LIT(255.0);
                     dst_u8[j * 3 + c] = (uint8_t)v;
                 }
@@ -491,7 +491,7 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_aos)(void *dst, alwan_pi
                 uint8_t *p = (uint8_t *)((char *)dst + (offset + j) * stride);
                 int c; for (c = 0; c < ch; c++) {
                     ALWAN_TILE_T v = src[j * ch + c] * ALWAN_TILE_LIT(255.0) + ALWAN_TILE_LIT(0.5);
-                    if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                    if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                     if (v > ALWAN_TILE_LIT(255.0)) v = ALWAN_TILE_LIT(255.0);
                     p[c] = (uint8_t)v;
                 }
@@ -534,7 +534,7 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_aos)(void *dst, alwan_pi
             for (; j < n; j++) {
                 int c; for (c = 0; c < 3; c++) {
                     ALWAN_TILE_T v = src[j * 3 + c] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
-                    if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                    if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                     if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
                     dst_u16[j * 3 + c] = (uint16_t)v;
                 }
@@ -544,7 +544,7 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__store_tile_typed_aos)(void *dst, alwan_pi
                 uint16_t *p = (uint16_t *)((char *)dst + (offset + j) * stride);
                 int c; for (c = 0; c < ch; c++) {
                     ALWAN_TILE_T v = src[j * ch + c] * ALWAN_TILE_LIT(65535.0) + ALWAN_TILE_LIT(0.5);
-                    if (v < ALWAN_TILE_LIT(0.0)) v = ALWAN_TILE_LIT(0.0);
+                    if (!(v >= ALWAN_TILE_LIT(0.0))) v = ALWAN_TILE_LIT(0.0);
                     if (v > ALWAN_TILE_LIT(65535.0)) v = ALWAN_TILE_LIT(65535.0);
                     p[c] = (uint16_t)v;
                 }

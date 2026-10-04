@@ -223,7 +223,7 @@ ALWAN_INLINE void alwan__store3_typed(void *ptr,
         uint8_t *p = (uint8_t *)ptr;
         for (int c = 0; c < 3; c++) {
             alwan_f64 v = in[c] * ALWAN_LITERAL(255.0) + ALWAN_LITERAL(0.5);
-            if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+            if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
             if (v > ALWAN_LITERAL(255.0)) v = ALWAN_LITERAL(255.0);
             p[c] = (uint8_t)v;
         }
@@ -232,7 +232,7 @@ ALWAN_INLINE void alwan__store3_typed(void *ptr,
         uint16_t *p = (uint16_t *)ptr;
         for (int c = 0; c < 3; c++) {
             alwan_f64 v = in[c] * ALWAN_LITERAL(65535.0) + ALWAN_LITERAL(0.5);
-            if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+            if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
             if (v > ALWAN_LITERAL(65535.0)) v = ALWAN_LITERAL(65535.0);
             p[c] = (uint16_t)v;
         }
@@ -264,13 +264,13 @@ ALWAN_INLINE void alwan__store1_typed(void *ptr,
     switch (fmt) {
     case ALWAN_PIXEL_U8: {
         alwan_f64 v = val * ALWAN_LITERAL(255.0) + ALWAN_LITERAL(0.5);
-        if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+        if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
         if (v > ALWAN_LITERAL(255.0)) v = ALWAN_LITERAL(255.0);
         *(uint8_t *)ptr = (uint8_t)v;
     } break;
     case ALWAN_PIXEL_U16: {
         alwan_f64 v = val * ALWAN_LITERAL(65535.0) + ALWAN_LITERAL(0.5);
-        if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+        if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
         if (v > ALWAN_LITERAL(65535.0)) v = ALWAN_LITERAL(65535.0);
         *(uint16_t *)ptr = (uint16_t)v;
     } break;
@@ -752,7 +752,7 @@ ALWAN_INLINE void alwan__store_tile_typed_aos(void *dst, alwan_pixel_format fmt,
             for (; j < n; j++) {
                 int c; for (c = 0; c < 3; c++) {
                     alwan_f64 v = src[j * 3 + c] * ALWAN_LITERAL(255.0) + ALWAN_LITERAL(0.5);
-                    if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+                    if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
                     if (v > ALWAN_LITERAL(255.0)) v = ALWAN_LITERAL(255.0);
                     dst_u8[j * 3 + c] = (uint8_t)v;
                 }
@@ -762,7 +762,7 @@ ALWAN_INLINE void alwan__store_tile_typed_aos(void *dst, alwan_pixel_format fmt,
                 uint8_t *p = (uint8_t *)((char *)dst + (offset + j) * stride);
                 int c; for (c = 0; c < ch; c++) {
                     alwan_f64 v = src[j * ch + c] * ALWAN_LITERAL(255.0) + ALWAN_LITERAL(0.5);
-                    if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+                    if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
                     if (v > ALWAN_LITERAL(255.0)) v = ALWAN_LITERAL(255.0);
                     p[c] = (uint8_t)v;
                 }
@@ -774,7 +774,7 @@ ALWAN_INLINE void alwan__store_tile_typed_aos(void *dst, alwan_pixel_format fmt,
             uint16_t *p = (uint16_t *)((char *)dst + (offset + j) * stride);
             int c; for (c = 0; c < ch; c++) {
                 alwan_f64 v = src[j * ch + c] * ALWAN_LITERAL(65535.0) + ALWAN_LITERAL(0.5);
-                if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+                if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
                 if (v > ALWAN_LITERAL(65535.0)) v = ALWAN_LITERAL(65535.0);
                 p[c] = (uint16_t)v;
             }
@@ -915,14 +915,14 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
 #endif
             for (; j < n; j++) {
                 alwan_f64 v = src[j] * ALWAN_LITERAL(255.0) + ALWAN_LITERAL(0.5);
-                if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+                if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
                 if (v > ALWAN_LITERAL(255.0)) v = ALWAN_LITERAL(255.0);
                 dst_u8[j] = (uint8_t)v;
             }
         } else {
             for (j = 0; j < n; j++) {
                 alwan_f64 v = src[j] * ALWAN_LITERAL(255.0) + ALWAN_LITERAL(0.5);
-                if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+                if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
                 if (v > ALWAN_LITERAL(255.0)) v = ALWAN_LITERAL(255.0);
                 *(uint8_t *)((char *)dst + (offset + j) * stride) = (uint8_t)v;
             }
@@ -931,7 +931,7 @@ ALWAN_INLINE void alwan__store_tile_typed_ch(void *dst, alwan_pixel_format fmt,
     case ALWAN_PIXEL_U16: {
         for (j = 0; j < n; j++) {
             alwan_f64 v = src[j] * ALWAN_LITERAL(65535.0) + ALWAN_LITERAL(0.5);
-            if (v < ALWAN_LITERAL(0.0)) v = ALWAN_LITERAL(0.0);
+            if (!(v >= ALWAN_LITERAL(0.0))) v = ALWAN_LITERAL(0.0);
             if (v > ALWAN_LITERAL(65535.0)) v = ALWAN_LITERAL(65535.0);
             *(uint16_t *)((char *)dst + (offset + j) * stride) = (uint16_t)v;
         }

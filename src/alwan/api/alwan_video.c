@@ -99,7 +99,7 @@ static void video_store(void *dst, alwan_f64 const v[3],
             uint8_t *p = (uint8_t *)dst;
             for (int c = 0; c < 3; c++) {
                 alwan_f64 cv = v[c] * max_code + ALWAN_LITERAL(0.5);
-                if (cv < ALWAN_LITERAL(0.0)) cv = ALWAN_LITERAL(0.0);
+                if (!(cv >= ALWAN_LITERAL(0.0))) cv = ALWAN_LITERAL(0.0);
                 if (cv > max_code) cv = max_code;
                 p[c] = (uint8_t)cv;
             }
@@ -108,7 +108,7 @@ static void video_store(void *dst, alwan_f64 const v[3],
             uint16_t *p = (uint16_t *)dst;
             for (int c = 0; c < 3; c++) {
                 alwan_f64 cv = v[c] * max_code + ALWAN_LITERAL(0.5);
-                if (cv < ALWAN_LITERAL(0.0)) cv = ALWAN_LITERAL(0.0);
+                if (!(cv >= ALWAN_LITERAL(0.0))) cv = ALWAN_LITERAL(0.0);
                 if (cv > max_code) cv = max_code;
                 p[c] = (uint16_t)cv;
             }
@@ -371,7 +371,7 @@ static void video_store_f32(void *dst, alwan_f32 const v[3],
             uint8_t *p = (uint8_t *)dst;
             for (int c = 0; c < 3; c++) {
                 alwan_f32 cv = v[c] * max_code + 0.5f;
-                if (cv < 0.0f) cv = 0.0f;
+                if (!(cv >= 0.0f)) cv = 0.0f;
                 if (cv > max_code) cv = max_code;
                 p[c] = (uint8_t)cv;
             }
@@ -380,7 +380,7 @@ static void video_store_f32(void *dst, alwan_f32 const v[3],
             uint16_t *p = (uint16_t *)dst;
             for (int c = 0; c < 3; c++) {
                 alwan_f32 cv = v[c] * max_code + 0.5f;
-                if (cv < 0.0f) cv = 0.0f;
+                if (!(cv >= 0.0f)) cv = 0.0f;
                 if (cv > max_code) cv = max_code;
                 p[c] = (uint16_t)cv;
             }

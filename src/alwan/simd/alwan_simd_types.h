@@ -136,7 +136,9 @@
 
 #if defined(__INTEL_COMPILER) || defined(__INTEL_LLVM_COMPILER)
 #  define ALWAN_HAS_SVML 1
-#elif defined(_MSC_VER) && (defined(_M_X64) || defined(_M_AMD64))
+#elif defined(_MSC_VER) && !defined(__clang__) && (defined(_M_X64) || defined(_M_AMD64))
+/* clang-cl defines _MSC_VER but declares none of the SVML intrinsics; it takes the
+ * per-lane libm path (found by the clang-cl sanitizer build). */
 #  define ALWAN_HAS_SVML 1
 #else
 #  define ALWAN_HAS_SVML 0
