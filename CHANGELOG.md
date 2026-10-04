@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+### Removed: rendering helpers moved to suwar
+
+The fourth part of the split, with suwar_ names and the same results. Gone from alwan, with
+their suites, reference tables and generators: dithering (alwan_dither_quantize,
+alwan_image_convert_dithered) and the blue noise masks (alwan_blue_noise_mask_generate,
+alwan_blue_noise_mask_builtin, `src/alwan/data/blue_noise/`); compositing and the blend
+modes (alwan_composite); the colour maps (alwan_colormap_apply, alwan_colormap_table,
+`src/alwan/data/colormaps/`, with the Turbo notice and licence text); 2D importance sampling
+(alwan_importance_sampling_2d_*); the summed-area table (alwan_summed_area_table_*);
+environment-map product sampling (alwan_env_*); spherical harmonics and image-based lighting
+(alwan_sh_*, alwan_ibl_*); and their header-only cores and shader readers
+(`core/alwan_{dither,env_sampling,ibl,importance_sampling,summed_area}_core.*` and the
+`_reader.inc` files). `docs/api/` colormaps, compositing, dithering, ibl,
+importance-sampling and summed-area-table are suwar's.
+
+Staying in alwan: the microfacet terms (GGX, height-correlated Smith,
+`core/alwan_microfacet_core.h`, part of the foundation) that iridescence uses and suwar's
+image-based lighting shares, wavelength sampling with its private table copy, the neural-net
+layers, the image quality metrics, the global tone mapping operators and film halation and
+grain.
+
 ### Removed: camera pipeline, HDR merging and image colour statistics moved to suwar
 
 The third part of the split, with suwar_ names and the same results. Gone from alwan, with

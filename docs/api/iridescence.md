@@ -135,7 +135,7 @@ alwan_status alwan_iridescence_ggx_{T}(alwan_rgb_{T} *out, {T} nov, {T} nol, {T}
 
 A GGX microfacet BRDF with the iridescent Fresnel term,
 `F(h . v) D(n . h) G2(n . v, n . l) / (4 (n . v)(n . l))`, with the GGX distribution and
-the height-correlated Smith term of [image-based lighting](ibl.md) (`alpha` the GGX width,
+the height-correlated Smith term of alwan's microfacet core ([foundation](../foundation.md)) (`alpha` the GGX width,
 the square of perceptual roughness). 0 when `n . v`, `n . l` or `h . v` is not positive.
 
 ## Dispersive films: bands
@@ -226,4 +226,5 @@ series lands within 8.4e-7 of it, and within 1.5e-6 on every oil film from 2 to 
 
 - [Thin films and multilayers](thin-films.md): the transfer-matrix method
 - [Refractive index](refractive-index.md): the database the bands sample
-- [Image-based lighting](ibl.md): GGX and the Smith term
+- [Foundation](../foundation.md): the microfacet core (GGX and the Smith term), which suwar's
+  image-based lighting shares

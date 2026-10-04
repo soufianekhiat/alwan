@@ -101,13 +101,7 @@ set(ALWAN_SOURCES
   src/alwan/api/alwan_atd95.c
   src/alwan/api/alwan_cam.c
   src/alwan/api/alwan_camera.c
-  src/alwan/api/alwan_dither.c
-  src/alwan/api/alwan_composite.c
-  src/alwan/api/alwan_importance_sampling.c
   src/alwan/api/alwan_delta_e_dispatch.c
-  src/alwan/api/alwan_summed_area_table.c
-  src/alwan/api/alwan_env_sampling.c
-  src/alwan/api/alwan_ibl.c
   src/alwan/api/alwan_iridescence.c
   src/alwan/api/alwan_wavelength_sampling.c
   src/alwan/api/alwan_dng.c
@@ -135,7 +129,6 @@ src/alwan/api/alwan_planckian_table.c
   src/alwan/api/alwan_tonescale_grade.c
   src/alwan/api/alwan_select.c
   src/alwan/api/alwan_grading_ocio.c
-  src/alwan/api/alwan_colormap.c
   src/alwan/api/alwan_luminaire.c
   src/alwan/api/alwan_spectrum_meng2015.c
   src/alwan/api/alwan_thin_film.c

@@ -45,7 +45,7 @@
  *
  *     alwan_vec3 s = alwan_wlt_sample_2d_direct_sky(nu, nv, ru, rv, 0, 0, 1, 1, u0, u1);
  *
- * and uploads the table alwan_importance_sampling_2d_get_layout_f32 hands back.
+ * and uploads the tables the wavelength sampler built.
  * ================================================================ */
 
 #if defined(ALWAN_WLT_READER_POINTER)

@@ -1,7 +1,7 @@
 # Physical Skies
 
 Spectral sky and sun radiance for a sun position, from three models, ready for spectral
-rendering and for the environment samplers (`importance-sampling.md`): Preetham, Shirley and
+rendering and for suwar's environment samplers (its `importance-sampling.md`): Preetham, Shirley and
 Smits 1999; Hosek and Wilkie 2012 with their 2013 solar radiance function; and Bruneton 2017's
 precomputed atmospheric scattering. Plus the ASTM G173 reference solar spectra. Suite 284.
 
@@ -180,7 +180,7 @@ bp.include_sun = 1;
 bp.samples = 4;
 float *map = malloc(sizeof(float) * 3 * 1024 * 512);
 alwan_sky_bake_equirect_f32(map, sizeof(float) * 3 * 1024, 1024, 512, &bp, sky, ctx);
-/* weights for the sampler: alwan_env_weight_equirect_f32 on the map's luminance */
+/* weights for the sampler: suwar_env_weight_equirect_f32 on the map's luminance (suwar) */
 alwan_sky_destroy_f32(sky, ctx);
 ```
 

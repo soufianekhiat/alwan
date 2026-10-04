@@ -114,8 +114,6 @@ EXPORTS
     alwan_bake_3dlut_view_f64
     alwan_best_illuminant_f32
     alwan_best_illuminant_f64
-    alwan_blue_noise_mask_builtin
-    alwan_blue_noise_mask_generate
     alwan_bt2390_eetf_f32
     alwan_bt2390_eetf_f64
     alwan_bt2390_eetf_luminance_f32
@@ -368,9 +366,6 @@ EXPORTS
     alwan_color_matrix_get_preset_f64
     alwan_colorimetric_purity_f32
     alwan_colorimetric_purity_f64
-    alwan_colormap_apply_f32
-    alwan_colormap_apply_f64
-    alwan_colormap_table
     alwan_colour_correct_cheung2004_f32
     alwan_colour_correct_cheung2004_f32_map_interleave
     alwan_colour_correct_cheung2004_f32_map_planar
@@ -401,10 +396,6 @@ EXPORTS
     alwan_colour_solid_white_f64
     alwan_complementary_wavelength_f32
     alwan_complementary_wavelength_f64
-    alwan_composite_f32
-    alwan_composite_f64
-    alwan_composite_u16
-    alwan_composite_u8
     alwan_content_light_level_compute_f32
     alwan_content_light_level_compute_f64
     alwan_corresponding_chromaticities_breneman1987
@@ -613,8 +604,6 @@ EXPORTS
     alwan_display_model_invert_f64
     alwan_display_primaries_spd_f32
     alwan_display_primaries_spd_f64
-    alwan_dither_quantize_f32
-    alwan_dither_quantize_f64
     alwan_dng_camera_neutral_to_xy_f32
     alwan_dng_camera_neutral_to_xy_f64
     alwan_dng_camera_to_xyz_matrix_f32
@@ -635,22 +624,6 @@ EXPORTS
     alwan_ellipse_general_f64
     alwan_ellipse_points_f32
     alwan_ellipse_points_f64
-    alwan_env_equirect_direction_f32
-    alwan_env_equirect_direction_f64
-    alwan_env_equirect_position_f32
-    alwan_env_equirect_position_f64
-    alwan_env_product_sampler_destroy_f32
-    alwan_env_product_sampler_destroy_f64
-    alwan_env_product_sampler_get_layout_f32
-    alwan_env_product_sampler_get_layout_f64
-    alwan_env_product_sampler_pdf_f32
-    alwan_env_product_sampler_pdf_f64
-    alwan_env_product_sampler_prepare_f32
-    alwan_env_product_sampler_prepare_f64
-    alwan_env_product_sampler_sample_f32
-    alwan_env_product_sampler_sample_f64
-    alwan_env_weight_equirect_f32
-    alwan_env_weight_equirect_f64
     alwan_eotf_apply_f32
     alwan_eotf_apply_f64
     alwan_excitation_purity_f32
@@ -963,14 +936,6 @@ EXPORTS
     alwan_hwb_to_rgb_f64_map_planar
     alwan_hwb_to_rgb_map_interleave_ex
     alwan_hwb_to_rgb_map_planar_ex
-    alwan_ibl_brdf_integrate_f32
-    alwan_ibl_brdf_integrate_f64
-    alwan_ibl_brdf_lut_f32
-    alwan_ibl_brdf_lut_f64
-    alwan_ibl_energy_average_f32
-    alwan_ibl_energy_average_f64
-    alwan_ibl_prefilter_ggx_f32
-    alwan_ibl_prefilter_ggx_f64
     alwan_icacb_to_xyz_f32
     alwan_icacb_to_xyz_f32_map_interleave
     alwan_icacb_to_xyz_f32_map_planar
@@ -1023,26 +988,10 @@ EXPORTS
     alwan_illuminant_white_point_f64
     alwan_image_convert_data_f32
     alwan_image_convert_data_f64
-    alwan_image_convert_dithered_f32
-    alwan_image_convert_dithered_f64
     alwan_image_convert_f32
     alwan_image_convert_f64
     alwan_image_convert_rgba_f32
     alwan_image_convert_rgba_f64
-    alwan_importance_sampling_2d_destroy_f32
-    alwan_importance_sampling_2d_destroy_f64
-    alwan_importance_sampling_2d_get_layout_f32
-    alwan_importance_sampling_2d_get_layout_f64
-    alwan_importance_sampling_2d_invert_f32
-    alwan_importance_sampling_2d_invert_f64
-    alwan_importance_sampling_2d_pdf_f32
-    alwan_importance_sampling_2d_pdf_f64
-    alwan_importance_sampling_2d_prepare_f32
-    alwan_importance_sampling_2d_prepare_f64
-    alwan_importance_sampling_2d_sample_f32
-    alwan_importance_sampling_2d_sample_f32_map_interleave
-    alwan_importance_sampling_2d_sample_f64
-    alwan_importance_sampling_2d_sample_f64_map_interleave
     alwan_index_stress_f32
     alwan_index_stress_f64
     alwan_interop_count
@@ -1795,17 +1744,6 @@ EXPORTS
     alwan_select_qualifier_f32
     alwan_select_qualifier_f64
     alwan_select_qualifier_params_init
-    alwan_sh_coefficient_count
-    alwan_sh_evaluate_f32
-    alwan_sh_evaluate_f64
-    alwan_sh_irradiance_coefficients_f32
-    alwan_sh_irradiance_coefficients_f64
-    alwan_sh_irradiance_matrix_f32
-    alwan_sh_irradiance_matrix_f64
-    alwan_sh_project_equirect_f32
-    alwan_sh_project_equirect_f64
-    alwan_sh_render_equirect_f32
-    alwan_sh_render_equirect_f64
     alwan_sigma_barten1999_f32
     alwan_sigma_barten1999_f64
     alwan_simulate_cvd_ex_f32
@@ -2017,14 +1955,6 @@ EXPORTS
     alwan_structural_similarity_u8
     alwan_sucs_to_xyz_f32
     alwan_sucs_to_xyz_f64
-    alwan_summed_area_table_box_mean_f32
-    alwan_summed_area_table_box_mean_f64
-    alwan_summed_area_table_create
-    alwan_summed_area_table_destroy
-    alwan_summed_area_table_get_layout
-    alwan_summed_area_table_integrate
-    alwan_summed_area_table_mean
-    alwan_summed_area_table_sum
     alwan_table1d_mat3_sample_f32
     alwan_table1d_mat3_sample_f64
     alwan_table1d_sample_f32
