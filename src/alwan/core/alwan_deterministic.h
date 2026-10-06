@@ -148,6 +148,10 @@ ALWAN_INLINE alwan_f64 alwan_det_log2_f64(alwan_f64 x) {
     if (x <= 0.0) return -INFINITY;  /* IEEE convention */
     int k;
     const alwan_f64 m = frexp(x, &k);
+    /* An exact power of two has m = 0.5 and log2 exactly k - 1. The fit gives
+     * 1.9999999999999996 at u = -1 in f64, so log2(1) came out as +2.2e-16 and
+     * ln(1) above zero: sqrt(-2 ln u) at u = 1 was NaN. IEEE wants log2(1) = 0. */
+    if (m == 0.5) return (alwan_f64)(k - 1);
     /* m in [0.5, 1.0); normalise to u in [-1, 1] for the polynomial.
      * The polynomial is log2(m)/(m-1), not log2(m): the quotient is
      * analytic and nonzero across the domain, so it can be fitted by a
@@ -163,6 +167,7 @@ ALWAN_INLINE alwan_f32 alwan_det_log2_f32(alwan_f32 x) {
     if (x <= 0.0f) return -INFINITY;
     int k;
     const alwan_f32 m = frexpf(x, &k);
+    if (m == 0.5f) return (alwan_f32)(k - 1);   /* exact powers of two, as the f64 twin */
     const alwan_f32 u = alwan_det_normalize_f32(m, 0.5f, 1.0f);
     return (alwan_f32)k + (m - 1.0f) * alwan_det_horner_f32(
         alwan_det_log2_coeffs_f32, ALWAN_DET_LOG2_DEGREE, u);
@@ -638,6 +643,7 @@ ALWAN_INLINE alwan_scalar alwan_det_log2(alwan_scalar x) {
     if (x <= (alwan_scalar)0.0) return ALWAN_DET_NEG_INF;
     {
     ALWAN_DET_EXPT e; alwan_scalar m = ALWAN_DET_FREXP(x, e);   /* m in [0.5,1), e = exponent */
+    if (m == (alwan_scalar)0.5) return (alwan_scalar)e - (alwan_scalar)1.0;   /* exact powers of two, as the C path */
     alwan_scalar u = (alwan_scalar)2.0 * (m - (alwan_scalar)0.5) / (alwan_scalar)0.5 - (alwan_scalar)1.0;
     ALWAN_DET_PRECISE alwan_scalar acc = alwan_det_log2_coeffs_f32[ALWAN_DET_LOG2_DEGREE];
     ALWAN_DET_UNROLL for (int i = ALWAN_DET_LOG2_DEGREE - 1; i >= 0; --i) {
