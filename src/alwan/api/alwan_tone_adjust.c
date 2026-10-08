@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  *
  * Per-pixel tonal adjustments: levels, posterize, solarize, sigmoidal contrast and its
- * inverse, and modulate (brightness, saturation, hue). Every one maps a pixel's values
+ * inverse, modulate (brightness, saturation, hue) and ITK's sigmoid map. Every one maps a pixel's values
  * to new values with no reference to its neighbours or to the image's statistics; the
  * adjustments that need statistics (auto-level, auto-gamma, autocontrast with a cutoff)
  * are image processing and live in suwar.
@@ -23,6 +23,9 @@
  *               with the logistic's argument limited to (eps, 1 - eps) as ImageMagick does.
  *   MODULATE    OKLCH (the default) scales Oklab L and chroma and turns the hue; HSL and
  *               HSV are ImageMagick's -modulate in those models.
+ *   SIGMOID     the formula of ITK's SigmoidImageFilter (itkSigmoidImageFilter.h):
+ *               x = (v - beta) / alpha, e = 1 / (1 + exp(-x)), (max - min) e + min, in
+ *               that order of operations.
  */
 
 #include "../alwan.h"
@@ -42,6 +45,7 @@ typedef struct {
     alwan_modulate_space space;
     double bright, sat, hue_turns;
     int input_linear;
+    double sg_alpha, sg_beta;
 } alwan__ta;
 
 static double alwan__ta_sig(double a, double b, double x) {
@@ -108,6 +112,16 @@ static alwan_status alwan__ta_prepare(alwan__ta *t, alwan_tone_adjust_method met
         t->hue_turns = 0.5 * p.hue; /* signed-range rule: hue / pi in [-1, 1] */
         t->input_linear = p.input_linear != 0;
         return ALWAN_OK;
+    case ALWAN_TONE_ADJUST_SIGMOID: {
+        double const ow = p.out_white == 0.0 ? 1.0 : p.out_white;
+        t->sg_alpha = p.sigmoid_alpha == 0.0 ? 1.0 : p.sigmoid_alpha;
+        t->sg_beta = p.sigmoid_beta;
+        if (!(t->sg_alpha - t->sg_alpha == 0.0) || !(t->sg_beta - t->sg_beta == 0.0)) return ALWAN_E_RANGE;
+        if (!(ow - ow == 0.0) || !(p.out_black - p.out_black == 0.0)) return ALWAN_E_RANGE;
+        t->out_black = p.out_black;
+        t->out_span = ow - p.out_black;
+        return ALWAN_OK;
+    }
     default:
         return ALWAN_E_INVALID;
     }
@@ -136,6 +150,11 @@ static double alwan__ta_scalar(alwan__ta const *t, alwan_tone_adjust_method m, d
         if (u < 1e-12) u = 1e-12;
         if (u > 1.0 - 1e-12) u = 1.0 - 1e-12;
         return t->sig_b - ALWAN_LN_F64(1.0 / u - 1.0) / t->sig_a;
+    }
+    case ALWAN_TONE_ADJUST_SIGMOID: {
+        double const x = (v - t->sg_beta) / t->sg_alpha;
+        double const e = 1.0 / (1.0 + ALWAN_EXP_F64(-x));
+        return t->out_span * e + t->out_black;
     }
     default:
         return v;

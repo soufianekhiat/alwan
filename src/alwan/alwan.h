@@ -10503,6 +10503,10 @@ alwan_status alwan_flip_f64(alwan_f32 *error_map, size_t error_row_stride, alwan
  *                contrast 0 is the identity; midpoint 0 reads as 0.5.
  *   SIGMOIDAL_CONTRAST_INVERSE  its inverse (+sigmoidal-contrast), the logistic's
  *                argument limited to (1e-12, 1 - 1e-12) as ImageMagick limits it.
+ *   SIGMOID      ITK's SigmoidImageFilter: out_black + (out_white - out_black) /
+ *                (1 + exp(-(v - sigmoid_beta) / sigmoid_alpha)), on values in any units
+ *                (an edge-stopping speed from a gradient magnitude takes a negative
+ *                alpha). sigmoid_alpha 0 reads as 1, out_white 0 as 1.
  *   MODULATE     brightness, saturation and hue on 3 colour channels (3 or 4 values).
  *                brightness and saturation are relative changes: 0 unchanged, -1 to
  *                zero, 0.5 for 1.5 times. hue is a rotation in [-1, 1] of half turns
@@ -10524,7 +10528,8 @@ typedef enum {
     ALWAN_TONE_ADJUST_SOLARIZE = 2,
     ALWAN_TONE_ADJUST_SIGMOIDAL_CONTRAST = 3,
     ALWAN_TONE_ADJUST_SIGMOIDAL_CONTRAST_INVERSE = 4,
-    ALWAN_TONE_ADJUST_MODULATE = 5
+    ALWAN_TONE_ADJUST_MODULATE = 5,
+    ALWAN_TONE_ADJUST_SIGMOID = 6
 } alwan_tone_adjust_method;
 
 typedef enum {
@@ -10544,6 +10549,7 @@ typedef struct {
     alwan_modulate_space space;                             /* MODULATE */
     double brightness, saturation, hue;                     /* MODULATE */
     int input_linear;                                       /* MODULATE OKLCH */
+    double sigmoid_alpha, sigmoid_beta;                     /* SIGMOID (with out_black, out_white) */
 } alwan_tone_adjust_params;
 
 alwan_status alwan_tone_adjust_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t channels, alwan_tone_adjust_method method, alwan_tone_adjust_params const *params);

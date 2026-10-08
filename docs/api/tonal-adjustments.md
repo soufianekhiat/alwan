@@ -33,6 +33,7 @@ be `NULL` for all defaults.
 | `ALWAN_TONE_ADJUST_SIGMOIDAL_CONTRAST` | ImageMagick's `-sigmoidal-contrast`: with `Sig(x) = 1 / (1 + exp(contrast (midpoint - x)))`, `(Sig(v) - Sig(0)) / (Sig(1) - Sig(0))`. | `contrast` 0 is the identity; `midpoint` 0 reads as 0.5 |
 | `ALWAN_TONE_ADJUST_SIGMOIDAL_CONTRAST_INVERSE` | Its exact inverse (`+sigmoidal-contrast`), the logistic's argument limited to `(1e-12, 1 - 1e-12)` as ImageMagick limits it. | as above |
 | `ALWAN_TONE_ADJUST_MODULATE` | Brightness, saturation and hue on three colour channels; see below. | all 0: the identity |
+| `ALWAN_TONE_ADJUST_SIGMOID` | ITK's `SigmoidImageFilter`: `out_black + (out_white - out_black) / (1 + exp(-(v - sigmoid_beta) / sigmoid_alpha))`, on values in any units. A negative alpha turns a gradient magnitude into an edge-stopping speed for fast marching. | `sigmoid_alpha` 1, `sigmoid_beta` 0, output 0 to 1 |
 
 **Posterize, round or floor.** ImageMagick's posterize rounds to `levels` evenly spaced values
 that include black and white. Pillow's `ImageOps.posterize(image, bits)` keeps the top `bits`
@@ -72,6 +73,8 @@ Suite 305:
 - OKLCH modulate against colour's Oklab, with the sRGB matrix derived from its primaries,
   agrees within 9.6e-15.
 - The sigmoidal inverse undoes the forward within 2.3e-15.
+- The sigmoid map equals SimpleITK's `SigmoidImageFilter` on a float64 image to the last bit
+  (four cases, a negative alpha and the defaults among them).
 
 **Returns:** `ALWAN_E_INVALID` for:
 

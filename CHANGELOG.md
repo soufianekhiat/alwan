@@ -56,6 +56,7 @@
     `pillow_bits`;
   - solarize;
   - sigmoidal contrast and its inverse;
+  - ITK's sigmoid map (`ALWAN_TONE_ADJUST_SIGMOID`), the speed image of fast marching;
   - modulate in OKLCH (the default), HSL or HSV.
 
   Suite 305: Pillow's `ImageOps.posterize` and `solarize` exact on 8-bit; ImageMagick's
