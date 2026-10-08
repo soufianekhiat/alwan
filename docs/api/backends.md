@@ -38,6 +38,35 @@ The `ALWAN_CORE_*` macros bridge the `.inc` source to the active platform:
 
 ---
 
+## Ranges: the same `[0, 1]` convention as the C API
+
+The core `_v` functions every backend compiles are **native**: Lab `L` on
+`[0, 100]`, LCh hue in degrees, OkLCh / JzCzhz hue in radians. The C API
+normalizes at its boundary (`ALWAN_NORMALIZE_RANGES`, default `1`); a GPU or
+Halide caller does the same at its own boundary with the **value forms**,
+`ALWAN_NORMV_<SPACE>(v)` / `ALWAN_DENORMV_<SPACE>(v)`, which rescale a colour
+struct in place:
+
+```c
+alwan_lab lab = alwan_xyz_to_lab_v(xyz, white);   /* native: L on [0, 100] */
+ALWAN_NORMV_LAB(lab);                             /* L on [0, 1], as the C API returns it */
+
+alwan_oklch lch = alwan_oklab_to_oklch_v(ok);
+ALWAN_NORMV_OKLCH(lch);                           /* h / pi on [-1, 1] */
+```
+
+They follow `ALWAN_NORMALIZE_RANGES` on every backend (no-ops at `0`), use
+nothing but `.` and a `do / while` that stays one statement (its condition is
+`false` on GLSL, `0` elsewhere) -- syntax C, C++ / Halide, HLSL, GLSL,
+OpenCL C and CUDA share -- and they are the **same rescaling** the C API
+applies: its pointer forms, `ALWAN_NORM_<SPACE>(p)`, are defined as the value
+forms through `*(p)` and exist on the C backend only. Taking an input: call the
+`DENORMV` form on a normalized struct before handing it to a core `_v`
+function. Unbounded channels (Lab `a`, `b`, chroma, Oklab `a`, `b`) are never
+rescaled. The per-space table is [ranges.md](../ranges.md).
+
+---
+
 ## HLSL Backend
 
 ### Setup

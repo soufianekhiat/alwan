@@ -1,5 +1,20 @@
 ## [Unreleased]
 
+### Added: the normalized-range helpers on every backend
+
+- **`ALWAN_NORMV_<SPACE>(v)` / `ALWAN_DENORMV_<SPACE>(v)`**, value forms of the 35
+  NORM / DENORM helpers: they rescale a colour struct in place through `.` as one
+  statement, follow `ALWAN_NORMALIZE_RANGES` on every backend, and use only syntax C,
+  C++ / Halide, HLSL, GLSL, OpenCL C and CUDA share (checked: C, Halide realized, HLSL
+  under dxc; GLSL is not, `alwan_platform.h`'s typedefs do not pass glslang yet). The
+  core `_v` functions stay native; a GPU or Halide
+  caller now reaches the C API's `[0, 1]` convention at its own boundary
+  (`alwan_lab lab = alwan_xyz_to_lab_v(...); ALWAN_NORMV_LAB(lab);`). Until now every
+  NORM / DENORM expanded to `((void)0)` off the C backend, so GPU results could only be
+  native. The C API's pointer forms `ALWAN_NORM_<SPACE>(p)` are now the value forms
+  through `*(p)`: the same rescaling, unchanged. Documented in `docs/api/backends.md`,
+  `docs/ranges.md` and `docs/configuration.md`.
+
 ### Fixed: the CMake install could not be compiled against
 
 - `cmake --install` installed only `alwan.h` and `alwan_config.h`, which include

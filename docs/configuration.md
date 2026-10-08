@@ -207,6 +207,13 @@ See [ranges.md](ranges.md) for the per-space table.
 application that uses the NORM/DENORM helpers itself can compare it with its own
 `ALWAN_NORMALIZE_RANGES` at startup.
 
+The switch also drives the **value forms** `ALWAN_NORMV_<SPACE>(v)` /
+`ALWAN_DENORMV_<SPACE>(v)` on every backend (C, Halide, HLSL, GLSL, OpenCL,
+CUDA): a kernel or pipeline calling the native core `_v` functions applies them
+at its own boundary to get the C API's ranges. For them the value that matters
+is the one the *caller* compiles with -- they expand in the caller's code. See
+[api/backends.md](api/backends.md).
+
 ---
 
 ## `ALWAN_DATA_TABLES_MINIMAL` and the table switches

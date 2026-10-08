@@ -473,7 +473,10 @@ consequences follow.
 
 > **`ALWAN_NORMALIZE_RANGES=0` in your own translation unit does nothing to a
 > prebuilt library.** The `ALWAN_NORM_*` / `ALWAN_DENORM_*` macros expand inside
-> the library's own `.c` files, so this is a library-compile-time setting.
+> the library's own `.c` files, so this is a library-compile-time setting. (The
+> value forms `ALWAN_NORMV_*` / `ALWAN_DENORMV_*` are the exception: they expand
+> in *your* code -- a shader, a Halide pipeline -- so for them your own setting is
+> the one that counts; see [backends.md](backends.md).)
 > `alwan_platform.h:1158` tells you to define it before including `alwan.h`,
 > which is wrong for a consumer linking against a built `libalwan`. The
 > Sharpmake reference build defines it for every project

@@ -83,6 +83,25 @@ may mix them freely. The core `_v` functions are the exception, and deliberately
 so: they are always native, because they are what the GPU backends and the
 kernels compile.
 
+### The same convention on every backend
+
+A caller of the core `_v` functions -- an HLSL, GLSL, OpenCL or CUDA kernel, a
+Halide pipeline, or C code holding the struct -- reaches the public convention
+with the **value forms** `ALWAN_NORMV_<SPACE>(v)` and `ALWAN_DENORMV_<SPACE>(v)`
+from `alwan_platform.h`: they rescale a colour struct in place, follow
+`ALWAN_NORMALIZE_RANGES` on every backend, and are the very rescaling the C API
+applies (its pointer forms `ALWAN_NORM_<SPACE>(p)` are the value forms through
+`*(p)`, C backend only).
+
+```c
+alwan_lab lab = alwan_xyz_to_lab_v(xyz, white);   /* native */
+ALWAN_NORMV_LAB(lab);                             /* public: L / 100 */
+```
+
+`NORMV` on an output, `DENORMV` on an input before the core call. A
+GPU result normalized this way equals the C API's result for the same colour,
+range for range; see [api/backends.md](api/backends.md).
+
 ### Why the tests and benchmarks disable it
 
 The `alwan_dev` validation build (the unit tests, the benchmarks, and the

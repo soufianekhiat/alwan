@@ -1440,50 +1440,62 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
 
 #define ALWAN__TWOPI (ALWAN_LITERAL(2.0) * ALWAN_PI)
 
-/* Macros below use C pointer syntax ((p)->field). They are gated on the C
- * backend because GLSL/HLSL have no `->` operator; on GPU backends every
- * NORM/DENORM expands to ((void)0). No GPU-shareable *_core.h calls these,
- * so this is preventive -- keeping the symbols available without breaking
- * shader compilation if a bootstrap header is included.
- *
- * Multi-field macros (CIECAM02, CAM16, ZCAM, ...) evaluate `p` 2-4 times.
- * Callers MUST pass a side-effect-free lvalue (e.g. `&local`, `out`).
- * Side-effecting expressions like `ALWAN_NORM_CIECAM02(get_ptr())` will
- * call `get_ptr()` multiple times. */
+/* The never-true condition of the helpers' do / while: GLSL will not take an
+ * int as a condition; every other backend takes 0. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_GLSL
+# define ALWAN__FALSE false
+#else
+# define ALWAN__FALSE 0
+#endif
 
-#if ALWAN_NORMALIZE_RANGES && ALWAN_BACKEND == ALWAN_BACKEND_C
+/* ONE CONVENTION, EVERY BACKEND. The VALUE forms below -- ALWAN_NORMV_X(v),
+ * ALWAN_DENORMV_X(v) -- rescale a colour struct in place through `.`, which
+ * C, C++/Halide, HLSL, GLSL, OpenCL C and CUDA all have, as one statement
+ * (do / while (ALWAN__FALSE), so `if (c) ALWAN_NORMV_LAB(v); else ...` holds;
+ * no (void) cast, which GLSL lacks). They follow ALWAN_NORMALIZE_RANGES on
+ * every backend, so a shader or a Halide pipeline that calls one gets exactly
+ * the [0, 1] convention the C API returns. The C API's own POINTER forms,
+ * ALWAN_NORM_X(p), are defined after them in terms of them. No GPU-shareable
+ * *_core.h calls either: the core _v functions stay native, and normalization
+ * is the caller's boundary.
+ *
+ * Multi-field macros (CIECAM02, CAM16, ZCAM, ...) evaluate their argument 2-4
+ * times. Callers MUST pass a side-effect-free lvalue (e.g. `local`, `&local`,
+ * `out`); `ALWAN_NORM_CIECAM02(get_ptr())` calls `get_ptr()` several times. */
+
+#if ALWAN_NORMALIZE_RANGES
 
 /* Lab: L [0,100] -> [0,1] */
-#define ALWAN_NORM_LAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_LAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_LAB(v)   do { (v).L *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LAB(v) do { (v).L *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* UVW (CIE 1964): W* [0,100] -> [0,1] (lightness-like, as Lab L*); U*, V* are unbounded opponent axes -> native */
-#define ALWAN_NORM_UVW(p)   do { (p)->W *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_UVW(p) do { (p)->W *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_UVW(v)   do { (v).W *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_UVW(v) do { (v).W *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* Luv: L [0,100] -> [0,1] */
-#define ALWAN_NORM_LUV(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_LUV(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_LUV(v)   do { (v).L *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LUV(v) do { (v).L *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* LCh(ab): L [0,100] -> [0,1], h [0,360) -> [0,1] */
-#define ALWAN_NORM_LCH(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_LCH(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_LCH(v)   do { (v).L *= ALWAN_LITERAL(0.01); (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LCH(v) do { (v).L *= ALWAN_LITERAL(100.0); (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* LCh(uv): L [0,100] -> [0,1], h [0,360) -> [0,1] */
-#define ALWAN_NORM_LCHUV(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_LCHUV(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_LCHUV(v)   do { (v).L *= ALWAN_LITERAL(0.01); (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LCHUV(v) do { (v).L *= ALWAN_LITERAL(100.0); (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* Oklch: h [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
-#define ALWAN_NORM_OKLCH(p)   do { (p)->h *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
-#define ALWAN_DENORM_OKLCH(p) do { (p)->h *= ALWAN_PI; } while(0)
+#define ALWAN_NORMV_OKLCH(v)   do { (v).h *= ALWAN_LITERAL(0.31830988618379067154); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_OKLCH(v) do { (v).h *= ALWAN_PI; } while (ALWAN__FALSE)
 
 /* JzCzhz: hz [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
-#define ALWAN_NORM_JZCZHZ(p)   do { (p)->hz *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
-#define ALWAN_DENORM_JZCZHZ(p) do { (p)->hz *= ALWAN_PI; } while(0)
+#define ALWAN_NORMV_JZCZHZ(v)   do { (v).hz *= ALWAN_LITERAL(0.31830988618379067154); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_JZCZHZ(v) do { (v).hz *= ALWAN_PI; } while (ALWAN__FALSE)
 
 /* IPTch: h [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
-#define ALWAN_NORM_IPTCH(p)   do { (p)->h *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
-#define ALWAN_DENORM_IPTCH(p) do { (p)->h *= ALWAN_PI; } while(0)
+#define ALWAN_NORMV_IPTCH(v)   do { (v).h *= ALWAN_LITERAL(0.31830988618379067154); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_IPTCH(v) do { (v).h *= ALWAN_PI; } while (ALWAN__FALSE)
 
 /* YCbCr: Cb [-0.5,0.5] -> [0,1], Cr [-0.5,0.5] -> [0,1] */
 /* YCbCr needs no normalisation: the core kernel already emits Cb and Cr on
@@ -1494,12 +1506,12 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  * of 0.5, in-gamut RGB spanned [0.5, 1.5] rather than the documented [0, 1],
  * and the decode subtracted a full 1.0 -- meaning a standards-conformant
  * Y'CbCr signal could not be decoded at all. */
-#define ALWAN_NORM_YCBCR(p)   ((void)(p))
-#define ALWAN_DENORM_YCBCR(p) ((void)(p))
+#define ALWAN_NORMV_YCBCR(v)   do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_YCBCR(v) do { } while (ALWAN__FALSE)
 
 /* YCoCg: Co [-0.5,0.5] -> [0,1], Cg [-0.5,0.5] -> [0,1] */
-#define ALWAN_NORM_YCOCG(p)   do { (p)->Co += ALWAN_LITERAL(0.5); (p)->Cg += ALWAN_LITERAL(0.5); } while(0)
-#define ALWAN_DENORM_YCOCG(p) do { (p)->Co -= ALWAN_LITERAL(0.5); (p)->Cg -= ALWAN_LITERAL(0.5); } while(0)
+#define ALWAN_NORMV_YCOCG(v)   do { (v).Co += ALWAN_LITERAL(0.5); (v).Cg += ALWAN_LITERAL(0.5); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_YCOCG(v) do { (v).Co -= ALWAN_LITERAL(0.5); (v).Cg -= ALWAN_LITERAL(0.5); } while (ALWAN__FALSE)
 
 /* YcCbcCrc needs no normalisation, for the same reason YCbCr does not: the core
  * kernel already emits Cbc and Crc on [0, 1], centred on the legal-range midpoint
@@ -1511,201 +1523,357 @@ ALWAN_INLINE alwan_scalar alwan_lerp(alwan_scalar a, alwan_scalar b, alwan_scala
  * the YCbCr defect fixed on 2026-08-27, in the constant-luminance twin that was
  * missed then. YCoCg is NOT affected: its kernel emits Co and Cg centred on 0, so
  * the +0.5 there is the correct mapping. */
-#define ALWAN_NORM_YCCBCCRC(p)   ((void)(p))
-#define ALWAN_DENORM_YCCBCCRC(p) ((void)(p))
+#define ALWAN_NORMV_YCCBCCRC(v)   do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_YCCBCCRC(v) do { } while (ALWAN__FALSE)
 
 /* HCL: H [-pi, pi] -> [-1, 1], a signed range scaled by its bound */
-#define ALWAN_NORM_HCL(p)   do { (p)->H *= ALWAN_LITERAL(0.31830988618379067154); } while(0)
-#define ALWAN_DENORM_HCL(p) do { (p)->H *= ALWAN_PI; } while(0)
+#define ALWAN_NORMV_HCL(v)   do { (v).H *= ALWAN_LITERAL(0.31830988618379067154); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HCL(v) do { (v).H *= ALWAN_PI; } while (ALWAN__FALSE)
 
 /* IHLS: H [0, 2pi) -> [0,1] */
-#define ALWAN_NORM_IHLS(p)   do { (p)->H /= ALWAN__TWOPI; } while(0)
-#define ALWAN_DENORM_IHLS(p) do { (p)->H *= ALWAN__TWOPI; } while(0)
+#define ALWAN_NORMV_IHLS(v)   do { (v).H /= ALWAN__TWOPI; } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_IHLS(v) do { (v).H *= ALWAN__TWOPI; } while (ALWAN__FALSE)
 
 /* DIN99: L99 [0,100] -> [0,1] */
-#define ALWAN_NORM_DIN99(p)   do { (p)->L99 *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_DIN99(p) do { (p)->L99 *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_DIN99(v)   do { (v).L99 *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_DIN99(v) do { (v).L99 *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* Hunter Lab: L [0,100] -> [0,1] */
-#define ALWAN_NORM_HUNTER_LAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_HUNTER_LAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_HUNTER_LAB(v)   do { (v).L *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HUNTER_LAB(v) do { (v).L *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* ProLab: L [0,100] -> [0,1] */
-#define ALWAN_NORM_PROLAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_PROLAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_PROLAB(v)   do { (v).L *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_PROLAB(v) do { (v).L *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* CAM Jab (UCS): J [0,100] -> [0,1] */
-#define ALWAN_NORM_CAM_JAB(p)   do { (p)->J *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_CAM_JAB(p) do { (p)->J *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_CAM_JAB(v)   do { (v).J *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM_JAB(v) do { (v).J *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* CIECAM02: J [0,100] -> [0,1], h [0,360) -> [0,1], H [0,400] -> [0,1] */
-#define ALWAN_NORM_CIECAM02(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
-    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
-#define ALWAN_DENORM_CIECAM02(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
-    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_NORMV_CIECAM02(v)   do { (v).J *= ALWAN_LITERAL(0.01); \
+    (v).h /= ALWAN_LITERAL(360.0); (v).H /= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CIECAM02(v) do { (v).J *= ALWAN_LITERAL(100.0); \
+    (v).h *= ALWAN_LITERAL(360.0); (v).H *= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
 
 /* CAM16: J [0,100] -> [0,1], h [0,360) -> [0,1], H [0,400] -> [0,1] */
-#define ALWAN_NORM_CAM16(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
-    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
-#define ALWAN_DENORM_CAM16(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
-    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_NORMV_CAM16(v)   do { (v).J *= ALWAN_LITERAL(0.01); \
+    (v).h /= ALWAN_LITERAL(360.0); (v).H /= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM16(v) do { (v).J *= ALWAN_LITERAL(100.0); \
+    (v).h *= ALWAN_LITERAL(360.0); (v).H *= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
 
 /* CIECAM16 reports the same seven correlates as CAM16, on the same ranges. */
-#define ALWAN_NORM_CIECAM16(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
-    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
-#define ALWAN_DENORM_CIECAM16(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
-    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_NORMV_CIECAM16(v)   do { (v).J *= ALWAN_LITERAL(0.01); \
+    (v).h /= ALWAN_LITERAL(360.0); (v).H /= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CIECAM16(v) do { (v).J *= ALWAN_LITERAL(100.0); \
+    (v).h *= ALWAN_LITERAL(360.0); (v).H *= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
 
 /* sCAM: J, C, Q, M, V, K, W and D are all 0-100, h is degrees, H is quadrature. */
-#define ALWAN_NORM_SCAM(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
-    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); \
-    (p)->V *= ALWAN_LITERAL(0.01); (p)->K *= ALWAN_LITERAL(0.01); \
-    (p)->W *= ALWAN_LITERAL(0.01); (p)->D *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_SCAM(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
-    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); \
-    (p)->V *= ALWAN_LITERAL(100.0); (p)->K *= ALWAN_LITERAL(100.0); \
-    (p)->W *= ALWAN_LITERAL(100.0); (p)->D *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_SCAM(v)   do { (v).J *= ALWAN_LITERAL(0.01); \
+    (v).h /= ALWAN_LITERAL(360.0); (v).H /= ALWAN_LITERAL(400.0); \
+    (v).V *= ALWAN_LITERAL(0.01); (v).K *= ALWAN_LITERAL(0.01); \
+    (v).W *= ALWAN_LITERAL(0.01); (v).D *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_SCAM(v) do { (v).J *= ALWAN_LITERAL(100.0); \
+    (v).h *= ALWAN_LITERAL(360.0); (v).H *= ALWAN_LITERAL(400.0); \
+    (v).V *= ALWAN_LITERAL(100.0); (v).K *= ALWAN_LITERAL(100.0); \
+    (v).W *= ALWAN_LITERAL(100.0); (v).D *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* ZCAM: Jz [0,100] -> [0,1], hz [0,360) -> [0,1], Kz [0,100] -> [0,1], Wz [0,100] -> [0,1] */
-#define ALWAN_NORM_ZCAM(p)   do { (p)->Jz *= ALWAN_LITERAL(0.01); \
-    (p)->hz /= ALWAN_LITERAL(360.0); (p)->Kz *= ALWAN_LITERAL(0.01); \
-    (p)->Wz *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_ZCAM(p) do { (p)->Jz *= ALWAN_LITERAL(100.0); \
-    (p)->hz *= ALWAN_LITERAL(360.0); (p)->Kz *= ALWAN_LITERAL(100.0); \
-    (p)->Wz *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_ZCAM(v)   do { (v).Jz *= ALWAN_LITERAL(0.01); \
+    (v).hz /= ALWAN_LITERAL(360.0); (v).Kz *= ALWAN_LITERAL(0.01); \
+    (v).Wz *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_ZCAM(v) do { (v).Jz *= ALWAN_LITERAL(100.0); \
+    (v).hz *= ALWAN_LITERAL(360.0); (v).Kz *= ALWAN_LITERAL(100.0); \
+    (v).Wz *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* Hellwig2022: J [0,100] -> [0,1], h [0,360) -> [0,1], H [0,400] -> [0,1] */
-#define ALWAN_NORM_HELLWIG2022(p)   do { (p)->J *= ALWAN_LITERAL(0.01); \
-    (p)->h /= ALWAN_LITERAL(360.0); (p)->H /= ALWAN_LITERAL(400.0); } while(0)
-#define ALWAN_DENORM_HELLWIG2022(p) do { (p)->J *= ALWAN_LITERAL(100.0); \
-    (p)->h *= ALWAN_LITERAL(360.0); (p)->H *= ALWAN_LITERAL(400.0); } while(0)
+#define ALWAN_NORMV_HELLWIG2022(v)   do { (v).J *= ALWAN_LITERAL(0.01); \
+    (v).h /= ALWAN_LITERAL(360.0); (v).H /= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HELLWIG2022(v) do { (v).J *= ALWAN_LITERAL(100.0); \
+    (v).h *= ALWAN_LITERAL(360.0); (v).H *= ALWAN_LITERAL(400.0); } while (ALWAN__FALSE)
 
 /* Hunt: J [0,100] -> [0,1], h [0,360) -> [0,1] */
-#define ALWAN_NORM_HUNT(p)   do { (p)->J *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_HUNT(p) do { (p)->J *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_HUNT(v)   do { (v).J *= ALWAN_LITERAL(0.01); (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HUNT(v) do { (v).J *= ALWAN_LITERAL(100.0); (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* Kim2009: J [0,100] -> [0,1], h [0,360) -> [0,1] */
-#define ALWAN_NORM_KIM2009(p)   do { (p)->J *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_KIM2009(p) do { (p)->J *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_KIM2009(v)   do { (v).J *= ALWAN_LITERAL(0.01); (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_KIM2009(v) do { (v).J *= ALWAN_LITERAL(100.0); (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* LLAB: L [0,100] -> [0,1], h [0,360) -> [0,1] */
-#define ALWAN_NORM_LLAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_LLAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_LLAB(v)   do { (v).L *= ALWAN_LITERAL(0.01); (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LLAB(v) do { (v).L *= ALWAN_LITERAL(100.0); (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* ATD95: H [0,360) -> [0,1] */
-#define ALWAN_NORM_ATD95(p)   do { (p)->H /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_ATD95(p) do { (p)->H *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_ATD95(v)   do { (v).H /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_ATD95(v) do { (v).H *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* RLAB: L [0,100] -> [0,1], h [0,360) -> [0,1] */
-#define ALWAN_NORM_RLAB(p)   do { (p)->L *= ALWAN_LITERAL(0.01); (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_RLAB(p) do { (p)->L *= ALWAN_LITERAL(100.0); (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_RLAB(v)   do { (v).L *= ALWAN_LITERAL(0.01); (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_RLAB(v) do { (v).L *= ALWAN_LITERAL(100.0); (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* Nayatani95: L_star_N [0,100] -> [0,1], theta [0,2pi) -> [0,1] */
-#define ALWAN_NORM_NAYATANI95(p)   do { (p)->L_star_N *= ALWAN_LITERAL(0.01); (p)->theta /= ALWAN__TWOPI; } while(0)
-#define ALWAN_DENORM_NAYATANI95(p) do { (p)->L_star_N *= ALWAN_LITERAL(100.0); (p)->theta *= ALWAN__TWOPI; } while(0)
+#define ALWAN_NORMV_NAYATANI95(v)   do { (v).L_star_N *= ALWAN_LITERAL(0.01); (v).theta /= ALWAN__TWOPI; } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_NAYATANI95(v) do { (v).L_star_N *= ALWAN_LITERAL(100.0); (v).theta *= ALWAN__TWOPI; } while (ALWAN__FALSE)
 
 /* CAM18sl: h [0,360) -> [0,1] */
-#define ALWAN_NORM_CAM18SL(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_CAM18SL(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_CAM18SL(v)   do { (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM18SL(v) do { (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* CAM20u: h [0,360) -> [0,1] */
-#define ALWAN_NORM_CAM20U(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_CAM20U(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_CAM20U(v)   do { (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM20U(v) do { (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
 /* UVW (CIE 1964): W-star is a signed lightness-like axis (alwan uses the
  * fractional-Y form, 25*(Y/Yn)^(1/3)-17, ~[-17, 8]); U-star and V-star are
  * unbounded opponent axes. None fit the [0,1] convention, so UVW stays native. */
 
 /* HSLuv: h [0,360) -> [0,1], s [0,100] -> [0,1], l [0,100] -> [0,1] */
-#define ALWAN_NORM_HSLUV(p)   do { (p)->h /= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(0.01); (p)->l *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_HSLUV(p) do { (p)->h *= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(100.0); (p)->l *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_HSLUV(v)   do { (v).h /= ALWAN_LITERAL(360.0); (v).s *= ALWAN_LITERAL(0.01); (v).l *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HSLUV(v) do { (v).h *= ALWAN_LITERAL(360.0); (v).s *= ALWAN_LITERAL(100.0); (v).l *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* HPLuv: h [0,360) -> [0,1], s [0,100] -> [0,1], l [0,100] -> [0,1] */
-#define ALWAN_NORM_HPLUV(p)   do { (p)->h /= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(0.01); (p)->l *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_HPLUV(p) do { (p)->h *= ALWAN_LITERAL(360.0); (p)->s *= ALWAN_LITERAL(100.0); (p)->l *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_HPLUV(v)   do { (v).h /= ALWAN_LITERAL(360.0); (v).s *= ALWAN_LITERAL(0.01); (v).l *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HPLUV(v) do { (v).h *= ALWAN_LITERAL(360.0); (v).s *= ALWAN_LITERAL(100.0); (v).l *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* HLC: H [0,360) -> [0,1], L [0,100] -> [0,1] (C is chroma, unbounded) */
-#define ALWAN_NORM_HLC(p)   do { (p)->H /= ALWAN_LITERAL(360.0); (p)->L *= ALWAN_LITERAL(0.01); } while(0)
-#define ALWAN_DENORM_HLC(p) do { (p)->H *= ALWAN_LITERAL(360.0); (p)->L *= ALWAN_LITERAL(100.0); } while(0)
+#define ALWAN_NORMV_HLC(v)   do { (v).H /= ALWAN_LITERAL(360.0); (v).L *= ALWAN_LITERAL(0.01); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HLC(v) do { (v).H *= ALWAN_LITERAL(360.0); (v).L *= ALWAN_LITERAL(100.0); } while (ALWAN__FALSE)
 
 /* Cubehelix: h [0,360) -> [0,1] (l is already [0,1]; s is saturation, unbounded) */
-#define ALWAN_NORM_CUBEHELIX(p)   do { (p)->h /= ALWAN_LITERAL(360.0); } while(0)
-#define ALWAN_DENORM_CUBEHELIX(p) do { (p)->h *= ALWAN_LITERAL(360.0); } while(0)
+#define ALWAN_NORMV_CUBEHELIX(v)   do { (v).h /= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CUBEHELIX(v) do { (v).h *= ALWAN_LITERAL(360.0); } while (ALWAN__FALSE)
 
-#else /* ALWAN_NORMALIZE_RANGES == 0 or non-C backend: all no-ops */
+#else /* ALWAN_NORMALIZE_RANGES == 0: native ranges, every helper a no-op */
 
-#define ALWAN_NORM_LAB(p)           ((void)0)
-#define ALWAN_DENORM_LAB(p)         ((void)0)
-#define ALWAN_NORM_UVW(p)           ((void)0)
-#define ALWAN_DENORM_UVW(p)         ((void)0)
-#define ALWAN_NORM_LUV(p)           ((void)0)
-#define ALWAN_DENORM_LUV(p)         ((void)0)
-#define ALWAN_NORM_LCH(p)           ((void)0)
-#define ALWAN_DENORM_LCH(p)         ((void)0)
-#define ALWAN_NORM_LCHUV(p)         ((void)0)
-#define ALWAN_DENORM_LCHUV(p)       ((void)0)
-#define ALWAN_NORM_OKLCH(p)         ((void)0)
-#define ALWAN_DENORM_OKLCH(p)       ((void)0)
-#define ALWAN_NORM_JZCZHZ(p)        ((void)0)
-#define ALWAN_DENORM_JZCZHZ(p)      ((void)0)
-#define ALWAN_NORM_IPTCH(p)         ((void)0)
-#define ALWAN_DENORM_IPTCH(p)       ((void)0)
-#define ALWAN_NORM_YCBCR(p)         ((void)0)
-#define ALWAN_DENORM_YCBCR(p)       ((void)0)
-#define ALWAN_NORM_YCOCG(p)         ((void)0)
-#define ALWAN_DENORM_YCOCG(p)       ((void)0)
-#define ALWAN_NORM_YCCBCCRC(p)      ((void)0)
-#define ALWAN_DENORM_YCCBCCRC(p)    ((void)0)
-#define ALWAN_NORM_HCL(p)           ((void)0)
-#define ALWAN_DENORM_HCL(p)         ((void)0)
-#define ALWAN_NORM_IHLS(p)          ((void)0)
-#define ALWAN_DENORM_IHLS(p)        ((void)0)
-#define ALWAN_NORM_DIN99(p)         ((void)0)
-#define ALWAN_DENORM_DIN99(p)       ((void)0)
-#define ALWAN_NORM_HUNTER_LAB(p)    ((void)0)
-#define ALWAN_DENORM_HUNTER_LAB(p)  ((void)0)
-#define ALWAN_NORM_PROLAB(p)        ((void)0)
-#define ALWAN_DENORM_PROLAB(p)      ((void)0)
-#define ALWAN_NORM_CAM_JAB(p)       ((void)0)
-#define ALWAN_DENORM_CAM_JAB(p)     ((void)0)
-#define ALWAN_NORM_CIECAM02(p)      ((void)0)
-#define ALWAN_DENORM_CIECAM02(p)    ((void)0)
-#define ALWAN_NORM_CAM16(p)         ((void)0)
-#define ALWAN_DENORM_CAM16(p)       ((void)0)
-#define ALWAN_NORM_CIECAM16(p)      ((void)0)
-#define ALWAN_DENORM_CIECAM16(p)    ((void)0)
-#define ALWAN_NORM_SCAM(p)          ((void)0)
-#define ALWAN_DENORM_SCAM(p)        ((void)0)
-#define ALWAN_NORM_ZCAM(p)          ((void)0)
-#define ALWAN_DENORM_ZCAM(p)        ((void)0)
-#define ALWAN_NORM_HELLWIG2022(p)   ((void)0)
-#define ALWAN_DENORM_HELLWIG2022(p) ((void)0)
-#define ALWAN_NORM_HUNT(p)          ((void)0)
-#define ALWAN_DENORM_HUNT(p)        ((void)0)
-#define ALWAN_NORM_KIM2009(p)       ((void)0)
-#define ALWAN_DENORM_KIM2009(p)     ((void)0)
-#define ALWAN_NORM_LLAB(p)          ((void)0)
-#define ALWAN_DENORM_LLAB(p)        ((void)0)
-#define ALWAN_NORM_ATD95(p)         ((void)0)
-#define ALWAN_DENORM_ATD95(p)       ((void)0)
-#define ALWAN_NORM_RLAB(p)          ((void)0)
-#define ALWAN_DENORM_RLAB(p)        ((void)0)
-#define ALWAN_NORM_NAYATANI95(p)    ((void)0)
-#define ALWAN_DENORM_NAYATANI95(p)  ((void)0)
-#define ALWAN_NORM_CAM18SL(p)       ((void)0)
-#define ALWAN_DENORM_CAM18SL(p)     ((void)0)
-#define ALWAN_NORM_CAM20U(p)        ((void)0)
-#define ALWAN_DENORM_CAM20U(p)      ((void)0)
-#define ALWAN_NORM_HSLUV(p)         ((void)0)
-#define ALWAN_DENORM_HSLUV(p)       ((void)0)
-#define ALWAN_NORM_HPLUV(p)         ((void)0)
-#define ALWAN_DENORM_HPLUV(p)       ((void)0)
-#define ALWAN_NORM_HLC(p)           ((void)0)
-#define ALWAN_DENORM_HLC(p)         ((void)0)
-#define ALWAN_NORM_CUBEHELIX(p)     ((void)0)
-#define ALWAN_DENORM_CUBEHELIX(p)   ((void)0)
+#define ALWAN_NORMV_LAB(v)           do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LAB(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_UVW(v)           do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_UVW(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_LUV(v)           do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LUV(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_LCH(v)           do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LCH(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_LCHUV(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LCHUV(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_OKLCH(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_OKLCH(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_JZCZHZ(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_JZCZHZ(v)      do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_IPTCH(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_IPTCH(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_YCBCR(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_YCBCR(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_YCOCG(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_YCOCG(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_YCCBCCRC(v)      do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_YCCBCCRC(v)    do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_HCL(v)           do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HCL(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_IHLS(v)          do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_IHLS(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_DIN99(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_DIN99(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_HUNTER_LAB(v)    do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HUNTER_LAB(v)  do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_PROLAB(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_PROLAB(v)      do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_CAM_JAB(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM_JAB(v)     do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_CIECAM02(v)      do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CIECAM02(v)    do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_CAM16(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM16(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_CIECAM16(v)      do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CIECAM16(v)    do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_SCAM(v)          do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_SCAM(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_ZCAM(v)          do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_ZCAM(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_HELLWIG2022(v)   do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HELLWIG2022(v) do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_HUNT(v)          do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HUNT(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_KIM2009(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_KIM2009(v)     do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_LLAB(v)          do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_LLAB(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_ATD95(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_ATD95(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_RLAB(v)          do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_RLAB(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_NAYATANI95(v)    do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_NAYATANI95(v)  do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_CAM18SL(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM18SL(v)     do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_CAM20U(v)        do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CAM20U(v)      do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_HSLUV(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HSLUV(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_HPLUV(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HPLUV(v)       do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_HLC(v)           do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_HLC(v)         do { } while (ALWAN__FALSE)
+#define ALWAN_NORMV_CUBEHELIX(v)     do { } while (ALWAN__FALSE)
+#define ALWAN_DENORMV_CUBEHELIX(v)   do { } while (ALWAN__FALSE)
 
 #endif /* ALWAN_NORMALIZE_RANGES */
+
+/* THE POINTER FORMS: what the C API calls on its out-parameters
+ * (ALWAN_NORM_LAB(out)) -- the value forms above through a dereference, so
+ * the C API and every other backend apply one rescaling. C backend only: GLSL
+ * and HLSL have no pointers, so a shader, a Halide pipeline or any caller
+ * holding the struct itself calls the value form on it:
+ *
+ *     alwan_lab lab = alwan_xyz_to_lab_v(xyz, white);   (GPU / Halide core)
+ *     ALWAN_NORMV_LAB(lab);
+ *
+ * which is how the GPU backends reach the same [0, 1] convention as the C API:
+ * the core _v functions stay native, and normalization is the caller's
+ * boundary, under the same switch. */
+#if ALWAN_BACKEND == ALWAN_BACKEND_C
+#define ALWAN_NORM_LAB(p)   ALWAN_NORMV_LAB(*(p))
+#define ALWAN_DENORM_LAB(p) ALWAN_DENORMV_LAB(*(p))
+#define ALWAN_NORM_UVW(p)   ALWAN_NORMV_UVW(*(p))
+#define ALWAN_DENORM_UVW(p) ALWAN_DENORMV_UVW(*(p))
+#define ALWAN_NORM_LUV(p)   ALWAN_NORMV_LUV(*(p))
+#define ALWAN_DENORM_LUV(p) ALWAN_DENORMV_LUV(*(p))
+#define ALWAN_NORM_LCH(p)   ALWAN_NORMV_LCH(*(p))
+#define ALWAN_DENORM_LCH(p) ALWAN_DENORMV_LCH(*(p))
+#define ALWAN_NORM_LCHUV(p)   ALWAN_NORMV_LCHUV(*(p))
+#define ALWAN_DENORM_LCHUV(p) ALWAN_DENORMV_LCHUV(*(p))
+#define ALWAN_NORM_OKLCH(p)   ALWAN_NORMV_OKLCH(*(p))
+#define ALWAN_DENORM_OKLCH(p) ALWAN_DENORMV_OKLCH(*(p))
+#define ALWAN_NORM_JZCZHZ(p)   ALWAN_NORMV_JZCZHZ(*(p))
+#define ALWAN_DENORM_JZCZHZ(p) ALWAN_DENORMV_JZCZHZ(*(p))
+#define ALWAN_NORM_IPTCH(p)   ALWAN_NORMV_IPTCH(*(p))
+#define ALWAN_DENORM_IPTCH(p) ALWAN_DENORMV_IPTCH(*(p))
+#define ALWAN_NORM_YCBCR(p)   ALWAN_NORMV_YCBCR(*(p))
+#define ALWAN_DENORM_YCBCR(p) ALWAN_DENORMV_YCBCR(*(p))
+#define ALWAN_NORM_YCOCG(p)   ALWAN_NORMV_YCOCG(*(p))
+#define ALWAN_DENORM_YCOCG(p) ALWAN_DENORMV_YCOCG(*(p))
+#define ALWAN_NORM_YCCBCCRC(p)   ALWAN_NORMV_YCCBCCRC(*(p))
+#define ALWAN_DENORM_YCCBCCRC(p) ALWAN_DENORMV_YCCBCCRC(*(p))
+#define ALWAN_NORM_HCL(p)   ALWAN_NORMV_HCL(*(p))
+#define ALWAN_DENORM_HCL(p) ALWAN_DENORMV_HCL(*(p))
+#define ALWAN_NORM_IHLS(p)   ALWAN_NORMV_IHLS(*(p))
+#define ALWAN_DENORM_IHLS(p) ALWAN_DENORMV_IHLS(*(p))
+#define ALWAN_NORM_DIN99(p)   ALWAN_NORMV_DIN99(*(p))
+#define ALWAN_DENORM_DIN99(p) ALWAN_DENORMV_DIN99(*(p))
+#define ALWAN_NORM_HUNTER_LAB(p)   ALWAN_NORMV_HUNTER_LAB(*(p))
+#define ALWAN_DENORM_HUNTER_LAB(p) ALWAN_DENORMV_HUNTER_LAB(*(p))
+#define ALWAN_NORM_PROLAB(p)   ALWAN_NORMV_PROLAB(*(p))
+#define ALWAN_DENORM_PROLAB(p) ALWAN_DENORMV_PROLAB(*(p))
+#define ALWAN_NORM_CAM_JAB(p)   ALWAN_NORMV_CAM_JAB(*(p))
+#define ALWAN_DENORM_CAM_JAB(p) ALWAN_DENORMV_CAM_JAB(*(p))
+#define ALWAN_NORM_CIECAM02(p)   ALWAN_NORMV_CIECAM02(*(p))
+#define ALWAN_DENORM_CIECAM02(p) ALWAN_DENORMV_CIECAM02(*(p))
+#define ALWAN_NORM_CAM16(p)   ALWAN_NORMV_CAM16(*(p))
+#define ALWAN_DENORM_CAM16(p) ALWAN_DENORMV_CAM16(*(p))
+#define ALWAN_NORM_CIECAM16(p)   ALWAN_NORMV_CIECAM16(*(p))
+#define ALWAN_DENORM_CIECAM16(p) ALWAN_DENORMV_CIECAM16(*(p))
+#define ALWAN_NORM_SCAM(p)   ALWAN_NORMV_SCAM(*(p))
+#define ALWAN_DENORM_SCAM(p) ALWAN_DENORMV_SCAM(*(p))
+#define ALWAN_NORM_ZCAM(p)   ALWAN_NORMV_ZCAM(*(p))
+#define ALWAN_DENORM_ZCAM(p) ALWAN_DENORMV_ZCAM(*(p))
+#define ALWAN_NORM_HELLWIG2022(p)   ALWAN_NORMV_HELLWIG2022(*(p))
+#define ALWAN_DENORM_HELLWIG2022(p) ALWAN_DENORMV_HELLWIG2022(*(p))
+#define ALWAN_NORM_HUNT(p)   ALWAN_NORMV_HUNT(*(p))
+#define ALWAN_DENORM_HUNT(p) ALWAN_DENORMV_HUNT(*(p))
+#define ALWAN_NORM_KIM2009(p)   ALWAN_NORMV_KIM2009(*(p))
+#define ALWAN_DENORM_KIM2009(p) ALWAN_DENORMV_KIM2009(*(p))
+#define ALWAN_NORM_LLAB(p)   ALWAN_NORMV_LLAB(*(p))
+#define ALWAN_DENORM_LLAB(p) ALWAN_DENORMV_LLAB(*(p))
+#define ALWAN_NORM_ATD95(p)   ALWAN_NORMV_ATD95(*(p))
+#define ALWAN_DENORM_ATD95(p) ALWAN_DENORMV_ATD95(*(p))
+#define ALWAN_NORM_RLAB(p)   ALWAN_NORMV_RLAB(*(p))
+#define ALWAN_DENORM_RLAB(p) ALWAN_DENORMV_RLAB(*(p))
+#define ALWAN_NORM_NAYATANI95(p)   ALWAN_NORMV_NAYATANI95(*(p))
+#define ALWAN_DENORM_NAYATANI95(p) ALWAN_DENORMV_NAYATANI95(*(p))
+#define ALWAN_NORM_CAM18SL(p)   ALWAN_NORMV_CAM18SL(*(p))
+#define ALWAN_DENORM_CAM18SL(p) ALWAN_DENORMV_CAM18SL(*(p))
+#define ALWAN_NORM_CAM20U(p)   ALWAN_NORMV_CAM20U(*(p))
+#define ALWAN_DENORM_CAM20U(p) ALWAN_DENORMV_CAM20U(*(p))
+#define ALWAN_NORM_HSLUV(p)   ALWAN_NORMV_HSLUV(*(p))
+#define ALWAN_DENORM_HSLUV(p) ALWAN_DENORMV_HSLUV(*(p))
+#define ALWAN_NORM_HPLUV(p)   ALWAN_NORMV_HPLUV(*(p))
+#define ALWAN_DENORM_HPLUV(p) ALWAN_DENORMV_HPLUV(*(p))
+#define ALWAN_NORM_HLC(p)   ALWAN_NORMV_HLC(*(p))
+#define ALWAN_DENORM_HLC(p) ALWAN_DENORMV_HLC(*(p))
+#define ALWAN_NORM_CUBEHELIX(p)   ALWAN_NORMV_CUBEHELIX(*(p))
+#define ALWAN_DENORM_CUBEHELIX(p) ALWAN_DENORMV_CUBEHELIX(*(p))
+#else /* GPU backends: no pointers -- use the value forms */
+#define ALWAN_NORM_LAB(p)   ((void)0)
+#define ALWAN_DENORM_LAB(p) ((void)0)
+#define ALWAN_NORM_UVW(p)   ((void)0)
+#define ALWAN_DENORM_UVW(p) ((void)0)
+#define ALWAN_NORM_LUV(p)   ((void)0)
+#define ALWAN_DENORM_LUV(p) ((void)0)
+#define ALWAN_NORM_LCH(p)   ((void)0)
+#define ALWAN_DENORM_LCH(p) ((void)0)
+#define ALWAN_NORM_LCHUV(p)   ((void)0)
+#define ALWAN_DENORM_LCHUV(p) ((void)0)
+#define ALWAN_NORM_OKLCH(p)   ((void)0)
+#define ALWAN_DENORM_OKLCH(p) ((void)0)
+#define ALWAN_NORM_JZCZHZ(p)   ((void)0)
+#define ALWAN_DENORM_JZCZHZ(p) ((void)0)
+#define ALWAN_NORM_IPTCH(p)   ((void)0)
+#define ALWAN_DENORM_IPTCH(p) ((void)0)
+#define ALWAN_NORM_YCBCR(p)   ((void)0)
+#define ALWAN_DENORM_YCBCR(p) ((void)0)
+#define ALWAN_NORM_YCOCG(p)   ((void)0)
+#define ALWAN_DENORM_YCOCG(p) ((void)0)
+#define ALWAN_NORM_YCCBCCRC(p)   ((void)0)
+#define ALWAN_DENORM_YCCBCCRC(p) ((void)0)
+#define ALWAN_NORM_HCL(p)   ((void)0)
+#define ALWAN_DENORM_HCL(p) ((void)0)
+#define ALWAN_NORM_IHLS(p)   ((void)0)
+#define ALWAN_DENORM_IHLS(p) ((void)0)
+#define ALWAN_NORM_DIN99(p)   ((void)0)
+#define ALWAN_DENORM_DIN99(p) ((void)0)
+#define ALWAN_NORM_HUNTER_LAB(p)   ((void)0)
+#define ALWAN_DENORM_HUNTER_LAB(p) ((void)0)
+#define ALWAN_NORM_PROLAB(p)   ((void)0)
+#define ALWAN_DENORM_PROLAB(p) ((void)0)
+#define ALWAN_NORM_CAM_JAB(p)   ((void)0)
+#define ALWAN_DENORM_CAM_JAB(p) ((void)0)
+#define ALWAN_NORM_CIECAM02(p)   ((void)0)
+#define ALWAN_DENORM_CIECAM02(p) ((void)0)
+#define ALWAN_NORM_CAM16(p)   ((void)0)
+#define ALWAN_DENORM_CAM16(p) ((void)0)
+#define ALWAN_NORM_CIECAM16(p)   ((void)0)
+#define ALWAN_DENORM_CIECAM16(p) ((void)0)
+#define ALWAN_NORM_SCAM(p)   ((void)0)
+#define ALWAN_DENORM_SCAM(p) ((void)0)
+#define ALWAN_NORM_ZCAM(p)   ((void)0)
+#define ALWAN_DENORM_ZCAM(p) ((void)0)
+#define ALWAN_NORM_HELLWIG2022(p)   ((void)0)
+#define ALWAN_DENORM_HELLWIG2022(p) ((void)0)
+#define ALWAN_NORM_HUNT(p)   ((void)0)
+#define ALWAN_DENORM_HUNT(p) ((void)0)
+#define ALWAN_NORM_KIM2009(p)   ((void)0)
+#define ALWAN_DENORM_KIM2009(p) ((void)0)
+#define ALWAN_NORM_LLAB(p)   ((void)0)
+#define ALWAN_DENORM_LLAB(p) ((void)0)
+#define ALWAN_NORM_ATD95(p)   ((void)0)
+#define ALWAN_DENORM_ATD95(p) ((void)0)
+#define ALWAN_NORM_RLAB(p)   ((void)0)
+#define ALWAN_DENORM_RLAB(p) ((void)0)
+#define ALWAN_NORM_NAYATANI95(p)   ((void)0)
+#define ALWAN_DENORM_NAYATANI95(p) ((void)0)
+#define ALWAN_NORM_CAM18SL(p)   ((void)0)
+#define ALWAN_DENORM_CAM18SL(p) ((void)0)
+#define ALWAN_NORM_CAM20U(p)   ((void)0)
+#define ALWAN_DENORM_CAM20U(p) ((void)0)
+#define ALWAN_NORM_HSLUV(p)   ((void)0)
+#define ALWAN_DENORM_HSLUV(p) ((void)0)
+#define ALWAN_NORM_HPLUV(p)   ((void)0)
+#define ALWAN_DENORM_HPLUV(p) ((void)0)
+#define ALWAN_NORM_HLC(p)   ((void)0)
+#define ALWAN_DENORM_HLC(p) ((void)0)
+#define ALWAN_NORM_CUBEHELIX(p)   ((void)0)
+#define ALWAN_DENORM_CUBEHELIX(p) ((void)0)
+#endif /* ALWAN_BACKEND == ALWAN_BACKEND_C */
 
 /* Test tolerance (double precision).
  *
