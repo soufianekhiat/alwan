@@ -177,6 +177,7 @@ BSD / MIT / Apache / Boost / zlib / ISC; everything else is an oracle.
 | R14 | Formats as bytes: COLMAP text and binary, Bundler, NVM, OpenCV YAML, Metashape camera XML, RealityScan XMP, PLY, OBJ + MTL, glTF / GLB, E57, LAS; Alembic and Partio behind `SUWAR_HAS_ALEMBIC` / `SUWAR_HAS_PARTIO` | specs, libE57Format (BSL-1.0) | the products' own readers | |
 | R15 | KeenTools rigid: PinTool (pose plus focal, optionally lens, from pins over one or several frames); GeoTracker (keyframes from pins, frame-to-frame tracking of visible model points by KLT and robust PnP, silhouette and edge refinement, smooth and precise refinement over the shot, zoom with focal per frame, 2D and surface masks, solve the object or the camera, texture from frames) | papers (Drummond-Cipolla 2002, Vacchetti 2004) | synthetic renders with known poses | rendered visibility, edge residual |
 | R16 | KeenTools faces: ICT FaceKit light shipped, FLAME 2023 Open from a caller file; fitting to landmarks and pins over several photos (shared shape, pose per photo, shared focal, contour landmarks, blendshapes by non-negative least squares); auto-align with a landmark model trained on renders of the head model; texture bake to the model's UV; FaceTracker (pose and expressions per frame from landmarks and flow, temporal smoothing, surface masks, ARKit-named blendshape weights out) | eos (Apache-2.0) | eos Python, synthetic renders | blendshape evaluation per vertex |
+| R18 | Appearance capture: per-point radiance samples (normal, view direction, linear value per view, clipped values missing); masked robust PCA with randomised SVD splitting each point's samples into a low-rank, view-independent part (diffuse) and a sparse part (specular); specular samples reflected about the normal into an equirectangular environment, compact lights separated from the broad environment, the diffuse part read as irradiance through spherical harmonics; an HDRI out | papers (Candes 2011 RPCA, Lin 2010 inexact ALM, Halko 2011 randomised SVD, Ramamoorthi-Hanrahan 2001 irradiance) | synthetic renders with a known environment; numpy transcription of the ALM for the iterates | one ALM step per block, one splat per sample |
 | R17 | Gaussian splats, our own rasteriser and optimiser from the paper; ALIKED / DISK / LightGlue weights on the nn layers | paper; weights of ALIKED (BSD-3), DISK, LightGlue (Apache-2.0) | gsplat, the Inria code, the authors' PyTorch, locally | splat per pixel, one optimiser step |
 
 ## 6. Validation
@@ -217,3 +218,26 @@ Suite numbers continue from 159, plates from 226.
 First steps: R0, including the context's thread pool (shared linear algebra and the sparse LM with
 Schur complement, checked against pyceres on bundle problems), then R1's camera models
 against pycolmap.
+
+## 8. R18 appearance capture (owner request 2026-10-15)
+
+The goal is an HDRI of the lighting from a multi-view capture. Each surface point seen in
+several views gives samples {normal, view direction, value}. Stacked as points x views (one
+matrix per channel, views unseen or clipped left out), the diffuse part of a point is the same
+in every view and the specular part shows only in a few, so the matrix splits into a low-rank
+part and a sparse part (robust PCA on the observed entries; the singular value steps by
+randomised SVD). The samples minus the diffuse part are specular; each, reflected about the
+normal, is a reading of the environment in one direction. Splatted into an equirectangular map
+they give the high frequencies, compact bright regions become lights (direction, size,
+radiance) and the rest the environment; the diffuse part, through the normals, constrains the
+low frequencies (irradiance in spherical harmonics, up to albedo).
+
+Data: RawNeRF's windowlegovary (104 raw views, two exposures 38x apart, a sunlit window and
+glossy plastic), read in abaad_dev only; values are linear raw development divided by exposure
+time x ISO, clipped pixels missing. Truth: synthetic renders of a mesh under a known HDRI
+(our rasteriser, a diffuse plus GGX material), where every sample's diffuse and specular part
+and the map are known.
+
+Steps, each with a suite and a plate: R18a samples (visibility by a rasterised depth test,
+abaad_rasterize), R18b masked RPCA, R18c environment from specular samples and lights, R18d
+the HDRI on windowlegovary.
