@@ -84,6 +84,68 @@
 #endif
 
 /* ----------------------------------------------------------------
+ * Feature families
+ * ----------------------------------------------------------------
+ * Whole families of functions that a build can leave out, for a smaller library.
+ * Each defaults to 1. Set one to 0 when compiling alwan AND the code that uses it,
+ * as the precision switches are set: the family's code is not compiled and its
+ * functions are not declared, so a call to one is a compile error rather than a
+ * runtime surprise. Their types and enums stay declared. CMake's ALWAN_WITH_<NAME>
+ * options export the value to consumers (target and alwan.pc).
+ *
+ *   ALWAN_WITH_FILM        the photochemical film pipeline: stock profiles, film_render,
+ *                          looks, grain, halation; off also turns the film tables off
+ *   ALWAN_WITH_SKY         the physical sky models (Preetham, Hosek-Wilkie, Bruneton) and
+ *                          the ASTM G173 solar spectra they ship with
+ *   ALWAN_WITH_NN          the neural-network layer kernels
+ *   ALWAN_WITH_FORMATION   the experimental picture-formation operators and the
+ *                          RGB-space fit (experimental/)
+ *   ALWAN_WITH_FILE_FORMATS the LUT and luminaire file formats: .cube, CLF, spi, 3dl,
+ *                          csp, IES and EULUMDAT, read and written
+ *   ALWAN_WITH_PATTERNS    test patterns, test cards and palettes
+ *   ALWAN_WITH_OPTICS      thin films, multilayers, iridescence, skin, fluorescence and
+ *                          the refractive-index database
+ *   ALWAN_WITH_GRADING     OCIO-style grading, tonescale-region grading, tone
+ *                          adjustment, Hald CLUTs
+ *   ALWAN_WITH_IMAGE_METRICS image comparison: alwan_image_compare, scikit-image's MSE,
+ *                          NRMSE, NMI and structural_similarity, and FLIP; alwan_ssim,
+ *                          alwan_psnr and their PU21 forms stay
+ *
+ * alwan_dev's `tools/check_precision_link.py families` builds the library with each
+ * one off and links every entry point still declared. */
+#ifndef ALWAN_WITH_FILM
+#  define ALWAN_WITH_FILM 1
+#endif
+#ifndef ALWAN_WITH_SKY
+#  define ALWAN_WITH_SKY 1
+#endif
+#ifndef ALWAN_WITH_NN
+#  define ALWAN_WITH_NN 1
+#endif
+#ifndef ALWAN_WITH_FORMATION
+#  define ALWAN_WITH_FORMATION 1
+#endif
+#ifndef ALWAN_WITH_FILE_FORMATS
+#  define ALWAN_WITH_FILE_FORMATS 1
+#endif
+#ifndef ALWAN_WITH_PATTERNS
+#  define ALWAN_WITH_PATTERNS 1
+#endif
+#ifndef ALWAN_WITH_OPTICS
+#  define ALWAN_WITH_OPTICS 1
+#endif
+#ifndef ALWAN_WITH_GRADING
+#  define ALWAN_WITH_GRADING 1
+#endif
+#ifndef ALWAN_WITH_IMAGE_METRICS
+#  define ALWAN_WITH_IMAGE_METRICS 1
+#endif
+#if !ALWAN_WITH_OPTICS && ALWAN_WITH_REFRACTIVE_DATA
+#  undef ALWAN_WITH_REFRACTIVE_DATA
+#  define ALWAN_WITH_REFRACTIVE_DATA 0
+#endif
+
+/* ----------------------------------------------------------------
  * Keep the default `alwan_scalar` precision consistent with the build.
  * A single-precision build forces the matching default scalar so that
  * `alwan_scalar` always names a precision that is actually compiled in.

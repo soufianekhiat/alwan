@@ -16,6 +16,7 @@
 
 #include "alwan_data_sky.h"
 
+#if ALWAN_WITH_SKY   /* the sky family's data; alwan_build_config.h */
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
@@ -48,3 +49,4 @@ double const alwan__sky_ozone[ALWAN__SKY_OZONE] = {
 };
 
 ALWAN_DIAG_POP
+#endif /* ALWAN_WITH_SKY */

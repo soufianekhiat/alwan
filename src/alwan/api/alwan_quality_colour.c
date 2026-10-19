@@ -273,6 +273,7 @@ alwan_status alwan__cqs_compute(alwan_cqs_f64 *spec, alwan_spd_f64 const *test_s
     (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_vs_reflectance_f64, ALWAN_E_NODATA);
     {
         double S[Q_CQS_N], Sr[Q_CQS_N], X[3], Xt[3], Xr[3];
         double lab_t[ALWAN_CQS_SAMPLES][3], lab_r[ALWAN_CQS_SAMPLES][3], xyz_ref[ALWAN_CQS_SAMPLES][3];
@@ -425,6 +426,7 @@ alwan_status alwan__cie2017_compute(alwan_tm30_f64 *spec, alwan_spd_f64 const *t
     (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_ces_reflectance_f64, ALWAN_E_NODATA);
     {
         /* The grid is the test's own interval when that is 1 or 5 nm, as colour works; any
          * other spacing is read at 1 nm, where colour refuses it. */

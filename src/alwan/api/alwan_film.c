@@ -13,6 +13,8 @@
 #include "../core/alwan_table_core.h"
 #include "../data/alwan_data_tables.h"
 
+#if ALWAN_WITH_FILM   /* the whole family; alwan_build_config.h */
+
 alwan_status alwan_film_stock_info(alwan_film_stock stock, char const **name, char const **manufacturer) {
     /* One static row per stock, the same strings the profile carries. */
     static char const *const k_names[ALWAN_FILM_STOCK_COUNT][2] = {
@@ -144,3 +146,5 @@ ALWAN_DIAG_POP
 #undef ALWAN_CORE_FILM_PROFILE
 #include "alwan_api_teardown.h"
 #endif
+
+#endif /* ALWAN_WITH_FILM */

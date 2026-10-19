@@ -550,6 +550,37 @@ The coefficients agree less tightly than the objective because the minimum is fl
 searches find the same value and stop at different points in the basin, so the tests pin
 the objective tightly and the coefficients loosely, and so should you when comparing.
 
+### Perceptual Objective
+
+```c
+alwan_xyz_f64 const d65 = { 0.95047, 1.0, 1.08883 };
+alwan_ccm_fit_params p = { 0 };
+p.objective = ALWAN_CCM_OBJECTIVE_DE2000;   /* M_R is CIE XYZ, Y of the white 1 */
+p.objective_white = &d65;
+alwan_ccm_fit_f64(matrix, &rows, camera_rgb, chart_xyz, n, ALWAN_CCM_CHEUNG2004, &e, &p);
+```
+
+The least-squares fits minimise the residual in `M_R`'s units, which for an XYZ target
+spends the fit's accuracy where XYZ is large: the light patches. A perceptual objective
+spends it where the eye sees the error:
+
+    sum_i w_i dE(reference_i, expanded(test_i) X)^2 + ridge |X|_F^2
+
+`ALWAN_CCM_OBJECTIVE_DE2000` takes dE as CIEDE2000 between the two colours' CIE Lab
+under `objective_white`; `ALWAN_CCM_OBJECTIVE_CAM16_UCS` as the distance in CAM16-UCS
+under `objective_vc`, whose white is in `M_R`'s units (Y = 100 for the usual viewing
+conditions, so the reference and the coefficients are on that scale too). The weights,
+the ridge and the neutral constraint keep their meaning, and the neutral pair is still
+met exactly; the robust loss belongs to the RGB objective and is refused here.
+
+It is solved by Levenberg-Marquardt from the least-squares fit with a central-difference
+Jacobian. The objective is not convex, so this finds the minimum in the least-squares
+fit's basin, which for a chart and a polynomial basis is the one wanted. Suite 308 holds
+it to scipy's Levenberg-Marquardt on the same residuals, with colour-science computing
+the differences, on six cases (Cheung 3 and 10 terms, Finlayson's degree-2 root
+polynomial, weighted, with a ridge, with the neutral constraint): the objective agrees
+within 1e-6 relative and the coefficients sit in the same basin.
+
 ### Neutral Preservation
 
 ```c

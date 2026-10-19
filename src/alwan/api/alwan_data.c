@@ -3,11 +3,8 @@
  * Copyright (c) 2025 Soufiane KHIAT
  * SPDX-License-Identifier: MIT
  *
- * Data loading.
- *
- * Only embedded mode (ALWAN_EMBED_DATA=1) is implemented.
- * Runtime mode (ALWAN_EMBED_DATA=0) is NOT supported in the current release.
- * It is planned as a feature for alwan 3.0.0.
+ * Illuminant chromaticity and sRGB primary getters, embedded in every build
+ * (the switchable tables a build may load at run time are api/alwan_data_runtime.c).
  */
 
 #include "../alwan.h"
@@ -16,11 +13,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if ALWAN_EMBED_DATA
-
-/* ----------------------------------------------------------------
- * Embedded data mode: compile-time data inclusion
- * ---------------------------------------------------------------- */
 
 /* Disable float conversion warnings for embedded CSV data */
 ALWAN_DIAG_PUSH
@@ -1024,11 +1016,6 @@ alwan_status alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, 
 }
 #endif /* ALWAN_WITH_F32 */
 
-#else
-    /* Runtime data loading (ALWAN_EMBED_DATA=0) is NOT implemented.
-     * It is planned for alwan 3.0.0. Build with ALWAN_EMBED_DATA=1 (the default). */
-    #error "Runtime data loading (ALWAN_EMBED_DATA=0) is not implemented. Planned for alwan 3.0.0. Use ALWAN_EMBED_DATA=1."
-#endif /* ALWAN_EMBED_DATA */
 
 /* ----------------------------------------------------------------
  * Illuminant White Point Calculation (works in both modes)

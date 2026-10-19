@@ -24,7 +24,7 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include <string.h>
-#include "../data/alwan_data_tables_config.h"
+#include "../data/alwan_data_tables.h"
 
 /* The DNG profile connection space white, D50 as the specification writes it. */
 #define ALWAN__DNG_PCS_x 0.3457
@@ -149,6 +149,7 @@ static alwan_status alwan__dng_cct(alwan_f64 *cct, alwan_vec2_f64 const *xy) {
     (void)cct;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_robertson_locus_f64, ALWAN_E_NODATA);
     *cct = alwan_cct_robertson_xy_f64(xy);
     return (*cct > 0.0) ? ALWAN_OK : ALWAN_E_RANGE;
 #endif

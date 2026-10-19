@@ -961,10 +961,9 @@ alwan_status alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, 
         return ALWAN_E_INVALID;
     }
 
-#if ALWAN_EMBED_DATA
-    /* Embedded data mode - read native f32 tables directly (no f64->f32
+    /* Read native f32 tables directly (no f64->f32
      * double-rounding). Mirrors alwan_rgb_get_space_descriptor_f64 exactly. */
-    (void)ctx;  /* Unused in embedded mode */
+    (void)ctx;
 
     /* Bounds check: ensure enum value is within valid array range */
     if (space < 0 || (size_t)space >= (size_t)ALWAN_RGB_SPACE_COUNT) {
@@ -995,9 +994,6 @@ alwan_status alwan_rgb_get_space_descriptor_f32(alwan_rgb_space_desc_f32 *desc, 
 
     return ALWAN_OK;
 
-#else
-    #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
-#endif /* ALWAN_EMBED_DATA */
 }
 #endif /* ALWAN_WITH_F32 */
 
@@ -1010,9 +1006,8 @@ alwan_status alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, 
         return ALWAN_E_INVALID;
     }
 
-#if ALWAN_EMBED_DATA
-    /* Embedded data mode - direct array indexing (enum values map to array indices) */
-    (void)ctx;  /* Unused in embedded mode */
+    /* Direct array indexing (enum values map to array indices) */
+    (void)ctx;
 
     /* Bounds check: ensure enum value is within valid array range */
     if (space < 0 || (size_t)space >= (size_t)ALWAN_RGB_SPACE_COUNT) {
@@ -1043,9 +1038,6 @@ alwan_status alwan_rgb_get_space_descriptor_f64(alwan_rgb_space_desc_f64 *desc, 
 
     return ALWAN_OK;
 
-#else
-    #error "Only ALWAN_EMBED_DATA mode is supported. Runtime CSV loading has been removed."
-#endif /* ALWAN_EMBED_DATA */
 }
 #endif /* ALWAN_WITH_F64_FACADE */
 

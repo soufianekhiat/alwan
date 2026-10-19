@@ -50,6 +50,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if ALWAN_WITH_IMAGE_METRICS   /* the whole family; alwan_build_config.h */
+
 typedef struct {
     float x, y, z;
 } alwan__fl3;
@@ -588,3 +590,5 @@ alwan_status alwan_flip_f64(alwan_f32 *error_map, size_t error_row_stride, alwan
                            reference_row_stride, test, test_row_stride, 1, width, height, params, ctx);
 }
 #endif
+
+#endif /* ALWAN_WITH_IMAGE_METRICS */

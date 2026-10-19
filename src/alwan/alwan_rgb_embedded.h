@@ -1,9 +1,8 @@
 /* ----------------------------------------------------------------
  * Embedded RGB Space Data (optional)
- * Used when ALWAN_EMBED_DATA is defined
+ * Embedded in every build (ALWAN_EMBED_DATA=0 loads only the switchable tables)
  * IMPORTANT: Array order MUST match enum alwan_rgb_space order!
  * ---------------------------------------------------------------- */
-#if ALWAN_EMBED_DATA
 
 /* Compiled in every build: the f64-internal facades resolve RGB space
  * descriptors in f64 from their f32 entry points, so this half has to exist
@@ -1135,4 +1134,3 @@ _Static_assert(
 
 #endif /* ALWAN_WITH_F32 */
 
-#endif /* ALWAN_EMBED_DATA */

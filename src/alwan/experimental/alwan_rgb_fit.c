@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+#if ALWAN_WITH_FORMATION   /* the whole family; alwan_build_config.h */
+
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
@@ -25,3 +27,5 @@ ALWAN_DIAG_POP
 #include "alwan_rgb_fit_impl.inc"
 #include "../api/alwan_api_teardown.h"
 #endif
+
+#endif /* ALWAN_WITH_FORMATION */

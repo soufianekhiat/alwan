@@ -16,6 +16,8 @@
 #include <math.h>
 #include <string.h>
 
+#if ALWAN_WITH_GRADING   /* the whole family; alwan_build_config.h */
+
 static int alwan__hald_level_ok(int level) {
     return level >= 2 && level <= 16;
 }
@@ -168,3 +170,5 @@ ALWAN__HALD_APPLY(alwan_f64, alwan_rgb_f64, alwan_table3d_sample_f64, alwan_hald
 #if ALWAN_WITH_F32
 ALWAN__HALD_APPLY(alwan_f32, alwan_rgb_f32, alwan_table3d_sample_f32, alwan_hald_apply_f32)
 #endif
+
+#endif /* ALWAN_WITH_GRADING */

@@ -29,6 +29,8 @@
 #include "../alwan_internal.h"
 #include <string.h>
 
+#if ALWAN_WITH_OPTICS   /* the whole family; alwan_build_config.h */
+
 #define SKIN_LN10 2.302585092994045684
 #define SKIN_HB_MOLAR_MASS 64458.0       /* g/mol, the value Prahl's conversion uses */
 #define SKIN_WMIN 350.0
@@ -526,3 +528,5 @@ alwan_status alwan_skin_fit_f32(alwan_skin_params *params, float *rms_out, float
     return st;
 }
 #endif /* ALWAN_WITH_F32 */
+
+#endif /* ALWAN_WITH_OPTICS */

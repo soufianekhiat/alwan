@@ -33,6 +33,10 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
+/* Runtime data (ALWAN_EMBED_DATA=0): these tables are pointers that alwan_data_load
+ * fills (data/alwan_data_registry_gen.c), so nothing here is compiled. */
+#if ALWAN_EMBED_DATA
+
 /* ---- alwan_table_agx_default_contrast ----
  * rank 1, 4096, LINEAR (delta blend). Reader: alwan_table1d_sample_linear_delta
  * via agx_lut_eval. Source: sobotka/AgX AgX_Default_Contrast.spi1d. */
@@ -68,5 +72,6 @@ alwan_f64 const alwan_table_agx_sb2383_contrast_f64[ALWAN_TABLE_AGX_CONTRAST_SIZ
 #endif
 #endif
 
+#endif /* ALWAN_EMBED_DATA */
 
 ALWAN_DIAG_POP

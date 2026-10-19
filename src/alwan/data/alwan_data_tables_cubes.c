@@ -30,6 +30,10 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
+/* Runtime data (ALWAN_EMBED_DATA=0): these tables are pointers that alwan_data_load
+ * fills (data/alwan_data_registry_gen.c), so nothing here is compiled. */
+#if ALWAN_EMBED_DATA
+
 /* ---- alwan_table_agx_blender_cube ----
  * rank 3, 57^3 x 3, TETRAHEDRAL. Layout r-fastest,
  * index = ((b*RES + g)*RES + r)*3 + ch. Values are power-2.4 encoded display
@@ -68,5 +72,6 @@ alwan_f64 const alwan_table_tony_mcmapface_cube_f64[ALWAN_TABLE_TONY_MCMAPFACE_C
 #endif
 #endif
 
+#endif /* ALWAN_EMBED_DATA */
 
 ALWAN_DIAG_POP

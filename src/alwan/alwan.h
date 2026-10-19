@@ -108,7 +108,7 @@ typedef void  (*alwan_free_fn)(void *ptr);
 typedef struct {
     alwan_alloc_fn alloc_cb;          /* Optional custom allocator (NULL = default); set both callbacks or neither */
     alwan_free_fn  free_cb;           /* Optional custom deallocator (NULL = default) */
-    char const *runtime_data_root;    /* Reserved: runtime data loading is not implemented and is not scheduled. Field is ignored. */
+    char const *runtime_data_root;    /* Optional: the folder alwan_data_preload reads with this context (on-demand loads use alwan_data_set_root's) */
     uint32_t flags;                   /* Reserved for future use (must be 0) */
 } alwan_config;
 
@@ -148,6 +148,7 @@ typedef struct {
     int with_f32;            /* the _f32 entry points are compiled */
     int with_f64;            /* the _f64 entry points are compiled */
     int data_tables_minimal; /* ALWAN_DATA_TABLES_MINIMAL: the switchable tables are out */
+    int embed_data;          /* ALWAN_EMBED_DATA: the switchable tables are compiled in (0: loaded at run time) */
 } alwan_build_info;
 
 alwan_status alwan_get_build_info(alwan_build_info *info_out);
@@ -182,11 +183,88 @@ alwan_aces_interp alwan_ctx_get_aces_interp(alwan_ctx const *ctx);
 /* ----------------------------------------------------------------
  * Data Loading
  *
- * NOTE: Only embedded mode (ALWAN_EMBED_DATA=1, the default) is supported.
- * Runtime mode (ALWAN_EMBED_DATA=0) is NOT implemented and is not scheduled.
- * Attempting to build with ALWAN_EMBED_DATA=0 will produce a compile-time
- * error in alwan_data.c.
+ * The switchable tables (illuminant and light-source SPDs, observers, film
+ * stocks, camera sensitivities, the spectral and AgX look-up tables: every
+ * table data/alwan_data_tables_config.h can switch off, and the refractiveindex.info
+ * database ALWAN_WITH_REFRACTIVE_DATA switches off) are compiled into the
+ * library by default. A library built with ALWAN_EMBED_DATA=0 carries none of
+ * them: it loads them at run time from a data pack, alwan_data.pack in the data
+ * root, and frees them on request. Nothing has to be called first: the first
+ * function that reads a table loads that table, on demand. alwan_data_preload
+ * loads them up front instead, at initialisation say, and alwan_data_free
+ * gives the memory back (the next read loads again). Only when the pack cannot
+ * be found does a reader return ALWAN_E_NODATA (or its documented error value),
+ * exactly as when the table is switched off. An embedded build writes the pack
+ * (alwan_data_pack_write); the readers index the loaded copy as they index the
+ * embedded array, so results are bit for bit the same. The small constant
+ * tables (matrices, chromaticities, the CAT and colour-space data below) are
+ * embedded in every build.
+ *
+ * The data root is alwan_data_set_root's folder, else the ALWAN_DATA_ROOT
+ * environment variable, else the current directory. alwan_data_preload with a
+ * context created with a runtime_data_root reads that folder instead; creating
+ * a context never changes the process's root.
+ *
+ * On-demand loads are safe from any number of threads at once (a table two
+ * threads race for is read twice and kept once). The explicit calls are not
+ * synchronised with readers: preload or load before other threads start, and
+ * free or change the root only when no other thread is inside the library.
  * ---------------------------------------------------------------- */
+
+/* Groups of switchable tables, a bit each; the same groups as the
+ * ALWAN_TABLES_* compile switches. */
+typedef enum {
+    ALWAN_DATA_GROUP_AGX           = 1 << 0,  /* AgX contrast curves and Blender cube */
+    ALWAN_DATA_GROUP_SPECTRAL      = 1 << 1,  /* spectral upsampling (Jakob 2019, Smits, Mallett, Otsu) */
+    ALWAN_DATA_GROUP_SPD           = 1 << 2,  /* CIE illuminants, observers, photopic functions, NPL cameras */
+    ALWAN_DATA_GROUP_QUALITY       = 1 << 3,  /* CRI / CQS / TM-30 / SSI reference data */
+    ALWAN_DATA_GROUP_CAMERAS       = 1 << 4,  /* the rawtoaces camera pack, IDT training set, RICD */
+    ALWAN_DATA_GROUP_LIGHT_SOURCES = 1 << 5,  /* the 56 measured light sources */
+    ALWAN_DATA_GROUP_FILM          = 1 << 6,  /* film stocks and densitometry */
+    ALWAN_DATA_GROUP_OTHER         = 1 << 7,  /* everything else (Tony McMapface) */
+    ALWAN_DATA_GROUP_REFRACTIVE    = 1 << 8,  /* the refractiveindex.info database (ALWAN_WITH_REFRACTIVE_DATA) */
+    ALWAN_DATA_GROUP_ALL           = 0x1FF
+} alwan_data_group;
+
+/* Serialise the switchable tables of `groups` this library holds (compiled in,
+ * or loaded) into a data pack. dst NULL asks for the size only. ALWAN_E_RANGE
+ * when capacity is short; *size_out is the size needed either way. The pack is
+ * little-endian and versioned, and names each table, so a pack written by a
+ * build with more tables loads into one with fewer. */
+alwan_status alwan_data_pack_write(void *dst, size_t capacity, size_t *size_out, unsigned groups);
+
+/* Load the tables of `groups` from a pack, copied into memory from ctx's
+ * allocator (NULL ctx: the default allocator). The pack is validated whole
+ * before anything changes: ALWAN_E_INVALID for a malformed pack or a table
+ * whose extent differs from this build's, ALWAN_E_NOMEM when a copy cannot be
+ * allocated, and in both cases no table changes. A table already loaded is
+ * replaced; tables this build does not have are skipped. In an embedded build
+ * the pack is validated and nothing loads: its tables are compiled in. */
+alwan_status alwan_data_load(void const *pack, size_t size, unsigned groups, alwan_ctx *ctx);
+/* The same from a file. ALWAN_E_NODATA when the file cannot be read. */
+alwan_status alwan_data_load_file(char const *path, unsigned groups, alwan_ctx *ctx);
+
+/* The folder alwan_data.pack is read from, for on-demand loads and
+ * alwan_data_preload; NULL returns to the default (ALWAN_DATA_ROOT, else the
+ * current directory). The string is copied. ALWAN_E_RANGE for a path over 1000
+ * characters. Accepted, and without effect, in an embedded build. */
+alwan_status alwan_data_set_root(char const *folder);
+
+/* Load every table of `groups` now, from the data root's pack, rather than on
+ * first use: alwan_data_load_file on <root>/alwan_data.pack, where root is the
+ * context's runtime_data_root when it has one, else the process's. ALWAN_OK and
+ * nothing done in an embedded build. */
+alwan_status alwan_data_preload(unsigned groups, alwan_ctx *ctx);
+
+/* Free the loaded tables of `groups`. Their next reader loads them again from
+ * the data root. Nothing to do in an embedded build. */
+void alwan_data_free(unsigned groups);
+
+/* Bytes held by loaded tables of `groups` (0 in an embedded build). */
+size_t alwan_data_loaded_bytes(unsigned groups);
+/* Switchable tables of `groups` compiled into this build's readers but not
+ * loaded (0 in an embedded build): 0 after a load means every reader has its data. */
+size_t alwan_data_missing(unsigned groups);
 
  /* Standard illuminant xy chromaticity data getters
  * Each returns 2 values: x, y chromaticity coordinates
@@ -232,12 +310,6 @@ alwan_status alwan_data_get_illuminant_d75_f32(alwan_f32 **data, size_t *count, 
 alwan_status alwan_data_get_srgb_primaries_f64(alwan_f64 **data, size_t *count, alwan_ctx *ctx);
 alwan_status alwan_data_get_srgb_primaries_f32(alwan_f32 **data, size_t *count, alwan_ctx *ctx);
 
-/* NOTE: alwan_data_free_f64/f32 are declared only when ALWAN_EMBED_DATA=0.
- * Runtime mode is not implemented; this block exists for future use. */
-#if !ALWAN_EMBED_DATA
-void alwan_data_free_f64(alwan_f64 *data, alwan_ctx *ctx);
-void alwan_data_free_f32(alwan_f32 *data, alwan_ctx *ctx);
-#endif
 
 /* ----------------------------------------------------------------
  * Math Operations
@@ -1923,6 +1995,7 @@ typedef struct {
     alwan_f64 value[4];
 } alwan_palette_entry;
 
+#if ALWAN_WITH_PATTERNS
 /* The number of colours in a palette; 0 for an unknown one. */
 size_t alwan_palette_size(alwan_palette palette);
 /* The colour at an index; ALWAN_E_INVALID past the end or for an unknown palette. */
@@ -1948,11 +2021,13 @@ alwan_status alwan_hex_to_rgb_f64(alwan_rgb_f64 *rgb_out, char const *hex);
  * keyword_to_RGB_CSSColor3; ALWAN_E_NODATA for an unknown keyword. */
 alwan_status alwan_css_color_3_keyword_to_rgb_f32(alwan_rgb_f32 *rgb_out, char const *keyword);
 alwan_status alwan_css_color_3_keyword_to_rgb_f64(alwan_rgb_f64 *rgb_out, char const *keyword);
+#endif /* ALWAN_WITH_PATTERNS */
 
 /* A CMYK printing characterisation, built by alwan_cmyk_model_* in the charts section. */
 typedef struct alwan_cmyk_model_s alwan_cmyk_model;
 typedef struct alwan_cmyk_inverse_s alwan_cmyk_inverse;
 
+#if ALWAN_WITH_PATTERNS
 /* The palette colour nearest a Lab value by CIEDE2000. lab is relative to the
  * palette's white: the characterisation's (D50 for FOGRA39) for a CMYK palette, which
  * needs cmyk_model and is ALWAN_E_INVALID without one; D65 for an sRGB palette, which
@@ -1961,6 +2036,7 @@ alwan_status alwan_palette_nearest_f32(size_t *index_out, alwan_f32 *delta_e_out
                                        alwan_lab_f32 const *lab, alwan_cmyk_model const *cmyk_model);
 alwan_status alwan_palette_nearest_f64(size_t *index_out, alwan_f64 *delta_e_out, alwan_palette palette,
                                        alwan_lab_f64 const *lab, alwan_cmyk_model const *cmyk_model);
+#endif /* ALWAN_WITH_PATTERNS */
 
 /* ----------------------------------------------------------------
  * Test patterns
@@ -2024,6 +2100,7 @@ typedef struct {
     alwan_pattern_pluge_range pluge_range; /* PLUGE_BT814: the higher level patch, SDR or HDR */
 } alwan_pattern_params;
 
+#if ALWAN_WITH_PATTERNS
 alwan_status alwan_pattern_render_f32(alwan_f32 *rgb_out, size_t row_stride, size_t width, size_t height,
                                       alwan_pattern pattern, alwan_pattern_params const *params);
 alwan_status alwan_pattern_render_f64(alwan_f64 *rgb_out, size_t row_stride, size_t width, size_t height,
@@ -2034,6 +2111,7 @@ alwan_status alwan_pattern_render_planar_f32(alwan_f32 *r_out, size_t row_stride
 alwan_status alwan_pattern_render_planar_f64(alwan_f64 *r_out, size_t row_stride, alwan_f64 *g_out, alwan_f64 *b_out,
                                              size_t width, size_t height, alwan_pattern pattern,
                                              alwan_pattern_params const *params);
+#endif /* ALWAN_WITH_PATTERNS */
 
 /* ----------------------------------------------------------------
  * Colour selection
@@ -3372,10 +3450,13 @@ typedef enum {
     ALWAN_ASTM_G173_DIRECT_CIRCUMSOLAR = 2
 } alwan_astm_g173_column;
 
+/* The table ships with the sky models (data/alwan_data_sky.c), so ALWAN_WITH_SKY=0 drops it too. */
+#if ALWAN_WITH_SKY
 alwan_status alwan_spd_astm_g173_f64(alwan_spd_f64 *out, alwan_astm_g173_column column, alwan_f64 wavelength_min,
                                      alwan_f64 wavelength_max, size_t count, alwan_ctx *ctx);
 alwan_status alwan_spd_astm_g173_f32(alwan_spd_f32 *out, alwan_astm_g173_column column, alwan_f32 wavelength_min,
                                      alwan_f32 wavelength_max, size_t count, alwan_ctx *ctx);
+#endif
 
 /* ----------------------------------------------------------------
  * Physical skies: spectral sky and sun radiance for a sun position
@@ -3421,6 +3502,7 @@ alwan_status alwan_spd_astm_g173_f32(alwan_spd_f32 *out, alwan_astm_g173_column 
  * default sizes in single precision). alwan_sky_get_layout hands the tables to a shader,
  * which reads them with core/alwan_sky_atmosphere_reader.inc. Suite 284.
  * ---------------------------------------------------------------- */
+#if ALWAN_WITH_SKY
 typedef enum {
     ALWAN_SKY_PREETHAM = 0,
     ALWAN_SKY_HOSEK_WILKIE = 1,
@@ -3568,6 +3650,7 @@ typedef struct {
 
 alwan_status alwan_sky_get_layout_f32(alwan_sky_layout_f32 *out, alwan_sky_f32 const *sky);
 alwan_status alwan_sky_get_layout_f64(alwan_sky_layout_f64 *out, alwan_sky_f64 const *sky);
+#endif /* ALWAN_WITH_SKY */
 
 /* White balance multipliers of a camera under an illuminant:
  * 1 / sum(sensitivity * illuminant) per channel, scaled so the smallest is 1. The
@@ -4437,6 +4520,7 @@ typedef struct {
     alwan_f64 peak;
 } alwan_gamut_spatial_params_f64;
 
+#if ALWAN_WITH_FORMATION
 alwan_status alwan_gamut_map_spatial_f32(alwan_f32 *out, alwan_f32 const *in, alwan_f32 const *depth, int width, int height, alwan_gamut_spatial_params_f32 const *params, alwan_ctx *ctx);
 alwan_status alwan_gamut_map_spatial_f64(alwan_f64 *out, alwan_f64 const *in, alwan_f64 const *depth, int width, int height, alwan_gamut_spatial_params_f64 const *params, alwan_ctx *ctx);
 
@@ -4789,6 +4873,7 @@ alwan_status alwan_rgb_fit_evaluate_f64(alwan_rgb_fit_report_f64 *report, alwan_
  * purity shelf the picture is COMPLETE_HEMI_LOOK exactly. Interleaved RGB, W*H*3. */
 alwan_status alwan_picture_form_pure_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, alwan_ctx *ctx);
 alwan_status alwan_picture_form_pure_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, alwan_ctx *ctx);
+#endif /* ALWAN_WITH_FORMATION */
 
 /* ----------------------------------------------------------------
  * Spectral Upsampling - RGB to Spectrum Conversion
@@ -5135,6 +5220,7 @@ typedef struct {
     alwan_f32 const *density_curve;
 } alwan_film_profile_f32;
 
+#if ALWAN_WITH_FILM
 /* Name and maker of a stock, whether or not its table is compiled in.
  * ALWAN_E_INVALID for a value outside the enum. Either output may be NULL. */
 alwan_status alwan_film_stock_info(alwan_film_stock stock, char const **name, char const **manufacturer);
@@ -5446,6 +5532,7 @@ alwan_status alwan_film_grain_density_params_default(alwan_film_grain_density_pa
  * where it was zero. */
 alwan_status alwan_film_grain_density_f64(alwan_f64 *density, size_t row_stride, size_t width, size_t height, alwan_film_grain_density_params const *params, alwan_ctx *ctx);
 alwan_status alwan_film_grain_density_f32(alwan_f32 *density, size_t row_stride, size_t width, size_t height, alwan_film_grain_density_params const *params, alwan_ctx *ctx);
+#endif /* ALWAN_WITH_FILM */
 
 /* ----------------------------------------------------------------
  * CIECAM02 Color Appearance Model
@@ -7155,6 +7242,7 @@ typedef enum {
     ALWAN_LUMINAIRE_FLUX_TRAPEZOID = 1   /* the trapezoid rule on I sin(gamma) at the samples, then over C */
 } alwan_luminaire_flux_method;
 
+#if ALWAN_WITH_FILE_FORMATS
 alwan_status alwan_luminaire_load(alwan_luminaire **out, char const *path, alwan_ctx *ctx);
 alwan_status alwan_luminaire_load_buffer(alwan_luminaire **out, char const *buf, size_t len, alwan_ctx *ctx);
 void alwan_luminaire_destroy(alwan_luminaire *lum, alwan_ctx *ctx);
@@ -7178,6 +7266,7 @@ alwan_status alwan_luminaire_intensity(double *out, alwan_luminaire const *lum, 
  * steradians: lumens for an IES file, lumens per 1000 lamp lumens for EULUMDAT. TRAPEZOID is
  * luxpy's luminous_intensity_to_luminous_flux on the same grid. */
 alwan_status alwan_luminaire_flux(double *flux, alwan_luminaire const *lum, alwan_luminaire_flux_method method);
+#endif /* ALWAN_WITH_FILE_FORMATS */
 
 /* Contrast Sensitivity Function (CSF) */
 
@@ -8087,6 +8176,7 @@ typedef struct {
     alwan_f64 offset_b[4];   /* CIELAB b* offset per region */
 } alwan_tonescale_grade_params;
 
+#if ALWAN_WITH_GRADING
 /* The paper's pivots and slopes, zero offsets (the identity). */
 void alwan_tonescale_grade_params_init(alwan_tonescale_grade_params *params);
 
@@ -8104,6 +8194,7 @@ alwan_status alwan_tonescale_grade_f32_map_interleave(alwan_f32 *rgb_out, size_t
 /* Planar twin: the scalar per pixel over three planes under one stride. */
 alwan_status alwan_tonescale_grade_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_rgb_space_desc_f64 const *space, alwan_tonescale_grade_params const *params);
 alwan_status alwan_tonescale_grade_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_rgb_space_desc_f32 const *space, alwan_tonescale_grade_params const *params);
+#endif /* ALWAN_WITH_GRADING */
 alwan_status alwan_lgg_apply_map_interleave_ex(void *out, size_t out_stride, void const *in, size_t in_stride, size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, alwan_rgb_f64 const *lift, alwan_rgb_f64 const *gamma, alwan_rgb_f64 const *gain);
 alwan_status alwan_color_matrix_apply_f32_map_interleave(alwan_f32 *rgb_out, size_t out_stride, alwan_f32 const *rgb_in, size_t in_stride, size_t count, alwan_mat3x3_f32 const *matrix);
 alwan_status alwan_color_matrix_apply_f64_map_interleave(alwan_f64 *rgb_out, size_t out_stride, alwan_f64 const *rgb_in, size_t in_stride, size_t count, alwan_mat3x3_f64 const *matrix);
@@ -8336,12 +8427,14 @@ typedef struct {
     alwan_grading_exposure_contrast exposure_contrast;
 } alwan_grading_params;
 
+#if ALWAN_WITH_GRADING
 void alwan_grading_params_init(alwan_grading_params *params, alwan_grading_style style);
 
 alwan_status alwan_grading_apply_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32 const *rgb_in, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
 alwan_status alwan_grading_apply_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
 alwan_status alwan_grading_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
 alwan_status alwan_grading_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params, int inverse);
+#endif /* ALWAN_WITH_GRADING */
 
 /* ----------------------------------------------------------------
  * OpenColorIO fixed functions: HSY, gamma-log and double-log
@@ -8400,6 +8493,7 @@ typedef struct {
     alwan_f64 double_log[13];  /* LIN_TO_DOUBLE_LOG, OCIO's parameter order */
 } alwan_ocio_fixed_params;
 
+#if ALWAN_WITH_GRADING
 /* Fills the block the preset belongs to (gamma_log for Apple Log, double_log for the
  * Canon logs) and leaves the other as it was. ALWAN_E_INVALID for NULL or an unknown
  * preset. */
@@ -8409,6 +8503,7 @@ alwan_status alwan_ocio_fixed_function_f32(alwan_rgb_f32 *rgb_out, alwan_rgb_f32
 alwan_status alwan_ocio_fixed_function_f64(alwan_rgb_f64 *rgb_out, alwan_rgb_f64 const *rgb_in, alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params, int inverse);
 alwan_status alwan_ocio_fixed_function_f32_map_interleave(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params, int inverse);
 alwan_status alwan_ocio_fixed_function_f64_map_interleave(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_ocio_fixed_function func, alwan_ocio_fixed_params const *params, int inverse);
+#endif /* ALWAN_WITH_GRADING */
 
 /* ----------------------------------------------------------------
  * Camera Profiling / Polynomial Color Correction
@@ -8567,6 +8662,13 @@ typedef enum {
     ALWAN_CCM_SOLVER_SVD = 1  /* one-sided Jacobi SVD, the minimum-norm fit */
 } alwan_ccm_solver;
 
+/* What the fit minimises; see objective in alwan_ccm_fit_params. */
+typedef enum {
+    ALWAN_CCM_OBJECTIVE_RGB       = 0, /* squared residual in M_R's units, the fits above */
+    ALWAN_CCM_OBJECTIVE_DE2000    = 1, /* CIEDE2000 between the Lab of reference and prediction */
+    ALWAN_CCM_OBJECTIVE_CAM16_UCS = 2  /* Euclidean distance in CAM16-UCS */
+} alwan_ccm_objective;
+
 typedef struct {
     alwan_f64 const *weights;
     alwan_f64 ridge;
@@ -8625,6 +8727,32 @@ typedef struct {
     alwan_f64 robust_k;      /* tuning constant; 0 is 1.345, the usual 95% choice */
     int robust_iterations;   /* reweighting rounds at most; 0 is 50 */
     alwan_f64 robust_tol;    /* stop once no coefficient moves by more than this; 0 is 1e-12 */
+    /* Perceptual objective. With objective DE2000 or CAM16_UCS, M_R is CIE XYZ and the
+     * fit minimises
+     *
+     *   sum_i w_i dE(reference_i, expanded(test_i) X)^2 + ridge |X|_F^2
+     *
+     * where dE is CIEDE2000 between the two colours' CIE Lab under objective_white
+     * (XYZ in M_R's units, its Y the scale of M_R), or the Euclidean distance between
+     * their CAM16-UCS coordinates under objective_vc (whose white is in M_R's units).
+     * The weights, the ridge and the neutral constraint keep their meaning; the
+     * neutral pair is still met exactly. The robust loss is for the RGB objective and
+     * with a perceptual one is ALWAN_E_INVALID.
+     *
+     * Solved by Levenberg-Marquardt from the least-squares fit, with a central-
+     * difference Jacobian. It reaches a local minimum of a non-convex objective; for a
+     * chart and a polynomial basis that is the least-squares fit's basin, which is
+     * where the fit should be. ALWAN_E_RANGE when the starting fit predicts a colour
+     * the objective cannot measure (a CAM16 input with no defined correlates).
+     * ALWAN_E_INVALID for an unknown objective, a missing white or viewing
+     * conditions, a negative or non-finite iteration count or tolerance, or, without
+     * a ridge, fewer samples of positive weight than the 3 x terms unknowns (one dE
+     * per sample). */
+    alwan_ccm_objective objective;
+    alwan_xyz_f64 const *objective_white;                     /* DE2000 */
+    alwan_cam16_viewing_conditions_f64 const *objective_vc;   /* CAM16_UCS */
+    int objective_iterations;  /* Levenberg-Marquardt steps at most; 0 is 10000 (the valley can be long) */
+    alwan_f64 objective_tol;   /* stop once no coefficient moves by more than this; 0 is 1e-10 */
 } alwan_ccm_fit_params;
 
 /* The polynomial colour correction as one family: fit, leave-one-out, selection and
@@ -8825,6 +8953,7 @@ alwan_status alwan_rayleigh_spd_f32(alwan_f32 wavelength_start, alwan_f32 wavele
                         alwan_atmosphere_params_f32 const *params,
                         alwan_f32 *out, int *out_count);
 
+#if ALWAN_WITH_OPTICS
 /* Thin films and multilayers: the reflectance and transmittance of plane parallel layers
  * between an incident medium and a substrate, the colours of soap bubbles, oil films,
  * coatings and oxidised metal. By the transfer-matrix method as Byrnes writes it (arXiv
@@ -9424,6 +9553,7 @@ alwan_status alwan_iridescent_films_from_materials(alwan_iridescent_film *out, s
                                                    alwan_refractive_table const *ambient_table, size_t film_material,
                                                    alwan_refractive_table const *film_table, double thickness_nm, size_t base,
                                                    alwan_refractive_table const *base_table, alwan_interp_method interpolation);
+#endif /* ALWAN_WITH_OPTICS */
 
 /* ----------------------------------------------------------------
  * ACES Fixed Functions (RRT Components)
@@ -10320,6 +10450,7 @@ typedef enum {
     ALWAN_NRMSE_MEAN = 2
 } alwan_nrmse_normalization;
 
+#if ALWAN_WITH_IMAGE_METRICS
 alwan_status alwan_mean_squared_error_f64(double *mse, alwan_f64 const *a, size_t a_row_stride, alwan_f64 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels);
 alwan_status alwan_mean_squared_error_f32(double *mse, alwan_f32 const *a, size_t a_row_stride, alwan_f32 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels);
 alwan_status alwan_mean_squared_error_u8(double *mse, unsigned char const *a, size_t a_row_stride, unsigned char const *b, size_t b_row_stride, size_t width, size_t height, size_t channels);
@@ -10329,6 +10460,7 @@ alwan_status alwan_normalized_root_mse_u8(double *nrmse, unsigned char const *im
 alwan_status alwan_normalized_mutual_information_f64(double *nmi, alwan_f64 const *a, size_t a_row_stride, alwan_f64 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, size_t bins);
 alwan_status alwan_normalized_mutual_information_f32(double *nmi, alwan_f32 const *a, size_t a_row_stride, alwan_f32 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, size_t bins);
 alwan_status alwan_normalized_mutual_information_u8(double *nmi, unsigned char const *a, size_t a_row_stride, unsigned char const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, size_t bins);
+#endif /* ALWAN_WITH_IMAGE_METRICS */
 
 /* SSIM of 1 to 4 channels, the mean of the per-channel indices, as scikit-image's
  * structural_similarity with channel_axis. The zero params are alwan_ssim's settings (the
@@ -10353,9 +10485,11 @@ typedef struct {
     double k1, k2;               /* 0 read as 0.01 and 0.03 */
 } alwan_ssim_params;
 
+#if ALWAN_WITH_IMAGE_METRICS
 alwan_status alwan_structural_similarity_f64(double *ssim, alwan_f64 const *test, size_t test_row_stride, alwan_f64 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
 alwan_status alwan_structural_similarity_f32(double *ssim, alwan_f32 const *test, size_t test_row_stride, alwan_f32 const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
 alwan_status alwan_structural_similarity_u8(double *ssim, unsigned char const *test, size_t test_row_stride, unsigned char const *ref, size_t ref_row_stride, size_t width, size_t height, size_t channels, double data_range, alwan_ssim_params const *params);
+#endif /* ALWAN_WITH_IMAGE_METRICS */
 
 /* Comparison metrics beside PSNR and SSIM, one family. width x height pixels of channels
  * values each (1 to 4), rows row_stride bytes apart. combined receives the figure over every
@@ -10398,9 +10532,11 @@ typedef struct {
     alwan_ssim_params const *ssim;    /* DSSIM: NULL for alwan_ssim's settings */
 } alwan_image_compare_params;
 
+#if ALWAN_WITH_IMAGE_METRICS
 alwan_status alwan_image_compare_f64(double *combined, double *per_channel, alwan_f64 const *a, size_t a_row_stride, alwan_f64 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, alwan_image_compare_metric metric, alwan_image_compare_params const *params);
 alwan_status alwan_image_compare_f32(double *combined, double *per_channel, alwan_f32 const *a, size_t a_row_stride, alwan_f32 const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, alwan_image_compare_metric metric, alwan_image_compare_params const *params);
 alwan_status alwan_image_compare_u8(double *combined, double *per_channel, unsigned char const *a, size_t a_row_stride, unsigned char const *b, size_t b_row_stride, size_t width, size_t height, size_t channels, alwan_image_compare_metric metric, alwan_image_compare_params const *params);
+#endif /* ALWAN_WITH_IMAGE_METRICS */
 
 /* PU-SSIM, pu21_metric.m's SSIM: luminance from RGB with its weights (0.212656,
  * 0.715158, 0.072186) when channels is 3, or the values themselves when it is 1, in
@@ -10470,12 +10606,14 @@ typedef struct {
     int num_exposures;                /* HDR: the number of exposures; 0 for LDR */
 } alwan_flip_result;
 
+#if ALWAN_WITH_IMAGE_METRICS
 /* Pixels per degree for a display display_width_px pixels and display_width_m metres
  * wide seen from distance_m metres, as FLIP computes it (in float). */
 alwan_f32 alwan_flip_ppd(alwan_f32 distance_m, alwan_f32 display_width_px, alwan_f32 display_width_m);
 
 alwan_status alwan_flip_f32(alwan_f32 *error_map, size_t error_row_stride, alwan_f32 *exposure_map, size_t exposure_row_stride, alwan_flip_result *result, alwan_f32 const *reference, size_t reference_row_stride, alwan_f32 const *test, size_t test_row_stride, size_t width, size_t height, alwan_flip_params const *params, alwan_ctx *ctx);
 alwan_status alwan_flip_f64(alwan_f32 *error_map, size_t error_row_stride, alwan_f32 *exposure_map, size_t exposure_row_stride, alwan_flip_result *result, alwan_f64 const *reference, size_t reference_row_stride, alwan_f64 const *test, size_t test_row_stride, size_t width, size_t height, alwan_flip_params const *params, alwan_ctx *ctx);
+#endif /* ALWAN_WITH_IMAGE_METRICS */
 
 /* ----------------------------------------------------------------
  * Per-pixel tonal adjustments
@@ -10552,9 +10690,11 @@ typedef struct {
     double sigmoid_alpha, sigmoid_beta;                     /* SIGMOID (with out_black, out_white) */
 } alwan_tone_adjust_params;
 
+#if ALWAN_WITH_GRADING
 alwan_status alwan_tone_adjust_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, size_t channels, alwan_tone_adjust_method method, alwan_tone_adjust_params const *params);
 alwan_status alwan_tone_adjust_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, size_t channels, alwan_tone_adjust_method method, alwan_tone_adjust_params const *params);
 alwan_status alwan_tone_adjust_u8(unsigned char *out, size_t out_stride, unsigned char const *in, size_t in_stride, size_t count, size_t channels, alwan_tone_adjust_method method, alwan_tone_adjust_params const *params);
+#endif /* ALWAN_WITH_GRADING */
 
 /* ----------------------------------------------------------------
  * ISO 21496-1 gain maps
@@ -11703,6 +11843,7 @@ alwan_status alwan_lut3d_invert_f32(alwan_f32 *out, int out_size,
  *   cube, sampled with alwan_table3d_sample (0 is trilinear; TETRAHEDRAL, PRISM, PYRAMID,
  *   NEAREST). out may be in.
  * ---------------------------------------------------------------- */
+#if ALWAN_WITH_GRADING
 alwan_status alwan_hald_dimensions(size_t *side, size_t *cube_size, int level);
 alwan_status alwan_hald_identity(void *out, size_t row_stride, alwan_pixel_format fmt, int level);
 alwan_status alwan_hald_to_lut3d_f64(alwan_f64 *lut, void const *hald, size_t row_stride, alwan_pixel_format fmt, int level);
@@ -11711,11 +11852,13 @@ alwan_status alwan_lut3d_to_hald_f64(void *hald, size_t row_stride, alwan_pixel_
 alwan_status alwan_lut3d_to_hald_f32(void *hald, size_t row_stride, alwan_pixel_format fmt, alwan_f32 const *lut, int level);
 alwan_status alwan_hald_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_f64 const *lut, int level, alwan_sample_mode mode);
 alwan_status alwan_hald_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_f32 const *lut, int level, alwan_sample_mode mode);
+#endif /* ALWAN_WITH_GRADING */
 
 /* ----------------------------------------------------------------
  * .cube File Import / Export
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_FILE_FORMATS
 /* Export a 3D LUT to a .cube file.
  * path: output file path
  * lut: 3D LUT data (size^3 * 3, R-fastest)
@@ -12000,6 +12143,7 @@ alwan_status alwan_spimtx_export_f64(char const *path, alwan_mat3x3_f64 const *m
                                      alwan_f64 const *offset);
 alwan_status alwan_spimtx_export_f32(char const *path, alwan_mat3x3_f32 const *matrix,
                                      alwan_f32 const *offset);
+#endif /* ALWAN_WITH_FILE_FORMATS */
 
 /* ----------------------------------------------------------------
  * CLF Import
@@ -12042,6 +12186,7 @@ typedef enum {
  *      opened, or malformed XML, or a value that is not finite.
  *      ALWAN_E_RANGE: a file above 64 MiB, a ProcessList of more than 256
  *      nodes, or a LUT dimension outside 2 to 65536 (1D) or 2 to 256 (3D). */
+#if ALWAN_WITH_FILE_FORMATS
 alwan_status alwan_clf_import(alwan_clf **out, char const *path, alwan_ctx *ctx);
 alwan_status alwan_clf_import_buffer(alwan_clf **out, char const *buf, size_t len, alwan_ctx *ctx);
 void alwan_clf_destroy(alwan_clf *clf, alwan_ctx *ctx);
@@ -12065,6 +12210,7 @@ alwan_status alwan_clf_apply_f32_map_interleave(alwan_f32 *out, size_t out_strid
 /* Planar twin: the interleave form run on a packed tile, so identical to it, kernels included (suite 175). */
 alwan_status alwan_clf_apply_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2, alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count, alwan_clf const *clf);
 alwan_status alwan_clf_apply_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2, alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count, alwan_clf const *clf);
+#endif /* ALWAN_WITH_FILE_FORMATS */
 
 /* ----------------------------------------------------------------
  * CLF's parametric curves, without a file
@@ -12116,6 +12262,7 @@ typedef struct {
                                        at the break, which is what a file without linearSlope means */
 } alwan_clf_log_params;
 
+#if ALWAN_WITH_FILE_FORMATS
 /* Defaults: BASIC with gamma 1; LIN_TO_LOG in base 2 with unit slopes and zero offsets. */
 void alwan_clf_exponent_params_init(alwan_clf_exponent_params *params);
 void alwan_clf_log_params_init(alwan_clf_log_params *params);
@@ -12127,6 +12274,7 @@ alwan_status alwan_clf_exponent_apply_f64(alwan_f64 *out, size_t out_stride, alw
 alwan_status alwan_clf_exponent_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_clf_exponent_params const *params, int inverse);
 alwan_status alwan_clf_log_apply_f64(alwan_f64 *out, size_t out_stride, alwan_f64 const *in, size_t in_stride, size_t count, alwan_clf_log_params const *params, int inverse);
 alwan_status alwan_clf_log_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f32 const *in, size_t in_stride, size_t count, alwan_clf_log_params const *params, int inverse);
+#endif /* ALWAN_WITH_FILE_FORMATS */
 
 /* ----------------------------------------------------------------
  * Color Interop Forum -- Interop ID Strings
@@ -12210,6 +12358,7 @@ alwan_status alwan_interop_query_id(alwan_interop_info *out, char const *id);
  * (suite 176). GELU is the tanh form, torch's approximate='tanh'.
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_NN
 typedef enum {
     ALWAN_NN_ACTIVATION_RELU = 0,
     ALWAN_NN_ACTIVATION_LEAKY_RELU = 1,   /* alpha x below zero */
@@ -12273,6 +12422,7 @@ alwan_status alwan_nn_add_f32(alwan_f32 *out, alwan_f32 const *a, alwan_f32 cons
 alwan_status alwan_nn_add_f64(alwan_f64 *out, alwan_f64 const *a, alwan_f64 const *b, size_t count);
 alwan_status alwan_nn_concat_channels_f32(alwan_f32 *out, alwan_f32 const *a, int Ca, alwan_f32 const *b, int Cb, int H, int W);
 alwan_status alwan_nn_concat_channels_f64(alwan_f64 *out, alwan_f64 const *a, int Ca, alwan_f64 const *b, int Cb, int H, int W);
+#endif /* ALWAN_WITH_NN */
 
 
 /* ----------------------------------------------------------------
@@ -12301,6 +12451,7 @@ alwan_status alwan_float_to_half(alwan_uint16 *out, alwan_f32 const *in, size_t 
  * with OCIO, ACES, DaVinci Resolve, Baselight.
  * ---------------------------------------------------------------- */
 
+#if ALWAN_WITH_FILE_FORMATS
 /* Export a CLF file for a color space conversion.
  * Decomposes the conversion into ProcessNodes:
  *   EOTF (Exponent or LUT1D) -> Matrix (src RGB->XYZ) ->
@@ -12336,6 +12487,7 @@ alwan_status alwan_clf_export_buffer_f32(char *buf, size_t *bytes_written, size_
 /* Export CLF with view transform to a memory buffer. */
 alwan_status alwan_clf_export_view_buffer_f64(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx);
 alwan_status alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, size_t buf_size, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_view_transform view, char const *id, char const *name, int lut_size, alwan_ctx *ctx);
+#endif /* ALWAN_WITH_FILE_FORMATS */
 
 /* ----------------------------------------------------------------
  * Video Signal Encoding / Decoding

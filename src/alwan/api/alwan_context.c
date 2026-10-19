@@ -194,5 +194,6 @@ alwan_status alwan_get_build_info(alwan_build_info *info_out) {
     info_out->with_f32 = ALWAN_WITH_F32;
     info_out->with_f64 = ALWAN_WITH_F64;
     info_out->data_tables_minimal = !!(ALWAN_DATA_TABLES_MINIMAL);
+    info_out->embed_data = !!(ALWAN_EMBED_DATA);
     return ALWAN_OK;
 }

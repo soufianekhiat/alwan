@@ -45,6 +45,8 @@
 #include "../data/alwan_data_sky.h"
 #include <string.h>
 
+#if ALWAN_WITH_SKY   /* the whole family; alwan_build_config.h */
+
 #include "alwan_sky_internal.h"
 
 /* ================================================================
@@ -131,6 +133,7 @@ static double alwan__sky_table2_at(int col, double nm) {
 static alwan_status alwan__sky_preetham_init(alwan__sky_state *st) {
 #if ALWAN_TABLE_DAYLIGHT_BASIS
     int c, j, k;
+    ALWAN_TABLE_REQUIRE(alwan_table_daylight_basis_f64, ALWAN_E_NODATA);
     st->theta_s = ALWAN_PI_F64 * 0.5 - st->elevation;
     /* integrals of the basis against the observer and against V(lambda) on the 5 nm grid */
     for (j = 0; j < 3; j++) {
@@ -1370,3 +1373,5 @@ ALWAN_DIAG_POP
 #include "alwan_sky_impl.inc"
 #include "alwan_api_teardown.h"
 #endif
+
+#endif /* ALWAN_WITH_SKY */

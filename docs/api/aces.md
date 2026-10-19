@@ -351,7 +351,7 @@ void alwan_aces_gamut_compress20_inv_{T}(alwan_vec3_{T} *jmh_out,
 
 **Embedded gamut-reach tables.** The ACES 2.0 gamut compressor reads
 per-display **gamut cusp / reach boundary** tables that are embedded into the
-library at compile time (`ALWAN_EMBED_DATA=1`, the only supported mode). The
+library at compile time, in every build (`ALWAN_EMBED_DATA=0` included). The
 CSV sources live under `src/alwan/data/aces2/gamut_*.csv` (one per
 limiting-gamut + peak-luminance preset, e.g. `gamut_rec709_100.csv`,
 `gamut_p3d65_1000.csv`, `gamut_rec2020_4000.csv`) and are produced by the

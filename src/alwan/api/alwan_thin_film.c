@@ -34,6 +34,8 @@
 #include <math.h>
 #include <string.h>
 
+#if ALWAN_WITH_OPTICS   /* the whole family; alwan_build_config.h */
+
 typedef struct {
     double re, im;
 } alwan_cx;
@@ -244,3 +246,5 @@ alwan_status alwan_water_refractive_index_f32(float *n_out, float wavelength_nm,
     return st;
 }
 #endif
+
+#endif /* ALWAN_WITH_OPTICS */

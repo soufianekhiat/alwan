@@ -12,6 +12,8 @@
 #include "../alwan_internal.h"
 #include <math.h>
 
+#if ALWAN_WITH_FILM   /* the whole family; alwan_build_config.h */
+
 alwan_status alwan_film_halation_params_default(alwan_film_halation_params *params, alwan_f64 rim_radius) {
     if (!params || !(rim_radius > 0.0)) return ALWAN_E_INVALID;
     params->rim_radius = rim_radius;
@@ -37,3 +39,5 @@ ALWAN_DIAG_POP
 #include "alwan_film_halation_impl.inc"
 #include "../api/alwan_api_teardown.h"
 #endif
+
+#endif /* ALWAN_WITH_FILM */

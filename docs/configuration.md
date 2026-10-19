@@ -168,10 +168,17 @@ what remains.
 
 `ALWAN_EMBED_DATA`, in `alwan_config.h`, default `1`.
 
-Embedded mode compiles the reference CSV data into the library. It is the only
-mode that works today: runtime loading is not implemented, building with
-`ALWAN_EMBED_DATA=0` fails, and `alwan_config.runtime_data_root` is reserved and
-ignored. See [data-management.md](data-management.md).
+`1` compiles the reference CSV data into the library. `0` leaves the switchable
+tables (every one `data/alwan_data_tables_config.h` can switch off) out of the
+binary: the library loads each one from a data pack (`alwan_data.pack`, which
+an embedded build writes with `alwan_data_pack_write`) the first time it is
+read, or all at once with `alwan_data_preload`, and `alwan_data_free` gives the
+memory back. Only when the pack cannot be found do the readers return
+`ALWAN_E_NODATA`, as for a switched-off table. The small constant tables stay
+compiled in either way. The pack's folder is `alwan_data_set_root`'s, or the
+`ALWAN_DATA_ROOT` environment variable, or the current directory;
+`alwan_data_preload` with a context reads that context's `runtime_data_root`.
+See [data-management.md](data-management.md).
 
 ---
 
@@ -202,6 +209,13 @@ Set it to `0` to work in raw mathematical ranges. The rescaling is compiled
 your own code with the same value. The alwan_dev tests and benchmarks build with
 `0` so results match the native ranges of the references they validate against.
 See [ranges.md](ranges.md) for the per-space table.
+
+With CMake, set the `ALWAN_NORMALIZE_RANGES` option (default `ON`) rather than a
+raw `-D`: the library target exports the value as a public definition, and the
+installed `alwan.pc` carries `-DALWAN_NORMALIZE_RANGES=0` when it is off, so a
+consumer of `find_package(Alwan)` or pkg-config compiles with the library's value
+without repeating it. A `-D` given to the library alone is what the header note
+warns about: the installed headers would still say `1`.
 
 `alwan_get_build_info` reports the value the linked library was compiled with. An
 application that uses the NORM/DENORM helpers itself can compare it with its own
@@ -251,6 +265,35 @@ default (MSVC x64 Release), and `alwan_get_build_info` reports which one is link
 
 ---
 
+## Feature families: `ALWAN_WITH_<FAMILY>`
+
+In `alwan_build_config.h`, each default `1`. Where the table switches leave data
+out and keep the functions, a family switch leaves a whole family of functions out:
+its code is not compiled and its functions are not declared, as the precision
+switches do. A call into a family that is off is a compile error, not a runtime
+`ALWAN_E_NODATA`. Types and enums stay declared where other code uses them.
+
+| Switch | What it removes |
+|---|---|
+| `ALWAN_WITH_FILM` | the photochemical film pipeline: stock profiles, `alwan_film_render*`, looks, grain, halation; also turns the film tables off |
+| `ALWAN_WITH_SKY` | the physical sky models (Preetham, Hosek-Wilkie, Bruneton) and the ASTM G173 solar spectra they ship with |
+| `ALWAN_WITH_NN` | the neural-network layer kernels |
+| `ALWAN_WITH_FORMATION` | the experimental picture-formation operators and the RGB-space fit |
+| `ALWAN_WITH_FILE_FORMATS` | every file format alwan reads or writes: .cube, CLF, .spi1d/.spi3d/.spimtx, .3dl, .csp, IES and EULUMDAT |
+| `ALWAN_WITH_PATTERNS` | test patterns, named palettes, hex and CSS keyword parsing |
+| `ALWAN_WITH_OPTICS` | thin films and multilayers, iridescence, skin, fluorescence, and the refractive-index database |
+| `ALWAN_WITH_GRADING` | OCIO-style grading and fixed functions, tonescale-region grading, tone adjustment, Hald CLUTs |
+| `ALWAN_WITH_IMAGE_METRICS` | `alwan_image_compare`, scikit-image's MSE, NRMSE, NMI and `structural_similarity`, and FLIP (`alwan_ssim`, `alwan_psnr` and the PU21 forms stay) |
+
+Set a switch for the library AND the code using it, as with the precision
+switches. With CMake, the `ALWAN_WITH_<FAMILY>` options do that: an option that is
+off becomes a public definition on the `alwan` target and a `-D` in `alwan.pc`.
+alwan_dev's `tools/check_precision_link.py families` builds the library with each
+family off in turn and links every entry point still declared, so a caller outside
+a family that still reaches into it fails there.
+
+---
+
 ## `ALWAN_DETERMINISTIC`
 
 ```sh
@@ -275,8 +318,8 @@ alwan_ctx *ctx = alwan_create(&(alwan_config){
 });
 ```
 
-Allocation hooks are the useful part. `runtime_data_root` is reserved and
-ignored; do not expect a build to load files from it. Check `ctx == NULL` as the
+`runtime_data_root`, when set, is the folder `alwan_data_preload` reads with this
+context in an `ALWAN_EMBED_DATA=0` library. Check `ctx == NULL` as the
 allocation-failure gate.
 
 ---
@@ -333,7 +376,8 @@ conf.Defines.Add("ALWAN_BUILD_ONLY_F32=1");
 
 - It does not choose `_f32` or `_f64` at call sites; the API is explicit. See
   [precision-and-limits.md](precision-and-limits.md).
-- It does not enable runtime data loading; nothing does yet.
+- It does not load data: a library built with `ALWAN_EMBED_DATA=0` loads its
+  tables through `alwan_data_load`, see [data-management.md](data-management.md).
 - It does not replace `alwan.h` for exact signatures.
 
 See also [data-management.md](data-management.md),

@@ -17,22 +17,27 @@
 
 #if ALWAN_WITH_REFRACTIVE_DATA
 
+/* With ALWAN_EMBED_DATA=0 these three are pointers the data pack fills
+ * (data/alwan_data_registry_gen.c). The extents come from the CSVs through
+ * alwan_data_refractive_extents.h, so a CSV that outgrows them fails to compile. */
+#if ALWAN_EMBED_DATA
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
-alwan_f32 const alwan__rx_lambda[] = {
+alwan_f32 const alwan__rx_lambda[ALWAN__RX_LAMBDA_SIZE] = {
 #include "refractive/refractive_lambda.csv"
 };
 
-alwan_f32 const alwan__rx_values[] = {
+alwan_f32 const alwan__rx_values[ALWAN__RX_VALUES_SIZE] = {
 #include "refractive/refractive_values.csv"
 };
 
-double const alwan__rx_coeffs[] = {
+alwan_f64 const alwan__rx_coeffs[ALWAN__RX_COEFFS_SIZE] = {
 #include "refractive/refractive_coeffs.csv"
 };
 
 ALWAN_DIAG_POP
+#endif /* ALWAN_EMBED_DATA */
 
 alwan__rx_series const alwan__rx_series_table[] = {
 #include "refractive/refractive_series.inc"

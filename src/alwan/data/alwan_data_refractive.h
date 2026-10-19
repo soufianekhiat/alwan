@@ -21,6 +21,8 @@
 #define ALWAN_DATA_REFRACTIVE_H
 
 #include "../alwan.h"
+#include "alwan_data_tables.h"
+#include "alwan_data_refractive_extents.h"
 
 #if ALWAN_WITH_REFRACTIVE_DATA
 
@@ -44,9 +46,11 @@ typedef struct {
     int n_series, k_series;
 } alwan__rx_page;
 
-extern alwan_f32 const alwan__rx_lambda[];
-extern alwan_f32 const alwan__rx_values[];
-extern double const alwan__rx_coeffs[];
+/* Pointers loaded at run time with ALWAN_EMBED_DATA=0 (group ALWAN_DATA_GROUP_REFRACTIVE);
+ * the page and series tables below stay embedded. */
+ALWAN__TABLE_DECL(alwan_f32, alwan__rx_lambda, ALWAN__RX_LAMBDA_SIZE)
+ALWAN__TABLE_DECL(alwan_f32, alwan__rx_values, ALWAN__RX_VALUES_SIZE)
+ALWAN__TABLE_DECL(alwan_f64, alwan__rx_coeffs, ALWAN__RX_COEFFS_SIZE)
 extern alwan__rx_series const alwan__rx_series_table[];
 extern alwan__rx_page const alwan__rx_pages[];
 extern size_t const alwan__rx_page_count;

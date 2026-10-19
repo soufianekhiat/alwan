@@ -1,7 +1,7 @@
 # Data Management
 
-How Alwan handles its reference datasets today, and what "runtime loading"
-still means in the roadmap.
+How Alwan holds its reference datasets: compiled in by default, or loaded at
+run time from a data pack (`ALWAN_EMBED_DATA=0`).
 
 ---
 
@@ -15,19 +15,11 @@ Alwan depends on a large body of reference data:
 - spectral basis data
 - fixtures and lookup tables used by higher-level APIs
 
-Today, the supported public mode is:
-
-```c
-#define ALWAN_EMBED_DATA 1
-```
-
-That means:
-
-- CSV-derived data is compiled into the library
-- public getters return pointers into embedded data or library-owned caches
-- there is no supported file-backed runtime loader yet
-
-`ALWAN_EMBED_DATA=0` remains a planned mode only.
+By default (`ALWAN_EMBED_DATA=1`) the CSV-derived data is compiled into the
+library, and public getters return pointers into embedded data or
+library-owned caches. A library built with `ALWAN_EMBED_DATA=0` keeps the
+small tables compiled in and loads the large switchable ones at run time; see
+[Embedded or loaded at run time](#embedded-or-loaded-at-run-time).
 
 ---
 
@@ -142,78 +134,128 @@ fetches some of them to validate against, and they stay there.
 
 ---
 
-## Embedded Mode Benefits
+## Embedded Or Loaded At Run Time
 
-- no external file deployment
-- no runtime CSV parsing
-- deterministic data availability across platforms
-- simpler sandboxed or bundled application deployment
+`ALWAN_EMBED_DATA` picks where the switchable tables live, when the library is
+compiled:
 
-The trade-off is binary size: the library ships the data with the code.
+| | `ALWAN_EMBED_DATA=1` (default) | `ALWAN_EMBED_DATA=0` |
+|---|---|---|
+| switchable tables | compiled in | loaded from a data pack on first use, or up front; freed on request |
+| a reader's access | the array, an immediate address | one pointer load and a branch |
+| a table not there | switched off: `ALWAN_E_NODATA` | no pack at the data root: `ALWAN_E_NODATA` |
+| size (alwan_dev's statically linked test binary, Release x64) | 100.4 MB | 18.7 MB, plus a 76.9 MB pack |
+| matrices, chromaticities, RGB spaces, CAT data | compiled in | compiled in |
 
----
+The switchable tables are every table `data/alwan_data_tables_config.h` can
+switch off: illuminant and light-source SPDs, observers and photopic functions,
+the NPL and rawtoaces cameras, the film stocks, the Jakob 2019, Smits, Mallett
+and Otsu upsampling tables, the AgX and Tony McMapface look-up tables, the
+light-quality reference sets, and the refractiveindex.info database's
+wavelength, value and coefficient arrays. Everything else, the small constant tables read
+at fixed indices, is compiled into every build.
 
-## Runtime / On-Demand Loading -- planned for 3.x.y
+The readers do not change shape between the two: they index `table[i]` on the
+embedded array and on the loaded pointer alike, so a loaded table gives the
+same results, bit for bit. In runtime mode each table's name is a macro over a
+hidden pointer that loads the table the first time anything reads it, so no
+function needs a load call first. Where the pack cannot be found, each reader
+answers as it does for a switched-off table (`ALWAN_TABLE_REQUIRE` in
+`data/alwan_data_tables.h`). An embedded build compiles all of this away.
 
-Not a 2.0.0 feature, and 2.0.0's embedding is a stated decision rather than a
-gap: it is what removes the data path, the file I/O and the load-order failures,
-what lets the table reader bound every access at compile time, and what makes the
-GPU backends work at all, since a shader cannot open a file. See
-[alwan_decisions.md](alwan_decisions.md), "Data is embedded, not loaded at
-runtime".
+### Loading: on demand, or when you choose
 
-What the code says today:
+Nothing has to be called. The first function that reads a table opens
+`alwan_data.pack` in the data root, reads that one table out of it (both
+precisions) and keeps it; one illuminant read loads 5,652 bytes and leaves the
+other 297 tables on disk. To load at a moment of your choosing instead, at
+initialisation say, call `alwan_data_preload(groups, ctx)`.
 
-- `alwan_config.runtime_data_root` exists but is reserved and inert
-- building with `ALWAN_EMBED_DATA=0` `#error`s rather than misbehaving
+The data root is, in order: the folder given to `alwan_data_set_root`, the
+`ALWAN_DATA_ROOT` environment variable, the current directory.
+`alwan_data_preload` with a context created with a `runtime_data_root` reads
+that folder instead. Creating a context never changes the process's root: an
+early version did, and a test that made a context with a made-up folder sent
+every later on-demand load looking there. A library built with `-DALWAN_DATA_ROOT_DEFAULT="..."` changes the
+last of these. When a table's on-demand load fails, it is not retried until the
+root changes or a load or free runs, so a missing pack costs one file open per
+table, not one per call.
 
-The expected direction for 3.x.y is:
+### The data pack
 
-- load datasets from a caller-provided root directory
-- populate the same public descriptors/getters from file-backed data
-- keep public API behavior as close as possible to embedded mode
-
-Until that lands, do not write production code that expects file-backed data
-loading to work.
-
----
-
-## `runtime_data_root`
-
-You may still see this field in `alwan_config`:
+An embedded build writes the pack; a runtime build loads it:
 
 ```c
-alwan_ctx *ctx = alwan_create(&(alwan_config){
-    .runtime_data_root = "data"
-});
+/* In a tool linked against the default (embedded) library. */
+size_t size = 0;
+alwan_data_pack_write(NULL, 0, &size, ALWAN_DATA_GROUP_ALL);   /* size only */
+void *pack = malloc(size);
+alwan_data_pack_write(pack, size, &size, ALWAN_DATA_GROUP_ALL);
+/* ... save it ... */
+
+/* In the application, linked against an ALWAN_EMBED_DATA=0 library. */
+alwan_data_set_root("/opt/myapp/data");    /* optional: where alwan_data.pack lives */
+                                           /* (or set ALWAN_DATA_ROOT in the environment) */
+/* ... use the library: tables load as they are first read ... */
+alwan_data_free(ALWAN_DATA_GROUP_FILM);    /* done with film: its tables go back */
+alwan_data_free(ALWAN_DATA_GROUP_ALL);     /* at exit */
+
+/* Or load everything at start-up, and know then whether the pack is complete. */
+if (alwan_data_preload(ALWAN_DATA_GROUP_ALL, ctx) != ALWAN_OK) { ... }
+if (alwan_data_missing(ALWAN_DATA_GROUP_ALL) != 0) { ... }   /* a pack from an older build */
 ```
 
-In the current release this is documentation of intent only. The field is
-ignored because runtime data loading is not implemented yet.
+- **Groups.** Tables load and free by group, the same groups as the
+  `ALWAN_TABLES_*` switches: `AGX`, `SPECTRAL`, `SPD`, `QUALITY`, `CAMERAS`,
+  `LIGHT_SOURCES`, `FILM`, `OTHER`, plus `REFRACTIVE` for the
+  refractiveindex.info database (`ALWAN_WITH_REFRACTIVE_DATA`). A pack can hold any of them, and a load
+  takes only the groups it is asked for.
+- **Memory.** Each loaded table is copied out of the pack with the context's
+  allocator (NULL: the default one), so the pack buffer can be freed after the
+  load. `alwan_data_loaded_bytes` reports what is held.
+- **Validation.** The pack is untrusted input. It is read whole before
+  anything changes: a malformed pack, or a table whose extent differs from the
+  library's, is `ALWAN_E_INVALID`, an allocation failure is `ALWAN_E_NOMEM`,
+  and in both cases no table changes. A table already loaded is replaced. Tables
+  the library does not have are skipped, so a pack written by a newer build
+  loads into an older one.
+- **Threads.** On-demand loads are safe from any number of threads: two threads
+  that race for a table both read it and one copy is kept, published with an
+  atomic compare-and-swap. The explicit calls (`alwan_data_preload`,
+  `alwan_data_load`, `alwan_data_free`, `alwan_data_set_root`) write
+  process-wide state unsynchronised with readers: make them before other
+  threads start, or when none is inside the library.
+- **Format.** Little-endian, versioned (version 1, described at the head of
+  `api/alwan_data_runtime.c`). A table with both precisions is
+  stored once, in f64; the loader narrows it to the f32 twin, which is what the
+  compiler does to the CSV literal. Where that would not reproduce the f32
+  twin, the writer stores the f32 values too.
+- **Embedded builds.** `alwan_data_load` validates a pack and loads nothing,
+  `alwan_data_free` does nothing, and `alwan_data_loaded_bytes` and
+  `alwan_data_missing` are 0, so the same application code runs against both
+  builds. `alwan_get_build_info` reports which one it has (`embed_data`).
 
----
+The GPU backends read tables they are given, bound by the caller, and are not
+affected by either mode.
 
-## Impact On Higher-Level Features
+### `runtime_data_root`
 
-The current embedded-data design feeds:
-
-- RGB space lookup and conversion descriptors
-- illuminant lookup helpers
-- spectral integration workflows
-- LUT / CLF generation that needs descriptor-driven transforms
-- interop and video helpers that rely on the RGB-space registry
-
-Because those features all depend on the same embedded registry, keeping
-`ALWAN_EMBED_DATA=1` is the safe default for all public builds today.
+The folder `alwan_data_preload(groups, ctx)` reads when given that context. The
+tables are process-wide, so on-demand loads, which have no context, use the
+process's root (`alwan_data_set_root`); a context's root never changes it.
 
 ---
 
 ## Guidance
 
-- Use embedded mode for all current integrations.
-- Treat runtime loading as roadmap material rather than a shipping workflow.
-- If you need custom colour spaces today, build descriptors directly in memory
-  with `alwan_rgb_space_desc_f32` / `alwan_rgb_space_desc_f64` rather than
+- Embedded (the default) for most integrations: nothing to deploy.
+- `ALWAN_EMBED_DATA=0` when binary size matters and the data can ship beside
+  the library, or when an application uses a group (film, light sources, the
+  camera pack) for a while and wants the memory back afterwards.
+- `ALWAN_DATA_TABLES_MINIMAL` and the per-table switches when a table is never
+  needed at all: those leave the reader's code out too.
+- If you need custom colour spaces, build descriptors directly in memory with
+  `alwan_rgb_space_desc_f32` / `alwan_rgb_space_desc_f64` rather than
   expecting a runtime registry extension.
 
 See also:

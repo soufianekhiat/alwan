@@ -631,22 +631,45 @@ the OCIO tonescale fixtures and states why at the constant.
 
 ---
 
-## Data is embedded, not loaded at runtime
+## Data is embedded by default, and the large tables can load at run time
 
-`ALWAN_EMBED_DATA=1` is the only supported build. Setting it to 0 `#error`s
-rather than compiling something that would look for files that are not there,
-and `alwan_config.runtime_data_root` is reserved and inert.
+By default every table is `#include`d from CSV into a C array at build time, so
+there is no data path, no file I/O, no load-order failure and nothing to ship
+beside the binary, and every reader indexes an array whose address and extent
+are immediates. The cost is binary size and a rebuild to change data.
 
-Every table is `#include`d from CSV into a C array at build time, so there is no
-data path, no file I/O, no load-order failure and nothing to ship beside the
-binary. It is also what lets the reader layer bound every access at compile
-time, and what makes the GPU backends possible at all: a shader cannot open a
-file. The cost is binary size and a rebuild to change data.
+`ALWAN_EMBED_DATA=0` (3.0.0) trades that for size on the switchable tables
+only. Each becomes a pointer the readers index exactly as they index the array
+(`table[i]`), so the readers keep their shape, their bounds (extents stay enum
+constants) and their results; the pointer is filled from a data pack an
+embedded build writes, and freed by group. The small constant tables stay
+embedded, because they are read at fixed indices by code with no missing-data
+path and are a few bytes each.
 
-Runtime loading is not implemented. If it is added, embedded and runtime paths
-are expected to expose the same descriptors and getters, so the choice becomes a
-build option rather than a different API. See
-[alwan_future.md](alwan_future.md).
+Four rules came with it:
+
+- **The public surface does not depend on the mode.** The pack, load and free
+  functions are declared and exported in both builds; in an embedded one they
+  validate and do nothing. A caller never needs to know which library it has.
+- **Every function works without a load call (owner, 2026-10-19).** A table's
+  name is a macro over its pointer that loads it from the data root's pack the
+  first time anything reads it, so a reader never needs the caller to have
+  prepared it. `alwan_data_preload` exists for loading at a moment the caller
+  chooses, initialisation say; it is never required.
+- **No pack reads as switched off.** When the pack cannot be found, every reader
+  that answers `ALWAN_E_NODATA` (or its documented error value) for a
+  compiled-out table answers the same. The check sits where the switched-off
+  path already was, `ALWAN_TABLE_REQUIRE`, and is nothing in an embedded build.
+  Suite 113 runs every reader both ways in the runtime build.
+- **Process-wide, not per context.** The readers have no context; most are
+  value functions or per-pixel cores. A table is a global and so is its root
+  (`alwan_data_set_root`). A context's `runtime_data_root` is only what
+  `alwan_data_preload` reads with that context: creating a context must not
+  move a process-wide root, which suite 00 showed the first way it was wired.
+  On-demand loads publish with a compare-and-swap and are thread-safe; the
+  explicit calls are not synchronised with readers.
+
+The GPU backends are unaffected: a shader reads tables its caller binds.
 
 ---
 

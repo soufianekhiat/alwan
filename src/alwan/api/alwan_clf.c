@@ -20,6 +20,8 @@
 #include <string.h>
 #include <locale.h>
 
+#if ALWAN_WITH_FILE_FORMATS   /* the whole family; alwan_build_config.h */
+
 /* ----------------------------------------------------------------
  * Determinism / portability hardening:
  *   - All file output uses "wb" (binary mode) so MSVC text-mode
@@ -585,3 +587,5 @@ alwan_status alwan_clf_export_view_buffer_f32(char *buf, size_t *bytes_written, 
     clf_widen_desc_32(&d, dst_space);
     return alwan_clf_export_view_buffer_f64(buf, bytes_written, buf_size, &s, &d, view, id, name, lut_size, ctx);
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */

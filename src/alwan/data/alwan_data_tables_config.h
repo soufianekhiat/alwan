@@ -86,7 +86,7 @@
  * illuminant put together, and a build with no film pipeline drops them with one -D.
  * A build that wants a few keeps their own switches on and turns the group off. */
 #ifndef ALWAN_TABLES_FILM
-#  define ALWAN_TABLES_FILM (!ALWAN_DATA_TABLES_MINIMAL)
+#  define ALWAN_TABLES_FILM (ALWAN_WITH_FILM && !ALWAN_DATA_TABLES_MINIMAL)
 #endif
 
 /* --- AgX --- */

@@ -146,7 +146,7 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
 
 ### HLSL Limitations
 
-- No context (`alwan_ctx`): on the C backend `alwan_ctx` exists for the **embedded RGB-space registry** lookup (resolving an `ALWAN_RGB_*` enum to its `alwan_rgb_space_desc` primaries/whitepoint/TFs) and for the custom allocator; it is *not* a runtime data loader (runtime loading is not implemented). GPU code passes the descriptor explicitly, so no context is needed. All GPU functions are standalone.
+- No context (`alwan_ctx`): on the C backend `alwan_ctx` exists for the **embedded RGB-space registry** lookup (resolving an `ALWAN_RGB_*` enum to its `alwan_rgb_space_desc` primaries/whitepoint/TFs) and for the custom allocator; it is *not* a data loader (runtime data, `ALWAN_EMBED_DATA=0`, is process-wide and CPU-only). GPU code passes the descriptor explicitly, so no context is needed. All GPU functions are standalone.
 - No bulk/stride functions: GPU shaders process one pixel at a time or via texture samplers.
 - No `alwan_spd` operations: spectral data structures are C-only.
 - No camera profiling or Munsell/ColorChecker lookups: these need the C-side embedded data tables.

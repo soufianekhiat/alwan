@@ -25,7 +25,7 @@
  * Data embedding mode
  * ---------------------------------------------------------------- */
 #ifndef ALWAN_EMBED_DATA
-# define ALWAN_EMBED_DATA 1  /* 1=embed arrays, 0=runtime load from /data/ */
+# define ALWAN_EMBED_DATA 1  /* 1 = switchable tables compiled in; 0 = loaded at run time (alwan_data_load) */
 #endif
 
 /* ----------------------------------------------------------------

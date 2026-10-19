@@ -22,6 +22,8 @@
 #include "../core/alwan_fluorescence_core.h"
 #include <string.h>
 
+#if ALWAN_WITH_OPTICS   /* the whole family; alwan_build_config.h */
+
 #define FLUO_DEFAULT_MIN 300.0
 #define FLUO_DEFAULT_MAX 830.0
 #define FLUO_NU 1e7                      /* nm to cm^-1 */
@@ -532,3 +534,5 @@ alwan_status alwan_fluorescent_get_layout_f32(alwan_fluorescent_layout_f32 *layo
     layout->step = (float)material->h;
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_OPTICS */

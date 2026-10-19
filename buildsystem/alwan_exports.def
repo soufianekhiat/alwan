@@ -466,6 +466,7 @@ EXPORTS
     alwan_cvd_matrix_machado2009_shift_f64
     alwan_d_series_illuminant_xy_f32
     alwan_d_series_illuminant_xy_f64
+    alwan_data_free
     alwan_data_get_illuminant_a_f32
     alwan_data_get_illuminant_a_f64
     alwan_data_get_illuminant_b_f32
@@ -508,6 +509,13 @@ EXPORTS
     alwan_data_get_illuminant_xy_f64
     alwan_data_get_srgb_primaries_f32
     alwan_data_get_srgb_primaries_f64
+    alwan_data_load
+    alwan_data_load_file
+    alwan_data_loaded_bytes
+    alwan_data_missing
+    alwan_data_pack_write
+    alwan_data_preload
+    alwan_data_set_root
     alwan_default_alloc
     alwan_default_free
     alwan_default_realloc

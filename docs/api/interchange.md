@@ -553,9 +553,8 @@ zero the output, unreachable while the stride check stands.
 ### ctx
 
 The header calls it "context for space descriptor lookup". It is passed to the
-descriptor lookup and immediately discarded with `(void)ctx`. The only supported
-build mode is `ALWAN_EMBED_DATA`, where descriptors come from static tables; the
-alternative branch is an `#error`. NULL is safe and behaviour is identical with
+descriptor lookup and immediately discarded with `(void)ctx`. Descriptors come
+from static tables in every build. NULL is safe and behaviour is identical with
 or without a context.
 
 **Example:**

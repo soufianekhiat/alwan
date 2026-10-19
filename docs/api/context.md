@@ -2,9 +2,9 @@
 
 Context objects (`alwan_ctx`) manage library state and memory allocation.
 
-Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor_{T}`, `alwan_rgb_convert_{T}`) accept it as the handle through which the **allocator** and (in a future runtime mode) disk-loaded data are reached. In the current **embedded** build the RGB color-space registry (primaries/whitepoint/transfer-function descriptors) is compiled into the binary from `src/alwan/data/**`, so descriptor lookups index static tables and ignore `ctx` (it may even be `NULL`). The context does **not** load anything from disk at runtime. Where `ctx` matters today: it supplies the allocator for functions that allocate (e.g. SPD/LUT routines) and gates optional work such as the chromatic-adaptation step inside `alwan_rgb_convert_{T}` (passing `NULL` skips adaptation rather than erroring). Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
+Functions that take a `ctx` (e.g. `alwan_rgb_get_space_descriptor_{T}`, `alwan_rgb_convert_{T}`) accept it as the handle through which the **allocator** is reached. In the current **embedded** build the RGB color-space registry (primaries/whitepoint/transfer-function descriptors) is compiled into the binary from `src/alwan/data/**`, so descriptor lookups index static tables and ignore `ctx` (it may even be `NULL`). The context does **not** load anything from disk at runtime. Where `ctx` matters today: it supplies the allocator for functions that allocate (e.g. SPD/LUT routines) and gates optional work such as the chromatic-adaptation step inside `alwan_rgb_convert_{T}` (passing `NULL` skips adaptation rather than erroring). Per the v2.0 parameter convention, `ctx` is always the **last** argument (or absent on `_v` value-typed math).
 
-> **Note:** Runtime data loading (`runtime_data_root`) is NOT implemented and is not scheduled. Only embedded mode (`ALWAN_EMBED_DATA=1`, the default) is supported.
+> **Note:** A library built with `ALWAN_EMBED_DATA=0` loads its large tables at run time, process-wide and not through a context: see [data-management.md](../data-management.md). Tables load on first use from the process's data root (`alwan_data_set_root`); `runtime_data_root` is the folder `alwan_data_preload` reads with this context.
 
 ---
 
@@ -109,7 +109,7 @@ Opaque context structure. Internal details are not exposed.
 typedef struct {
     alwan_alloc_fn alloc_cb;          // Optional custom allocator (NULL = default); set both or neither
     alwan_free_fn  free_cb;           // Optional custom deallocator (NULL = default)
-    char const *runtime_data_root;    // Reserved; runtime data loading is not implemented and not scheduled. Ignored
+    char const *runtime_data_root;    // Optional: the folder alwan_data_preload reads with this context (ALWAN_EMBED_DATA=0)
     uint32_t flags;                   // Reserved for future use (must be 0)
 } alwan_config;
 ```
@@ -173,14 +173,17 @@ void free_cb(void *ptr);
 **Default:** `alwan_default_free` (matches `alwan_default_alloc`; uses `_aligned_free` on MSVC, `free` elsewhere)
 
 #### `runtime_data_root`
-Reserved. Runtime data loading is NOT implemented and is not scheduled.
+The folder holding `alwan_data.pack`, for a library built with
+`ALWAN_EMBED_DATA=0`.
 
 **Type:** `const char*`
 
-**Default:** `NULL`
+**Default:** `NULL` (the process's root)
 
-This field is currently ignored. Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
-Set to `NULL`; runtime loading is not implemented.
+The folder `alwan_data_preload(groups, ctx)` reads with this context. On-demand
+loads have no context and read the process's root (`alwan_data_set_root`, else
+`ALWAN_DATA_ROOT`, else the current directory); creating a context never
+changes it. Ignored by an embedded build.
 ---
 
 ## Library Version
@@ -582,11 +585,24 @@ alwan_destroy(ctx);
 
 ---
 
-### Pattern 3: Runtime Data Loading (NOT IMPLEMENTED)
+### Pattern 3: Runtime Data Loading
 
-> **NOT IMPLEMENTED.** Runtime mode is not scheduled.
-> Building with `ALWAN_EMBED_DATA=0` produces a compile-time error.
-> Always use `ALWAN_EMBED_DATA=1` (the default) and pass `runtime_data_root = NULL`.
+With a library built with `ALWAN_EMBED_DATA=0`, tables load from the data root
+the first time they are read; nothing has to be called. To load everything at
+start-up from a folder of your choosing:
+
+```c
+alwan_ctx *ctx = alwan_create(&(alwan_config){ .runtime_data_root = "/opt/myapp/data" });
+if (alwan_data_preload(ALWAN_DATA_GROUP_ALL, ctx) != ALWAN_OK) { /* no pack there */ }
+/* ... */
+alwan_data_free(ALWAN_DATA_GROUP_ALL);
+alwan_destroy(ctx);
+```
+
+The context supplies the folder and the allocator for the preload's copies;
+on-demand loads use `alwan_data_set_root`'s folder and the default allocator.
+The tables are process-wide. See
+[data-management.md](../data-management.md).
 
 ---
 
@@ -657,9 +673,10 @@ alwan_destroy(shared_ctx);
 
 ---
 
-### Runtime Mode (ALWAN_EMBED_DATA=0): NOT IMPLEMENTED
+### Runtime Mode (ALWAN_EMBED_DATA=0)
 
-> Runtime data loading is not implemented, and is not scheduled.
+The context itself is the same size. Loaded tables are held process-wide, not
+per context: `alwan_data_loaded_bytes(ALWAN_DATA_GROUP_ALL)` reports them.
 
 ---
 

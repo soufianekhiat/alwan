@@ -40,6 +40,10 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
+/* Runtime data (ALWAN_EMBED_DATA=0): these tables are pointers that alwan_data_load
+ * fills (data/alwan_data_registry_gen.c), so nothing here is compiled. */
+#if ALWAN_EMBED_DATA
+
 #if ALWAN_TABLE_SPD_ILLUMINANT_A
 /* ---- alwan_table_spd_illuminant_a ----
  * extent ALWAN_TABLE_SPD_360_830_1NM_SIZE. Reader: alwan_table1d_row_{f32,f64}
@@ -2895,6 +2899,9 @@ alwan_f64 const alwan_table_otsu2018_xyz_mu_f64[ALWAN_TABLE_OTSU2018_XYZ_MU_SIZE
 
 #endif
 
+#endif /* ALWAN_EMBED_DATA */
+
+/* Embedded in every build: ALWAN_TABLE_EXTERN_EMBEDDED. */
 #if ALWAN_TABLE_AGX_SB2383_INSET
 /* ---- alwan_table_agx_sb2383_inset ----
  * extent ALWAN_TABLE_AGX_SB2383_INSET_SIZE. Reader: alwan_table1d_row_{f32,f64}
@@ -2911,6 +2918,8 @@ alwan_f64 const alwan_table_agx_sb2383_inset_f64[ALWAN_TABLE_AGX_SB2383_INSET_SI
 #endif
 
 #endif
+
+#if ALWAN_EMBED_DATA
 
 #if ALWAN_TABLE_ROBERTSON_LOCUS
 /* ---- alwan_table_robertson_locus ----
@@ -4683,5 +4692,6 @@ alwan_f64 const alwan_table_film_kodak_ektachrome_radiance_iii_f64[ALWAN_TABLE_F
 
 #endif
 
+#endif /* ALWAN_EMBED_DATA */
 
 ALWAN_DIAG_POP

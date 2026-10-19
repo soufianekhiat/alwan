@@ -1022,6 +1022,277 @@ done:
     return st;
 }
 
+/* ================================================================
+ * The perceptual objective
+ *
+ *   minimise  sum_i w_i dE(ref_i, A_i X)^2 + ridge |X|_F^2
+ *
+ * as a nonlinear least squares in the coefficients: residual sqrt(w_i) dE_i per
+ * sample, plus sqrt(ridge) X_k per coefficient. Levenberg-Marquardt from the
+ * least-squares fit, the Jacobian by central differences (dE2000 and CAM16 have
+ * closed-form derivatives in principle, but they are long, branchy and easy to get
+ * wrong, and the problem has at most 105 unknowns). With the neutral constraint the
+ * unknowns are y in X = X_p + Z y, the same elimination alwan__ccm_solve_constrained
+ * uses, so the constraint holds to round-off at every step.
+ * ================================================================ */
+
+typedef struct {
+    alwan_f64 const *A;        /* m x n expanded samples */
+    int m, n;
+    alwan_f64 const *w;        /* NULL: uniform */
+    alwan_f64 const *ref;      /* m x 3 reference coordinates (Lab or CAM16-UCS) */
+    alwan_f64 ridge;
+    alwan_f64 const *Z, *xp;   /* constraint, or NULL */
+    int nz;
+    alwan_ccm_fit_params const *params;
+} alwan__ccm_obj;
+
+/* The colour's coordinates in the objective's space. 0 when it has none. */
+static int alwan__ccm_obj_coords(alwan_f64 out[3], alwan_f64 const xyz[3], alwan_ccm_fit_params const *params)
+{
+    alwan_xyz_f64 x;
+    x.x = xyz[0]; x.y = xyz[1]; x.z = xyz[2];
+    if (params->objective == ALWAN_CCM_OBJECTIVE_DE2000) {
+        alwan_lab_f64 lab;
+        alwan_xyz_to_lab_f64(&lab, &x, params->objective_white);
+        out[0] = lab.L; out[1] = lab.a; out[2] = lab.b;
+    } else {
+        alwan_cam16_correlates_f64 c;
+        alwan_cam_jab_f64 jab;
+        if (alwan_cam16_forward_f64(&c, &x, params->objective_vc) != ALWAN_OK) return 0;
+        if (alwan_cam16_to_ucs_f64(&jab, &c) != ALWAN_OK) return 0;
+        out[0] = jab.J; out[1] = jab.a; out[2] = jab.b;
+    }
+    return out[0] - out[0] == 0.0 && out[1] - out[1] == 0.0 && out[2] - out[2] == 0.0;
+}
+
+static alwan_f64 alwan__ccm_obj_de(alwan_f64 const a[3], alwan_f64 const b[3], alwan_ccm_fit_params const *params)
+{
+    if (params->objective == ALWAN_CCM_OBJECTIVE_DE2000) {
+        alwan_lab_f64 la, lb;
+        la.L = a[0]; la.a = a[1]; la.b = a[2];
+        lb.L = b[0]; lb.a = b[1]; lb.b = b[2];
+        return alwan_delta_e_2000_f64(&la, &lb);
+    } else {
+        alwan_cam_jab_f64 ja, jb;
+        ja.J = a[0]; ja.a = a[1]; ja.b = a[2];
+        jb.J = b[0]; jb.a = b[1]; jb.b = b[2];
+        return alwan_delta_e_cam16_ucs_f64(&ja, &jb);
+    }
+}
+
+/* The coefficients X (n x 3) from the unknowns p. */
+static void alwan__ccm_obj_x(alwan_f64 *X, alwan_f64 const *p, alwan__ccm_obj const *o)
+{
+    int i, k, ch;
+    if (!o->Z) {
+        for (i = 0; i < o->n * 3; i++) X[i] = p[i];
+        return;
+    }
+    for (i = 0; i < o->n; i++) {
+        for (ch = 0; ch < 3; ch++) {
+            alwan_f64 s = o->xp[i * 3 + ch];
+            for (k = 0; k < o->nz; k++) s += o->Z[i * o->nz + k] * p[k * 3 + ch];
+            X[i * 3 + ch] = s;
+        }
+    }
+}
+
+/* The residual vector: one per sample of positive weight, then n x 3 for the ridge.
+ * 0 when a prediction has no coordinates. */
+static int alwan__ccm_obj_residual(alwan_f64 *r, alwan_f64 *X, alwan_f64 const *p, alwan__ccm_obj const *o)
+{
+    int i, j, ch, k = 0;
+    alwan__ccm_obj_x(X, p, o);
+    for (i = 0; i < o->m; i++) {
+        alwan_f64 pred[3], c[3];
+        if (o->w && !(o->w[i] > 0.0)) continue;
+        for (ch = 0; ch < 3; ch++) {
+            alwan_f64 s = 0.0;
+            for (j = 0; j < o->n; j++) s += o->A[i * o->n + j] * X[j * 3 + ch];
+            pred[ch] = s;
+        }
+        if (!alwan__ccm_obj_coords(c, pred, o->params)) return 0;
+        r[k++] = (o->w ? ALWAN_SQRT(o->w[i]) : 1.0) * alwan__ccm_obj_de(o->ref + i * 3, c, o->params);
+    }
+    if (o->ridge > 0.0) {
+        alwan_f64 const s = ALWAN_SQRT(o->ridge);
+        for (i = 0; i < o->n * 3; i++) r[k++] = s * X[i];
+    }
+    return 1;
+}
+
+/* Solve H d = g for symmetric positive definite H (p x p, destroyed). 0 if not SPD. */
+static int alwan__ccm_cholesky(alwan_f64 *H, alwan_f64 *d, alwan_f64 const *g, int p)
+{
+    int i, j, k;
+    for (j = 0; j < p; j++) {
+        alwan_f64 s = H[j * p + j];
+        for (k = 0; k < j; k++) s -= H[j * p + k] * H[j * p + k];
+        if (!(s > 0.0)) return 0;
+        H[j * p + j] = ALWAN_SQRT(s);
+        for (i = j + 1; i < p; i++) {
+            alwan_f64 t = H[i * p + j];
+            for (k = 0; k < j; k++) t -= H[i * p + k] * H[j * p + k];
+            H[i * p + j] = t / H[j * p + j];
+        }
+    }
+    for (i = 0; i < p; i++) {
+        alwan_f64 t = g[i];
+        for (k = 0; k < i; k++) t -= H[i * p + k] * d[k];
+        d[i] = t / H[i * p + i];
+    }
+    for (i = p - 1; i >= 0; i--) {
+        alwan_f64 t = d[i];
+        for (k = i + 1; k < p; k++) t -= H[k * p + i] * d[k];
+        d[i] = t / H[i * p + i];
+    }
+    return 1;
+}
+
+static alwan_status alwan__ccm_solve_objective(alwan_f64 *matrix_out, alwan_f64 const *A, alwan_f64 const *M_R,
+                                               int m, int n, alwan_f64 const *crow, alwan_f64 const *cval,
+                                               alwan_ccm_fit_params const *params)
+{
+    alwan__ccm_obj o;
+    alwan_ccm_fit_params start;
+    alwan_f64 *buf = NULL, *ref, *p, *pt, *X, *r, *rt, *J, *H, *g, *d, *Z = NULL, *xp = NULL;
+    alwan_f64 cost, lambda = 1e-3, tol, cc = 0.0;
+    int iters, it, i, j, k, ch, rows = 0, np;
+    alwan_status st;
+
+    if (!params || params->objective == ALWAN_CCM_OBJECTIVE_RGB)
+        return alwan__ccm_solve_robust(matrix_out, A, M_R, m, n, crow, cval, params);
+    if (params->objective != ALWAN_CCM_OBJECTIVE_DE2000 && params->objective != ALWAN_CCM_OBJECTIVE_CAM16_UCS)
+        return ALWAN_E_INVALID;
+    if (params->robust_scale != 0.0) return ALWAN_E_INVALID;
+    if (params->objective == ALWAN_CCM_OBJECTIVE_DE2000
+        && (!params->objective_white || !(params->objective_white->y > 0.0))) return ALWAN_E_INVALID;
+    if (params->objective == ALWAN_CCM_OBJECTIVE_CAM16_UCS && !params->objective_vc) return ALWAN_E_INVALID;
+    if (params->objective_iterations < 0 || params->objective_tol < 0.0
+        || params->objective_tol - params->objective_tol != 0.0) return ALWAN_E_INVALID;
+    iters = params->objective_iterations > 0 ? params->objective_iterations : 10000;
+    tol = params->objective_tol > 0.0 ? params->objective_tol : 1e-10;
+
+    /* The least-squares fit is the start: the caller's weights, ridge and constraint. */
+    start = *params;
+    start.objective = ALWAN_CCM_OBJECTIVE_RGB;
+    st = alwan__ccm_solve_robust(matrix_out, A, M_R, m, n, crow, cval, &start);
+    if (st != ALWAN_OK) return st;
+
+    for (i = 0; i < m; i++)
+        if (!params->weights || params->weights[i] > 0.0) rows++;
+    o.A = A; o.m = m; o.n = n; o.w = params->weights; o.ridge = params->ridge;
+    o.Z = NULL; o.xp = NULL; o.nz = n; o.params = params;
+    if (crow && cval && n >= 2) {
+        Z = (alwan_f64 *)ALWAN_ALLOC((size_t)n * (size_t)(n - 1) * sizeof(alwan_f64), sizeof(alwan_f64));
+        xp = (alwan_f64 *)ALWAN_ALLOC((size_t)n * 3 * sizeof(alwan_f64), sizeof(alwan_f64));
+        if (!Z || !xp) { st = ALWAN_E_NOMEM; goto done; }
+        if (alwan__ccm_nullspace(Z, crow, n) != 1) { st = ALWAN_E_INVALID; goto done; }
+        for (i = 0; i < n; i++) cc += crow[i] * crow[i];
+        for (i = 0; i < n; i++)
+            for (ch = 0; ch < 3; ch++) xp[i * 3 + ch] = crow[i] * cval[ch] / cc;
+        o.Z = Z; o.xp = xp; o.nz = n - 1;
+    } else if (crow && cval) {
+        goto done;   /* one term, one equality: nothing is free, the start is the fit */
+    }
+    np = o.nz * 3;
+    /* One dE per sample against three unknowns per term: without a ridge the fit
+     * needs at least as many samples as unknowns, or it is not determined. */
+    if (!(o.ridge > 0.0) && rows < np) { st = ALWAN_E_INVALID; goto done; }
+    rows += o.ridge > 0.0 ? n * 3 : 0;
+
+    {
+        size_t const words = (size_t)m * 3 + (size_t)np * 4 + (size_t)n * 3 + (size_t)rows * 2
+                           + (size_t)rows * (size_t)np + (size_t)np * (size_t)np;
+        buf = (alwan_f64 *)ALWAN_ALLOC(words * sizeof(alwan_f64), sizeof(alwan_f64));
+        if (!buf) { st = ALWAN_E_NOMEM; goto done; }
+    }
+    ref = buf; p = ref + (size_t)m * 3; pt = p + np; g = pt + np; d = g + np; X = d + np;
+    r = X + (size_t)n * 3; rt = r + rows; J = rt + rows; H = J + (size_t)rows * (size_t)np;
+    o.ref = ref;
+
+    for (i = 0; i < m; i++) {
+        if (params->weights && !(params->weights[i] > 0.0)) continue;
+        if (!alwan__ccm_obj_coords(ref + i * 3, M_R + i * 3, params)) { st = ALWAN_E_RANGE; goto done; }
+    }
+    /* The start in the unknowns: X itself, or y = Z^T (X - X_p) with Z orthonormal. */
+    if (!o.Z) {
+        for (i = 0; i < np; i++) p[i] = matrix_out[i];
+    } else {
+        for (k = 0; k < o.nz; k++)
+            for (ch = 0; ch < 3; ch++) {
+                alwan_f64 s = 0.0;
+                for (i = 0; i < n; i++) s += Z[i * o.nz + k] * (matrix_out[i * 3 + ch] - xp[i * 3 + ch]);
+                p[k * 3 + ch] = s;
+            }
+    }
+    if (!alwan__ccm_obj_residual(r, X, p, &o)) { st = ALWAN_E_RANGE; goto done; }
+    cost = 0.0;
+    for (i = 0; i < rows; i++) cost += r[i] * r[i];
+
+    for (it = 0; it < iters; it++) {
+        alwan_f64 moved = 0.0, ct;
+        int accepted = 0;
+        /* Central differences, step ~ cbrt(eps) scaled to the coefficient. */
+        for (j = 0; j < np; j++) {
+            alwan_f64 const pj = p[j];
+            alwan_f64 const h = 6.055454e-6 * (ALWAN_ABS(pj) > 1.0 ? ALWAN_ABS(pj) : 1.0);
+            p[j] = pj + h;
+            if (!alwan__ccm_obj_residual(rt, X, p, &o)) { p[j] = pj; st = ALWAN_E_RANGE; goto done; }
+            for (i = 0; i < rows; i++) J[(size_t)i * np + j] = rt[i];
+            p[j] = pj - h;
+            if (!alwan__ccm_obj_residual(rt, X, p, &o)) { p[j] = pj; st = ALWAN_E_RANGE; goto done; }
+            for (i = 0; i < rows; i++) J[(size_t)i * np + j] = (J[(size_t)i * np + j] - rt[i]) / (2.0 * h);
+            p[j] = pj;
+        }
+        /* g = -J^T r */
+        for (j = 0; j < np; j++) {
+            alwan_f64 s = 0.0;
+            for (i = 0; i < rows; i++) s += J[(size_t)i * np + j] * r[i];
+            g[j] = -s;
+        }
+        while (!accepted) {
+            for (j = 0; j < np; j++)
+                for (k = 0; k < np; k++) {
+                    alwan_f64 s = 0.0;
+                    for (i = 0; i < rows; i++) s += J[(size_t)i * np + j] * J[(size_t)i * np + k];
+                    H[j * np + k] = s;
+                }
+            for (j = 0; j < np; j++) H[j * np + j] *= 1.0 + lambda;
+            if (alwan__ccm_cholesky(H, d, g, np)) {
+                for (j = 0; j < np; j++) pt[j] = p[j] + d[j];
+                if (alwan__ccm_obj_residual(rt, X, pt, &o)) {
+                    ct = 0.0;
+                    for (i = 0; i < rows; i++) ct += rt[i] * rt[i];
+                    if (ct <= cost) {
+                        for (j = 0; j < np; j++) {
+                            alwan_f64 const dj = ALWAN_ABS(d[j]);
+                            if (dj > moved) moved = dj;
+                            p[j] = pt[j];
+                        }
+                        for (i = 0; i < rows; i++) r[i] = rt[i];
+                        cost = ct;
+                        lambda = lambda * 0.3 > 1e-12 ? lambda * 0.3 : 1e-12;
+                        accepted = 1;
+                        continue;
+                    }
+                }
+            }
+            lambda *= 4.0;
+            if (lambda > 1e12) break;   /* no step lowers the cost: a minimum to this precision */
+        }
+        if (!accepted || moved <= tol) break;
+    }
+    alwan__ccm_obj_x(matrix_out, p, &o);
+
+done:
+    if (buf) ALWAN_FREE(buf);
+    if (Z) ALWAN_FREE(Z);
+    if (xp) ALWAN_FREE(xp);
+    return st;
+}
+
 /* The neutral pair, validated and expanded by the caller's own expansion. Returns
  * ALWAN_OK with *have = 0 when there is no constraint. */
 static alwan_status alwan__ccm_neutral_check(alwan_ccm_fit_params const *params, int *have)
@@ -1104,7 +1375,7 @@ static alwan_status alwan__ccm_fit_cheung(alwan_f64 *matrix_out, alwan_f64 const
     }
 
     /* Solve least squares: A * matrix = M_R */
-    int result = alwan__ccm_solve_robust(matrix_out, A, M_R, num_samples, (int)terms,
+    int result = alwan__ccm_solve_objective(matrix_out, A, M_R, num_samples, (int)terms,
                                          have_neutral ? crow : NULL,
                                          have_neutral ? params->neutral_out : NULL, params);
     ALWAN_FREE(A);
@@ -1243,7 +1514,7 @@ static alwan_status alwan__ccm_fit_finlayson(alwan_f64 *matrix_out, int *matrix_
     }
 
     /* Solve least squares */
-    result = alwan__ccm_solve_robust(matrix_out, A, M_R, num_samples, exp_size,
+    result = alwan__ccm_solve_objective(matrix_out, A, M_R, num_samples, exp_size,
                                      have_neutral ? crow : NULL,
                                      have_neutral ? params->neutral_out : NULL, params);
     ALWAN_FREE(A);

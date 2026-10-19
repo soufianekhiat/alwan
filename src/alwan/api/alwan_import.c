@@ -14,6 +14,8 @@
 #include <ctype.h>
 #include <locale.h>
 
+#if ALWAN_WITH_FILE_FORMATS   /* the whole family; alwan_build_config.h */
+
 /* ----------------------------------------------------------------
  * .cube file parser (Adobe/Iridas format)
  *
@@ -474,3 +476,5 @@ done_buf_f32:
     alwan_restore_lc_numeric(saved_locale);
     return err;
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */

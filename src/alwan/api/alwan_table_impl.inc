@@ -215,6 +215,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_agx_blender_cube_sample)(ALWAN_CORE_RGB *res
 #if !ALWAN_TABLE_AGX_BLENDER_CUBE
     return ALWAN_E_NODATA;   /* compiled out: alwan_data_tables_config.h */
 #else
+    ALWAN_TABLE_REQUIRE(ALWAN_CORE_FNLIT(alwan_table_agx_blender_cube), ALWAN_E_NODATA);
     ALWAN_CORE_VEC3 in;
     in.v[0] = coord->r; in.v[1] = coord->g; in.v[2] = coord->b;
     ALWAN_CORE_VEC3 const out = ALWAN_CORE_FNVLIT(alwan_table3d_sample)(

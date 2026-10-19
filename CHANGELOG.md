@@ -1,5 +1,62 @@
 ## [Unreleased]
 
+### Changed: the CAM16 forward map runs on SIMD lanes
+
+- `alwan_cam16_forward_{T}_map_interleave` computes each correlate across vector
+  lanes in the scalar core's order: 13x to 27x faster than the scalar loop in f32
+  on AVX2. The vector pow, atan2 and cos are not libm's, so the map is no longer
+  bit-identical to `alwan_cam16_forward_{T}`: f64 is within 2e-13 (relative) of it,
+  and f32's worst error against an f64 reference equals the scalar f32's own (suite
+  172). The deterministic build is unchanged (width 1, the scalar per pixel).
+
+### Added: feature-family switches, `ALWAN_WITH_<FAMILY>`
+
+- Nine families a build can leave out whole, each default 1 in
+  `alwan_build_config.h`: `FILM`, `SKY`, `NN`, `FORMATION`, `FILE_FORMATS`,
+  `PATTERNS`, `OPTICS`, `GRADING`, `IMAGE_METRICS`. Off, the family's code is not
+  compiled and its functions are not declared, as with the precision switches; a
+  call into it is a compile error. CMake options of the same names export the
+  value (public definition, `alwan.pc`). `ALWAN_WITH_FILM=0` also turns the film
+  tables off, `ALWAN_WITH_OPTICS=0` the refractive-index database.
+- alwan_dev's `tools/check_precision_link.py families` builds the library with each
+  family off and links every entry point still declared. The first run found the
+  ASTM G173 solar spectra declared outside the sky family but defined in it; they
+  now belong to it.
+
+### Added: runtime data, `ALWAN_EMBED_DATA=0`
+
+- A library built with `ALWAN_EMBED_DATA=0` leaves the switchable tables out of the
+  binary (the 295 that `data/alwan_data_tables_config.h` can switch off, plus the
+  refractiveindex.info arrays) and loads them at run time from a data pack an
+  embedded build writes. alwan_dev's statically linked test binary goes from
+  100.4 MB to 18.7 MB, with a 76.9 MB pack beside it.
+- **On demand by default.** Nothing has to be called: a table loads, alone, the
+  first time anything reads it, from `alwan_data.pack` in the data root
+  (**`alwan_data_set_root`**, else `ALWAN_DATA_ROOT`, else the current directory).
+  **`alwan_data_preload`** loads at a moment of the caller's choosing, from the
+  context's `alwan_config.runtime_data_root` when it has one (no longer reserved).
+  On-demand loads are thread-safe (compare-and-swap publication).
+- **`alwan_data_pack_write`**, **`alwan_data_load`**, **`alwan_data_load_file`**,
+  **`alwan_data_free`**, **`alwan_data_loaded_bytes`**, **`alwan_data_missing`**, by
+  **`alwan_data_group`** (the `ALWAN_TABLES_*` groups plus `REFRACTIVE`). The pack is
+  validated whole before anything changes (malformed or wrong extent:
+  `ALWAN_E_INVALID`, nothing loaded). Declared and exported in both builds; in an
+  embedded one they validate and load nothing. `alwan_build_info.embed_data` reports
+  the mode.
+- The readers index the loaded pointer as they index the embedded array, so
+  results are bit-identical; with no pack at the root a table answers
+  `ALWAN_E_NODATA` (or its documented error value) exactly as a switched-off one.
+  In the embedded build all of it compiles to nothing.
+- The small constant tables (matrices, chromaticities, RGB spaces, CAT data, the
+  ACES 2.0 gamut caches) are now embedded in every build: the old
+  `ALWAN_EMBED_DATA` guards around them, and the `#error` for 0, are gone, and so
+  are the never-defined `alwan_data_free_f64/_f32` declarations.
+- `tools/gen_table_registry.py` generates the table list (`data/alwan_data_registry_gen.c`)
+  and the refractive extents (`data/alwan_data_refractive_extents.h`).
+  Documented in `docs/data-management.md`; alwan_dev builds the mode as the
+  Sharpmake `Release_RtData` configuration, and suite 113 checks every reader with
+  the tables freed and reloaded.
+
 ### Added: the normalized-range helpers on every backend
 
 - **`ALWAN_NORMV_<SPACE>(v)` / `ALWAN_DENORMV_<SPACE>(v)`**, value forms of the 35

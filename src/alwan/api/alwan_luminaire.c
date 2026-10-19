@@ -48,6 +48,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if ALWAN_WITH_FILE_FORMATS   /* the whole family; alwan_build_config.h */
+
 #define LUM_MAX_ANGLES 100000u
 #define LUM_MAX_VALUES 1000000u
 #define LUM_MAX_KEYWORDS 4096u
@@ -930,3 +932,5 @@ alwan_status alwan_luminaire_flux(double *flux, alwan_luminaire const *lum, alwa
     *flux = sum;
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */

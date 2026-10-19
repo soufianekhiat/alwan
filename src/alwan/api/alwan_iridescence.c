@@ -27,6 +27,8 @@
 #include "../core/alwan_microfacet_core.h"
 #include "../core/alwan_iridescence_core.h"
 
+#if ALWAN_WITH_OPTICS   /* the whole family; alwan_build_config.h */
+
 #define ALWAN__IR_PI 3.14159265358979323846
 #define ALWAN__IR_DEFAULT_OPD_MAX 40000.0
 #define ALWAN__IR_DEFAULT_OPD_STEP 2.0
@@ -671,3 +673,5 @@ alwan_status alwan_iridescent_films_from_materials(alwan_iridescent_film *out, s
     }
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_OPTICS */

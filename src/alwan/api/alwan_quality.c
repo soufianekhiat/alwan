@@ -69,6 +69,7 @@ alwan_f64 alwan_cct_robertson_xy_f64(alwan_vec2_f64 const *xy) {
      * -1 is this function's documented error value. */
     return ALWAN_LITERAL(-1.0);
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_robertson_locus_f64, ALWAN_LITERAL(-1.0));
 
     alwan_f64 x = xy->v[0];
     alwan_f64 y = xy->v[1];
@@ -402,6 +403,7 @@ static alwan_status quality_cri(alwan_f64 *ra_out, alwan_spd_f64 const *test_spd
      * alwan_cri_ra turns this into its documented -1. */
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_tcs_reflectance_f64, ALWAN_E_NODATA);
 
     /* Step 1: Resample test SPD to TCS wavelength range (360-830nm @ 5nm) */
     alwan_spd_f64 test_spd_resampled;
@@ -768,6 +770,7 @@ alwan_f32 alwan_cct_robertson_xy_f32(alwan_vec2_f32 const *xy) {
 #if !ALWAN_TABLE_ROBERTSON_LOCUS
     return ALWAN_LITERAL_F32(-1.0);   /* table compiled out, as in the f64 twin */
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_robertson_locus_f64, ALWAN_LITERAL_F32(-1.0));
 
     alwan_f32 x = xy->v[0];
     alwan_f32 y = xy->v[1];
@@ -940,6 +943,8 @@ alwan_f64 alwan_ssi_calculate_f64(alwan_spd_f64 const *test_spd, alwan_spd_f64 c
 #if !(ALWAN_TABLE_SSI_BIN_WEIGHTS && ALWAN_TABLE_SSI_SPECTRAL_WEIGHTS)
     return ALWAN_LITERAL(-1.0);   /* SSI weights compiled out: the documented error value */
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_ssi_bin_weights_f64, ALWAN_LITERAL(-1.0));
+    ALWAN_TABLE_REQUIRE(alwan_table_ssi_spectral_weights_f64, ALWAN_LITERAL(-1.0));
 
     /* Step 1: Resample both SPDs to SSI spectral shape (375-675nm, 1nm) */
     alwan_spd_f64 test_resampled, ref_resampled;
@@ -1173,6 +1178,7 @@ static alwan_status quality_daylight_spd(alwan_spd_f64 *out, alwan_f64 cct, alwa
     (void)out; (void)cct; (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_daylight_basis_f64, ALWAN_E_NODATA);
     alwan_f64 const t  = cct;
     alwan_f64 const t2 = t * t;
     alwan_f64 const t3 = t2 * t;

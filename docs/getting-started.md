@@ -168,7 +168,7 @@ Custom allocators are configured through `alwan_config`:
 alwan_ctx *ctx = alwan_create(&(alwan_config){
     .alloc_cb = my_alloc,
     .free_cb = my_free,
-    .runtime_data_root = NULL /* reserved today; runtime loading is not implemented */
+    .runtime_data_root = NULL /* ALWAN_EMBED_DATA=0 builds: the folder holding alwan_data.pack */
 });
 ```
 

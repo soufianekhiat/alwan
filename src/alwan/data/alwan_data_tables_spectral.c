@@ -34,6 +34,10 @@
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
 
+/* Runtime data (ALWAN_EMBED_DATA=0): these tables are pointers that alwan_data_load
+ * fills (data/alwan_data_registry_gen.c), so nothing here is compiled. */
+#if ALWAN_EMBED_DATA
+
 /* ---- alwan_table_jakob2019_srgb_scale ---- sRGB, D65.
  * Reader: alwan__jakob2019_fetch. f32 in every build: both precisions read it. */
 #if ALWAN_TABLE_JAKOB2019_SRGB
@@ -130,5 +134,6 @@ alwan_f32 const alwan_table_jakob2019_xyz_coeff_f32[ALWAN_TABLE_JAKOB2019_COEFF_
 };
 #endif
 
+#endif /* ALWAN_EMBED_DATA */
 
 ALWAN_DIAG_POP

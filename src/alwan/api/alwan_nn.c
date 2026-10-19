@@ -10,6 +10,8 @@
 #include "../alwan_internal.h"
 #include "../core/alwan_nn_core.h"
 
+#if ALWAN_WITH_NN   /* the whole family; alwan_build_config.h */
+
 #if ALWAN_WITH_F32
 ALWAN_DIAG_PUSH
 ALWAN_DIAG_DISABLE_FLOAT_CONV
@@ -24,3 +26,5 @@ ALWAN_DIAG_POP
 #include "alwan_nn_impl.inc"
 #include "alwan_api_teardown.h"
 #endif
+
+#endif /* ALWAN_WITH_NN */

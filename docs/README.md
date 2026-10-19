@@ -11,8 +11,9 @@ alwan: it is in [Suwar](https://github.com/soufianekhiat/Suwar), which builds on
 guides, design notes, comparisons, and status documents that explain how to use
 the library around that API surface.
 
-> Runtime / on-demand data loading is still planned only. Today the supported
-> build is embedded data mode: `ALWAN_EMBED_DATA=1`.
+> Data is embedded by default (`ALWAN_EMBED_DATA=1`); a build with
+> `ALWAN_EMBED_DATA=0` loads its large tables at run time, see
+> [data-management.md](data-management.md).
 
 ---
 

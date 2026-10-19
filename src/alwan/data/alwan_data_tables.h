@@ -50,8 +50,58 @@
 extern "C" {
 #endif
 
+/* RUNTIME DATA (ALWAN_EMBED_DATA=0). Every switchable table's name is then a
+ * macro over a hidden pointer, `name_f32__slot`, that loads the table on first
+ * use:
+ *
+ *     alwan_table_x_f32  ->  (slot ? slot : alwan__data_demand_f32(&slot))
+ *
+ * so every read, wherever it is, finds the table: loaded already (by
+ * alwan_data_preload / alwan_data_load, or by an earlier read), or loaded now
+ * from the data root's pack (alwan_data_set_root). The readers index it with
+ * the same `table[i]` they use on the array, so no reader changes shape. When
+ * the pack is not there the macro yields NULL and the reader answers as for a
+ * switched-off table, which is ALWAN_TABLE_REQUIRE below. The embedded build
+ * (the default) declares arrays exactly as before, and every
+ * ALWAN_TABLE_REQUIRE in it expands to nothing.
+ *
+ * The slots, the macros and the list the loader walks are generated from this
+ * header by alwan/tools/gen_table_registry.py: data/alwan_data_registry_gen.h
+ * (included at the end of this file) and data/alwan_data_registry_gen.c. */
+#if ALWAN_EMBED_DATA
+#  define ALWAN__TABLE_DECL(type, sym, extent) extern type const sym[extent];
+/* The table pointer, or the array, is never NULL here: the switch compiled it in. */
+#  define ALWAN_TABLE_REQUIRE(table, on_missing) ((void)0)
+#  define ALWAN_TABLE_PRESENT(table) 1
+#else
+/* Declared by data/alwan_data_registry_gen.h, slot and macro together. */
+#  define ALWAN__TABLE_DECL(type, sym, extent)
+/* `return on_missing;` from the enclosing function when the table is neither
+ * loaded nor loadable. */
+#  define ALWAN_TABLE_REQUIRE(table, on_missing) \
+       do { if ((table) == NULL) return on_missing; } while (0)
+#  define ALWAN_TABLE_PRESENT(table) ((table) != NULL)
+/* Load the table whose slot this is (both precisions) from the data root's pack.
+ * Returns the slot's pointer, NULL when the pack or the table is not there. */
+alwan_f32 const *alwan__data_demand_f32(alwan_f32 const **slot);
+alwan_f64 const *alwan__data_demand_f64(alwan_f64 const **slot);
+#  define ALWAN__DEMAND_F32(slot) ((slot) ? (slot) : alwan__data_demand_f32(&(slot)))
+#  define ALWAN__DEMAND_F64(slot) ((slot) ? (slot) : alwan__data_demand_f64(&(slot)))
+#endif
+
+/* Tables every build embeds, whatever ALWAN_EMBED_DATA says: read at fixed
+ * indices by code with no missing-table path, and a few bytes each. */
+#define ALWAN_TABLE_EXTERN_EMBEDDED(name, extent) \
+    ALWAN_TABLE_EXTERN_EMBEDDED_F32(name, extent) \
+    extern alwan_f64 const name##_f64[extent];
 #if ALWAN_WITH_F32
-#  define ALWAN_TABLE_EXTERN_F32(name, extent) extern alwan_f32 const name##_f32[extent];
+#  define ALWAN_TABLE_EXTERN_EMBEDDED_F32(name, extent) extern alwan_f32 const name##_f32[extent];
+#else
+#  define ALWAN_TABLE_EXTERN_EMBEDDED_F32(name, extent)
+#endif
+
+#if ALWAN_WITH_F32
+#  define ALWAN_TABLE_EXTERN_F32(name, extent) ALWAN__TABLE_DECL(alwan_f32, name##_f32, extent)
 #else
 #  define ALWAN_TABLE_EXTERN_F32(name, extent)
 #endif
@@ -60,7 +110,7 @@ extern "C" {
  * gating the declaration on ALWAN_WITH_F64 deletes the table out from under the
  * f32 API exactly as the ALWAN_TABLE_EXTERN_F64_ONLY comment below describes.
  * The definitions are gated the same way, on ALWAN_WITH_F64_FACADE. */
-#define ALWAN_TABLE_EXTERN_F64(name, extent) extern alwan_f64 const name##_f64[extent];
+#define ALWAN_TABLE_EXTERN_F64(name, extent) ALWAN__TABLE_DECL(alwan_f64, name##_f64, extent)
 
 /* One table, both precisions, one extent. The extent cannot drift between the
  * twins because there is only one of it. */
@@ -78,13 +128,13 @@ extern "C" {
  *
  * Declaring them this way also means no f32 twin is emitted, which is correct:
  * nothing reads one. */
-#define ALWAN_TABLE_EXTERN_F64_ONLY(name, extent) extern alwan_f64 const name##_f64[extent];
+#define ALWAN_TABLE_EXTERN_F64_ONLY(name, extent) ALWAN__TABLE_DECL(alwan_f64, name##_f64, extent)
 
 /* Data that is f32 in EVERY build, an f64-only one included, and read by both
  * precisions. For a table whose source is float32 (the Jakob 2019 tables come out
  * of rgb2spec_opt as float), an f64 twin would hold the same values in twice the
  * space. The f64 readers widen each value as they read it. */
-#define ALWAN_TABLE_EXTERN_F32_ONLY(name, extent) extern alwan_f32 const name##_f32[extent];
+#define ALWAN_TABLE_EXTERN_F32_ONLY(name, extent) ALWAN__TABLE_DECL(alwan_f32, name##_f32, extent)
 
 #define ALWAN_TABLE_EXTERN(name, extent) \
     ALWAN_TABLE_EXTERN_F32(name, extent) \
@@ -850,7 +900,7 @@ enum {
  *         alwan_dev/gendata/data/agx_sb2383.py. The same CSV the SB2383
  *         view bakes from, so there are no duplicated matrix constants. */
 #if ALWAN_TABLE_AGX_SB2383_INSET
-ALWAN_TABLE_EXTERN(alwan_table_agx_sb2383_inset, ALWAN_TABLE_AGX_SB2383_INSET_SIZE)
+ALWAN_TABLE_EXTERN_EMBEDDED(alwan_table_agx_sb2383_inset, ALWAN_TABLE_AGX_SB2383_INSET_SIZE)
 #endif
 
 /* ================================================================
@@ -1404,6 +1454,10 @@ ALWAN_TABLE_EXTERN(alwan_table_film_ilfochrome_micrographic_p, ALWAN_TABLE_FILM_
 #endif
 #if ALWAN_TABLE_FILM_KODAK_EKTACHROME_RADIANCE_III
 ALWAN_TABLE_EXTERN(alwan_table_film_kodak_ektachrome_radiance_iii, ALWAN_TABLE_FILM_STOCK_SIZE)
+#endif
+
+#if !ALWAN_EMBED_DATA
+#include "alwan_data_registry_gen.h"
 #endif
 
 #ifdef __cplusplus

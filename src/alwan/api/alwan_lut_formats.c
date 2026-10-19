@@ -35,6 +35,8 @@
 #include <ctype.h>
 #include <locale.h>
 
+#if ALWAN_WITH_FILE_FORMATS   /* the whole family; alwan_build_config.h */
+
 /* ---------------------------------------------------------------- locale */
 
 static char *lutfmt_save_lc_numeric(void) {
@@ -1227,3 +1229,5 @@ alwan_status alwan_spimtx_export_f32(char const *path, alwan_mat3x3_f32 const *m
     for (i = 0; i < 3; i++) off3[i] = offset ? (double)offset[i] : 0.0;
     return spimtx_export(path, m9, offset ? off3 : NULL, 1);
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */

@@ -14,6 +14,8 @@
 #include <math.h>
 #include <stdint.h>
 
+#if ALWAN_WITH_FILM   /* the whole family; alwan_build_config.h */
+
 alwan_status alwan_film_grain_params_default(alwan_film_grain_params *params, alwan_f64 radius) {
     if (!params || !(radius > 0.0)) return ALWAN_E_INVALID;
     params->radius = radius;
@@ -104,3 +106,5 @@ ALWAN_DIAG_POP
 #include "alwan_film_grain_impl.inc"
 #include "../api/alwan_api_teardown.h"
 #endif
+
+#endif /* ALWAN_WITH_FILM */

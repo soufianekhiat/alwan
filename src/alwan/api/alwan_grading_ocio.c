@@ -43,6 +43,8 @@
 #include <float.h>
 #include <string.h>
 
+#if ALWAN_WITH_GRADING   /* the whole family; alwan_build_config.h */
+
 #define ALWAN_GP_MIN (0.01 - 0.000001)   /* OCIO's lower bound on gamma and lin contrast */
 
 typedef struct {
@@ -1819,3 +1821,5 @@ alwan_status alwan_ocio_fixed_function_f32_map_interleave(alwan_f32 *out, size_t
     return alwan_ff_run(out, out_stride, in, in_stride, count, func, params, inverse, 1);
 }
 #endif /* ALWAN_WITH_F32 */
+
+#endif /* ALWAN_WITH_GRADING */

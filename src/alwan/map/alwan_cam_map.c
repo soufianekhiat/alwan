@@ -9,6 +9,7 @@
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "alwan_map_internal.h"
+#include "../core/alwan_cam_core.h"   /* the CAM16 steps the SIMD forward map runs per lane */
 
 #if ALWAN_WITH_F32
 /* === f32 pass === */

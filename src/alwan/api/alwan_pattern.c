@@ -18,6 +18,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#if ALWAN_WITH_PATTERNS   /* the whole family; alwan_build_config.h */
+
 /* ---------------------------------------------------------------- levels */
 
 /* R'G'B' of the eight BT.471 bars, white to black, from the four numbers of the
@@ -427,3 +429,5 @@ alwan_status alwan_pattern_render_planar_f64(alwan_f64 *r_out, size_t row_stride
                                              alwan_pattern_params const *params) {
     return alwan__pattern_render(r_out, g_out, b_out, row_stride, 0, 1, width, height, pattern, params);
 }
+
+#endif /* ALWAN_WITH_PATTERNS */

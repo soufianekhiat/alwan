@@ -156,6 +156,7 @@ alwan_status alwan_cat_zhai2018_f32_map_planar(alwan_f32 *out_ch0, size_t out_st
     return ALWAN_OK;
 }
 
+#if ALWAN_WITH_FILE_FORMATS
 alwan_status alwan_clf_apply_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
         alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
         alwan_clf const *clf) {
@@ -175,6 +176,8 @@ alwan_status alwan_clf_apply_f32_map_planar(alwan_f32 *out_ch0, size_t out_strid
     }
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */
 
 alwan_status alwan_bt2408_hlg_to_pq_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
         alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
@@ -296,6 +299,7 @@ alwan_status alwan_pu21_decode_f32_map_planar(alwan_f32 *out_ch0, size_t out_str
     return ALWAN_OK;
 }
 
+#if ALWAN_WITH_FILM
 alwan_status alwan_film_look_develop_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
         alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
         alwan_film_look const *look, alwan_ctx *ctx) {
@@ -395,6 +399,8 @@ alwan_status alwan_film_render_rgb_f32_map_planar(alwan_f32 *out_ch0, size_t out
     }
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_FILM */
 
 alwan_status alwan_agx_f32_map_planar(alwan_f32 *out_ch0, size_t out_stride, alwan_f32 *out_ch1, alwan_f32 *out_ch2,
         alwan_f32 const *in_ch0, size_t in_stride, alwan_f32 const *in_ch1, alwan_f32 const *in_ch2, size_t count,
@@ -580,6 +586,7 @@ alwan_status alwan_cat_zhai2018_f64_map_planar(alwan_f64 *out_ch0, size_t out_st
     return ALWAN_OK;
 }
 
+#if ALWAN_WITH_FILE_FORMATS
 alwan_status alwan_clf_apply_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2,
         alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,
         alwan_clf const *clf) {
@@ -599,6 +606,8 @@ alwan_status alwan_clf_apply_f64_map_planar(alwan_f64 *out_ch0, size_t out_strid
     }
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */
 
 alwan_status alwan_bt2408_hlg_to_pq_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2,
         alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,
@@ -720,6 +729,7 @@ alwan_status alwan_pu21_decode_f64_map_planar(alwan_f64 *out_ch0, size_t out_str
     return ALWAN_OK;
 }
 
+#if ALWAN_WITH_FILM
 alwan_status alwan_film_look_develop_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2,
         alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,
         alwan_film_look const *look, alwan_ctx *ctx) {
@@ -819,6 +829,8 @@ alwan_status alwan_film_render_rgb_f64_map_planar(alwan_f64 *out_ch0, size_t out
     }
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_FILM */
 
 alwan_status alwan_agx_f64_map_planar(alwan_f64 *out_ch0, size_t out_stride, alwan_f64 *out_ch1, alwan_f64 *out_ch2,
         alwan_f64 const *in_ch0, size_t in_stride, alwan_f64 const *in_ch1, alwan_f64 const *in_ch2, size_t count,

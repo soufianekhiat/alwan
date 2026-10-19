@@ -26,6 +26,8 @@
 #include <math.h>
 #include <string.h>
 
+#if ALWAN_WITH_IMAGE_METRICS   /* the whole family; alwan_build_config.h */
+
 #define ALWAN__IM_BUFSIZE 8192
 
 /* numpy's pairwise summation of a contiguous run. */
@@ -740,3 +742,5 @@ alwan_status alwan_image_compare_u8(double *combined, double *per_channel, unsig
     return alwan__im_compare(combined, per_channel, a, a_row_stride, b, b_row_stride, width, height, channels, metric,
                              params, ALWAN__IM_U8);
 }
+
+#endif /* ALWAN_WITH_IMAGE_METRICS */

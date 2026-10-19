@@ -36,6 +36,8 @@
 #include "../data/alwan_data_refractive.h"
 #include <string.h>
 
+#if ALWAN_WITH_OPTICS   /* the whole family; alwan_build_config.h */
+
 /* ---------------------------------------------------------------- *
  * Tabulated data: a database series (float32, um) or a caller's table (double, nm)
  * ---------------------------------------------------------------- */
@@ -235,10 +237,18 @@ static alwan_status alwan__rx_eval(double *out, alwan__rx_series const *s, doubl
     return ALWAN_OK;
 }
 
+/* With ALWAN_EMBED_DATA=0 the arrays load as one group; until then the database
+ * answers as when it is compiled out (the #else branch below). */
+static int alwan__rx_loaded(void) {
+    return ALWAN_TABLE_PRESENT(alwan__rx_lambda) && ALWAN_TABLE_PRESENT(alwan__rx_values)
+        && ALWAN_TABLE_PRESENT(alwan__rx_coeffs);
+}
+
 static alwan_status alwan__rx_sample(double *n, double *k, size_t index, double wavelength_nm, alwan_interp_method m, alwan_extrapolate_mode ex) {
     alwan__rx_page const *p;
     double const lu = wavelength_nm * 1e-3;
     alwan_status st;
+    if (!alwan__rx_loaded()) return ALWAN_E_NODATA;
     if (!alwan__rx_interp_ok(m)) return ALWAN_E_INVALID;
     if (index >= alwan__rx_page_count) return ALWAN_E_RANGE;
     if (!(wavelength_nm > 0.0) || wavelength_nm - wavelength_nm != 0.0) return ALWAN_E_RANGE;
@@ -268,12 +278,13 @@ static void alwan__rx_range(double *lo_nm, double *hi_nm, int series) {
     }
 }
 
-size_t alwan_refractive_index_count(void) { return alwan__rx_page_count; }
+size_t alwan_refractive_index_count(void) { return alwan__rx_loaded() ? alwan__rx_page_count : 0; }
 
 alwan_status alwan_refractive_index_find(size_t *index_out, char const *id) {
     size_t i, slashes = 0;
     char const *c;
     if (!index_out || !id || !*id) return ALWAN_E_INVALID;
+    if (!alwan__rx_loaded()) return ALWAN_E_NODATA;
     for (c = id; *c; c++) slashes += (*c == '/');
     if (slashes == 2) {
         for (i = 0; i < alwan__rx_page_count; i++)
@@ -308,6 +319,7 @@ alwan_status alwan_refractive_index_find(size_t *index_out, char const *id) {
 alwan_status alwan_refractive_index_get_info(alwan_refractive_index_info *out, size_t index) {
     alwan__rx_page const *p;
     if (!out) return ALWAN_E_INVALID;
+    if (!alwan__rx_loaded()) return ALWAN_E_NODATA;
     if (index >= alwan__rx_page_count) return ALWAN_E_RANGE;
     p = alwan__rx_pages + index;
     memset(out, 0, sizeof(*out));
@@ -715,3 +727,5 @@ alwan_status alwan_refractive_slab_rgb_f32(alwan_rgb_f32 *reflect_rgb, alwan_rgb
     return ALWAN_OK;
 }
 #endif /* ALWAN_WITH_F32 */
+
+#endif /* ALWAN_WITH_OPTICS */

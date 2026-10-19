@@ -33,6 +33,8 @@
 #include <math.h>
 #include <string.h>
 
+#if ALWAN_WITH_GRADING   /* the whole family; alwan_build_config.h */
+
 #define ALWAN__TA_PI 3.14159265358979323846
 
 typedef struct {
@@ -321,3 +323,5 @@ alwan_status alwan_tone_adjust_u8(unsigned char *out, size_t out_stride, unsigne
                                   alwan_tone_adjust_params const *params) {
     return alwan__ta_run(out, out_stride, in, in_stride, count, channels, method, params, ALWAN__TA_U8);
 }
+
+#endif /* ALWAN_WITH_GRADING */

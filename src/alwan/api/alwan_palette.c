@@ -13,6 +13,8 @@
 #include <stddef.h>
 #include <string.h>
 
+#if ALWAN_WITH_PATTERNS   /* the whole family; alwan_build_config.h */
+
 typedef struct {
     char const *name;
     double c, m, y, k;
@@ -302,3 +304,5 @@ alwan_status alwan_css_color_3_keyword_to_rgb_f32(alwan_rgb_f32 *rgb_out, char c
     rgb_out->b = (alwan_f32)v[2];
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_PATTERNS */

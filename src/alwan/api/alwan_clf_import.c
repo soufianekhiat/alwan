@@ -59,6 +59,8 @@
 #include <locale.h>
 #include <math.h>
 
+#if ALWAN_WITH_FILE_FORMATS   /* the whole family; alwan_build_config.h */
+
 enum {
     CLF_MAX_NODES = 256,          /* a ProcessList longer than this is refused */
     CLF_MAX_LUT1D = 65536,
@@ -1045,3 +1047,5 @@ alwan_status alwan_clf_log_apply_f32(alwan_f32 *out, size_t out_stride, alwan_f3
     }
     return ALWAN_OK;
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */

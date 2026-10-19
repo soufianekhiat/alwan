@@ -15,6 +15,8 @@
 #include <string.h>
 #include <locale.h>
 
+#if ALWAN_WITH_FILE_FORMATS   /* the whole family; alwan_build_config.h */
+
 /* ----------------------------------------------------------------
  * Determinism / portability hardening (Option 2):
  *
@@ -285,3 +287,5 @@ done_f32:
     alwan_restore_lc_numeric(saved_locale);
     return err;
 }
+
+#endif /* ALWAN_WITH_FILE_FORMATS */

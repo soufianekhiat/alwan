@@ -476,12 +476,19 @@ runners on every commit. Full design notes in
 ### Data Embedding
 
 ```c
-#define ALWAN_EMBED_DATA 1  // 1 = embed (default)
+#define ALWAN_EMBED_DATA 1  // 1 = embed (default), 0 = load the large tables at run time
 ```
 
 **Embedded mode (default):** Reference data compiled directly into the
-binary. Zero runtime I/O, instant startup. Runtime data loading
-(`ALWAN_EMBED_DATA=0`) is reserved for a future release.
+binary. Zero runtime I/O, instant startup.
+
+**Runtime mode (`ALWAN_EMBED_DATA=0`):** the switchable tables (SPDs, observers,
+film stocks, cameras, spectral and AgX look-up tables) leave the binary and load
+from a data pack an embedded build writes. Every function works without a load
+call: a table loads the first time it is read, from `alwan_data.pack` in the
+data root (`alwan_data_set_root`, `ALWAN_DATA_ROOT`, or the current directory). `alwan_data_preload` loads up front, `alwan_data_free` by
+group gives the memory back. Results are bit-identical to the embedded build.
+See [docs/data-management.md](docs/data-management.md).
 
 **Smaller builds:** `ALWAN_DATA_TABLES_MINIMAL=1` compiles out the switchable
 tables (spectral upsampling LUTs, AgX cubes, quality-metric sample sets,
@@ -874,7 +881,7 @@ Documentation lives in the [docs/](docs/) folder. [alwan.h](src/alwan/alwan.h) i
 
 - **[Configuration](docs/configuration.md)**: compile-time options for precision, data embedding, and custom allocators
   - Scalar precision (float vs double)
-  - Data embedding mode (embedded mode only; runtime loading planned)
+  - Data embedding mode (embedded, or the large tables loaded at run time)
   - Custom memory allocators
   - Platform-specific settings
 
@@ -946,9 +953,6 @@ contributions and design discussions are welcome.
 - **Smaller binaries**: opt in/out of data tables and feature families at
   compile time, so a build carries only the spaces, CMFs, and transforms it
   actually uses
-- **On-demand data loading**: `ALWAN_EMBED_DATA=0`, loading reference data
-  at runtime instead of embedding it (the `runtime_data_root` field in
-  `alwan_config` is reserved for this)
 - **Deterministic trig / log10**: extend `ALWAN_DETERMINISTIC` beyond
   `pow/exp/log/log2/cbrt` so hue-angle conversions, CAM hue correlates, and
   the log10 camera logs join the cross-platform byte-identity contract

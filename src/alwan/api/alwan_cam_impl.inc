@@ -138,7 +138,16 @@ alwan_status ALWAN_CORE_FNLIT(alwan_cam16_inverse)(ALWAN_CORE_XYZ *xyz_out,
  * them once a pixel. These do it once per call and then run the same _v core
  * with the same arguments per pixel, so a map and its scalar agree to the bit
  * (suites 13, 14, 69). Internal: the maps in map/alwan_cam_map_kernels.inc
- * delegate here; the checks are the scalar's, made once. */
+ * delegate here; the checks are the scalar's, made once. The CAM16 forward map
+ * runs its own SIMD lanes instead (13x to 27x in f32) and uses this worker for
+ * the last few pixels and in the deterministic build. */
+/* The CAM16 surround factors, for the SIMD map in map/alwan_cam_map_kernels.inc, so
+ * the table lives here once. */
+void ALWAN_CORE_FNLIT(alwan__cam16_surround)(alwan_cam16_surround surround,
+                                             ALWAN_CORE_T *F, ALWAN_CORE_T *c, ALWAN_CORE_T *Nc) {
+    ALWAN_CORE_FN(get_cam16_surround_params)(surround, F, c, Nc);
+}
+
 #define ALWAN__CAM_VC_CHECK(vc) \
     if ((vc)->white_xyz.y <= ALWAN_CORE_LITERAL(0.0) || \
         (vc)->background_luminance <= ALWAN_CORE_LITERAL(0.0)) return ALWAN_E_DIVZERO;

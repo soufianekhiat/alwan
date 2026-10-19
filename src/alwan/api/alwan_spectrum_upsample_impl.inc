@@ -125,6 +125,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_smits1999)(
     (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_smits1999_white_f64, ALWAN_E_NODATA);
 
     int status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
         (ALWAN_CORE_T)SMITS1999_WAVELENGTH_MIN, (ALWAN_CORE_T)SMITS1999_WAVELENGTH_MAX,
@@ -154,6 +155,7 @@ alwan_status ALWAN_SPD_MAPNAME(alwan_rgb_to_spectrum_smits1999, ALWAN_CORE_SUFFI
     (void)out_stride; (void)in_stride; (void)count;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_smits1999_white_f64, ALWAN_E_NODATA);
     {
         size_t p;
         for (p = 0; p < count; p++) {
@@ -202,6 +204,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_rgb_to_spectrum_mallett2019)(
     (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_mallett2019_red_f64, ALWAN_E_NODATA);
 
     int status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
         (ALWAN_CORE_T)MALLETT2019_WAVELENGTH_MIN, (ALWAN_CORE_T)MALLETT2019_WAVELENGTH_MAX,
@@ -232,6 +235,7 @@ alwan_status ALWAN_SPD_MAPNAME(alwan_rgb_to_spectrum_mallett2019, ALWAN_CORE_SUF
     (void)out_stride; (void)in_stride; (void)count;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_mallett2019_red_f64, ALWAN_E_NODATA);
     {
         size_t p;
         for (p = 0; p < count; p++) {
@@ -346,6 +350,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_xyz_to_spectrum_otsu2018)(
     (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_otsu2018_basis_f64, ALWAN_E_NODATA);
 
     int status = ALWAN_CORE_FNLIT(alwan_spd_create)(out_spd,
         (ALWAN_CORE_T)OTSU2018_WAVELENGTH_MIN, (ALWAN_CORE_T)OTSU2018_WAVELENGTH_MAX,
@@ -374,6 +379,7 @@ alwan_status ALWAN_SPD_MAPNAME(alwan_xyz_to_spectrum_otsu2018, ALWAN_CORE_SUFFIX
     (void)out_stride; (void)in_stride; (void)count;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_otsu2018_basis_f64, ALWAN_E_NODATA);
     {
         size_t p;
         for (p = 0; p < count; p++) {

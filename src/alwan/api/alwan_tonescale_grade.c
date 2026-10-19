@@ -29,6 +29,8 @@
 #include <float.h>
 #include <string.h>
 
+#if ALWAN_WITH_GRADING   /* the whole family; alwan_build_config.h */
+
 #define TG_REGIONS 4
 
 void alwan_tonescale_grade_params_init(alwan_tonescale_grade_params *params) {
@@ -253,3 +255,5 @@ alwan_status alwan_tonescale_grade_##TN##_map_planar(T *out_ch0, size_t out_stri
 
 TG_PLANAR(alwan_f64, f64, alwan_rgb_space_desc_f64)
 TG_PLANAR(alwan_f32, f32, alwan_rgb_space_desc_f32)
+
+#endif /* ALWAN_WITH_GRADING */

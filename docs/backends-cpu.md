@@ -198,8 +198,8 @@ in [determinism.md](determinism.md).
   restrict with `ALWAN_BUILD_ONLY_F32` / `ALWAN_BUILD_ONLY_F64` (resolved to
   `ALWAN_WITH_F32` / `ALWAN_WITH_F64` in `alwan_build_config.h`). See
   [configuration.md](configuration.md) and [precision-and-limits.md](precision-and-limits.md).
-- **Embedded data**: SIMD has no bearing on data loading; alwan is embedded-only
-  (`ALWAN_EMBED_DATA=1`); runtime loading is not implemented. See
-  [data-management.md](data-management.md).
+- **Embedded data**: SIMD has no bearing on data loading. With
+  `ALWAN_EMBED_DATA=0` the large tables are pointers loaded at run time, read
+  the same way. See [data-management.md](data-management.md).
 - **GPU backends**: `ALWAN_BACKEND` C / HLSL / GLSL / Halide; the GPU shader
   backends are documented in [api/backends.md](api/backends.md).

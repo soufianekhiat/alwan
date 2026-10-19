@@ -2,10 +2,9 @@
  * Embedded RGB Space Matrices (optional)
  * Precomputed NPM (RGB->XYZ) and inverse NPM (XYZ->RGB) for each space.
  * Each array has 18 values: rgb_to_xyz[9] + xyz_to_rgb[9].
- * Used when ALWAN_EMBED_DATA is defined.
+ * Embedded in every build (ALWAN_EMBED_DATA=0 loads only the switchable tables).
  * IMPORTANT: Array order MUST match enum alwan_rgb_space order!
  * ---------------------------------------------------------------- */
-#if ALWAN_EMBED_DATA
 
 /* Compiled in every build: the f64-internal facades resolve RGB space matrices
  * in f64 from their f32 entry points. See ALWAN_WITH_F64_FACADE. */
@@ -1141,4 +1140,3 @@ _Static_assert(
 
 #endif /* ALWAN_WITH_F32 */
 
-#endif /* ALWAN_EMBED_DATA */

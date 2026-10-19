@@ -485,6 +485,33 @@ static int ALWAN_CORE_FN(alwan__view_apply_impl)(ALWAN_CORE_T *rgb_out, size_t o
     if (!transform_fn) {
         return ALWAN_E_NODATA;
     }
+    /* Runtime data (ALWAN_EMBED_DATA=0): compiled in but not loaded is missing too. */
+    switch (vt) {
+#if ALWAN_TABLE_AGX_DEFAULT_CONTRAST
+        case ALWAN_VIEW_AGX_ORIGINAL:
+        case ALWAN_VIEW_AGX_PUNCHY:
+        case ALWAN_VIEW_AGX_GOLDEN:
+            ALWAN_TABLE_REQUIRE(ALWAN_CORE_FNLIT(alwan_table_agx_default_contrast), ALWAN_E_NODATA);
+            break;
+#endif
+#if ALWAN_TABLE_AGX_SB2383_CONTRAST
+        case ALWAN_VIEW_AGX_SB2383:
+            ALWAN_TABLE_REQUIRE(ALWAN_CORE_FNLIT(alwan_table_agx_sb2383_contrast), ALWAN_E_NODATA);
+            break;
+#endif
+#if ALWAN_TABLE_AGX_BLENDER_CUBE
+        case ALWAN_VIEW_AGX_BLENDER:
+            ALWAN_TABLE_REQUIRE(ALWAN_CORE_FNLIT(alwan_table_agx_blender_cube), ALWAN_E_NODATA);
+            break;
+#endif
+#if ALWAN_TABLE_TONY_MCMAPFACE_CUBE
+        case ALWAN_VIEW_TONY_MCMAPFACE:
+            ALWAN_TABLE_REQUIRE(ALWAN_CORE_FNLIT(alwan_table_tony_mcmapface_cube), ALWAN_E_NODATA);
+            break;
+#endif
+        default:
+            break;
+    }
 
     /* Unclamped entry: swap in the raw twins for the per-channel tone mappers.
      * Transforms whose [0,1] output is definitional (AgX picture formation,

@@ -3678,7 +3678,6 @@ static struct {
     aces2_GamutCompressParams_f64 gcp;
 } g_aces2_gcp_cache_f64;
 
-#if ALWAN_EMBED_DATA
 /* ----------------------------------------------------------------
  * Precomputed gamut-compression tables for the standard ACES 2.0 output
  * presets. The 360-hue cusp / upper-hull-gamma / reach tables depend only on
@@ -3743,7 +3742,6 @@ static alwan_f64 const *aces2_find_embedded_gamut_tables(
     }
     return NULL;
 }
-#endif /* ALWAN_EMBED_DATA */
 
 #ifdef ALWAN_GENDATA_DUMP_ACES2
 #include <stdio.h>
@@ -3809,7 +3807,7 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
         gcp->mid_J = Y_to_J_f64(c_t * ACES2_REF_LUMINANCE, jmh_params);
     }
 
-#if ALWAN_EMBED_DATA && !defined(ALWAN_GENDATA_DUMP_ACES2)
+#if !defined(ALWAN_GENDATA_DUMP_ACES2)
     /* Standard preset? Load the precomputed cusp / gamma / reach tables instead
      * of rebuilding them by per-hue binary search (the expensive part). The
      * cheap scalars above are still computed at runtime. Byte-identical to the
@@ -3841,7 +3839,7 @@ static void init_GamutCompressParams_f64(alwan_f64 peak_luminance,
             return;
         }
     }
-#endif /* ALWAN_EMBED_DATA */
+#endif /* !ALWAN_GENDATA_DUMP_ACES2 */
 
     /* Build reach table using float32 binary search to match OCIO's float32 precision.
      * At near-degenerate hues (h~268-270 deg where AP1 ~ limit gamut), float32 rounding

@@ -85,15 +85,24 @@ _Static_assert(ALWAN_TABLE_RAWTOACES_CAMERAS == ALWAN__CAMERA_PACK_SLOTS,
                "the NPL cameras sit right after the pack; appending to the pack moves them");
 #endif
 
+/* Compiled in, and loaded when the build loads its tables at run time. */
 static int alwan__camera_npl_on(size_t index) {
 #if ALWAN_TABLE_CAMERA_NIKON_5100
-    if (index == ALWAN__CAMERA_NPL_NIKON_5100) return 1;
+    if (index == ALWAN__CAMERA_NPL_NIKON_5100) return ALWAN_TABLE_PRESENT(alwan_table_camera_nikon_5100_r_f64);
 #endif
 #if ALWAN_TABLE_CAMERA_SIGMA_SDMERILL
-    if (index == ALWAN__CAMERA_NPL_SIGMA_SDMERILL) return 1;
+    if (index == ALWAN__CAMERA_NPL_SIGMA_SDMERILL) return ALWAN_TABLE_PRESENT(alwan_table_camera_sigma_sdmerill_r_f64);
 #endif
     (void)index;
     return 0;
+}
+
+static int alwan__camera_pack_on(void) {
+#if ALWAN_TABLE_CAMERA_RAWTOACES
+    return ALWAN_TABLE_PRESENT(alwan_table_camera_rawtoaces_f64);
+#else
+    return 0;
+#endif
 }
 
 static char const *const k_npl_make[2] = { "Nikon", "Sigma" };
@@ -113,11 +122,8 @@ static int alwan__eq_nocase(char const *a, char const *b) {
 }
 
 size_t alwan_camera_count(void) {
-#if ALWAN_TABLE_CAMERA_RAWTOACES || ALWAN_TABLE_CAMERA_NIKON_5100 || ALWAN_TABLE_CAMERA_SIGMA_SDMERILL
-    return ALWAN__CAMERA_SLOTS;
-#else
-    return 0;
-#endif
+    return (alwan__camera_pack_on() || alwan__camera_npl_on(ALWAN__CAMERA_NPL_NIKON_5100)
+            || alwan__camera_npl_on(ALWAN__CAMERA_NPL_SIGMA_SDMERILL)) ? ALWAN__CAMERA_SLOTS : 0;
 }
 
 alwan_status alwan_camera_find(size_t *index_out, char const *make, char const *model) {
@@ -127,19 +133,19 @@ alwan_status alwan_camera_find(size_t *index_out, char const *make, char const *
         return ALWAN_E_INVALID;
     }
 #if ALWAN_TABLE_CAMERA_RAWTOACES
-    for (i = 0; i < sizeof(k_make_aliases) / sizeof(k_make_aliases[0]); i++) {
+    for (i = 0; alwan__camera_pack_on() && i < sizeof(k_make_aliases) / sizeof(k_make_aliases[0]); i++) {
         if (alwan__eq_nocase(make, k_make_aliases[i].alias)) {
             canonical = k_make_aliases[i].make;
             break;
         }
     }
-    for (i = 0; i < ALWAN_TABLE_RAWTOACES_CAMERAS; i++) {
+    for (i = 0; alwan__camera_pack_on() && i < ALWAN_TABLE_RAWTOACES_CAMERAS; i++) {
         if (alwan__eq_nocase(canonical, k_cameras[i].make) && alwan__eq_nocase(model, k_cameras[i].model)) {
             *index_out = i;
             return ALWAN_OK;
         }
     }
-    for (i = 0; i < sizeof(k_camera_aliases) / sizeof(k_camera_aliases[0]); i++) {
+    for (i = 0; alwan__camera_pack_on() && i < sizeof(k_camera_aliases) / sizeof(k_camera_aliases[0]); i++) {
         if (alwan__eq_nocase(canonical, k_camera_aliases[i].make)
             && alwan__eq_nocase(model, k_camera_aliases[i].model)) {
             *index_out = k_camera_aliases[i].index;
@@ -174,6 +180,7 @@ alwan_status alwan_camera_info(char const **make_out, char const **model_out, si
 #if !ALWAN_TABLE_CAMERA_RAWTOACES
     return ALWAN_E_NODATA;
 #else
+    if (!alwan__camera_pack_on()) return ALWAN_E_NODATA;
     *make_out = k_cameras[index].make;
     *model_out = k_cameras[index].model;
     return ALWAN_OK;
@@ -302,6 +309,7 @@ static alwan_status alwan__camera_sensitivities(alwan_spd_f64 *spd_r, alwan_spd_
     (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_camera_rawtoaces_f64, ALWAN_E_NODATA);
     {
         alwan_spd_f64 *out[3];
         size_t c, w;
@@ -334,6 +342,7 @@ static alwan_status alwan__idt_training(alwan_spd_f64 *out, size_t patch_index, 
     (void)patch_index; (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_idt_training_190_f64, ALWAN_E_NODATA);
     {
         alwan_status st;
         size_t w;
@@ -361,6 +370,7 @@ static alwan_status alwan__iso7589_tungsten(alwan_spd_f64 *out, alwan_ctx *ctx) 
     (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_iso7589_tungsten_f64, ALWAN_E_NODATA);
     {
         size_t w;
         alwan_status const st = alwan_spd_create_f64(out, ALWAN_LITERAL(380.0), ALWAN_LITERAL(780.0),
@@ -379,6 +389,7 @@ static alwan_status alwan__iso7589_tungsten(alwan_spd_f64 *out, alwan_ctx *ctx) 
 
 size_t alwan_idt_training_count(void) {
 #if ALWAN_TABLE_IDT_TRAINING_190
+    if (!ALWAN_TABLE_PRESENT(alwan_table_idt_training_190_f64)) return 0;
     return ALWAN_TABLE_IDT_TRAINING_PATCHES;
 #else
     return 0;
@@ -623,6 +634,7 @@ static alwan_status alwan__idt_solve(alwan_f64 m_out[9], alwan_f64 wb_out[3],
 #if !ALWAN_TABLE_IDT_TRAINING_190
         return ALWAN_E_NODATA;
 #else
+        ALWAN_TABLE_REQUIRE(alwan_table_idt_training_190_f64, ALWAN_E_NODATA);
         n_patch = ALWAN_TABLE_IDT_TRAINING_PATCHES;
 #endif
     } else {
@@ -784,6 +796,7 @@ static alwan_status alwan__spd_to_aces(alwan_f64 out[3], alwan_spd_f64 const *sp
     (void)skip_chromatic_adaptation; (void)ctx;
     return ALWAN_E_NODATA;
 #else
+    ALWAN_TABLE_REQUIRE(alwan_table_aces_ricd_r_f64, ALWAN_E_NODATA);
     {
         alwan_spd_f64 d65, cx = { 0 }, cy = { 0 }, cz = { 0 };
         alwan_spd_f64 const *ill = illuminant;
@@ -1306,6 +1319,8 @@ static alwan_status alwan__sensitivities_from_chart(alwan_spd_f64 *spd_r, alwan_
         (void)rgb_stride; (void)k; (void)ctx;
         return ALWAN_E_NODATA;
     }
+#else
+    if (!basis) ALWAN_TABLE_REQUIRE(alwan_table_camera_basis_rawtoaces_f64, ALWAN_E_NODATA);
 #endif
     {
         size_t const n = ALWAN_CAMERA_BASIS_BANDS;

@@ -16,8 +16,9 @@ Reference data functions provide access to:
 - **Embedded Dataset Getters**: Raw illuminant-xy and sRGB-primaries arrays
 - **Interpolation & LUTs**: 1D/3D table lookup and (extra)interpolation helpers
 
-All numeric reference data is **CSV-embedded** at compile time (`ALWAN_EMBED_DATA=1`,
-the only supported mode). The datasets live under `src/alwan/data/**` and are baked
+All numeric reference data is **CSV-embedded** at compile time by default
+(`ALWAN_EMBED_DATA=1`; with 0 the switchable tables load at run time, see
+[data-management.md](../data-management.md)). The datasets live under `src/alwan/data/**` and are baked
 into static C arrays by `src/alwan/api/alwan_data.c` (illuminants, primaries, matrices)
 `src/alwan/api/alwan_munsell.c` (Munsell) and `src/alwan/api/alwan_reference_data.c`
 (NCS, ColorChecker). There is no

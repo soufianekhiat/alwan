@@ -48,12 +48,14 @@ alwan_status alwan__ciecam02_forward_n_f32(alwan_ciecam02_correlates_f32 *out, a
 alwan_status alwan__ciecam02_inverse_n_f32(alwan_f32 *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f32 const *in, alwan_ciecam02_viewing_conditions_f32 const *vc, size_t count);
 alwan_status alwan__cam16_forward_n_f32(alwan_cam16_correlates_f32 *out, alwan_f32 const *xyz_in, size_t in_stride, alwan_cam16_viewing_conditions_f32 const *vc, size_t count);
 alwan_status alwan__cam16_inverse_n_f32(alwan_f32 *xyz_out, size_t out_stride, alwan_cam16_correlates_f32 const *in, alwan_cam16_viewing_conditions_f32 const *vc, size_t count);
+void alwan__cam16_surround_f32(alwan_cam16_surround surround, alwan_f32 *F, alwan_f32 *c, alwan_f32 *Nc);
 #endif
 #if ALWAN_WITH_F64_FACADE
 alwan_status alwan__ciecam02_forward_n_f64(alwan_ciecam02_correlates_f64 *out, alwan_f64 const *xyz_in, size_t in_stride, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count);
 alwan_status alwan__ciecam02_inverse_n_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_ciecam02_correlates_f64 const *in, alwan_ciecam02_viewing_conditions_f64 const *vc, size_t count);
 alwan_status alwan__cam16_forward_n_f64(alwan_cam16_correlates_f64 *out, alwan_f64 const *xyz_in, size_t in_stride, alwan_cam16_viewing_conditions_f64 const *vc, size_t count);
 alwan_status alwan__cam16_inverse_n_f64(alwan_f64 *xyz_out, size_t out_stride, alwan_cam16_correlates_f64 const *in, alwan_cam16_viewing_conditions_f64 const *vc, size_t count);
+void alwan__cam16_surround_f64(alwan_cam16_surround surround, alwan_f64 *F, alwan_f64 *c, alwan_f64 *Nc);
 #endif
 
 /* ----------------------------------------------------------------
@@ -67,7 +69,6 @@ alwan_status alwan__cam16_inverse_n_f64(alwan_f64 *xyz_out, size_t out_stride, a
  * Embedded Data (extern declarations)
  * ---------------------------------------------------------------- */
 
-#if ALWAN_EMBED_DATA
 
 /* CAT matrices (3x3 = 9 elements). Dual f32/f64 twins so the templated
  * f32 path reads native float data; ALWAN_CORE_FNLIT(g_cat_NAME) selects. */
@@ -162,7 +163,6 @@ extern alwan_f64 const g_ipt_lms_to_xyz[9];
 extern alwan_f64 const g_ipt_lms_p_to_ipt[9];
 extern alwan_f64 const g_ipt_ipt_to_lms_p[9];
 
-#endif /* ALWAN_EMBED_DATA */
 
 /* ----------------------------------------------------------------
  * YCbCr coefficient resolution (shared between api and map)
