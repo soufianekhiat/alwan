@@ -18,6 +18,7 @@ ALWAN_WLS_S {
     ALWAN_CORE_T a, b, t0, t1;
     ALWAN_WLS_IS2D *table;
     alwan_wavelength_tabulated_mode mode;
+    alwan_ctx *ctx;   /* the allocator the sampler was created with */
 };
 
 static int ALWAN_CORE_FNLIT(alwan__wls_finite)(ALWAN_CORE_T v) {
@@ -51,9 +52,10 @@ alwan_status ALWAN_CORE_FNLIT(alwan_wavelength_sampler_create)(ALWAN_CORE_FNLIT(
     if (pdf == ALWAN_WAVELENGTH_PDF_TABULATED && (!params || !params->weights || params->weight_count == 0)) {
         return ALWAN_E_INVALID;
     }
-    s = (ALWAN_WLS_S *)ALWAN_ALLOC(sizeof(*s), sizeof(double));
+    s = (ALWAN_WLS_S *)alwan_ctx_alloc(sizeof(*s), sizeof(double), ctx);
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof(*s));
+    s->ctx = ctx;
     s->pdf = pdf;
     s->lo = lo;
     s->hi = hi;
@@ -62,7 +64,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_wavelength_sampler_create)(ALWAN_CORE_FNLIT(
     s->t0 = ALWAN_CORE_TANH(a * (lo - b));
     s->t1 = ALWAN_CORE_TANH(a * (hi - b));
     if (pdf == ALWAN_WAVELENGTH_PDF_VISIBLE && !(s->t1 > s->t0)) {
-        ALWAN_FREE(s);
+        alwan_ctx_free(s, ctx);
         return ALWAN_E_INVALID;   /* a range so far out that the tanh is flat in this precision */
     }
     if (pdf == ALWAN_WAVELENGTH_PDF_TABULATED) {
@@ -79,7 +81,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_wavelength_sampler_create)(ALWAN_CORE_FNLIT(
         st = ALWAN_CORE_FNLIT(alwan__wlt_prepare)(&s->table, params->weights, params->weight_stride, 1,
                                                                     params->weight_count, params->tabulated_mode, &p, ctx);
         if (st != ALWAN_OK) {
-            ALWAN_FREE(s);
+            alwan_ctx_free(s, ctx);
             return st;
         }
     }
@@ -89,9 +91,12 @@ alwan_status ALWAN_CORE_FNLIT(alwan_wavelength_sampler_create)(ALWAN_CORE_FNLIT(
 
 void ALWAN_CORE_FNLIT(alwan_wavelength_sampler_destroy)(ALWAN_CORE_FNLIT(alwan_wavelength_sampler) *sampler, alwan_ctx *ctx) {
     ALWAN_WLS_S *s = (ALWAN_WLS_S *)sampler;
+    alwan_ctx *own;
+    (void)ctx; /* the sampler frees with the context it was created with */
     if (!s) return;
-    if (s->table) ALWAN_CORE_FNLIT(alwan__wlt_destroy)(s->table, ctx);
-    ALWAN_FREE(s);
+    own = s->ctx;
+    if (s->table) ALWAN_CORE_FNLIT(alwan__wlt_destroy)(s->table, own);
+    alwan_ctx_free(s, own);
 }
 
 /* The density at lambda, whatever the kind. */

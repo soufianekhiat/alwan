@@ -17,6 +17,7 @@ ALWAN_SKY_S {
     alwan__sky_state st;
     ALWAN_CORE_T *table;   /* Bruneton's tables, as the reader reads them */
     size_t count;
+    alwan_ctx *ctx;        /* the allocator the sky was created with */
 };
 
 alwan_status ALWAN_CORE_FNLIT(alwan_sky_create)(ALWAN_SKY_T **out, alwan_sky_model model, alwan_sky_params const *params,
@@ -25,10 +26,11 @@ alwan_status ALWAN_CORE_FNLIT(alwan_sky_create)(ALWAN_SKY_T **out, alwan_sky_mod
     alwan_status rc;
     if (!out) return ALWAN_E_INVALID;
     *out = NULL;
-    s = (ALWAN_SKY_S *)ALWAN_ALLOC(sizeof(ALWAN_SKY_S), sizeof(double));
+    s = (ALWAN_SKY_S *)alwan_ctx_alloc(sizeof(ALWAN_SKY_S), sizeof(double), ctx);
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof *s);
-    rc = alwan__sky_setup(&s->st, model, params, ctx);
+    s->ctx = ctx;
+    rc =alwan__sky_setup(&s->st, model, params, ctx);
     if (rc == ALWAN_OK && model == ALWAN_SKY_BRUNETON) {
         double *tab = NULL;
         size_t n = 0;
@@ -36,8 +38,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_sky_create)(ALWAN_SKY_T **out, alwan_sky_mod
         if (rc == ALWAN_OK) {
             /* the engine works in double; the table is kept in this precision */
             size_t i;
-            s->table = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(ALWAN_CORE_T)),
-                                                   sizeof(ALWAN_CORE_T));
+            s->table = (ALWAN_CORE_T *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(ALWAN_CORE_T)),
+                                                       sizeof(ALWAN_CORE_T), ctx);
             if (!s->table) {
                 rc = ALWAN_E_NOMEM;
             } else {
@@ -48,8 +50,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_sky_create)(ALWAN_SKY_T **out, alwan_sky_mod
         }
     }
     if (rc != ALWAN_OK) {
-        ALWAN_FREE(s->table);
-        ALWAN_FREE(s);
+        alwan_ctx_free(s->table, ctx);
+        alwan_ctx_free(s, ctx);
         return rc;
     }
     *out = (ALWAN_SKY_T *)s;
@@ -58,10 +60,12 @@ alwan_status ALWAN_CORE_FNLIT(alwan_sky_create)(ALWAN_SKY_T **out, alwan_sky_mod
 
 void ALWAN_CORE_FNLIT(alwan_sky_destroy)(ALWAN_SKY_T *sky, alwan_ctx *ctx) {
     ALWAN_SKY_S *s = (ALWAN_SKY_S *)sky;
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the sky frees with the context it was created with */
     if (!s) return;
-    ALWAN_FREE(s->table);
-    ALWAN_FREE(s);
+    own = s->ctx;
+    alwan_ctx_free(s->table, own);
+    alwan_ctx_free(s, own);
 }
 
 alwan_status ALWAN_CORE_FNLIT(alwan_sky_sun_direction)(ALWAN_CORE_VEC3 *out, ALWAN_SKY_T const *sky) {
@@ -297,14 +301,17 @@ alwan_status ALWAN_CORE_FNLIT(alwan_sky_bake_equirect)(ALWAN_CORE_T *out, size_t
     } else {
         return ALWAN_E_INVALID;
     }
-    if (row_stride < width * ch * sizeof(ALWAN_CORE_T)) return ALWAN_E_INVALID;
+    {
+        size_t const need = alwan_safe_array_size(alwan_safe_array_size(width, ch), sizeof(ALWAN_CORE_T));
+        if (need == 0 || row_stride < need) return ALWAN_E_INVALID;
+    }
     if (params->format == ALWAN_SKY_BAKE_RGB) {
         alwan_status const rc = ALWAN_CORE_FNLIT(alwan_rgb_get_space_descriptor)(&desc, params->space, ctx);
         if (rc != ALWAN_OK) return rc;
     }
     ns = params->samples > 0 ? params->samples : 1;
     if (ns > 64) return ALWAN_E_RANGE;
-    acc = (double *)ALWAN_ALLOC(alwan_safe_array_size(ch, sizeof(double)), sizeof(double));
+    acc = (double *)alwan_ctx_alloc(alwan_safe_array_size(ch, sizeof(double)), sizeof(double), ctx);
     if (!acc) return ALWAN_E_NOMEM;
     for (y = 0; y < height; y++) {
         ALWAN_CORE_T *row = (ALWAN_CORE_T *)(void *)((char *)out + y * row_stride);
@@ -349,7 +356,7 @@ alwan_status ALWAN_CORE_FNLIT(alwan_sky_bake_equirect)(ALWAN_CORE_T *out, size_t
             }
         }
     }
-    ALWAN_FREE(acc);
+    alwan_ctx_free(acc, ctx);
     return ALWAN_OK;
 }
 
@@ -373,14 +380,14 @@ alwan_status ALWAN_CORE_FNLIT(alwan_spd_astm_g173)(ALWAN_CORE_SPD *out, alwan_as
     size_t i;
     if (!out || count == 0) return ALWAN_E_INVALID;
     if ((int)column < 0 || (int)column > 2) return ALWAN_E_INVALID;
-    tmp = (double *)ALWAN_ALLOC(alwan_safe_array_size(count, sizeof(double)), sizeof(double));
+    tmp = (double *)alwan_ctx_alloc(alwan_safe_array_size(count, sizeof(double)), sizeof(double), ctx);
     if (!tmp) return ALWAN_E_NOMEM;
     rc = alwan__sky_g173_fill(tmp, count, (int)column, (double)wavelength_min, (double)wavelength_max);
     if (rc == ALWAN_OK) rc = ALWAN_CORE_FNLIT(alwan_spd_create)(out, wavelength_min, wavelength_max, count, ctx);
     if (rc == ALWAN_OK) {
         for (i = 0; i < count; i++) out->values[i] = (ALWAN_CORE_T)tmp[i];
     }
-    ALWAN_FREE(tmp);
+    alwan_ctx_free(tmp, ctx);
     return rc;
 }
 

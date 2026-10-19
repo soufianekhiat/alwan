@@ -143,7 +143,7 @@ static alwan_status alwan__wl_weights(double *w, size_t count, double lo, double
     int k;
     if (!w || count == 0 || !(hi > lo) || !(lo >= 0.0) || hi - hi != 0.0) return ALWAN_E_INVALID;
     if ((int)kind != (int)ALWAN_WAVELENGTH_WEIGHT_XYZ && (int)kind != (int)ALWAN_WAVELENGTH_WEIGHT_Y) return ALWAN_E_INVALID;
-    c = (alwan__wl_cmf *)ALWAN_ALLOC(sizeof(*c), sizeof(double));
+    c = (alwan__wl_cmf *)alwan_ctx_alloc(sizeof(*c), sizeof(double), ctx);
     if (!c) return ALWAN_E_NOMEM;
     memset(&illum, 0, sizeof(illum));
     st = alwan__wl_cmf_load(c, observer, ALWAN_INTERP_LINEAR, ctx);
@@ -163,7 +163,7 @@ static alwan_status alwan__wl_weights(double *w, size_t count, double lo, double
         }
     }
     alwan_spd_destroy_f64(&illum, ctx);
-    ALWAN_FREE(c);
+    alwan_ctx_free(c, ctx);
     return st;
 }
 
@@ -180,11 +180,11 @@ alwan_status alwan_wavelength_weights_f32(alwan_f32 *weights_out, size_t count, 
     alwan_status st;
     size_t i;
     if (!weights_out || count == 0) return ALWAN_E_INVALID;
-    w = (double *)ALWAN_ALLOC(alwan_safe_array_size(count, sizeof(double)), sizeof(double));
+    w = (double *)alwan_ctx_alloc(alwan_safe_array_size(count, sizeof(double)), sizeof(double), ctx);
     if (!w) return ALWAN_E_NOMEM;
     st = alwan__wl_weights(w, count, (double)lambda_min, (double)lambda_max, weight, observer, illuminant, ctx);
     if (st == ALWAN_OK) for (i = 0; i < count; i++) weights_out[i] = (alwan_f32)w[i];
-    ALWAN_FREE(w);
+    alwan_ctx_free(w, ctx);
     return st;
 }
 
@@ -201,6 +201,7 @@ struct alwan_spectral_film_s {
     double white[3];  /* the film's white, Y = 1, for adaptation */
     int track;
     alwan__wl_cmf cmf;
+    alwan_ctx *ctx;   /* the allocator the film was created with */
 };
 
 /* The integral of e(lambda) times the CMFs over 360 to 830 nm by the trapezoid at
@@ -244,9 +245,10 @@ alwan_status alwan_spectral_film_create(alwan_spectral_film **out, size_t width,
     bytes3 = alwan_safe_array_size(px, 3 * sizeof(double));
     bytes1 = alwan_safe_array_size(px, sizeof(double));
     if (bytes3 == 0 || bytes1 == 0) return ALWAN_E_RANGE;
-    f = (alwan_spectral_film *)ALWAN_ALLOC(sizeof(*f), sizeof(double));
+    f = (alwan_spectral_film *)alwan_ctx_alloc(sizeof(*f), sizeof(double), ctx);
     if (!f) return ALWAN_E_NOMEM;
     memset(f, 0, sizeof(*f));
+    f->ctx = ctx;
     f->w = width;
     f->h = height;
     f->track = p.track_variance != 0;
@@ -273,9 +275,9 @@ alwan_status alwan_spectral_film_create(alwan_spectral_film **out, size_t width,
         f->white[0] = wint[0] / wint[1];
         f->white[1] = 1.0;
         f->white[2] = wint[2] / wint[1];
-        f->acc = (double *)ALWAN_ALLOC(bytes3, sizeof(double));
-        f->n = (double *)ALWAN_ALLOC(bytes1, sizeof(double));
-        if (f->track) f->m2 = (double *)ALWAN_ALLOC(bytes3, sizeof(double));
+        f->acc = (double *)alwan_ctx_alloc(bytes3, sizeof(double), ctx);
+        f->n = (double *)alwan_ctx_alloc(bytes1, sizeof(double), ctx);
+        if (f->track) f->m2 = (double *)alwan_ctx_alloc(bytes3, sizeof(double), ctx);
         if (!f->acc || !f->n || (f->track && !f->m2)) st = ALWAN_E_NOMEM;
     }
     if (st != ALWAN_OK) {
@@ -288,12 +290,14 @@ alwan_status alwan_spectral_film_create(alwan_spectral_film **out, size_t width,
 }
 
 void alwan_spectral_film_destroy(alwan_spectral_film *film, alwan_ctx *ctx) {
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the film frees with the context it was created with */
     if (!film) return;
-    if (film->acc) ALWAN_FREE(film->acc);
-    if (film->m2) ALWAN_FREE(film->m2);
-    if (film->n) ALWAN_FREE(film->n);
-    ALWAN_FREE(film);
+    own = film->ctx;
+    alwan_ctx_free(film->acc, own);
+    alwan_ctx_free(film->m2, own);
+    alwan_ctx_free(film->n, own);
+    alwan_ctx_free(film, own);
 }
 
 alwan_status alwan_spectral_film_clear(alwan_spectral_film *film) {

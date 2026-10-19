@@ -23,26 +23,75 @@ table (the AgX and Tony McMapface view maps, spectral upsampling, any SPD lookup
 the data pack with the default allocator. Call `alwan_data_preload` (or `alwan_data_load`) at
 initialisation, and no later call allocates.
 
-**Objects.** The `_create` / `_destroy` pairs (SPD, CMYK model and inverse, CLF, luminaire,
-sky, iridescence, fluorescence, spectral film, Planckian table, colour solid, chart,
-wavelength tables) take a context, but today allocate with the default allocator on both
-sides. The pairing is consistent, so nothing is freed with the wrong allocator; a host with a
-budget allocator does not yet see these allocations. Moving each pair onto its context, with
-the object keeping the context it was created with, is open work.
+**Objects.** Every object a `_create`, `_load` or `_import` function returns lives in the
+memory of the context it was given, and keeps that context: the CMYK model and inverse, CLF,
+luminaire, chart, sky, iridescence, fluorescent material, spectral film, wavelength sampler,
+Planckian table, colour solid and the RGB fit state. Its `_destroy` frees with that stored
+context, whatever context it is handed, so a destroy given NULL (or another context) still
+frees each block with the allocator that made it. The context must outlive every object made
+with it. Suite 309 checks this for two pairs, and fails each of their allocations in turn.
 
-These public functions allocate scratch memory and take no context at all: the CCM fit,
-leave-one-out and selection, `alwan_tps3d_fit`, the display model and GOG fits, the skin
-model, thin film, `alwan_select`, the image metrics and SSIM, two camera functions and one
-pattern function. They free what they allocate before returning.
+One exception: an SPD. `alwan_spd` is a public struct (values, range, count) with no room for
+a context, so `alwan_spd_create`, `alwan_spd_destroy` and every function that fills an SPD use
+the default allocator on both sides. The Bruneton sky precompute also keeps its scratch on the
+default allocator; it frees it before `alwan_sky_create` returns.
+
+**Scratch.** `docs/capability_manifest.json` marks every operation that may allocate
+(`"allocates": "yes"`, from a scan of the implementation and everything it calls). Scratch is
+always freed before the function returns, so the allocator it comes from matters only for a
+budget. It comes from the context in the flip metric, the gamut volume, the splines, the data
+loader, the fluorescence and iridescence solvers, the sky bake, the wavelength weights, the
+object loaders above and the experimental formation, grain and halation code. Elsewhere it
+comes from the default allocator, with or without a context argument: the SPD integrations,
+the camera and IDT solves, the CCM fit, leave-one-out and selection, `alwan_tps3d_fit`, the
+display model and GOG fits, the skin model, thin film, `alwan_select`, the image metrics and
+SSIM, the pattern renderer and the CLF writer.
+
+**Ownership of results.** Outputs are the caller's buffers. No function returns a block for
+the caller to free, except the objects above (freed by their `_destroy`) and the SPDs a
+function fills (freed by `alwan_spd_destroy`). The pointers `alwan_data_get_*` hands out point
+at alwan's tables: never free them.
 
 **Failure.** An allocation that fails returns `ALWAN_E_NOMEM`; a create function frees what it
-had built and returns NULL or the status. Outputs may be partly written. Known exceptions:
-`alwan_cri_ra_f32` returns -1 on failure, and the CLF writer returns `ALWAN_E_INVALID`.
+had built and returns NULL or the status. Outputs may be partly written. A size whose product
+overflows is refused before allocating (`ALWAN_E_NOMEM`, or `ALWAN_E_RANGE` where a documented
+limit applies). One exception: `alwan_cri_ra_f32` / `_f64` return the index itself, -1 on any
+failure; `alwan_cri_specification_*` returns the status. A host `free_cb` may be handed NULL,
+as `free` may.
+
+**One memory manager for alwan and Suwar.** Suwar's `suwar_allocator` carries a user pointer
+and the block size; alwan's callbacks carry neither. Suwar bridges the two, so a host passes
+its manager once:
+
+```c
+/* the host's manager: a budget, an arena, a tracking allocator */
+static void *host_alloc(void *user, size_t size, size_t align) { return my_alloc(user, size, align); }
+static void  host_free(void *user, void *p, size_t size)       { my_free(user, p, size); }
+
+suwar_allocator mine = { host_alloc, host_free, &my_heap };
+suwar_allocator prev = suwar_set_thread_allocator(&mine);   /* this thread's suwar calls */
+
+/* an alwan context whose callbacks reach the same manager */
+alwan_config acfg = { suwar_thread_alloc, suwar_thread_free, NULL, 0 };
+alwan_ctx *actx = alwan_create(&acfg);
+
+/* ... alwan calls with actx, suwar calls on this thread ... */
+
+alwan_destroy(actx);              /* after every object made with actx */
+suwar_set_thread_allocator(&prev);
+```
+
+Each block goes back to the allocator that made it. `suwar_create` with no callbacks does the
+same internally, and `suwar_ctx_alwan` returns the alwan context it owns, for alwan calls that
+should share Suwar's allocator. A host that prefers one allocator per context passes the same
+pair of functions to `alwan_config` and `suwar_config` instead.
 
 **Data tables.** Tables loaded by `alwan_data_load` live in the memory of the context passed
 to it. `alwan_destroy` does not free them: call `alwan_data_free` before destroying that
 context. A table that a later read loads on demand uses the default allocator, and
-`alwan_data_free` releases each table with the allocator that made it.
+`alwan_data_free` releases each table with the allocator that made it. Nothing else is
+cached: the only per-thread state is the ACES 2.0 gamut-compression table (below), which lives
+in thread-local storage and needs no freeing.
 
 ## Threads
 
@@ -91,7 +140,31 @@ U8 3-channel SIMD path used to read 4 bytes past the last pixel of a block.)
 
 **Adaptation.** `alwan_image_convert`, the 3D LUT bakes and the CLF export apply a Bradford
 adaptation whenever the source and destination white points differ by more than 1e-6. A NULL
-context used to skip it silently.
+context used to skip it silently. `alwan_rgb_convert` and `alwan_rgb_convert_map_interleave`
+still adapt only when given a context, as in 2.0.0 (the migration manifest lists the
+difference); pass one, or use `alwan_image_convert_prepare`.
+
+**Ranges.** With `ALWAN_NORMALIZE_RANGES=1` (the CMake default) the C API reports every
+bounded channel (L of Lab, hue, saturation, ...) on [0, 1]; the unbounded opponent axes (Lab
+`a`, `b`, Oklab `a`, `b`, chroma) keep their native signed range. With 0 everything is native.
+It is fixed when alwan is built, reaches consumers through the `Alwan::alwan` target, and
+`alwan_get_build_info` reports it; a host that stores values in a document should record which
+it was. The cores (`_v`) always work in native ranges whatever the switch: a fused kernel
+that must match the C API applies `ALWAN_NORMV_<SPACE>` / `ALWAN_DENORMV_<SPACE>` at its own
+boundary (`ranges.md`, `configuration.md`). Suwar's reference values assume native ranges.
+
+### Which maps run on a register's own buffer
+
+| Kind | Buffer it accepts | Use on a typed, strided register |
+|---|---|---|
+| `_map_interleave_ex`, `_map_planar_ex` | any `alwan_pixel_format`, byte strides per pixel (and per plane), in and out formats independent | directly |
+| `alwan_image_convert`, `_rgba`, `_data` | any format, a byte stride per row, tightly packed pixels within a row | directly, for row-contiguous registers |
+| `_f32_map_interleave`, `_f64_map_interleave`, `_map_planar` | the native float type only, byte strides | directly for F32 / F64 registers; other formats need a staging conversion (or the `_ex` form) |
+| `alwan_oetf_apply` / `alwan_eotf_apply` and the other strided array functions | native float, byte strides, a count | directly for F32 / F64 |
+| scalar functions (`alwan_xyz_to_lab_f64`, ...) | one value | per pixel, in the host's loop |
+| image operations (`"scope": "image"` in the manifest: the picture formation, spatial gamut maps, metrics, global tone map) | tightly packed interleaved RGB, `width * height * 3`, no stride | a staging copy for a strided or planar register |
+
+`docs/capability_manifest.json` records each operation's layouts, formats and stride unit.
 
 ## Backends
 
@@ -133,6 +206,53 @@ An alwan pointwise operation comes in up to four layers:
 
 A node graph schedules layer 2 once, layer 3 per tile, and layer 4's reduction as its own node.
 
+**Fusing.** A fused Halide stage or compute shader calls layer 1 and receives layer 2's result
+as constants; alwan never allocates on or dispatches to a device. The manifest's
+`fusion_areas` gives, for colour-space conversion, chromatic adaptation, transfer functions,
+gamut mapping, exposure, tone mapping, appearance models, spectral conversion and LUT
+evaluation, the preparation functions, the cores and the wrappers, and what has no core yet.
+For a colour-space conversion, `alwan_image_convert_prepare` returns the plan
+`alwan_image_convert` itself runs (one matrix, with the adaptation folded in, and the two
+transfer-function enums), as a struct with no pointers; the manifest's `transfer_functions`
+maps each enum to its core. A kernel that runs `oetf(combined * eotf(rgb))` with those cores
+computes what the converter computes.
+
+What has no core is C only, and a fused graph must run it as a separate CPU node: the complete
+view transforms, the ACES 1.x and 2.0 output transforms as a whole (their parts have cores),
+gamut methods beyond clip and hue-preserving, the spectral upsamplers, Hellwig 2022's
+parameter split, and every image operation.
+
+## Experimental picture formation
+
+`alwan_picture_form_*` and `alwan_gamut_map_spatial` sit under `ALWAN_WITH_FORMATION`, in
+`src/alwan/experimental/`. They are **experimental**: not part of the stable 3.x API, not
+deterministic (no det-dump section covers them), and their signatures may change. They are
+image operations, never pointwise kernels.
+
+- **Buffers.** Interleaved RGB, tightly packed, `width * height * 3`; fields are
+  `width * height` scalars in stops. No strides. All buffers are the caller's.
+- **Allocation.** Each call allocates its scratch through the context, which must not be NULL
+  (`ALWAN_E_INVALID`). The local solver takes about 22 scalars per pixel; the global solver 3
+  per pixel when it forms a picture. `alwan_picture_form_global_exp_field` with `out == NULL`
+  allocates nothing: it computes the field alone, in `e_out`. `alwan_picture_form_local_exp_lag`
+  allocates nothing.
+- **Picture output.** Optional in the `_field`, `_field_m`, `_resume` and `_resume_m` calls
+  (`out` may be NULL), required in the plain calls and in `_apply`. `e_out` is required.
+- **The field on its own.** The global field is a per-pixel function of the input and one
+  pivot: with `pivot > 0` it is pointwise; with `pivot <= 0` the pivot is the mean of the
+  image's carrier, a reduction over the whole image. The local field needs the whole image (an
+  evidence-gated smoothing, a Jacobi solve, an order-repair solve that forms the picture three
+  times per iteration), so a NULL `out` saves the copy and not the work.
+  `alwan_picture_form_local_exp_inputs` returns the solver's inputs without a picture.
+- **The picture from a field.** `alwan_picture_form_local_exp_apply` forms the picture from a
+  given field, as the solve's own last step does (suite 108 holds them equal). It is pointwise
+  for `COMPLETE_HEMI_LOOK` and `COMPLETE_PEAK`; other formation methods read the whole image.
+- **Regions.** No region-of-interest form: every call reads the whole image.
+- **Backends.** C only, f32 and f64. No core, no GPU code.
+- **Tests.** Suites 97 to 100 and 108 check structure (order, monotonicity, frame
+  consistency) at 1e-15 to 1e-2; the `_field` and `_apply` checks run in f64; suite 309 checks
+  that the global field alone matches the full solve's bit for bit and allocates nothing.
+
 ## Determinism
 
 Two different claims, kept apart:
@@ -150,6 +270,26 @@ Two different claims, kept apart:
 
 In the deterministic build the map kernels run at SIMD width 1, so suite 88 compares scalar
 with scalar there; only the transfer-function apply paths keep vector code.
+
+By backend and precision, in four kinds: **bit-exact** (run and compared at 0 ULP),
+**tolerance** (run and compared within a stated bound), **compiled** (the code compiles; no
+run compares it with C), **unsupported** (no such build).
+
+| Backend | f32 | f64 |
+|---|---|---|
+| C scalar, deterministic build | bit-exact across the six CI runners, for the `determinism.md` sections | bit-exact, same sections |
+| C scalar, fast build | tolerance (libm differs by platform) | tolerance |
+| SIMD map kernels (fast) | tolerance: 5e-5 absolute against scalar | tolerance |
+| SIMD map kernels (deterministic) | scalar code (width 1); the transfer-function apply paths bit-exact | colour conversions up to 4 ULP; transfer functions bit-exact |
+| HLSL (D3D12) | bit-exact: table readers, Machado matrices, nn tensor kernels; tolerance: AgX 1e-5, deterministic sRGB / BT.2020 TFs 1e-6, vision 2 ULP, nn exp 4 ULP; compiled (dxc + fxc in CI): 50 of 52 cores | unsupported |
+| CUDA (`--fmad=false`) | bit-exact (deterministic) and tolerance (fast): xyz_to_lab, xyz_to_oklab, xyz_to_ictcp_pq, xyz_to_jzazbz, sRGB OETF / EOTF; compiled by hand: every core | the same six kernels, bit-exact and tolerance; compiled by hand |
+| OpenCL 2.0 (correctly rounded divide and sqrt) | the same six kernels, bit-exact and tolerance; compiled by hand: every core | unsupported (fp64 never tested) |
+| GLSL | compiled: none (a keyword lint only) | unsupported |
+| Halide | compiled: none (never built) | unsupported |
+
+None of the GPU comparisons runs in CI except the HLSL table, vision and compile gates; the
+rest are run by hand (`backends_limits.md` names the scripts). A core that compiles for a
+backend is not thereby equal to C on it.
 `determinism.md` and `backends_limits.md` used to claim more (AgX bitwise on HLSL, "25
 conversions at 0 ULP" in suite 88, all twelve primitives bitwise on OpenCL). No gating test
 backed those claims, and the text now says what was measured and how.

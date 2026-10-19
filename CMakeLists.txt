@@ -554,7 +554,9 @@ if(ALWAN_INSTALL)
     elseif(ALWAN_BUILD_PRECISION STREQUAL "f64")
       string(APPEND _ALWAN_PKGCONFIG_CFLAGS " -DALWAN_BUILD_ONLY_F64=1")
     endif()
-    if(ALWAN_DETERMINISTIC)
+    # The .pc is written at configure time, so a *_Det config counts only when it is the
+    # single-config CMAKE_BUILD_TYPE; with a multi-config generator use the switch.
+    if(ALWAN_DETERMINISTIC OR CMAKE_BUILD_TYPE MATCHES "_Det$")
       string(APPEND _ALWAN_PKGCONFIG_CFLAGS " -DALWAN_DETERMINISTIC=1")
     endif()
     if(NOT ALWAN_NORMALIZE_RANGES)

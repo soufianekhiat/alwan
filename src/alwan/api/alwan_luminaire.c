@@ -72,6 +72,7 @@ struct alwan_luminaire {
     size_t nkw;
     char **keys;
     char **vals;
+    alwan_ctx *ctx;        /* allocator it was loaded with, freed with the same */
 };
 
 /* ----------------------------------------------------------------
@@ -109,8 +110,8 @@ static int lum_equals(lum_span s, char const *key) {
     return s.n == k && memcmp(s.p, key, k) == 0;
 }
 
-static char *lum_strdup(char const *p, size_t n) {
-    char *out = (char *)ALWAN_ALLOC(n + 1, 1);
+static char *lum_strdup(char const *p, size_t n, alwan_ctx *ctx) {
+    char *out = (char *)alwan_ctx_alloc(n + 1, 1, ctx);
     if (!out) return NULL;
     if (n) memcpy(out, p, n);
     out[n] = '\0';
@@ -222,13 +223,13 @@ typedef struct {
     size_t count;
 } lum_lines;
 
-static alwan_status lum_split(lum_lines *L, char const *buf, size_t len) {
+static alwan_status lum_split(lum_lines *L, char const *buf, size_t len, alwan_ctx *ctx) {
     size_t i, n = 1, k = 0, start = 0, bytes;
     for (i = 0; i < len; i++)
         if (buf[i] == '\n' || buf[i] == '\r') n++;
     bytes = alwan_safe_array_size(n, sizeof(lum_span));
     if (!bytes) return ALWAN_E_RANGE;
-    L->line = (lum_span *)ALWAN_ALLOC(bytes, sizeof(void *));
+    L->line = (lum_span *)alwan_ctx_alloc(bytes, sizeof(void *), ctx);
     if (!L->line) return ALWAN_E_NOMEM;
     for (i = 0; i < len; i++) {
         if (buf[i] == '\n' || buf[i] == '\r') {
@@ -252,34 +253,36 @@ static alwan_status lum_split(lum_lines *L, char const *buf, size_t len) {
 
 void alwan_luminaire_destroy(alwan_luminaire *lum, alwan_ctx *ctx) {
     size_t i;
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the object frees with the context it was loaded with */
     if (!lum) return;
+    own = lum->ctx;
     for (i = 0; i < lum->nkw; i++) {
-        ALWAN_FREE(lum->keys[i]);
-        ALWAN_FREE(lum->vals[i]);
+        alwan_ctx_free(lum->keys[i], own);
+        alwan_ctx_free(lum->vals[i], own);
     }
-    ALWAN_FREE(lum->keys);
-    ALWAN_FREE(lum->vals);
-    ALWAN_FREE(lum->vertical);
-    ALWAN_FREE(lum->horizontal);
-    ALWAN_FREE(lum->values);
-    ALWAN_FREE(lum->phi);
-    ALWAN_FREE(lum->map);
-    ALWAN_FREE(lum);
+    alwan_ctx_free(lum->keys, own);
+    alwan_ctx_free(lum->vals, own);
+    alwan_ctx_free(lum->vertical, own);
+    alwan_ctx_free(lum->horizontal, own);
+    alwan_ctx_free(lum->values, own);
+    alwan_ctx_free(lum->phi, own);
+    alwan_ctx_free(lum->map, own);
+    alwan_ctx_free(lum, own);
 }
 
 static alwan_status lum_keyword_add(struct alwan_luminaire *L, char const *k, size_t kn, char const *v, size_t vn) {
     if (L->nkw >= LUM_MAX_KEYWORDS) return ALWAN_E_RANGE;
     if (!L->keys) {
-        L->keys = (char **)ALWAN_ALLOC(sizeof(char *) * LUM_MAX_KEYWORDS, sizeof(void *));
-        L->vals = (char **)ALWAN_ALLOC(sizeof(char *) * LUM_MAX_KEYWORDS, sizeof(void *));
+        L->keys = (char **)alwan_ctx_alloc(sizeof(char *) * LUM_MAX_KEYWORDS, sizeof(void *), L->ctx);
+        L->vals = (char **)alwan_ctx_alloc(sizeof(char *) * LUM_MAX_KEYWORDS, sizeof(void *), L->ctx);
         if (!L->keys || !L->vals) return ALWAN_E_NOMEM;
     }
-    L->keys[L->nkw] = lum_strdup(k, kn);
-    L->vals[L->nkw] = lum_strdup(v, vn);
+    L->keys[L->nkw] = lum_strdup(k, kn, L->ctx);
+    L->vals[L->nkw] = lum_strdup(v, vn, L->ctx);
     if (!L->keys[L->nkw] || !L->vals[L->nkw]) {
-        ALWAN_FREE(L->keys[L->nkw]);
-        ALWAN_FREE(L->vals[L->nkw]);
+        alwan_ctx_free(L->keys[L->nkw], L->ctx);
+        alwan_ctx_free(L->vals[L->nkw], L->ctx);
         return ALWAN_E_NOMEM;
     }
     L->nkw++;
@@ -293,20 +296,20 @@ static alwan_status lum_keyword_more(struct alwan_luminaire *L, char const *v, s
     if (!L->nkw) return lum_keyword_add(L, "MORE", 4, v, vn);
     old = strlen(L->vals[L->nkw - 1]);
     if (old + vn + 2 > ((size_t)1 << 20)) return ALWAN_E_RANGE;
-    joined = (char *)ALWAN_ALLOC(old + vn + 2, 1);
+    joined = (char *)alwan_ctx_alloc(old + vn + 2, 1, L->ctx);
     if (!joined) return ALWAN_E_NOMEM;
     memcpy(joined, L->vals[L->nkw - 1], old);
     joined[old] = ' ';
     if (vn) memcpy(joined + old + 1, v, vn);
     joined[old + 1 + vn] = '\0';
-    ALWAN_FREE(L->vals[L->nkw - 1]);
+    alwan_ctx_free(L->vals[L->nkw - 1], L->ctx);
     L->vals[L->nkw - 1] = joined;
     return ALWAN_OK;
 }
 
-static double *lum_array(size_t n) {
+static double *lum_array(size_t n, alwan_ctx *ctx) {
     size_t bytes = alwan_safe_array_size(n ? n : 1, sizeof(double));
-    return bytes ? (double *)ALWAN_ALLOC(bytes, sizeof(double)) : NULL;
+    return bytes ? (double *)alwan_ctx_alloc(bytes, sizeof(double), ctx) : NULL;
 }
 
 static int lum_strictly_increasing(double const *a, size_t n) {
@@ -399,8 +402,8 @@ static alwan_status lum_complete(struct alwan_luminaire *L) {
     double *cand;
     if (L->info.symmetry == ALWAN_LUMINAIRE_SYMMETRY_ROTATIONAL) {
         L->nphi = 2;
-        L->phi = lum_array(2);
-        L->map = lum_array(2 * L->nv);
+        L->phi = lum_array(2, L->ctx);
+        L->map = lum_array(2 * L->nv, L->ctx);
         if (!L->phi || !L->map) return ALWAN_E_NOMEM;
         L->phi[0] = 0.0;
         L->phi[1] = 360.0;
@@ -409,7 +412,7 @@ static alwan_status lum_complete(struct alwan_luminaire *L) {
     }
     if (L->nh > LUM_MAX_ANGLES) return ALWAN_E_RANGE;
     cap = 4 * L->nh + 2;
-    cand = lum_array(cap);
+    cand = lum_array(cap, L->ctx);
     if (!cand) return ALWAN_E_NOMEM;
     for (i = 0; i < L->nh; i++) {
         double img[4];
@@ -422,7 +425,7 @@ static alwan_status lum_complete(struct alwan_luminaire *L) {
         if (k == 0 || !lum_near(cand[i], cand[k - 1])) cand[k++] = cand[i];
     n = k;
     if (n == 0 || !lum_near(cand[0], 0.0)) {
-        ALWAN_FREE(cand);
+        alwan_ctx_free(cand, L->ctx);
         return ALWAN_E_RANGE;
     }
     cand[0] = 0.0;
@@ -432,11 +435,11 @@ static alwan_status lum_complete(struct alwan_luminaire *L) {
     {
         size_t bytes = alwan_safe_array_size(n, L->nv);
         if (!bytes || !alwan_safe_array_size(bytes, sizeof(double))) return ALWAN_E_RANGE;
-        L->map = lum_array(n * L->nv);
+        L->map = lum_array(bytes, L->ctx);
         if (!L->map) return ALWAN_E_NOMEM;
     }
     {
-        lum_plane *sorted = (lum_plane *)ALWAN_ALLOC(alwan_safe_array_size(L->nh, sizeof(lum_plane)), sizeof(double));
+        lum_plane *sorted = (lum_plane *)alwan_ctx_alloc(alwan_safe_array_size(L->nh, sizeof(lum_plane)), sizeof(double), L->ctx);
         if (!sorted) return ALWAN_E_NOMEM;
         for (i = 0; i < L->nh; i++) {
             sorted[i].c = lum_wrap(L->horizontal[i]);
@@ -446,12 +449,12 @@ static alwan_status lum_complete(struct alwan_luminaire *L) {
         for (i = 0; i < n; i++) {
             long p = lum_find_plane(L, sorted, i + 1 == n ? 0.0 : L->phi[i]);
             if (p < 0) {
-                ALWAN_FREE(sorted);
+                alwan_ctx_free(sorted, L->ctx);
                 return ALWAN_E_RANGE;
             }
             for (j = 0; j < L->nv; j++) L->map[i * L->nv + j] = L->values[(size_t)p * L->nv + j] * mult;
         }
-        ALWAN_FREE(sorted);
+        alwan_ctx_free(sorted, L->ctx);
     }
     return ALWAN_OK;
 }
@@ -549,7 +552,8 @@ static alwan_status lum_parse_ies(struct alwan_luminaire *L, lum_lines const *li
         return ALWAN_E_INVALID;
     if (!(info->lumens_per_lamp > 0.0 || info->lumens_per_lamp == -1.0)) return ALWAN_E_RANGE;
     if (!(info->multiplier > 0.0) || info->ballast_factor < 0.0) return ALWAN_E_RANGE;
-    if ((size_t)nv * (size_t)nh > LUM_MAX_VALUES) return ALWAN_E_RANGE;
+    count = alwan_safe_array_size((size_t)nv, (size_t)nh);
+    if (!count || count > LUM_MAX_VALUES) return ALWAN_E_RANGE;
     info->lamps = (int)lamps;
     info->lamp_sets = 1;
     info->lamp_flux = info->lumens_per_lamp < 0.0 ? -1.0 : info->lumens_per_lamp * (double)lamps;
@@ -558,10 +562,9 @@ static alwan_status lum_parse_ies(struct alwan_luminaire *L, lum_lines const *li
 
     L->nv = (size_t)nv;
     L->nh = (size_t)nh;
-    count = L->nv * L->nh;
-    L->vertical = lum_array(L->nv);
-    L->horizontal = lum_array(L->nh);
-    L->values = lum_array(count);
+    L->vertical = lum_array(L->nv, L->ctx);
+    L->horizontal = lum_array(L->nh, L->ctx);
+    L->values = lum_array(count, L->ctx);
     if (!L->vertical || !L->horizontal || !L->values) return ALWAN_E_NOMEM;
     for (i = 0; i < L->nv; i++)
         if (!lum_next_number(&tk, &L->vertical[i])) return ALWAN_E_INVALID;
@@ -700,31 +703,31 @@ static alwan_status lum_parse_ldt(struct alwan_luminaire *L, lum_lines const *li
         if (mc % 4) return ALWAN_E_RANGE;
         stored = (size_t)mc / 4 + 1; first = 0; break;
     }
-    if (stored * (size_t)ng > LUM_MAX_VALUES) return ALWAN_E_RANGE;
+    count = alwan_safe_array_size(stored, (size_t)ng);
+    if (!count || count > LUM_MAX_VALUES) return ALWAN_E_RANGE;
     L->nh = stored;
     L->nv = (size_t)ng;
-    count = L->nh * L->nv;
-    c_all = lum_array((size_t)mc);
-    L->horizontal = lum_array(L->nh);
-    L->vertical = lum_array(L->nv);
-    L->values = lum_array(count);
-    if (!c_all || !L->horizontal || !L->vertical || !L->values) { ALWAN_FREE(c_all); return ALWAN_E_NOMEM; }
+    c_all = lum_array((size_t)mc, L->ctx);
+    L->horizontal = lum_array(L->nh, L->ctx);
+    L->vertical = lum_array(L->nv, L->ctx);
+    L->values = lum_array(count, L->ctx);
+    if (!c_all || !L->horizontal || !L->vertical || !L->values) { alwan_ctx_free(c_all, L->ctx); return ALWAN_E_NOMEM; }
     for (i = 0; i < (size_t)mc; i++)
-        if ((st = lum_ldt_number(lines, base + i, &c_all[i])) != ALWAN_OK) { ALWAN_FREE(c_all); return st; }
+        if ((st = lum_ldt_number(lines, base + i, &c_all[i])) != ALWAN_OK) { alwan_ctx_free(c_all, L->ctx); return st; }
     base += (size_t)mc;
     for (i = 0; i < L->nv; i++)
-        if ((st = lum_ldt_number(lines, base + i, &L->vertical[i])) != ALWAN_OK) { ALWAN_FREE(c_all); return st; }
+        if ((st = lum_ldt_number(lines, base + i, &L->vertical[i])) != ALWAN_OK) { alwan_ctx_free(c_all, L->ctx); return st; }
     base += L->nv;
     for (i = 0; i < count; i++)
-        if ((st = lum_ldt_number(lines, base + i, &L->values[i])) != ALWAN_OK) { ALWAN_FREE(c_all); return st; }
+        if ((st = lum_ldt_number(lines, base + i, &L->values[i])) != ALWAN_OK) { alwan_ctx_free(c_all, L->ctx); return st; }
     base += count;
     for (i = base; i < lines->count; i++)
-        if (lum_trim(lines->line[i]).n) { ALWAN_FREE(c_all); return ALWAN_E_INVALID; }
+        if (lum_trim(lines->line[i]).n) { alwan_ctx_free(c_all, L->ctx); return ALWAN_E_INVALID; }
 
     if (!lum_strictly_increasing(c_all, (size_t)mc) || c_all[0] < 0.0 || !(c_all[mc - 1] < 360.0) ||
         !lum_strictly_increasing(L->vertical, L->nv) || L->vertical[0] < 0.0 || L->vertical[L->nv - 1] > 180.0 ||
         L->nv < 2) {
-        ALWAN_FREE(c_all);
+        alwan_ctx_free(c_all, L->ctx);
         return ALWAN_E_RANGE;
     }
     for (i = 0; i < L->nh; i++) L->horizontal[i] = c_all[(first + i) % (size_t)mc];
@@ -737,7 +740,7 @@ static alwan_status lum_parse_ldt(struct alwan_luminaire *L, lum_lines const *li
         case 4: ok = lum_near(c_all[0], 0.0) && lum_near(c_all[mc / 4], 90.0); break;
         default: break;
         }
-        ALWAN_FREE(c_all);
+        alwan_ctx_free(c_all, L->ctx);
         if (!ok) return ALWAN_E_RANGE;
     }
     for (i = 0; i < count; i++)
@@ -755,7 +758,6 @@ alwan_status alwan_luminaire_load_buffer(alwan_luminaire **out, char const *buf,
     alwan_status st;
     size_t i;
     int ies = 0;
-    (void)ctx;
     if (out) *out = NULL;
     if (!out || !buf) return ALWAN_E_INVALID;
     if (len > LUM_MAX_FILE) return ALWAN_E_RANGE;
@@ -764,7 +766,7 @@ alwan_status alwan_luminaire_load_buffer(alwan_luminaire **out, char const *buf,
         len -= 3;
     }
     if (!len) return ALWAN_E_INVALID;
-    st = lum_split(&lines, buf, len);
+    st = lum_split(&lines, buf, len, ctx);
     if (st != ALWAN_OK) return st;
     {
         lum_span first = lum_trim(lines.line[0]), tilt;
@@ -772,14 +774,15 @@ alwan_status alwan_luminaire_load_buffer(alwan_luminaire **out, char const *buf,
         for (i = 0; !ies && i < lines.count; i++)
             if (lum_is_tilt(lines.line[i], &tilt)) ies = 1;
     }
-    L = (struct alwan_luminaire *)ALWAN_ALLOC(sizeof(*L), sizeof(void *));
+    L = (struct alwan_luminaire *)alwan_ctx_alloc(sizeof(*L), sizeof(void *), ctx);
     if (!L) {
-        ALWAN_FREE(lines.line);
+        alwan_ctx_free(lines.line, ctx);
         return ALWAN_E_NOMEM;
     }
     memset(L, 0, sizeof(*L));
+    L->ctx = ctx;
     st = ies ? lum_parse_ies(L, &lines, buf, len) : lum_parse_ldt(L, &lines);
-    ALWAN_FREE(lines.line);
+    alwan_ctx_free(lines.line, ctx);
     if (st == ALWAN_OK && L->info.photometric_type == 1) st = lum_complete(L);
     if (st != ALWAN_OK) {
         alwan_luminaire_destroy(L, ctx);
@@ -803,12 +806,12 @@ alwan_status alwan_luminaire_load(alwan_luminaire **out, char const *path, alwan
     size = ftell(fh);
     if (size < 0 || (unsigned long)size > (unsigned long)LUM_MAX_FILE) { fclose(fh); return size < 0 ? ALWAN_E_INVALID : ALWAN_E_RANGE; }
     if (fseek(fh, 0, SEEK_SET) != 0) { fclose(fh); return ALWAN_E_INVALID; }
-    buf = (char *)ALWAN_ALLOC((size_t)size + 1, 1);
+    buf = (char *)alwan_ctx_alloc((size_t)size + 1, 1, ctx);
     if (!buf) { fclose(fh); return ALWAN_E_NOMEM; }
     got = fread(buf, 1, (size_t)size, fh);
     fclose(fh);
     st = alwan_luminaire_load_buffer(out, buf, got, ctx);
-    ALWAN_FREE(buf);
+    alwan_ctx_free(buf, ctx);
     return st;
 }
 

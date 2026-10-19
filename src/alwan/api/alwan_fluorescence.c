@@ -36,6 +36,7 @@ struct alwan_fluorescent_s {
     double *tab64;    /* 2 n (n + 3): OUTGOING rows, then INCOMING */
     float *tab32;
     double balance_max, fluo_max;
+    alwan_ctx *ctx;   /* the context it was created with; destroy frees through it */
 };
 
 static int fluo_finite(double v) { return v == v && v < 1e300 && v > -1e300; }
@@ -89,6 +90,7 @@ static alwan_status fluo_base(double *out, double const *lam, size_t n, alwan_fl
         alwan_status st;
         if (m < 2 || !(fluo_finite(p->reflectance_min) && fluo_finite(p->reflectance_max) && p->reflectance_max > p->reflectance_min))
             return ALWAN_E_INVALID;
+        if (m > (SIZE_MAX - n) / 2) return ALWAN_E_NOMEM;   /* 2 m + n would wrap */
         xin = (double *)ALWAN_ALLOC(alwan_safe_array_size(2 * m + n, sizeof(double)), sizeof(double));
         if (!xin) return ALWAN_E_NOMEM;
         yin = xin + m, xout = yin + m;
@@ -155,7 +157,6 @@ alwan_status alwan_fluorescent_create(alwan_fluorescent **out, alwan_fluorescent
     double lmin, lmax, *lam = NULL, *a = NULL, *e = NULL, *base = NULL;
     size_t n, k, o, i;
     alwan_status st = ALWAN_OK;
-    ALWAN_UNUSED(ctx);
     if (!out || !params) return ALWAN_E_INVALID;
     *out = NULL;
     if (params->method != ALWAN_FLUORESCENT_PARAMETRIC && params->method != ALWAN_FLUORESCENT_MATRIX) return ALWAN_E_INVALID;
@@ -172,14 +173,16 @@ alwan_status alwan_fluorescent_create(alwan_fluorescent **out, alwan_fluorescent
     if (n < 2 || n > 20000) return ALWAN_E_INVALID;
     if (params->method == ALWAN_FLUORESCENT_MATRIX && !params->matrix) return ALWAN_E_INVALID;
 
-    m = (alwan_fluorescent *)ALWAN_ALLOC(sizeof *m, sizeof(double));   /* bytes, alignment */
+    m = (alwan_fluorescent *)alwan_ctx_alloc(sizeof *m, sizeof(double), ctx);   /* bytes, alignment */
     if (!m) return ALWAN_E_NOMEM;
     memset(m, 0, sizeof *m);
+    m->ctx = ctx;
     m->n = n, m->lmin = lmin, m->lmax = lmax, m->h = (lmax - lmin) / (double)(n - 1);
-    m->D = (double *)ALWAN_ALLOC(alwan_safe_array_size(n * n, sizeof(double)), sizeof(double));
-    m->tab64 = (double *)ALWAN_ALLOC(alwan_safe_array_size(2 * n * (n + 3), sizeof(double)), sizeof(double));
-    m->tab32 = (float *)ALWAN_ALLOC(alwan_safe_array_size(2 * n * (n + 3), sizeof(float)), sizeof(float));
-    lam = (double *)ALWAN_ALLOC(alwan_safe_array_size(4 * n, sizeof(double)), sizeof(double));
+    /* n <= 20000 above, so the inner factors cannot wrap; the outer product is checked */
+    m->D = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, n * sizeof(double)), sizeof(double), ctx);
+    m->tab64 = (double *)alwan_ctx_alloc(alwan_safe_array_size(2 * n, (n + 3) * sizeof(double)), sizeof(double), ctx);
+    m->tab32 = (float *)alwan_ctx_alloc(alwan_safe_array_size(2 * n, (n + 3) * sizeof(float)), sizeof(float), ctx);
+    lam = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, 4 * sizeof(double)), sizeof(double), ctx);
     if (!m->D || !m->tab64 || !m->tab32 || !lam) { st = ALWAN_E_NOMEM; goto done; }
     a = lam + n, e = a + n, base = e + n;
     for (k = 0; k < n; k++) lam[k] = lmin + m->h * (double)k;
@@ -221,19 +224,21 @@ alwan_status alwan_fluorescent_create(alwan_fluorescent **out, alwan_fluorescent
     }
     fluo_tables(m, lam);
 done:
-    ALWAN_FREE(lam);
+    alwan_ctx_free(lam, ctx);
     if (st != ALWAN_OK) { alwan_fluorescent_destroy(m, ctx); return st; }
     *out = m;
     return ALWAN_OK;
 }
 
 void alwan_fluorescent_destroy(alwan_fluorescent *material, alwan_ctx *ctx) {
-    ALWAN_UNUSED(ctx);
+    alwan_ctx *own;
+    (void)ctx;   /* the material frees with the context it was created with */
     if (!material) return;
-    ALWAN_FREE(material->D);
-    ALWAN_FREE(material->tab64);
-    ALWAN_FREE(material->tab32);
-    ALWAN_FREE(material);
+    own = material->ctx;
+    alwan_ctx_free(material->D, own);
+    alwan_ctx_free(material->tab64, own);
+    alwan_ctx_free(material->tab32, own);
+    alwan_ctx_free(material, own);
 }
 
 alwan_status alwan_fluorescent_get_info(alwan_fluorescent_info *info, alwan_fluorescent const *material) {
@@ -308,7 +313,7 @@ alwan_status alwan_fluorescent_radiance_f64(double *radiance_out, double *total_
     alwan_status st;
     if (!material) return ALWAN_E_INVALID;
     n = material->n;
-    E = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
+    E = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(double)), sizeof(double), ctx);
     if (!E) return ALWAN_E_NOMEM;
     st = fluo_illuminant(E, material, illuminant_spd, illuminant, ctx);
     if (st == ALWAN_OK) {
@@ -321,7 +326,7 @@ alwan_status alwan_fluorescent_radiance_f64(double *radiance_out, double *total_
             if (fluorescent_out) fluorescent_out[o] = E[o] > 0.0 ? (L - row[o] * E[o]) / E[o] : 0.0;
         }
     }
-    ALWAN_FREE(E);
+    alwan_ctx_free(E, ctx);
     return st;
 }
 
@@ -397,7 +402,7 @@ alwan_status alwan_fluorescent_radiance_f32(float *radiance_out, float *total_ou
     n = material->n;
     st = fluo_widen(&wide, &buf, illuminant_spd);
     if (st != ALWAN_OK) return st;
-    tmp = (double *)ALWAN_ALLOC(alwan_safe_array_size(3 * n, sizeof(double)), sizeof(double));
+    tmp = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, 3 * sizeof(double)), sizeof(double), ctx);
     if (!tmp) { ALWAN_FREE(buf); return ALWAN_E_NOMEM; }
     st = alwan_fluorescent_radiance_f64(tmp, tmp + n, tmp + 2 * n, material, illuminant_spd ? &wide : NULL, illuminant, ctx);
     if (st == ALWAN_OK) {
@@ -407,7 +412,7 @@ alwan_status alwan_fluorescent_radiance_f32(float *radiance_out, float *total_ou
             if (fluorescent_out) fluorescent_out[k] = (float)tmp[2 * n + k];
         }
     }
-    ALWAN_FREE(tmp);
+    alwan_ctx_free(tmp, ctx);
     ALWAN_FREE(buf);
     return st;
 }

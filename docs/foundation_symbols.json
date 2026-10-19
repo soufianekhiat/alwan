@@ -1,0 +1,137 @@
+{
+  "schema": "alwan-foundation-symbols/1",
+  "foundation_version": 1,
+  "policy": {
+    "stable": "Supported for the whole 3.x series. Removing or changing the meaning of a stable name needs a major version (4.0) and a deprecation in a 3.x release first. New names may be added in any minor release.",
+    "provisional": "Public and supported, but its spelling or signature may change in a 3.x minor release. Each change is listed in CHANGELOG.md and bumps ALWAN_FOUNDATION_VERSION.",
+    "internal": "Not part of the foundation, whatever header it sits in. Changes without notice. A downstream library must not name it; tools/check_foundation_symbols.py fails if Suwar does.",
+    "version_macro": "ALWAN_FOUNDATION_VERSION (alwan_foundation_core.h) is an integer that increases with every change to a stable or provisional name. ALWAN_VERSION_MAJOR / MINOR / PATCH (alwan.h) version the library itself.",
+    "abi": "A library built on the foundation compiles alwan's cores into its own code (they are header-only and inline), so it must be rebuilt against the alwan headers it links with. Only the alwan_* functions declared in alwan.h are linked; their ABI follows the alwan.h rules (no enum renumbering and no struct layout change within 3.x).",
+    "config": "The precision switches (ALWAN_WITH_F32, ALWAN_WITH_F64) and ALWAN_DETERMINISTIC must have the same value in the library and in alwan. The installed alwan_build_config.h carries the precision switches; ALWAN_DETERMINISTIC reaches consumers as an INTERFACE compile definition of the exported alwan target. Do not redefine either on the command line."
+  },
+  "groups": [
+    {
+      "group": "allocation",
+      "status": "stable",
+      "header": "alwan_foundation.h",
+      "names": ["alwan_ctx_alloc", "alwan_ctx_free", "alwan_safe_array_size"],
+      "note": "alwan_ctx_alloc / alwan_ctx_free are declared in alwan.h. NULL context means the default allocator."
+    },
+    {
+      "group": "default_allocator",
+      "status": "stable",
+      "header": "alwan_config.h",
+      "names": ["ALWAN_ALLOC", "ALWAN_FREE", "ALWAN_REALLOC", "ALWAN_MEMCPY"],
+      "note": "The build's default allocator. Prefer alwan_ctx_alloc where a context is at hand; overriding these macros requires rebuilding alwan."
+    },
+    {
+      "group": "backend",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "names": ["ALWAN_BACKEND", "ALWAN_HAS_POINTERS"],
+      "patterns": ["^ALWAN_BACKEND_[A-Z0-9]+$"]
+    },
+    {
+      "group": "language",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "names": ["ALWAN_INLINE", "ALWAN_CONSTEXPR", "ALWAN_TYPE_DEF", "ALWAN_UNUSED", "ALWAN_LITERAL", "ALWAN_SELECT", "ALWAN_DET_PRECISE"]
+    },
+    {
+      "group": "math",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "patterns": ["^ALWAN_(ABS|ACOS|ASIN|ATAN|ATAN2|CBRT|CEIL|COS|COSH|EXP|EXP2|FLOOR|FMOD|HYPOT|LN|LOG10|LOG2|POW|POWI|ROUND|SIN|SINH|SQRT|TAN|TANH|TRUNC)(_F32|_F64)?$"],
+      "names": ["ALWAN_FMA_CR_F32", "ALWAN_FMA_CR_F64", "ALWAN_FMAF", "ALWAN_PI", "ALWAN_PI_F64"],
+      "note": "In the deterministic build these are alwan's polynomial math. Not every function has all three spellings."
+    },
+    {
+      "group": "diagnostics",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "names": ["ALWAN_DIAG_PUSH", "ALWAN_DIAG_POP", "ALWAN_DIAG_DISABLE_FLOAT_CONV", "ALWAN_DIAG_DISABLE_UNUSED_FUNCTION"]
+    },
+    {
+      "group": "precision_switches",
+      "status": "stable",
+      "header": "alwan_build_config.h",
+      "names": ["ALWAN_WITH_F32", "ALWAN_WITH_F64", "ALWAN_FOUNDATION_VERSION"]
+    },
+    {
+      "group": "determinism_switch",
+      "status": "stable",
+      "header": "compile definition (PUBLIC on the alwan CMake target; Debug_Det / Release_Det in Sharpmake)",
+      "names": ["ALWAN_DETERMINISTIC"]
+    },
+    {
+      "group": "precision_facade",
+      "status": "provisional",
+      "header": "alwan_build_config.h",
+      "names": ["ALWAN_WITH_F64_FACADE"],
+      "note": "Kept for builds that compile only f64; may be removed."
+    },
+    {
+      "group": "core_templating",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "names": ["ALWAN_FOUNDATION_CORE_F32_SETUP", "ALWAN_FOUNDATION_CORE_F64_SETUP", "ALWAN_FOUNDATION_CORE_TEARDOWN",
+                "ALWAN_CORE_T", "ALWAN_CORE_FN", "ALWAN_CORE_FNLIT", "ALWAN_CORE_FNVLIT", "ALWAN_CORE_FNLIT_MAP",
+                "ALWAN_CORE_SUFFIX", "ALWAN_CORE_LITERAL", "ALWAN_CORE_TABLE_CELL"],
+      "patterns": ["^ALWAN_CORE_(ABS|ACOS|ASIN|ATAN|ATAN2|CBRT|CEIL|COS|COSH|EXP|EXP2|FLOOR|FMOD|HYPOT|LN|LOG10|LOG2|POW|POWI|ROUND|SIN|SINH|SQRT|TAN|TANH|TRUNC|SELECT|MIN|MAX|CLAMP|ZERO|ONE|HALF|TWO|PI|VEC2|VEC3|VEC4|MAT3)$"],
+      "note": "Valid between a setup header and the teardown header only."
+    },
+    {
+      "group": "table_core",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "names": ["ALWAN_FOUNDATION_TABLE_CORE", "ALWAN_FOUNDATION_TABLE_READER", "ALWAN_TABLE_READ"],
+      "patterns": ["^alwan_table_coord(_unit)?_f(32|64)_v$", "^alwan_table_cell(_unit)?(_f(32|64))?(_v)?$"]
+    },
+    {
+      "group": "half_core",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "names": ["ALWAN_FOUNDATION_HALF_CORE", "alwan_half"],
+      "patterns": ["^alwan_(half_to_float|float_to_half)_f(32|64)_v$"]
+    },
+    {
+      "group": "microfacet_core",
+      "status": "stable",
+      "header": "alwan_foundation_core.h",
+      "names": ["ALWAN_FOUNDATION_MICROFACET_CORE"],
+      "patterns": ["^alwan_microfacet_[a-z0-9_]+$"]
+    },
+    {
+      "group": "types",
+      "status": "stable",
+      "header": "alwan_types.h",
+      "names": ["alwan_f32", "alwan_f64", "alwan_scalar", "alwan_sample_mode"],
+      "patterns": ["^ALWAN_SAMPLE_[A-Z0-9_]+$", "^ALWAN_TN$"],
+      "note": "Plus every type and enum declared in alwan.h and alwan_types.h, which follow the alwan.h rules."
+    },
+    {
+      "group": "typed_map_layer",
+      "status": "provisional",
+      "header": "map/alwan_map_internal.h (#define ALWAN_FOUNDATION_WITH_MAP)",
+      "names": ["ALWAN_FOUNDATION_WITH_MAP"],
+      "patterns": ["^alwan__(load|store)(1|3|4)_typed$", "^alwan__(load|store)_tile_typed_(1|3|4)$", "^alwan__f16_to_f32$", "^alwan__f32_to_f16$"],
+      "note": "Suwar does not use it today. Keeps its alwan__ spelling; may be renamed before it becomes stable."
+    },
+    {
+      "group": "simd_layer",
+      "status": "provisional",
+      "header": "simd/alwan_simd.h (#define ALWAN_FOUNDATION_WITH_SIMD)",
+      "names": ["ALWAN_FOUNDATION_WITH_SIMD"],
+      "patterns": ["^alwan_simd_[a-z0-9_]+$", "^ALWAN_SIMD_[A-Z0-9_]+$"],
+      "note": "Lane wrappers for SSE2, AVX, AVX2, NEON and scalar. Suwar does not use it today."
+    },
+    {
+      "group": "internal",
+      "status": "internal",
+      "header": "any",
+      "patterns": ["^alwan__", "^ALWAN__", "^g_", "^alwan_internal_"],
+      "names": ["struct alwan_ctx", "alwan_default_alloc", "alwan_default_free", "alwan_default_realloc"],
+      "note": "Everything in alwan_internal.h, the data registry and the embedded tables. The map-layer names listed above are the only alwan__ names a library may use."
+    }
+  ]
+}

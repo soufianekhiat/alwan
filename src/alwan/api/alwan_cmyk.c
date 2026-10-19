@@ -42,6 +42,7 @@ static double const k_plane_levels[ALWAN__CMYK_PLANES][ALWAN__CMYK_LEVELS] = {
 struct alwan_cmyk_model_s {
     /* Native Lab per node, [plane][(c * n + m) * n + y] with each plane's own n. */
     double lab[ALWAN__CMYK_PLANES][ALWAN__CMYK_NODES][3];
+    alwan_ctx *ctx;   /* allocator it was built with, freed with the same */
 };
 
 static int alwan__cmyk_plane_of(double k) {
@@ -63,19 +64,21 @@ static int alwan__cmyk_level_of(int p, double v) {
 /* Every patch on a plane node is summed into it, so a node the target repeats is the
  * mean of its measurements. A node no patch reaches is ALWAN_E_NODATA: the chart is
  * not an IT8.7/4 characterisation. */
-static alwan_status alwan__cmyk_build(alwan_cmyk_model **out, size_t n, double const *cmyk, double const *lab) {
+static alwan_status alwan__cmyk_build(alwan_cmyk_model **out, size_t n, double const *cmyk, double const *lab,
+                                      alwan_ctx *ctx) {
     alwan_cmyk_model *m;
     int *count;
     size_t s;
     int p, q;
-    m = (alwan_cmyk_model *)ALWAN_ALLOC(sizeof(*m), sizeof(double));
-    count = (int *)ALWAN_ALLOC(sizeof(int) * ALWAN__CMYK_PLANES * ALWAN__CMYK_NODES, sizeof(int));
+    m = (alwan_cmyk_model *)alwan_ctx_alloc(sizeof(*m), sizeof(double), ctx);
+    count = (int *)alwan_ctx_alloc(sizeof(int) * ALWAN__CMYK_PLANES * ALWAN__CMYK_NODES, sizeof(int), ctx);
     if (!m || !count) {
-        ALWAN_FREE(m);
-        ALWAN_FREE(count);
+        alwan_ctx_free(m, ctx);
+        alwan_ctx_free(count, ctx);
         return ALWAN_E_NOMEM;
     }
     memset(m, 0, sizeof(*m));
+    m->ctx = ctx;
     memset(count, 0, sizeof(int) * ALWAN__CMYK_PLANES * ALWAN__CMYK_NODES);
     for (s = 0; s < n; s++) {
         double const *d = cmyk + 4 * s;
@@ -97,8 +100,8 @@ static alwan_status alwan__cmyk_build(alwan_cmyk_model **out, size_t n, double c
         for (q = 0; q < nodes; q++) {
             int const c = count[p * ALWAN__CMYK_NODES + q];
             if (c == 0) {
-                ALWAN_FREE(m);
-                ALWAN_FREE(count);
+                alwan_ctx_free(m, ctx);
+                alwan_ctx_free(count, ctx);
                 return ALWAN_E_NODATA;
             }
             m->lab[p][q][0] /= (double)c;
@@ -106,7 +109,7 @@ static alwan_status alwan__cmyk_build(alwan_cmyk_model **out, size_t n, double c
             m->lab[p][q][2] /= (double)c;
         }
     }
-    ALWAN_FREE(count);
+    alwan_ctx_free(count, ctx);
     *out = m;
     return ALWAN_OK;
 }
@@ -363,8 +366,10 @@ alwan_status alwan_lab_to_cmyk_f32(alwan_cmyk_f32 *cmyk_out, alwan_f32 *delta_e_
 
 /* A chart's patches as percent CMYK and native Lab: the file's own Lab columns when it
  * has them, else its XYZ in Lab against its illuminant's white. */
-static alwan_status alwan__cmyk_from_chart_f64(alwan_cmyk_model **out, alwan_chart_f64 const *chart) {
+static alwan_status alwan__cmyk_from_chart_f64(alwan_cmyk_model **out, alwan_chart_f64 const *chart, alwan_ctx *ctx) {
     size_t const n = alwan_chart_num_patches_f64(chart);
+    size_t const cmyk_bytes = alwan_safe_array_size(alwan_safe_array_size(n, 4), sizeof(double));
+    size_t const lab_bytes = alwan_safe_array_size(alwan_safe_array_size(n, 3), sizeof(double));
     double *cmyk, *lab;
     alwan_illuminant ill;
     alwan_observer_type obs;
@@ -376,11 +381,12 @@ static alwan_status alwan__cmyk_from_chart_f64(alwan_cmyk_model **out, alwan_cha
         alwan_illuminant_white_point_f64(&white, ill, obs) != ALWAN_OK) {
         return ALWAN_E_INVALID;
     }
-    cmyk = (double *)ALWAN_ALLOC(alwan_safe_array_size(n * 4, sizeof(double)), sizeof(double));
-    lab = (double *)ALWAN_ALLOC(alwan_safe_array_size(n * 3, sizeof(double)), sizeof(double));
+    if (!cmyk_bytes || !lab_bytes) return ALWAN_E_NOMEM;
+    cmyk = (double *)alwan_ctx_alloc(cmyk_bytes, sizeof(double), ctx);
+    lab = (double *)alwan_ctx_alloc(lab_bytes, sizeof(double), ctx);
     if (!cmyk || !lab) {
-        ALWAN_FREE(cmyk);
-        ALWAN_FREE(lab);
+        alwan_ctx_free(cmyk, ctx);
+        alwan_ctx_free(lab, ctx);
         return ALWAN_E_NOMEM;
     }
     for (s = 0; s < n && st == ALWAN_OK; s++) {
@@ -398,17 +404,16 @@ static alwan_status alwan__cmyk_from_chart_f64(alwan_cmyk_model **out, alwan_cha
         lab[3 * s + 1] = l.a;
         lab[3 * s + 2] = l.b;
     }
-    if (st == ALWAN_OK) st = alwan__cmyk_build(out, n, cmyk, lab);
-    ALWAN_FREE(cmyk);
-    ALWAN_FREE(lab);
+    if (st == ALWAN_OK) st = alwan__cmyk_build(out, n, cmyk, lab, ctx);
+    alwan_ctx_free(cmyk, ctx);
+    alwan_ctx_free(lab, ctx);
     return st;
 }
 
 alwan_status alwan_cmyk_model_from_chart_f64(alwan_cmyk_model **out, alwan_chart_f64 const *chart, alwan_ctx *ctx) {
-    (void)ctx;
     if (out) *out = NULL;
     if (!out || !chart) return ALWAN_E_INVALID;
-    return alwan__cmyk_from_chart_f64(out, chart);
+    return alwan__cmyk_from_chart_f64(out, chart, ctx);
 }
 
 /* Gated: this calls the alwan_chart_*_f32 accessors, which an f64-only build does not have.
@@ -417,13 +422,14 @@ alwan_status alwan_cmyk_model_from_chart_f64(alwan_cmyk_model **out, alwan_chart
 #if ALWAN_WITH_F32
 alwan_status alwan_cmyk_model_from_chart_f32(alwan_cmyk_model **out, alwan_chart_f32 const *chart, alwan_ctx *ctx) {
     size_t const n = alwan_chart_num_patches_f32(chart);
+    size_t const cmyk_bytes = alwan_safe_array_size(alwan_safe_array_size(n, 4), sizeof(double));
+    size_t const lab_bytes = alwan_safe_array_size(alwan_safe_array_size(n, 3), sizeof(double));
     double *cmyk, *lab;
     size_t s;
     alwan_illuminant ill;
     alwan_observer_type obs;
     alwan_xyz_f64 white;
     alwan_status st = ALWAN_OK;
-    (void)ctx;
     if (out) *out = NULL;
     if (!out || !chart) return ALWAN_E_INVALID;
     if (alwan_chart_device_model_f32(chart) != ALWAN_CHART_DEVICE_CMYK || n == 0) return ALWAN_E_NODATA;
@@ -431,11 +437,12 @@ alwan_status alwan_cmyk_model_from_chart_f32(alwan_cmyk_model **out, alwan_chart
         alwan_illuminant_white_point_f64(&white, ill, obs) != ALWAN_OK) {
         return ALWAN_E_INVALID;
     }
-    cmyk = (double *)ALWAN_ALLOC(alwan_safe_array_size(n * 4, sizeof(double)), sizeof(double));
-    lab = (double *)ALWAN_ALLOC(alwan_safe_array_size(n * 3, sizeof(double)), sizeof(double));
+    if (!cmyk_bytes || !lab_bytes) return ALWAN_E_NOMEM;
+    cmyk = (double *)alwan_ctx_alloc(cmyk_bytes, sizeof(double), ctx);
+    lab = (double *)alwan_ctx_alloc(lab_bytes, sizeof(double), ctx);
     if (!cmyk || !lab) {
-        ALWAN_FREE(cmyk);
-        ALWAN_FREE(lab);
+        alwan_ctx_free(cmyk, ctx);
+        alwan_ctx_free(lab, ctx);
         return ALWAN_E_NOMEM;
     }
     for (s = 0; s < n && st == ALWAN_OK; s++) {
@@ -468,9 +475,9 @@ alwan_status alwan_cmyk_model_from_chart_f32(alwan_cmyk_model **out, alwan_chart
             lab[3 * s + 2] = l.b;
         }
     }
-    if (st == ALWAN_OK) st = alwan__cmyk_build(out, n, cmyk, lab);
-    ALWAN_FREE(cmyk);
-    ALWAN_FREE(lab);
+    if (st == ALWAN_OK) st = alwan__cmyk_build(out, n, cmyk, lab, ctx);
+    alwan_ctx_free(cmyk, ctx);
+    alwan_ctx_free(lab, ctx);
     return st;
 }
 #endif /* ALWAN_WITH_F32 */
@@ -484,7 +491,7 @@ alwan_status alwan_cmyk_model_fogra39(alwan_cmyk_model **out, alwan_ctx *ctx) {
     if (out) *out = NULL;
     if (!out) return ALWAN_E_INVALID;
     for (i = 0; i < lines; i++) len += strlen(k_fogra39_lines[i]);
-    buf = (char *)ALWAN_ALLOC(len + 1, 1);
+    buf = (char *)alwan_ctx_alloc(len + 1, 1, ctx);
     if (!buf) return ALWAN_E_NOMEM;
     for (i = 0; i < lines; i++) {
         size_t const l = strlen(k_fogra39_lines[i]);
@@ -493,16 +500,17 @@ alwan_status alwan_cmyk_model_fogra39(alwan_cmyk_model **out, alwan_ctx *ctx) {
     }
     buf[len] = '\0';
     st = alwan_chart_load_buffer_f64(&chart, buf, len, ctx);
-    ALWAN_FREE(buf);
+    alwan_ctx_free(buf, ctx);
     if (st != ALWAN_OK) return st;
-    st = alwan__cmyk_from_chart_f64(out, chart);
+    st = alwan__cmyk_from_chart_f64(out, chart, ctx);
     alwan_chart_destroy_f64(chart, ctx);
     return st;
 }
 
 void alwan_cmyk_model_destroy(alwan_cmyk_model *model, alwan_ctx *ctx) {
-    (void)ctx;
-    ALWAN_FREE(model);
+    (void)ctx; /* the model frees with the context it was built with */
+    if (!model) return;
+    alwan_ctx_free(model, model->ctx);
 }
 
 alwan_status alwan_cmyk_to_lab_f64(alwan_lab_f64 *lab_out, alwan_cmyk_f64 const *cmyk, alwan_cmyk_model const *model) {
@@ -591,6 +599,7 @@ struct alwan_cmyk_inverse_s {
      * and a borrowed pointer would put a lifetime rule in the caller's hands for the
      * sake of the 105 KB this costs. */
     alwan_cmyk_model model;
+    alwan_ctx *ctx;   /* allocator it was created with, freed with the same */
 };
 
 /* The Lab box the characterisation reaches at this black. Swept rather than assumed: a
@@ -632,7 +641,6 @@ alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_mode
     int iL;
     alwan_status st;
     double lo[3], hi[3];
-    (void)ctx;
     if (out) *out = NULL;
     if (!out || !model) return ALWAN_E_INVALID;
     if (!((double)k >= 0.0 && (double)k <= 1.0)) return ALWAN_E_INVALID;
@@ -641,11 +649,12 @@ alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_mode
     if (st != ALWAN_OK) return st;
 
     nodes = (size_t)size * (size_t)size * (size_t)size;
-    inv = (alwan_cmyk_inverse *)ALWAN_ALLOC(sizeof(*inv), sizeof(double));
+    inv = (alwan_cmyk_inverse *)alwan_ctx_alloc(sizeof(*inv), sizeof(double), ctx);
     if (!inv) return ALWAN_E_NOMEM;
-    inv->cmy = (double *)ALWAN_ALLOC(alwan_safe_array_size(nodes * 3, sizeof(double)),
-                                     sizeof(double));
-    if (!inv->cmy) { ALWAN_FREE(inv); return ALWAN_E_NOMEM; }
+    inv->ctx = ctx;
+    inv->cmy = (double *)alwan_ctx_alloc(alwan_safe_array_size(nodes * 3, sizeof(double)),
+                                         sizeof(double), ctx);
+    if (!inv->cmy) { alwan_ctx_free(inv, ctx); return ALWAN_E_NOMEM; }
     inv->size = size;
     inv->k = (double)k;
     inv->model = *model;
@@ -665,8 +674,8 @@ alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_mode
                 target.b = lo[2] + (hi[2] - lo[2]) * (double)ib / d;
                 st = alwan__lab_to_cmyk(cmy, NULL, model, &target, (double)k);
                 if (st != ALWAN_OK) {
-                    ALWAN_FREE(inv->cmy);
-                    ALWAN_FREE(inv);
+                    alwan_ctx_free(inv->cmy, ctx);
+                    alwan_ctx_free(inv, ctx);
                     return st;
                 }
                 inv->cmy[at + 0] = cmy[0];
@@ -680,10 +689,12 @@ alwan_status alwan_cmyk_inverse_create(alwan_cmyk_inverse **out, alwan_cmyk_mode
 }
 
 void alwan_cmyk_inverse_destroy(alwan_cmyk_inverse *inv, alwan_ctx *ctx) {
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the inverse frees with the context it was created with */
     if (!inv) return;
-    ALWAN_FREE(inv->cmy);
-    ALWAN_FREE(inv);
+    own = inv->ctx;
+    alwan_ctx_free(inv->cmy, own);
+    alwan_ctx_free(inv, own);
 }
 
 size_t alwan_cmyk_inverse_size(alwan_cmyk_inverse const *inv) {

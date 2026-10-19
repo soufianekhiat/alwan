@@ -111,6 +111,7 @@ struct alwan_clf_s {
     clf_op *ops;
     size_t count;
     char id[CLF_ID_CAP];
+    alwan_ctx *ctx;               /* allocator it was imported with, freed with the same */
 };
 
 /* ---------------------------------------------------------------- locale */
@@ -196,10 +197,11 @@ static int clf_channel_index(char const *v) {
     return -1;
 }
 
-static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *node_name);
+static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *node_name, alwan_ctx *ctx);
 
-/* Parse the body of one ProcessNode. The scanner sits just past its open tag. */
-static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *node_name) {
+/* Parse the body of one ProcessNode. The scanner sits just past its open tag. A LUT's
+ * data comes from ctx, the context the alwan_clf holding the node was imported with. */
+static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *node_name, alwan_ctx *ctx) {
     char name[CLF_NAME_CAP], value[CLF_VALUE_CAP];
     (void)node_name;
     for (;;) {
@@ -261,7 +263,7 @@ static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *n
                 op->channels = channels;
                 want = (size_t)op->size * (size_t)channels;
                 if (op->data) return ALWAN_E_INVALID; /* a second Array in one node */
-                op->data = (double *)ALWAN_ALLOC(want * sizeof(double), sizeof(double));
+                op->data = (double *)alwan_ctx_alloc(want * sizeof(double), sizeof(double), ctx);
                 if (!op->data) return ALWAN_E_NOMEM;
                 if (!clf_read_numbers(s, op->data, want, &got) || got != want) return ALWAN_E_INVALID;
             } else if (op->type == ALWAN_CLF_NODE_LUT3D) {
@@ -273,7 +275,7 @@ static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *n
                 if (op->size < 2 || op->size > CLF_MAX_LUT3D) return ALWAN_E_RANGE;
                 want = (size_t)op->size * op->size * op->size * 3;
                 if (op->data) return ALWAN_E_INVALID; /* a second Array in one node */
-                op->data = (double *)ALWAN_ALLOC(want * sizeof(double), sizeof(double));
+                op->data = (double *)alwan_ctx_alloc(want * sizeof(double), sizeof(double), ctx);
                 if (!op->data) return ALWAN_E_NOMEM;
                 {
                     /* CLF writes a LUT3D with BLUE varying fastest and red slowest.
@@ -343,7 +345,7 @@ static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *n
             while ((r = alwan__xml_read_attr(s, name, CLF_NAME_CAP, value, CLF_VALUE_CAP, &self)) == 1) { /* ignored */ }
             if (r < 0) return ALWAN_E_INVALID;
             if (self) continue;
-            st = clf_parse_body(s, op, node_name);
+            st = clf_parse_body(s, op, node_name, ctx);
             if (st != ALWAN_OK) return st;
             continue;
         }
@@ -649,18 +651,20 @@ static void clf_apply_op(clf_op const *op, double *v) {
 
 static void clf_free(alwan_clf *clf) {
     size_t i;
+    alwan_ctx *ctx;
     if (!clf) return;
+    ctx = clf->ctx;
     if (clf->ops) {
         /* every slot, not count: a node that failed in its body holds data too */
         for (i = 0; i < CLF_MAX_NODES; i++) {
-            if (clf->ops[i].data) ALWAN_FREE(clf->ops[i].data);
+            if (clf->ops[i].data) alwan_ctx_free(clf->ops[i].data, ctx);
         }
-        ALWAN_FREE(clf->ops);
+        alwan_ctx_free(clf->ops, ctx);
     }
-    ALWAN_FREE(clf);
+    alwan_ctx_free(clf, ctx);
 }
 
-static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
+static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len, alwan_ctx *ctx) {
     alwan__xml_scan s;
     alwan_clf *clf;
     char name[CLF_NAME_CAP], value[CLF_VALUE_CAP];
@@ -668,11 +672,12 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
     alwan_status status = ALWAN_OK;
     int self = 0, r;
 
-    clf = (alwan_clf *)ALWAN_ALLOC(sizeof *clf, sizeof(double));
+    clf = (alwan_clf *)alwan_ctx_alloc(sizeof *clf, sizeof(double), ctx);
     if (!clf) return ALWAN_E_NOMEM;
     memset(clf, 0, sizeof *clf);
-    clf->ops = (clf_op *)ALWAN_ALLOC(sizeof(clf_op) * CLF_MAX_NODES, sizeof(double));
-    if (!clf->ops) { ALWAN_FREE(clf); return ALWAN_E_NOMEM; }
+    clf->ctx = ctx;
+    clf->ops = (clf_op *)alwan_ctx_alloc(sizeof(clf_op) * CLF_MAX_NODES, sizeof(double), ctx);
+    if (!clf->ops) { alwan_ctx_free(clf, ctx); return ALWAN_E_NOMEM; }
     memset(clf->ops, 0, sizeof(clf_op) * CLF_MAX_NODES);
 
     s.p = buf;
@@ -778,7 +783,7 @@ static alwan_status clf_parse(alwan_clf **out, char const *buf, size_t len) {
                 op->style = style;
             }
             if (!self) {
-                status = clf_parse_body(&s, op, name);
+                status = clf_parse_body(&s, op, name, ctx);
                 if (status != ALWAN_OK) goto done;
             }
             if ((type == ALWAN_CLF_NODE_LUT1D || type == ALWAN_CLF_NODE_LUT3D) && !op->data) {
@@ -808,10 +813,9 @@ done:
 /* ---------------------------------------------------------------- public */
 
 alwan_status alwan_clf_import_buffer(alwan_clf **out, char const *buf, size_t len, alwan_ctx *ctx) {
-    (void)ctx;
     if (!out || !buf || len == 0) return ALWAN_E_INVALID;
     *out = NULL;
-    return clf_parse(out, buf, len);
+    return clf_parse(out, buf, len, ctx);
 }
 
 alwan_status alwan_clf_import(alwan_clf **out, char const *path, alwan_ctx *ctx) {
@@ -821,7 +825,6 @@ alwan_status alwan_clf_import(alwan_clf **out, char const *path, alwan_ctx *ctx)
     alwan_status st;
     size_t got;
 
-    (void)ctx;
     if (!out || !path) return ALWAN_E_INVALID;
     *out = NULL;
     f = fopen(path, "rb");
@@ -830,19 +833,19 @@ alwan_status alwan_clf_import(alwan_clf **out, char const *path, alwan_ctx *ctx)
     size = ftell(f);
     if (size <= 0 || size > (long)(64 * 1024 * 1024)) { fclose(f); return ALWAN_E_RANGE; }
     if (fseek(f, 0, SEEK_SET) != 0) { fclose(f); return ALWAN_E_INVALID; }
-    buf = (char *)ALWAN_ALLOC((size_t)size + 1, 1);
+    buf = (char *)alwan_ctx_alloc((size_t)size + 1, 1, ctx);
     if (!buf) { fclose(f); return ALWAN_E_NOMEM; }
     got = fread(buf, 1, (size_t)size, f);
     fclose(f);
-    if (got != (size_t)size) { ALWAN_FREE(buf); return ALWAN_E_INVALID; }
+    if (got != (size_t)size) { alwan_ctx_free(buf, ctx); return ALWAN_E_INVALID; }
     buf[size] = '\0';
-    st = clf_parse(out, buf, (size_t)size);
-    ALWAN_FREE(buf);
+    st = clf_parse(out, buf, (size_t)size, ctx);
+    alwan_ctx_free(buf, ctx);
     return st;
 }
 
 void alwan_clf_destroy(alwan_clf *clf, alwan_ctx *ctx) {
-    (void)ctx;
+    (void)ctx; /* the clf frees with the context it was imported with */
     clf_free(clf);
 }
 

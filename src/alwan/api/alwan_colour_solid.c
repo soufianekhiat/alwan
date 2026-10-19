@@ -65,6 +65,7 @@ struct alwan_colour_solid_s {
     double *facet;
     size_t  facet_count;
     double  white[3];
+    alwan_ctx *ctx;         /* the allocator the solid was created with */
 };
 
 /* ---------------------------------------------------------------- build */
@@ -84,7 +85,7 @@ static alwan_status alwan_colour_solid_generators(double *gen, size_t bins,
     st = alwan_spd_illuminant_f64(&illum, illuminant, ctx);
     if (st != ALWAN_OK) return st;
 
-    w = (double *)ALWAN_ALLOC(alwan_safe_array_size(bins * 3, sizeof(double)), sizeof(double));
+    w = (double *)alwan_ctx_alloc(alwan_safe_array_size(bins * 3, sizeof(double)), sizeof(double), ctx);
     if (!w) {
         alwan_spd_destroy_f64(&illum, ctx);
         return ALWAN_E_NOMEM;
@@ -95,7 +96,7 @@ static alwan_status alwan_colour_solid_generators(double *gen, size_t bins,
     st = alwan_spectral_weights_observer_f64(w, bins, wmin, wmax, &illum, observer,
                                              ALWAN_INTEGRATE_TRAPEZOID, 0, ctx);
     alwan_spd_destroy_f64(&illum, ctx);
-    if (st != ALWAN_OK) { ALWAN_FREE(w); return st; }
+    if (st != ALWAN_OK) { alwan_ctx_free(w, ctx); return st; }
 
     /* Trapezoid to rectangles: the first and last bands carry half weight under
      * the trapezoid rule, and a pulse wave's band is wholly on or wholly off. */
@@ -104,14 +105,14 @@ static alwan_status alwan_colour_solid_generators(double *gen, size_t bins,
         w[i * bins + (bins - 1)] *= 2.0;
     }
     for (i = 0; i < bins; i++) y_sum += w[1 * bins + i];
-    if (!(y_sum > 0.0)) { ALWAN_FREE(w); return ALWAN_E_DIVZERO; }
+    if (!(y_sum > 0.0)) { alwan_ctx_free(w, ctx); return ALWAN_E_DIVZERO; }
 
     for (i = 0; i < bins; i++) {
         gen[i * 3 + 0] = w[0 * bins + i] / y_sum;
         gen[i * 3 + 1] = w[1 * bins + i] / y_sum;
         gen[i * 3 + 2] = w[2 * bins + i] / y_sum;
     }
-    ALWAN_FREE(w);
+    alwan_ctx_free(w, ctx);
     return ALWAN_OK;
 }
 
@@ -124,8 +125,8 @@ static alwan_status alwan_colour_solid_facets(alwan_colour_solid *s) {
     size_t i, j, k, n = 0;
     double longest = 0.0, cutoff;
 
-    s->facet = (double *)ALWAN_ALLOC(alwan_safe_array_size(pairs * 5, sizeof(double)),
-                                     sizeof(double));
+    s->facet = (double *)alwan_ctx_alloc(alwan_safe_array_size(pairs * 5, sizeof(double)),
+                                         sizeof(double), s->ctx);
     if (!s->facet) return ALWAN_E_NOMEM;
 
     for (i = 0; i < bins; i++) {
@@ -184,12 +185,13 @@ static alwan_status alwan_colour_solid_build(alwan_colour_solid **out,
     }
     if (!(wmax > wmin)) return ALWAN_E_INVALID;
 
-    s = (alwan_colour_solid *)ALWAN_ALLOC(sizeof *s, sizeof(void *));
+    s = (alwan_colour_solid *)alwan_ctx_alloc(sizeof *s, sizeof(void *), ctx);
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof *s);
+    s->ctx = ctx;
     s->bins = bins;
-    s->gen = (double *)ALWAN_ALLOC(alwan_safe_array_size(bins * 3, sizeof(double)),
-                                   sizeof(double));
+    s->gen = (double *)alwan_ctx_alloc(alwan_safe_array_size(bins * 3, sizeof(double)),
+                                       sizeof(double), ctx);
     if (!s->gen) { alwan_colour_solid_destroy(s, ctx); return ALWAN_E_NOMEM; }
 
     st = alwan_colour_solid_generators(s->gen, bins, wmin, wmax, observer, illuminant, ctx);
@@ -225,11 +227,13 @@ alwan_status alwan_colour_solid_create_f32(alwan_colour_solid **out,
 }
 
 void alwan_colour_solid_destroy(alwan_colour_solid *solid, alwan_ctx *ctx) {
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the solid frees with the context it was created with */
     if (!solid) return;
-    ALWAN_FREE(solid->gen);
-    ALWAN_FREE(solid->facet);
-    ALWAN_FREE(solid);
+    own = solid->ctx;
+    alwan_ctx_free(solid->gen, own);
+    alwan_ctx_free(solid->facet, own);
+    alwan_ctx_free(solid, own);
 }
 
 /* ---------------------------------------------------------------- query */

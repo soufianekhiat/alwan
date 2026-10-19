@@ -1188,7 +1188,11 @@ static alwan_status alwan__ccm_solve_objective(alwan_f64 *matrix_out, alwan_f64 
         Z = (alwan_f64 *)ALWAN_ALLOC((size_t)n * (size_t)(n - 1) * sizeof(alwan_f64), sizeof(alwan_f64));
         xp = (alwan_f64 *)ALWAN_ALLOC((size_t)n * 3 * sizeof(alwan_f64), sizeof(alwan_f64));
         if (!Z || !xp) { st = ALWAN_E_NOMEM; goto done; }
-        if (alwan__ccm_nullspace(Z, crow, n) != 1) { st = ALWAN_E_INVALID; goto done; }
+        {
+            int const nk = alwan__ccm_nullspace(Z, crow, n);
+            if (nk < 0) { st = ALWAN_E_NOMEM; goto done; }
+            if (nk != 1) { st = ALWAN_E_INVALID; goto done; }
+        }
         for (i = 0; i < n; i++) cc += crow[i] * crow[i];
         for (i = 0; i < n; i++)
             for (ch = 0; ch < 3; ch++) xp[i * 3 + ch] = crow[i] * cval[ch] / cc;

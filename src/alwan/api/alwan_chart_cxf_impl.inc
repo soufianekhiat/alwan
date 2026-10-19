@@ -43,12 +43,13 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__chart_load_cxf)(ALWAN_CORE_CHART **o
     size_t i, k;
     int any_lab = 0;
 
-    st = alwan__cxf_parse(&d, buf, len, is_cxf);
+    st = alwan__cxf_parse(&d, buf, len, is_cxf, ctx);
     if (st != ALWAN_OK) return st;
 
-    c = (ALWAN_CORE_CHART *)ALWAN_ALLOC(sizeof(*c), sizeof(void *));
+    c = (ALWAN_CORE_CHART *)alwan_ctx_alloc(sizeof(*c), sizeof(void *), ctx);
     if (!c) { alwan__cxf_free(&d); return ALWAN_E_NOMEM; }
     memset(c, 0, sizeof(*c));
+    c->ctx = ctx;
 
     /* CxF states the condition in a ColorSpecification. When it states none,
      * the same D50 and 2 degree default the CGATS path takes applies, because
@@ -60,35 +61,40 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__chart_load_cxf)(ALWAN_CORE_CHART **o
     if (st != ALWAN_OK) goto done;
 
     c->patch_count = d.count;
-    c->xyz = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(d.count * 3, sizeof(ALWAN_CORE_T)),
-                                          sizeof(ALWAN_CORE_T));
-    c->patch_names = (char **)ALWAN_ALLOC(sizeof(char *) * d.count, sizeof(void *));
-    if (!c->xyz || !c->patch_names) { st = ALWAN_E_NOMEM; goto done; }
-    memset(c->xyz, 0, sizeof(ALWAN_CORE_T) * d.count * 3);
-    memset(c->patch_names, 0, sizeof(char *) * d.count);
+    {
+        /* every product checked even though the parse capped count and bands; 0 is an overflow */
+        size_t xyz_bytes = alwan_safe_array_size(alwan_safe_array_size(d.count, 3), sizeof(ALWAN_CORE_T));
+        size_t name_bytes = alwan_safe_array_size(d.count, sizeof(char *));
+        if (!xyz_bytes || !name_bytes) { st = ALWAN_E_NOMEM; goto done; }
+        c->xyz = (ALWAN_CORE_T *)alwan_ctx_alloc(xyz_bytes, sizeof(ALWAN_CORE_T), ctx);
+        c->patch_names = (char **)alwan_ctx_alloc(name_bytes, sizeof(void *), ctx);
+        if (!c->xyz || !c->patch_names) { st = ALWAN_E_NOMEM; goto done; }
+        memset(c->xyz, 0, xyz_bytes);
+        memset(c->patch_names, 0, name_bytes);
 
-    for (i = 0; i < d.count; i++) {
-        if (d.objects[i].has_lab) any_lab = 1;
-    }
-    if (any_lab) {
-        c->lab = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(d.count * 3, sizeof(ALWAN_CORE_T)),
-                                              sizeof(ALWAN_CORE_T));
-        if (!c->lab) { st = ALWAN_E_NOMEM; goto done; }
-        memset(c->lab, 0, sizeof(ALWAN_CORE_T) * d.count * 3);
+        for (i = 0; i < d.count; i++) {
+            if (d.objects[i].has_lab) any_lab = 1;
+        }
+        if (any_lab) {
+            c->lab = (ALWAN_CORE_T *)alwan_ctx_alloc(xyz_bytes, sizeof(ALWAN_CORE_T), ctx);
+            if (!c->lab) { st = ALWAN_E_NOMEM; goto done; }
+            memset(c->lab, 0, xyz_bytes);
+        }
     }
     if (d.dev_model != ALWAN_CXF_DEV_NONE) {
+        size_t dev_bytes = alwan_safe_array_size(alwan_safe_array_size(d.count, 4), sizeof(ALWAN_CORE_T));
         c->device_model = (d.dev_model == ALWAN_CXF_DEV_CMYK)
                           ? ALWAN_CHART_DEVICE_CMYK : ALWAN_CHART_DEVICE_RGB;
         c->device_channels = (d.dev_model == ALWAN_CXF_DEV_CMYK) ? 4 : 3;
-        c->device = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(d.count * 4, sizeof(ALWAN_CORE_T)),
-                                                 sizeof(ALWAN_CORE_T));
+        if (!dev_bytes) { st = ALWAN_E_NOMEM; goto done; }
+        c->device = (ALWAN_CORE_T *)alwan_ctx_alloc(dev_bytes, sizeof(ALWAN_CORE_T), ctx);
         if (!c->device) { st = ALWAN_E_NOMEM; goto done; }
-        memset(c->device, 0, sizeof(ALWAN_CORE_T) * d.count * 4);
+        memset(c->device, 0, dev_bytes);
     }
     if (d.spectra && d.bands >= 2) {
-        c->spectra = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(d.count * d.bands,
-                                                                       sizeof(ALWAN_CORE_T)),
-                                                  sizeof(ALWAN_CORE_T));
+        size_t spec_bytes = alwan_safe_array_size(alwan_safe_array_size(d.count, d.bands), sizeof(ALWAN_CORE_T));
+        if (!spec_bytes) { st = ALWAN_E_NOMEM; goto done; }
+        c->spectra = (ALWAN_CORE_T *)alwan_ctx_alloc(spec_bytes, sizeof(ALWAN_CORE_T), ctx);
         if (!c->spectra) { st = ALWAN_E_NOMEM; goto done; }
         c->bands = d.bands;
         c->spectral_min_nm = (ALWAN_CORE_T)d.start_nm;

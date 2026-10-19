@@ -63,8 +63,37 @@ caller is most likely to notice:
 
 `api_v2_v3.json` (`default_behaviour_changes`) lists all 100, each with its CHANGELOG line.
 
+Three changes alter the pixels of a call whose signature did not change, and a saved document
+that used them renders differently:
+
+- `alwan_image_convert`, `_rgba`, the 3D LUT bakes and the CLF export adapt the white point
+  with a NULL context too (2.0.0 skipped Bradford when ctx was NULL). To reproduce 2.0.0, give
+  both descriptors the same `white_xy`. `alwan_rgb_convert` keeps the 2.0.0 rule.
+- A NaN stored to U8 or U16 writes 0 (its 2.0.0 value was not defined).
+- The ACES 1.x curve method is a parameter; 2.0.0's process-wide default was
+  `ALWAN_ACES_INTERP_BSPLINE`.
+
+## For a host that saves documents
+
+`migration_manifest.json` is generated (`alwan_dev/tools/gen_migration_manifest.py`) from the
+v2.0.0 tag and this tree. It keys every 2.0.0 operation by a capability identifier,
+`alwan.<base>` (the C name without the precision and buffer-form suffixes, the identifier
+`capability_manifest.json` uses too), and records its 2.0.0 and 3.0.0 symbols, whether it is
+unchanged (386 of 407), changed (7), renamed (12) or removed (2), the shim if one exists, and
+the rendering changes above. A host keeps documents stable by storing the identifier rather
+than the symbol, together with what `alwan_get_build_info` reports (`normalize_ranges` changes
+the values the C API returns), and by checking `rendering_changes` for every identifier a
+document uses.
+
 ## Image processing
 
 Image-processing functions that appeared in 3.0.0 snapshots moved to Suwar before the release.
 No 2.0.0 function moved. The rule for snapshot users is `alwan_x` to `suwar_x` and `ALWAN_X` to
 `SUWAR_X`, with no shims.
+
+## Experimental
+
+The 30 operations under `src/alwan/experimental/` (picture formation, spatial gamut maps, the
+RGB fit, film grain and halation, ...) are new in 3.0.0 and not part of its stable API; the
+manifests mark them `"experimental"`. A document that uses one should expect its output to
+change between 3.x releases.

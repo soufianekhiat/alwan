@@ -42,6 +42,8 @@ struct ALWAN_CORE_CHART_S {
     int                device_channels;
     alwan_chart_device device_model;
     ALWAN_CORE_T      *lab;
+
+    alwan_ctx         *ctx;         /* allocator it was loaded with, freed with the same */
 };
 
 /* ----------------------------------------------------------------
@@ -50,25 +52,27 @@ struct ALWAN_CORE_CHART_S {
 
 void ALWAN_CORE_FNLIT(alwan_chart_destroy)(ALWAN_CORE_CHART *chart, alwan_ctx *ctx) {
     size_t i;
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the chart frees with the context it was loaded with */
     if (!chart) return;
+    own = chart->ctx;
     if (chart->patch_names) {
-        for (i = 0; i < chart->patch_count; i++) ALWAN_FREE(chart->patch_names[i]);
-        ALWAN_FREE(chart->patch_names);
+        for (i = 0; i < chart->patch_count; i++) alwan_ctx_free(chart->patch_names[i], own);
+        alwan_ctx_free(chart->patch_names, own);
     }
     if (chart->header_keys) {
-        for (i = 0; i < chart->header_count; i++) ALWAN_FREE(chart->header_keys[i]);
-        ALWAN_FREE(chart->header_keys);
+        for (i = 0; i < chart->header_count; i++) alwan_ctx_free(chart->header_keys[i], own);
+        alwan_ctx_free(chart->header_keys, own);
     }
     if (chart->header_values) {
-        for (i = 0; i < chart->header_count; i++) ALWAN_FREE(chart->header_values[i]);
-        ALWAN_FREE(chart->header_values);
+        for (i = 0; i < chart->header_count; i++) alwan_ctx_free(chart->header_values[i], own);
+        alwan_ctx_free(chart->header_values, own);
     }
-    ALWAN_FREE(chart->xyz);
-    ALWAN_FREE(chart->spectra);
-    ALWAN_FREE(chart->device);
-    ALWAN_FREE(chart->lab);
-    ALWAN_FREE(chart);
+    alwan_ctx_free(chart->xyz, own);
+    alwan_ctx_free(chart->spectra, own);
+    alwan_ctx_free(chart->device, own);
+    alwan_ctx_free(chart->lab, own);
+    alwan_ctx_free(chart, own);
 }
 
 /* ----------------------------------------------------------------
@@ -78,17 +82,17 @@ void ALWAN_CORE_FNLIT(alwan_chart_destroy)(ALWAN_CORE_CHART *chart, alwan_ctx *c
 static alwan_status ALWAN_CORE_FNLIT(alwan__chart_add_header)(ALWAN_CORE_CHART *c,
                                                               char const *key, size_t klen,
                                                               char const *val, size_t vlen) {
-    char **nk = (char **)ALWAN_ALLOC(sizeof(char *) * (c->header_count + 1), sizeof(void *));
-    char **nv = (char **)ALWAN_ALLOC(sizeof(char *) * (c->header_count + 1), sizeof(void *));
+    char **nk = (char **)alwan_ctx_alloc(sizeof(char *) * (c->header_count + 1), sizeof(void *), c->ctx);
+    char **nv = (char **)alwan_ctx_alloc(sizeof(char *) * (c->header_count + 1), sizeof(void *), c->ctx);
     size_t i;
-    if (!nk || !nv) { ALWAN_FREE(nk); ALWAN_FREE(nv); return ALWAN_E_NOMEM; }
+    if (!nk || !nv) { alwan_ctx_free(nk, c->ctx); alwan_ctx_free(nv, c->ctx); return ALWAN_E_NOMEM; }
     for (i = 0; i < c->header_count; i++) { nk[i] = c->header_keys[i]; nv[i] = c->header_values[i]; }
-    ALWAN_FREE(c->header_keys);
-    ALWAN_FREE(c->header_values);
+    alwan_ctx_free(c->header_keys, c->ctx);
+    alwan_ctx_free(c->header_values, c->ctx);
     c->header_keys = nk;
     c->header_values = nv;
-    nk[c->header_count] = alwan__chart_strdup_n(key, klen);
-    nv[c->header_count] = alwan__chart_strdup_n(val, vlen);
+    nk[c->header_count] = alwan__chart_strdup_n(key, klen, c->ctx);
+    nv[c->header_count] = alwan__chart_strdup_n(val, vlen, c->ctx);
     if (!nk[c->header_count] || !nv[c->header_count]) return ALWAN_E_NOMEM;
     for (i = 0; i < klen; i++) nk[c->header_count][i] = alwan__chart_upper(nk[c->header_count][i]);
     c->header_count++;
@@ -207,14 +211,15 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
         }
     }
 
-    c = (ALWAN_CORE_CHART *)ALWAN_ALLOC(sizeof(*c), sizeof(void *));
+    c = (ALWAN_CORE_CHART *)alwan_ctx_alloc(sizeof(*c), sizeof(void *), ctx);
     if (!c) return ALWAN_E_NOMEM;
     memset(c, 0, sizeof(*c));
+    c->ctx = ctx;
     c->illuminant = ALWAN_ILLUMINANT_D50;
     c->observer   = ALWAN_OBSERVER_CIE_1931_2DEG;
 
-    fields = (alwan__chart_tok *)ALWAN_ALLOC(sizeof(*fields) * ALWAN_CHART_MAX_FIELDS, sizeof(void *));
-    cells  = (alwan__chart_tok *)ALWAN_ALLOC(sizeof(*cells)  * ALWAN_CHART_MAX_FIELDS, sizeof(void *));
+    fields = (alwan__chart_tok *)alwan_ctx_alloc(sizeof(*fields) * ALWAN_CHART_MAX_FIELDS, sizeof(void *), ctx);
+    cells  = (alwan__chart_tok *)alwan_ctx_alloc(sizeof(*cells)  * ALWAN_CHART_MAX_FIELDS, sizeof(void *), ctx);
     if (!fields || !cells) { st = ALWAN_E_NOMEM; goto fail; }
 
     /* --- pass 1 --- */
@@ -284,8 +289,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
     }
 
     /* --- resolve the columns --- */
-    spec_col = (size_t *)ALWAN_ALLOC(sizeof(size_t) * nfields, sizeof(void *));
-    spec_nm  = (double *)ALWAN_ALLOC(sizeof(double) * nfields, sizeof(double));
+    spec_col = (size_t *)alwan_ctx_alloc(sizeof(size_t) * nfields, sizeof(void *), ctx);
+    spec_nm  = (double *)alwan_ctx_alloc(sizeof(double) * nfields, sizeof(double), ctx);
     if (!spec_col || !spec_nm) { st = ALWAN_E_NOMEM; goto fail; }
     for (i = 0; i < nfields; i++) {
         char const *f = fields[i].p;
@@ -355,22 +360,32 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
 
     /* --- allocate --- */
     c->patch_count = row;
-    c->xyz = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(row * 3, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
-    c->patch_names = (char **)ALWAN_ALLOC(sizeof(char *) * row, sizeof(void *));
-    if (!c->xyz || !c->patch_names) { st = ALWAN_E_NOMEM; goto fail; }
-    memset(c->xyz, 0, sizeof(ALWAN_CORE_T) * row * 3);
-    memset(c->patch_names, 0, sizeof(char *) * row);
-    if (c->device_channels > 0) {
-        c->device = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(row * 4, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
-        if (!c->device) { st = ALWAN_E_NOMEM; goto fail; }
-        memset(c->device, 0, sizeof(ALWAN_CORE_T) * row * 4);
-    }
-    if (ix_L != (size_t)-1 && ix_a != (size_t)-1 && ix_b != (size_t)-1) {
-        c->lab = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(row * 3, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
-        if (!c->lab) { st = ALWAN_E_NOMEM; goto fail; }
+    {
+        /* the row count comes from the file, so every product is checked; 0 is an overflow */
+        size_t xyz_bytes = alwan_safe_array_size(alwan_safe_array_size(row, 3), sizeof(ALWAN_CORE_T));
+        size_t name_bytes = alwan_safe_array_size(row, sizeof(char *));
+        if (!xyz_bytes || !name_bytes) { st = ALWAN_E_NOMEM; goto fail; }
+        c->xyz = (ALWAN_CORE_T *)alwan_ctx_alloc(xyz_bytes, sizeof(ALWAN_CORE_T), ctx);
+        c->patch_names = (char **)alwan_ctx_alloc(name_bytes, sizeof(void *), ctx);
+        if (!c->xyz || !c->patch_names) { st = ALWAN_E_NOMEM; goto fail; }
+        memset(c->xyz, 0, xyz_bytes);
+        memset(c->patch_names, 0, name_bytes);
+        if (c->device_channels > 0) {
+            size_t dev_bytes = alwan_safe_array_size(alwan_safe_array_size(row, 4), sizeof(ALWAN_CORE_T));
+            if (!dev_bytes) { st = ALWAN_E_NOMEM; goto fail; }
+            c->device = (ALWAN_CORE_T *)alwan_ctx_alloc(dev_bytes, sizeof(ALWAN_CORE_T), ctx);
+            if (!c->device) { st = ALWAN_E_NOMEM; goto fail; }
+            memset(c->device, 0, dev_bytes);
+        }
+        if (ix_L != (size_t)-1 && ix_a != (size_t)-1 && ix_b != (size_t)-1) {
+            c->lab = (ALWAN_CORE_T *)alwan_ctx_alloc(xyz_bytes, sizeof(ALWAN_CORE_T), ctx);
+            if (!c->lab) { st = ALWAN_E_NOMEM; goto fail; }
+        }
     }
     if (nspec >= 2) {
-        c->spectra = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(row * nspec, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+        size_t spec_bytes = alwan_safe_array_size(alwan_safe_array_size(row, nspec), sizeof(ALWAN_CORE_T));
+        if (!spec_bytes) { st = ALWAN_E_NOMEM; goto fail; }
+        c->spectra = (ALWAN_CORE_T *)alwan_ctx_alloc(spec_bytes, sizeof(ALWAN_CORE_T), ctx);
         if (!c->spectra) { st = ALWAN_E_NOMEM; goto fail; }
         c->bands = nspec;
         c->spectral_min_nm = (ALWAN_CORE_T)spec_nm[0];
@@ -401,15 +416,15 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
 
         /* SAMPLE_NAME, else SAMPLE_ID, else the 1-based row number. */
         if (ix_name != (size_t)-1) {
-            c->patch_names[row] = alwan__chart_strdup_n(cells[ix_name].p, cells[ix_name].len);
+            c->patch_names[row] = alwan__chart_strdup_n(cells[ix_name].p, cells[ix_name].len, ctx);
         } else if (ix_id != (size_t)-1) {
-            c->patch_names[row] = alwan__chart_strdup_n(cells[ix_id].p, cells[ix_id].len);
+            c->patch_names[row] = alwan__chart_strdup_n(cells[ix_id].p, cells[ix_id].len, ctx);
         } else {
             char tmp[24];
             size_t v = row + 1, d = 0, k;
             do { tmp[d++] = (char)('0' + (v % 10)); v /= 10; } while (v && d < sizeof(tmp));
             for (k = 0; k < d / 2; k++) { char t = tmp[k]; tmp[k] = tmp[d - 1 - k]; tmp[d - 1 - k] = t; }
-            c->patch_names[row] = alwan__chart_strdup_n(tmp, d);
+            c->patch_names[row] = alwan__chart_strdup_n(tmp, d, ctx);
         }
         if (!c->patch_names[row]) { st = ALWAN_E_NOMEM; goto fail; }
 
@@ -482,18 +497,18 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
         if (st != ALWAN_OK) goto fail;
     }
 
-    ALWAN_FREE(fields);
-    ALWAN_FREE(cells);
-    ALWAN_FREE(spec_col);
-    ALWAN_FREE(spec_nm);
+    alwan_ctx_free(fields, ctx);
+    alwan_ctx_free(cells, ctx);
+    alwan_ctx_free(spec_col, ctx);
+    alwan_ctx_free(spec_nm, ctx);
     *out = c;
     return ALWAN_OK;
 
 fail:
-    ALWAN_FREE(fields);
-    ALWAN_FREE(cells);
-    ALWAN_FREE(spec_col);
-    ALWAN_FREE(spec_nm);
+    alwan_ctx_free(fields, ctx);
+    alwan_ctx_free(cells, ctx);
+    alwan_ctx_free(spec_col, ctx);
+    alwan_ctx_free(spec_nm, ctx);
     ALWAN_CORE_FNLIT(alwan_chart_destroy)(c, ctx);
     return st;
 }
@@ -519,14 +534,14 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load)(ALWAN_CORE_CHART **out, char con
     if (size < 0) { fclose(fh); return ALWAN_E_INVALID; }
     if (fseek(fh, 0, SEEK_SET) != 0) { fclose(fh); return ALWAN_E_INVALID; }
 
-    buf = (char *)ALWAN_ALLOC((size_t)size + 1, 1);
+    buf = (char *)alwan_ctx_alloc((size_t)size + 1, 1, ctx);
     if (!buf) { fclose(fh); return ALWAN_E_NOMEM; }
     got = fread(buf, 1, (size_t)size, fh);
     fclose(fh);
     buf[got] = '\0';
 
     st = ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(out, buf, got, ctx);
-    ALWAN_FREE(buf);
+    alwan_ctx_free(buf, ctx);
     return st;
 }
 

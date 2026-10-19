@@ -82,39 +82,43 @@ typedef struct {
      * file that states the grid once instead of on every spectrum; the
      * schema's 380 and 10 are the last resort. */
     int have_start, have_inc;
+
+    /* The chart's allocator: object names move into the chart, so they and
+     * everything else here come from the context the chart is loaded with. */
+    alwan_ctx *ctx;
 } alwan__cxf_doc;
 
 static void alwan__cxf_free(alwan__cxf_doc *d) {
     size_t i;
     if (!d) return;
     if (d->objects) {
-        for (i = 0; i < d->count; i++) ALWAN_FREE(d->objects[i].name);
-        ALWAN_FREE(d->objects);
+        for (i = 0; i < d->count; i++) alwan_ctx_free(d->objects[i].name, d->ctx);
+        alwan_ctx_free(d->objects, d->ctx);
     }
     if (d->hdr_keys) {
-        for (i = 0; i < d->hdr_count; i++) ALWAN_FREE(d->hdr_keys[i]);
-        ALWAN_FREE(d->hdr_keys);
+        for (i = 0; i < d->hdr_count; i++) alwan_ctx_free(d->hdr_keys[i], d->ctx);
+        alwan_ctx_free(d->hdr_keys, d->ctx);
     }
     if (d->hdr_values) {
-        for (i = 0; i < d->hdr_count; i++) ALWAN_FREE(d->hdr_values[i]);
-        ALWAN_FREE(d->hdr_values);
+        for (i = 0; i < d->hdr_count; i++) alwan_ctx_free(d->hdr_values[i], d->ctx);
+        alwan_ctx_free(d->hdr_values, d->ctx);
     }
-    ALWAN_FREE(d->spectra);
+    alwan_ctx_free(d->spectra, d->ctx);
     memset(d, 0, sizeof *d);
 }
 
 static alwan_status alwan__cxf_add_header(alwan__cxf_doc *d, char const *key, char const *val) {
-    char **nk = (char **)ALWAN_ALLOC(sizeof(char *) * (d->hdr_count + 1), sizeof(void *));
-    char **nv = (char **)ALWAN_ALLOC(sizeof(char *) * (d->hdr_count + 1), sizeof(void *));
+    char **nk = (char **)alwan_ctx_alloc(sizeof(char *) * (d->hdr_count + 1), sizeof(void *), d->ctx);
+    char **nv = (char **)alwan_ctx_alloc(sizeof(char *) * (d->hdr_count + 1), sizeof(void *), d->ctx);
     size_t i;
-    if (!nk || !nv) { ALWAN_FREE(nk); ALWAN_FREE(nv); return ALWAN_E_NOMEM; }
+    if (!nk || !nv) { alwan_ctx_free(nk, d->ctx); alwan_ctx_free(nv, d->ctx); return ALWAN_E_NOMEM; }
     for (i = 0; i < d->hdr_count; i++) { nk[i] = d->hdr_keys[i]; nv[i] = d->hdr_values[i]; }
-    ALWAN_FREE(d->hdr_keys);
-    ALWAN_FREE(d->hdr_values);
+    alwan_ctx_free(d->hdr_keys, d->ctx);
+    alwan_ctx_free(d->hdr_values, d->ctx);
     d->hdr_keys = nk;
     d->hdr_values = nv;
-    nk[d->hdr_count] = alwan__chart_strdup_n(key, strlen(key));
-    nv[d->hdr_count] = alwan__chart_strdup_n(val, strlen(val));
+    nk[d->hdr_count] = alwan__chart_strdup_n(key, strlen(key), d->ctx);
+    nv[d->hdr_count] = alwan__chart_strdup_n(val, strlen(val), d->ctx);
     if (!nk[d->hdr_count] || !nv[d->hdr_count]) return ALWAN_E_NOMEM;
     d->hdr_count++;
     return ALWAN_OK;
@@ -317,7 +321,7 @@ static alwan_status alwan__cxf_walk(alwan__cxf_doc *d, char const *buf, size_t l
                     fallback[k] = '\0';
                     use = fallback;
                 }
-                d->objects[obj].name = alwan__chart_strdup_n(use, strlen(use));
+                d->objects[obj].name = alwan__chart_strdup_n(use, strlen(use), d->ctx);
                 if (!d->objects[obj].name) return ALWAN_E_NOMEM;
             }
             /* An Object with no body still counts. It stays a hole, which the
@@ -515,9 +519,11 @@ static alwan_status alwan__cxf_walk(alwan__cxf_doc *d, char const *buf, size_t l
 /* Read a CxF3 buffer. `*is_cxf` is set as soon as the root element proves the
  * bytes are one, which is what separates "try another reader" from "this file
  * is broken": the chart loader falls through to CGATS only while it is 0. */
-static alwan_status alwan__cxf_parse(alwan__cxf_doc *d, char const *buf, size_t len, int *is_cxf) {
+static alwan_status alwan__cxf_parse(alwan__cxf_doc *d, char const *buf, size_t len, int *is_cxf,
+                                     alwan_ctx *ctx) {
     alwan_status st;
     memset(d, 0, sizeof *d);
+    d->ctx = ctx;
     if (is_cxf) *is_cxf = 0;
     st = alwan__cxf_walk(d, buf, len, 0, is_cxf);
     if (st != ALWAN_OK) { alwan__cxf_free(d); return st; }
@@ -526,7 +532,7 @@ static alwan_status alwan__cxf_parse(alwan__cxf_doc *d, char const *buf, size_t 
     {
         size_t bytes = alwan_safe_array_size(d->count, sizeof(*d->objects));
         if (bytes == 0) { alwan__cxf_free(d); return ALWAN_E_RANGE; }
-        d->objects = (alwan__cxf_object *)ALWAN_ALLOC(bytes, sizeof(void *));
+        d->objects = (alwan__cxf_object *)alwan_ctx_alloc(bytes, sizeof(void *), d->ctx);
         if (!d->objects) { alwan__cxf_free(d); return ALWAN_E_NOMEM; }
         memset(d->objects, 0, bytes);
     }
@@ -539,7 +545,7 @@ static alwan_status alwan__cxf_parse(alwan__cxf_doc *d, char const *buf, size_t 
         size_t cells = alwan_safe_array_size(d->count, d->bands);
         size_t bytes = alwan_safe_array_size(cells, sizeof(double));
         if (cells == 0 || bytes == 0) { alwan__cxf_free(d); return ALWAN_E_RANGE; }
-        d->spectra = (double *)ALWAN_ALLOC(bytes, sizeof(double));
+        d->spectra = (double *)alwan_ctx_alloc(bytes, sizeof(double), d->ctx);
         if (!d->spectra) { alwan__cxf_free(d); return ALWAN_E_NOMEM; }
         memset(d->spectra, 0, bytes);
     }

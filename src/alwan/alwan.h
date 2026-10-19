@@ -130,10 +130,16 @@ void alwan_destroy(alwan_ctx *ctx);
  * the default allocator when ctx is NULL or was created without callbacks. align is a power of
  * two (0 means the platform's malloc alignment). alwan_ctx_free(NULL, ctx) does nothing. Free
  * a block with the same ctx (or NULL for both) it was allocated with. These are for libraries
- * built on alwan (see alwan_foundation.h and docs/foundation.md). Inside alwan, the data
- * loader, the flip, gamut-volume and spline code allocate through the context; most other
- * create functions still use the default allocator for both create and destroy, and the
- * mapping functions allocate nothing. docs/host-integration.md lists them. */
+ * built on alwan (see alwan_foundation.h and docs/foundation.md).
+ *
+ * Inside alwan, every object a _create / _load / _import function returns comes from the
+ * allocator of the context it was given and keeps that context: its destroy frees with it,
+ * whatever ctx destroy is passed, so the context must outlive the objects made with it. The
+ * exception is an SPD's values array: alwan_spd is a public struct with no room for a
+ * context, so alwan_spd_create / alwan_spd_destroy (and every function that fills an SPD)
+ * always use the default allocator. The mapping functions allocate nothing. free_cb may be
+ * handed NULL, as free may.
+ * docs/host-integration.md lists what allocates and the exceptions. */
 void *alwan_ctx_alloc(size_t bytes, size_t align, alwan_ctx *ctx);
 void alwan_ctx_free(void *ptr, alwan_ctx *ctx);
 
@@ -980,6 +986,32 @@ alwan_status alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 alwan_status alwan_image_convert_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_ctx *ctx);
 alwan_status alwan_image_convert_f32(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space, alwan_ctx *ctx);
+
+/* The per-call half of alwan_image_convert, for a host that runs the per-pixel half in its own
+ * kernel (a fused shader or Halide stage). Per pixel the converters compute
+ *   rgb_out = oetf(combined * eotf(rgb_in)),
+ * each transfer function applied channel by channel. The two enums name the transfer-function
+ * cores (docs/capability_manifest.json, "transfer_functions", maps each to its core), and
+ * combined already includes the Bradford adaptation when the white points differ by more than
+ * 1e-6 in xy (adapted is then 1). The plan holds no pointers, so it can go to a constant
+ * buffer as it is. alwan_image_convert and alwan_image_convert_rgba call this, so a fused
+ * kernel and the converter use the same matrix. ALWAN_E_INVALID for a NULL argument or a
+ * transfer function the converters cannot apply; the status of alwan_rgb_derive_matrices for
+ * singular primaries. */
+typedef struct {
+    alwan_mat3x3_f32 combined;     /* linear source RGB to linear destination RGB */
+    alwan_transfer_function eotf;  /* the source's decode, applied first */
+    alwan_transfer_function oetf;  /* the destination's encode, applied last */
+    int adapted;                   /* 1 when combined includes the Bradford adaptation */
+} alwan_image_convert_plan_f32;
+typedef struct {
+    alwan_mat3x3_f64 combined;
+    alwan_transfer_function eotf;
+    alwan_transfer_function oetf;
+    int adapted;
+} alwan_image_convert_plan_f64;
+alwan_status alwan_image_convert_prepare_f32(alwan_image_convert_plan_f32 *plan, alwan_rgb_space_desc_f32 const *src_space, alwan_rgb_space_desc_f32 const *dst_space);
+alwan_status alwan_image_convert_prepare_f64(alwan_image_convert_plan_f64 *plan, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space);
 
 
 /* Convert a 2D RGBA image between RGB color spaces with format conversion.
@@ -4558,7 +4590,8 @@ alwan_status alwan_picture_form_hybrid_exp_f64(alwan_f64 *out, alwan_f64 const *
 alwan_status alwan_picture_form_global_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_global_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 /* The same solve, returning the exposure field it applied: e_out is width*height scalars in stops,
- * one per pixel, so that Y = F_base(2^e_out X). out receives the picture and may be NULL. */
+ * one per pixel, so that Y = F_base(2^e_out X). out receives the picture and may be NULL: the
+ * field alone is then computed in e_out without forming a picture or allocating anything. */
 alwan_status alwan_picture_form_global_exp_field_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_global_exp_field_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 
@@ -4583,7 +4616,8 @@ alwan_status alwan_picture_form_evidence_f64(alwan_f64 *out, alwan_f64 const *in
 alwan_status alwan_picture_form_local_exp_f32(alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_local_exp_f64(alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 /* The same solve, returning the exposure field it converged to: e_out is width*height scalars in
- * stops. out receives the picture and may be NULL. */
+ * stops. out receives the picture and may be NULL, but the solve forms the picture three times
+ * per repair iteration, so a NULL out saves the copy and not the work. */
 alwan_status alwan_picture_form_local_exp_field_f32(alwan_f32 *e_out, alwan_f32 *out, alwan_f32 const *in, int width, int height, int iterations, alwan_f32 strength, alwan_f32 pivot, alwan_ctx *ctx);
 alwan_status alwan_picture_form_local_exp_field_f64(alwan_f64 *e_out, alwan_f64 *out, alwan_f64 const *in, int width, int height, int iterations, alwan_f64 strength, alwan_f64 pivot, alwan_ctx *ctx);
 /* The same again with the two accelerators. relax > 0 replaces the fixed 0.02 step with
@@ -12188,7 +12222,9 @@ typedef enum {
 } alwan_clf_node_type;
 
 /* Read a ProcessList. The object owns its tables; free it with
- * alwan_clf_destroy. ctx is accepted for symmetry and not used.
+ * alwan_clf_destroy. The object and its tables come from ctx's allocator (NULL: the
+ * default), and destroy frees them with the context the import was given, whatever
+ * ctx it is passed; that context must outlive the object.
  *
  * ALWAN_E_NODATA: not a CLF, an empty ProcessList, or a node type or style
  *      this reader does not implement. ALWAN_E_INVALID: a file that cannot be

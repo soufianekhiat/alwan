@@ -51,6 +51,7 @@ struct alwan_iridescence_s {
     double *xyz;           /* bands * count * 6, demodulated, unadapted */
     float *rgb32;
     float *xyz32;
+    alwan_ctx *ctx;        /* the context it was created with; destroy frees through it */
 };
 
 /* ---------------------------------------------------------------- *
@@ -112,10 +113,10 @@ static alwan_status alwan__ir_build(alwan_iridescence *s, alwan_rgb_space space,
     if (st == ALWAN_OK && xb.count - 1 < s->bands) st = ALWAN_E_INVALID;
     if (st == ALWAN_OK) {
         n = xb.count;
-        nu = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
-        g = (double *)ALWAN_ALLOC(alwan_safe_array_size(n * 3, sizeof(double)), sizeof(double));
-        segw = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
-        seg_band = (size_t *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(size_t)), sizeof(size_t));
+        nu = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(double)), sizeof(double), ctx);
+        g = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, 3 * sizeof(double)), sizeof(double), ctx);
+        segw = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(double)), sizeof(double), ctx);
+        seg_band = (size_t *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(size_t)), sizeof(size_t), ctx);
         if (!nu || !g || !segw || !seg_band) st = ALWAN_E_NOMEM;
     }
     if (st == ALWAN_OK) {
@@ -262,10 +263,10 @@ static alwan_status alwan__ir_build(alwan_iridescence *s, alwan_rgb_space space,
             }
         }
     }
-    ALWAN_FREE(nu);
-    ALWAN_FREE(g);
-    ALWAN_FREE(segw);
-    ALWAN_FREE(seg_band);
+    alwan_ctx_free(nu, ctx);
+    alwan_ctx_free(g, ctx);
+    alwan_ctx_free(segw, ctx);
+    alwan_ctx_free(seg_band, ctx);
     alwan_spd_destroy_f64(&xb, ctx);
     alwan_spd_destroy_f64(&yb, ctx);
     alwan_spd_destroy_f64(&zb, ctx);
@@ -298,18 +299,19 @@ alwan_status alwan_iridescence_create(alwan_iridescence **out, alwan_rgb_space s
         if (count > ALWAN__IR_MAX_COUNT) return ALWAN_E_RANGE;
     }
     entries = count * (size_t)bands;
-    s = (alwan_iridescence *)ALWAN_ALLOC(sizeof(*s), sizeof(double));
+    s = (alwan_iridescence *)alwan_ctx_alloc(sizeof(*s), sizeof(double), ctx);
     if (!s) return ALWAN_E_NOMEM;
     memset(s, 0, sizeof(*s));
+    s->ctx = ctx;
     s->count = count;
     s->bands = (size_t)bands;
     s->opd_step = opd_step;
     s->max_terms = terms;
     s->tolerance = tol;
-    s->rgb = (double *)ALWAN_ALLOC(alwan_safe_array_size(entries * 6, sizeof(double)), sizeof(double));
-    s->xyz = (double *)ALWAN_ALLOC(alwan_safe_array_size(entries * 6, sizeof(double)), sizeof(double));
-    s->rgb32 = (float *)ALWAN_ALLOC(alwan_safe_array_size(entries * 6, sizeof(float)), sizeof(float));
-    s->xyz32 = (float *)ALWAN_ALLOC(alwan_safe_array_size(entries * 6, sizeof(float)), sizeof(float));
+    s->rgb = (double *)alwan_ctx_alloc(alwan_safe_array_size(entries, 6 * sizeof(double)), sizeof(double), ctx);
+    s->xyz = (double *)alwan_ctx_alloc(alwan_safe_array_size(entries, 6 * sizeof(double)), sizeof(double), ctx);
+    s->rgb32 = (float *)alwan_ctx_alloc(alwan_safe_array_size(entries, 6 * sizeof(float)), sizeof(float), ctx);
+    s->xyz32 = (float *)alwan_ctx_alloc(alwan_safe_array_size(entries, 6 * sizeof(float)), sizeof(float), ctx);
     if (!s->rgb || !s->xyz || !s->rgb32 || !s->xyz32) {
         alwan_iridescence_destroy(s, ctx);
         return ALWAN_E_NOMEM;
@@ -324,13 +326,15 @@ alwan_status alwan_iridescence_create(alwan_iridescence **out, alwan_rgb_space s
 }
 
 void alwan_iridescence_destroy(alwan_iridescence *s, alwan_ctx *ctx) {
-    ALWAN_UNUSED(ctx);
+    alwan_ctx *own;
+    (void)ctx;   /* the table frees with the context it was created with */
     if (!s) return;
-    ALWAN_FREE(s->rgb);
-    ALWAN_FREE(s->xyz);
-    ALWAN_FREE(s->rgb32);
-    ALWAN_FREE(s->xyz32);
-    ALWAN_FREE(s);
+    own = s->ctx;
+    alwan_ctx_free(s->rgb, own);
+    alwan_ctx_free(s->xyz, own);
+    alwan_ctx_free(s->rgb32, own);
+    alwan_ctx_free(s->xyz32, own);
+    alwan_ctx_free(s, own);
 }
 
 alwan_status alwan_iridescence_get_info(alwan_iridescence_info *info, alwan_iridescence const *s) {

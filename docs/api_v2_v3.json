@@ -16681,7 +16681,7 @@
    "name": "(none)",
    "old": null,
    "new": null,
-   "note": "No deprecation markers in CHANGELOG Unreleased or the v3 public headers; removals are immediate (no deprecation period, no forwarding shims)."
+   "note": "No deprecation markers in CHANGELOG Unreleased or the v3 public headers; removals are immediate (no deprecation period). Source shims for the renamed names are in alwan_v2_compat.h; docs/migration_manifest.json lists them per operation."
   }
  ]
 }

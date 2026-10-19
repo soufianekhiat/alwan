@@ -2,3 +2,4 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/AlwanTargets.cmake")
 
+check_required_components(Alwan)

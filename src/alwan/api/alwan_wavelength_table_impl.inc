@@ -25,6 +25,7 @@ ALWAN_WLT_S {
     alwan_wavelength_tabulated_mode mode;
     ALWAN_CORE_T x0, y0, x1, y1;
     ALWAN_CORE_T integral;
+    alwan_ctx *ctx;   /* the allocator the table was created with */
 };
 
 /* The CDF of n weights at w, written to c[0..n]: the running sum over the total, so
@@ -63,14 +64,14 @@ static void ALWAN_CORE_FNLIT(alwan__wlt_inverse)(ALWAN_CORE_T *dst, ALWAN_CORE_T
  * one, which it names as its alias. What is left once one list empties is 1 up to
  * rounding and keeps its own cell. prob and idx are written as values. */
 static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_alias)(ALWAN_CORE_T *prob, ALWAN_CORE_T *idx, ALWAN_CORE_T const *w,
-                                                        int n) {
-    double *q = (double *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n, sizeof(double)), sizeof(double));
-    int *small = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n, sizeof(int)), sizeof(int));
-    int *large = (int *)ALWAN_ALLOC(alwan_safe_array_size((size_t)n, sizeof(int)), sizeof(int));
+                                                        int n, alwan_ctx *ctx) {
+    double *q = (double *)alwan_ctx_alloc(alwan_safe_array_size((size_t)n, sizeof(double)), sizeof(double), ctx);
+    int *small = (int *)alwan_ctx_alloc(alwan_safe_array_size((size_t)n, sizeof(int)), sizeof(int), ctx);
+    int *large = (int *)alwan_ctx_alloc(alwan_safe_array_size((size_t)n, sizeof(int)), sizeof(int), ctx);
     double total = 0.0;
     int ns = 0, nl = 0, i;
     if (!q || !small || !large) {
-        ALWAN_FREE(q); ALWAN_FREE(small); ALWAN_FREE(large);
+        alwan_ctx_free(q, ctx); alwan_ctx_free(small, ctx); alwan_ctx_free(large, ctx);
         return ALWAN_E_NOMEM;
     }
     for (i = 0; i < n; i++) total += (double)w[i];
@@ -88,7 +89,7 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_alias)(ALWAN_CORE_T *prob, ALWAN
     }
     while (nl > 0) { int const g = large[--nl]; prob[g] = ALWAN_CORE_LITERAL(1.0); idx[g] = (ALWAN_CORE_T)g; }
     while (ns > 0) { int const l = small[--ns]; prob[l] = ALWAN_CORE_LITERAL(1.0); idx[l] = (ALWAN_CORE_T)l; }
-    ALWAN_FREE(q); ALWAN_FREE(small); ALWAN_FREE(large);
+    alwan_ctx_free(q, ctx); alwan_ctx_free(small, ctx); alwan_ctx_free(large, ctx);
     return ALWAN_OK;
 }
 
@@ -104,7 +105,6 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
     ALWAN_CORE_T total = ALWAN_CORE_LITERAL(0.0);
     size_t ru = width, rv = height, search_count, count, i, j;
     int nu, nv;
-    (void)ctx;
     if (!out) return ALWAN_E_INVALID;
     *out = NULL;
     if (!image || width == 0 || height == 0) return ALWAN_E_INVALID;
@@ -149,7 +149,8 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
 
     /* the CDFs, in the search layout: the search mode keeps them, the direct mode
      * builds its inverse tables from them and lets them go */
-    work = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(search_count, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+    work = (ALWAN_CORE_T *)alwan_ctx_alloc(alwan_safe_array_size(search_count, sizeof(ALWAN_CORE_T)),
+                                           sizeof(ALWAN_CORE_T), ctx);
     if (!work) return ALWAN_E_NOMEM;
     for (j = 0; j < height; j++) {
         ALWAN_CORE_T const *row = (ALWAN_CORE_T const *)((unsigned char const *)image + j * row_stride);
@@ -158,7 +159,7 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
             /* non-negative and finite: a bound rather than isfinite, so the test
              * survives a compiler assuming finite math */
             if (!(w >= ALWAN_CORE_LITERAL(0.0) && (double)w <= 1.7976931348623157e308)) {
-                ALWAN_FREE(work);
+                alwan_ctx_free(work, ctx);
                 return ALWAN_E_INVALID;
             }
             work[j * width + i] = w;
@@ -167,19 +168,20 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
     {
         int const c_off = ALWAN_CORE_FNVLIT(alwan_wlt_off_cdf)(nu, nv);
         int const m_off = ALWAN_CORE_FNVLIT(alwan_wlt_off_mcdf)(nu, nv);
-        ALWAN_CORE_T *rowsum = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(height, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+        ALWAN_CORE_T *rowsum = (ALWAN_CORE_T *)alwan_ctx_alloc(alwan_safe_array_size(height, sizeof(ALWAN_CORE_T)),
+                                                               sizeof(ALWAN_CORE_T), ctx);
         if (!rowsum) {
-            ALWAN_FREE(work);
+            alwan_ctx_free(work, ctx);
             return ALWAN_E_NOMEM;
         }
         for (j = 0; j < height; j++) {
             rowsum[j] = ALWAN_CORE_FNLIT(alwan__wlt_cdf)(work + j * width, 1, work + c_off + j * (width + 1), nu);
         }
         total = ALWAN_CORE_FNLIT(alwan__wlt_cdf)(rowsum, 1, work + m_off, nv);
-        ALWAN_FREE(rowsum);
+        alwan_ctx_free(rowsum, ctx);
         if (!(total > ALWAN_CORE_LITERAL(0.0)) || !((double)total <= 1.7976931348623157e308)) {
             /* nothing to sample, or a sum past the precision's range */
-            ALWAN_FREE(work);
+            alwan_ctx_free(work, ctx);
             return total > ALWAN_CORE_LITERAL(0.0) ? ALWAN_E_RANGE : ALWAN_E_INVALID;
         }
         /* density per unit weight: 1 / (sum x cell area) */
@@ -187,12 +189,13 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
             ALWAN_CORE_LITERAL(1.0) / (total * ((x1 - x0) / (ALWAN_CORE_T)nu) * ((y1 - y0) / (ALWAN_CORE_T)nv));
     }
 
-    s = (ALWAN_WLT_S *)ALWAN_ALLOC(sizeof(*s), sizeof(double));
+    s = (ALWAN_WLT_S *)alwan_ctx_alloc(sizeof(*s), sizeof(double), ctx);
     if (!s) {
-        ALWAN_FREE(work);
+        alwan_ctx_free(work, ctx);
         return ALWAN_E_NOMEM;
     }
     memset(s, 0, sizeof(*s));
+    s->ctx = ctx;
     s->nu = nu; s->nv = nv;
     s->mode = mode;
     s->x0 = x0; s->y0 = y0; s->x1 = x1; s->y1 = y1;
@@ -203,20 +206,21 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
     } else if (mode == ALWAN_WAVELENGTH_TABULATED_ALIAS) {
         int const n = nu * nv;
         alwan_status st;
-        s->table = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(count, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+        s->table = (ALWAN_CORE_T *)alwan_ctx_alloc(alwan_safe_array_size(count, sizeof(ALWAN_CORE_T)),
+                                                   sizeof(ALWAN_CORE_T), ctx);
         if (!s->table) {
-            ALWAN_FREE(work);
-            ALWAN_FREE(s);
+            alwan_ctx_free(work, ctx);
+            alwan_ctx_free(s, ctx);
             return ALWAN_E_NOMEM;
         }
         memcpy(s->table, work, (size_t)n * sizeof(ALWAN_CORE_T));
         s->table[ALWAN_CORE_FNVLIT(alwan_wlt_off_anorm)(n)] = work[ALWAN_CORE_FNVLIT(alwan_wlt_off_norm)(nu, nv)];
         st = ALWAN_CORE_FNLIT(alwan__wlt_alias)(s->table + ALWAN_CORE_FNVLIT(alwan_wlt_off_aprob)(n),
-                                                 s->table + ALWAN_CORE_FNVLIT(alwan_wlt_off_aidx)(n), work, n);
-        ALWAN_FREE(work);
+                                                 s->table + ALWAN_CORE_FNVLIT(alwan_wlt_off_aidx)(n), work, n, ctx);
+        alwan_ctx_free(work, ctx);
         if (st != ALWAN_OK) {
-            ALWAN_FREE(s->table);
-            ALWAN_FREE(s);
+            alwan_ctx_free(s->table, ctx);
+            alwan_ctx_free(s, ctx);
             return st;
         }
     } else {
@@ -224,10 +228,11 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
         int r;
         s->ru = (int)ru;
         s->rv = (int)rv;
-        s->table = (ALWAN_CORE_T *)ALWAN_ALLOC(alwan_safe_array_size(count, sizeof(ALWAN_CORE_T)), sizeof(ALWAN_CORE_T));
+        s->table = (ALWAN_CORE_T *)alwan_ctx_alloc(alwan_safe_array_size(count, sizeof(ALWAN_CORE_T)),
+                                                   sizeof(ALWAN_CORE_T), ctx);
         if (!s->table) {
-            ALWAN_FREE(work);
-            ALWAN_FREE(s);
+            alwan_ctx_free(work, ctx);
+            alwan_ctx_free(s, ctx);
             return ALWAN_E_NOMEM;
         }
         for (r = 0; r < nv; r++) {
@@ -235,7 +240,7 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
         }
         ALWAN_CORE_FNLIT(alwan__wlt_inverse)(s->table + ALWAN_CORE_FNVLIT(alwan_wlt_off_minv)(nv, s->ru), work,
                                               ALWAN_CORE_FNVLIT(alwan_wlt_off_mcdf)(nu, nv), nv, s->rv);
-        ALWAN_FREE(work);
+        alwan_ctx_free(work, ctx);
     }
     *out = (ALWAN_CORE_FNLIT(alwan__wlt_table) *)s;
     return ALWAN_OK;
@@ -244,10 +249,12 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__wlt_prepare)(ALWAN_CORE_FNLIT(alwan_
 static void ALWAN_CORE_FNLIT(alwan__wlt_destroy)(ALWAN_CORE_FNLIT(alwan__wlt_table) *sampler,
                                                             alwan_ctx *ctx) {
     ALWAN_WLT_S *s = (ALWAN_WLT_S *)sampler;
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the table frees with the context it was created with */
     if (!s) return;
-    ALWAN_FREE(s->table);
-    ALWAN_FREE(s);
+    own = s->ctx;
+    alwan_ctx_free(s->table, own);
+    alwan_ctx_free(s, own);
 }
 
 /* One sample, the cell it fell in written to off[0], off[1]. */

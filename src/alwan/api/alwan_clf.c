@@ -229,7 +229,8 @@ static void clf_write_exponent_moncurve(clf_writer *w, alwan_f64 exponent,
  * Internal: write transfer function as appropriate CLF node
  *
  * Returns 1 if the TF was written as an Exponent node,
- * 0 if it needs a LUT1D instead, -1 on error.
+ * 0 if it needs a LUT1D instead, -1 on error, -2 when the LUT1D scratch
+ * could not be allocated.
  * ---------------------------------------------------------------- */
 
 static int clf_write_tf_node(clf_writer *w, alwan_transfer_function tf,
@@ -297,7 +298,7 @@ static int clf_write_tf_node(clf_writer *w, alwan_transfer_function tf,
     /* For all other TFs (PQ, HLG, log curves, etc.): bake a 1D LUT */
     if (lut_size > 0) {
         alwan_f64 *lut = (alwan_f64 *)ALWAN_ALLOC((size_t)lut_size * sizeof(alwan_f64), sizeof(alwan_f64));
-        if (!lut) return -1;
+        if (!lut) return -2;
 
         int status = alwan_bake_1dlut_f64(lut, lut_size, tf, is_eotf ? 0 : 1);
         if (status != ALWAN_OK) {
@@ -340,6 +341,7 @@ static int clf_export_core(clf_writer *w,
     /* Step 1: Source EOTF (encoded -> linear) */
     if (src_space->eotf != ALWAN_TF_LINEAR) {
         int result = clf_write_tf_node(w, src_space->eotf, 1, lut_size);
+        if (result == -2) return ALWAN_E_NOMEM;
         if (result < 0) return ALWAN_E_INVALID;
     }
 
@@ -427,6 +429,7 @@ static int clf_export_core(clf_writer *w,
     /* Step 7: Destination OETF (linear -> encoded) */
     if (dst_space->oetf != ALWAN_TF_LINEAR) {
         int result = clf_write_tf_node(w, dst_space->oetf, 0, lut_size);
+        if (result == -2) return ALWAN_E_NOMEM;
         if (result < 0) return ALWAN_E_INVALID;
     }
 

@@ -30,8 +30,8 @@ typedef struct {
     size_t      len;
 } alwan__chart_tok;
 
-static char *alwan__chart_strdup_n(char const *s, size_t n) {
-    char *out = (char *)ALWAN_ALLOC(n + 1, 1);
+static char *alwan__chart_strdup_n(char const *s, size_t n, alwan_ctx *ctx) {
+    char *out = (char *)alwan_ctx_alloc(n + 1, 1, ctx);
     if (!out) return NULL;
     memcpy(out, s, n);
     out[n] = '\0';

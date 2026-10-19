@@ -18,16 +18,11 @@
  *     byte-identical to the hand-written f64 body.
  */
 
-alwan_status ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_ctx *ctx) {
-
-    if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
-        return ALWAN_E_INVALID;
-    }
-
-    /* Resolve pixel strides from format */
-    size_t const src_px = alwan__pixel_stride(src_fmt);
-    size_t const dst_px = alwan__pixel_stride(dst_fmt);
-    if (src_px == 0 || dst_px == 0) return ALWAN_E_INVALID;
+/* Everything the converters work out once per call: the combined matrix and the two transfer
+ * functions. Public so that a host fusing the conversion into its own kernel runs exactly
+ * this per pixel: oetf(combined * eotf(rgb)). */
+alwan_status ALWAN_CORE_FNLIT(alwan_image_convert_prepare)(ALWAN_CORE_FNLIT(alwan_image_convert_plan) *plan, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space) {
+    if (!plan || !src_space || !dst_space) return ALWAN_E_INVALID;
 
     /* Derive conversion matrices (native descriptor precision) */
     ALWAN_CORE_MAT3X3 src_to_xyz, xyz_to_src;
@@ -56,7 +51,6 @@ alwan_status ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_str
      * This reduces per-pixel work to one mat3 multiply. The CAT needs no ctx;
      * gating it on one silently skipped adaptation when ctx was NULL. */
     ALWAN_CORE_MAT3X3 combined;
-    (void)ctx;
     if (need_cat) {
         ALWAN_CORE_XYY src_xyy, dst_xyy;
         ALWAN_CORE_XYZ src_wp, dst_wp;
@@ -82,10 +76,39 @@ alwan_status ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_str
         combined = ALWAN_CORE_FNVLIT(alwan_mat3_mul)(xyz_to_dst, src_to_xyz);
     }
 
+    /* an enum the converters cannot run is refused here, before any pixel */
+    if (!alwan__resolve_eotf_f64(src_space->eotf) || !alwan__resolve_oetf_f64(dst_space->oetf)) {
+        return ALWAN_E_INVALID;
+    }
+    plan->combined = combined;
+    plan->eotf = src_space->eotf;
+    plan->oetf = dst_space->oetf;
+    plan->adapted = need_cat;
+    return ALWAN_OK;
+}
+
+alwan_status ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *src_space, ALWAN_CORE_FNLIT(alwan_rgb_space_desc) const *dst_space, alwan_ctx *ctx) {
+
+    if (!dst || !src || !src_space || !dst_space || width == 0 || height == 0) {
+        return ALWAN_E_INVALID;
+    }
+    (void)ctx;   /* the CAT needs none */
+
+    /* Resolve pixel strides from format */
+    size_t const src_px = alwan__pixel_stride(src_fmt);
+    size_t const dst_px = alwan__pixel_stride(dst_fmt);
+    if (src_px == 0 || dst_px == 0) return ALWAN_E_INVALID;
+
+    ALWAN_CORE_FNLIT(alwan_image_convert_plan) plan;
+    {
+        alwan_status const status = ALWAN_CORE_FNLIT(alwan_image_convert_prepare)(&plan, src_space, dst_space);
+        if (status != ALWAN_OK) return status;
+    }
+
     /* Bridge the native-precision combined matrix into the f64 matrix the
      * per-pixel kernels operate on. f64 pass: exact double->double copy. */
     alwan_mat3x3_f64 combined_px;
-    for (int mi_ = 0; mi_ < 9; mi_++) combined_px.m[mi_] = (alwan_f64)combined.m[mi_];
+    for (int mi_ = 0; mi_ < 9; mi_++) combined_px.m[mi_] = (alwan_f64)plan.combined.m[mi_];
 
     /* Resolve transfer function pointers (pixel pipeline is f64) */
     alwan_tf_fn_f64 eotf_fn = alwan__resolve_eotf_f64(src_space->eotf);
@@ -287,60 +310,18 @@ alwan_status ALWAN_CORE_FNLIT(alwan_image_convert_rgba)(void *dst, size_t dst_ro
     /* Element size for alpha channel offset (4th channel at index 3) */
     size_t const src_elem = alwan__fmt_size(src_fmt);
     size_t const dst_elem = alwan__fmt_size(dst_fmt);
+    (void)ctx;   /* the CAT needs none */
 
-    /* Derive conversion matrices (native descriptor precision) */
-    ALWAN_CORE_MAT3X3 src_to_xyz, xyz_to_src;
-    if (src_space->has_matrices) {
-        src_to_xyz = src_space->rgb_to_xyz;
-    } else {
-        int status = ALWAN_CORE_FNLIT(alwan_rgb_derive_matrices)(&src_to_xyz, &xyz_to_src, src_space);
+    ALWAN_CORE_FNLIT(alwan_image_convert_plan) plan;
+    {
+        alwan_status const status = ALWAN_CORE_FNLIT(alwan_image_convert_prepare)(&plan, src_space, dst_space);
         if (status != ALWAN_OK) return status;
-    }
-
-    ALWAN_CORE_MAT3X3 dst_to_xyz, xyz_to_dst;
-    if (dst_space->has_matrices) {
-        xyz_to_dst = dst_space->xyz_to_rgb;
-    } else {
-        int status = ALWAN_CORE_FNLIT(alwan_rgb_derive_matrices)(&dst_to_xyz, &xyz_to_dst, dst_space);
-        if (status != ALWAN_OK) return status;
-    }
-
-    /* Check if chromatic adaptation is needed */
-    ALWAN_CORE_T const tol = ALWAN_CORE_LITERAL(1e-6);
-    ALWAN_CORE_T dx = src_space->white_xy[0] - dst_space->white_xy[0];
-    ALWAN_CORE_T dy = src_space->white_xy[1] - dst_space->white_xy[1];
-    int need_cat = (ALWAN_CORE_ABS(dx) > tol || ALWAN_CORE_ABS(dy) > tol);
-
-    /* Precompute combined matrix: xyz_to_dst * [cat *] src_to_xyz */
-    ALWAN_CORE_MAT3X3 combined;
-    (void)ctx;
-    if (need_cat) {
-        ALWAN_CORE_XYY src_xyy, dst_xyy;
-        ALWAN_CORE_XYZ src_wp, dst_wp;
-        src_xyy.x = src_space->white_xy[0];
-        src_xyy.y = src_space->white_xy[1];
-        src_xyy.Y = ALWAN_CORE_LITERAL(1.0);
-        ALWAN_CORE_FNLIT(alwan_xyy_to_xyz)(&src_wp, &src_xyy);
-
-        dst_xyy.x = dst_space->white_xy[0];
-        dst_xyy.y = dst_space->white_xy[1];
-        dst_xyy.Y = ALWAN_CORE_LITERAL(1.0);
-        ALWAN_CORE_FNLIT(alwan_xyy_to_xyz)(&dst_wp, &dst_xyy);
-
-        ALWAN_CORE_MAT3X3 cat;
-        int status = ALWAN_CORE_FNLIT(alwan_cat_matrix)(&cat, &src_wp, &dst_wp, ALWAN_CAT_BRADFORD);
-        if (status != ALWAN_OK) return status;
-
-        ALWAN_CORE_MAT3X3 tmp = ALWAN_CORE_FNVLIT(alwan_mat3_mul)(cat, src_to_xyz);
-        combined = ALWAN_CORE_FNVLIT(alwan_mat3_mul)(xyz_to_dst, tmp);
-    } else {
-        combined = ALWAN_CORE_FNVLIT(alwan_mat3_mul)(xyz_to_dst, src_to_xyz);
     }
 
     /* Bridge the native-precision combined matrix into the f64 matrix the
      * per-pixel kernels operate on. f64 pass: exact double->double copy. */
     alwan_mat3x3_f64 combined_px;
-    for (int mi_ = 0; mi_ < 9; mi_++) combined_px.m[mi_] = (alwan_f64)combined.m[mi_];
+    for (int mi_ = 0; mi_ < 9; mi_++) combined_px.m[mi_] = (alwan_f64)plan.combined.m[mi_];
 
     /* Resolve transfer function pointers (pixel pipeline is f64) */
     alwan_tf_fn_f64 eotf_fn = alwan__resolve_eotf_f64(src_space->eotf);

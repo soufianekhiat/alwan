@@ -22,7 +22,9 @@ includes `alwan.h` and `alwan_foundation.h` and nothing else from alwan.
 
 Add alwan's `src/alwan` directory to the include path. The foundation names several headers
 by computed include (`#include ALWAN_FOUNDATION_CORE_F32_SETUP`), and those resolve against it.
-Link the alwan library (static or DLL) as an application would.
+The paths those macros hold are part of the foundation too, so a core header that a shader
+compiler without computed includes reads may spell one out (`#include
+"core/alwan_table_core.h"`). Link the alwan library (static or DLL) as an application would.
 
 ## What it holds
 
@@ -56,6 +58,35 @@ These are the names a library may use, spelled out. Suwar uses all of them.
 | Core templating | inside a setup/teardown pair: `ALWAN_CORE_T`, `ALWAN_CORE_FN`, `ALWAN_CORE_FNLIT`, `ALWAN_CORE_FNVLIT`, `ALWAN_CORE_FNLIT_MAP`, `ALWAN_CORE_SUFFIX`, `ALWAN_CORE_LITERAL`, `ALWAN_CORE_TABLE_CELL` and the `ALWAN_CORE_*` math |
 | Table, half and microfacet cores | `alwan_table_coord_*_v`, `alwan_table_coord_unit_*_v`, `alwan_table_cell_*`, `alwan_half_to_float_*_v`, `alwan_float_to_half_*_v`, `alwan_microfacet_*` |
 | Types | `alwan_f32`, `alwan_f64`, `alwan_scalar`, the vector and matrix types of `alwan_types.h`, `alwan_sample_mode` (`ALWAN_SAMPLE_LINEAR`, ...) |
+
+## Stability and versions
+
+`foundation_symbols.json` is the frozen list: every name above, with one of three statuses.
+
+- **stable**: kept for the whole 3.x series. Removing one or changing its meaning needs 4.0,
+  after a deprecation in a 3.x release. New names may arrive in any minor release.
+- **provisional**: public and supported, but its spelling may change in a 3.x minor release,
+  with a CHANGELOG entry. Today: the typed map layer (`alwan__` names), the SIMD lane wrappers
+  and `ALWAN_WITH_F64_FACADE`. Suwar uses none of the first two.
+- **internal**: everything else, including every `alwan__` / `ALWAN__` name outside the map
+  layer, the data registry and `struct alwan_ctx`.
+
+`ALWAN_FOUNDATION_VERSION` (an integer in `alwan_foundation_core.h`) increases with every
+change to a stable or provisional name; a library can test it at compile time.
+`ALWAN_VERSION_MAJOR` / `_MINOR` / `_PATCH` version the library, and the CMake package
+(`AlwanConfigVersion.cmake`) accepts any 3.x for a request of 3.
+
+The cores are header-only and compile into the library that includes them, so a library built
+on alwan is rebuilt against the alwan headers it links with; only the `alwan.h` functions are
+linked. `ALWAN_WITH_F32`, `ALWAN_WITH_F64` and `ALWAN_DETERMINISTIC` must agree between the
+two. They do when the library takes them from the `Alwan::alwan` target (or from Sharpmake's
+shared configuration) and never sets them itself.
+
+`alwan_dev/tools/check_foundation_symbols.py` enforces the list on Suwar: it fails when Suwar
+includes an alwan header other than `alwan.h`, `alwan_foundation.h`,
+`alwan_foundation_core.h`, `alwan_config.h`, `alwan_build_config.h` or a path a
+`ALWAN_FOUNDATION_*` macro names, when it uses an internal or unlisted name, or when a core
+header does not include `alwan_foundation_core.h`.
 
 ## What it does not hold
 

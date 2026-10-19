@@ -27,6 +27,7 @@ struct alwan_planckian_table_s {
     double *v;   /* CIE 1960 v */
     size_t count;
     alwan_observer_type observer;
+    alwan_ctx *ctx;   /* the allocator the table was created with */
 };
 
 /* The temperatures Ohno walks: geometric from start, the step easing towards the top so
@@ -97,12 +98,13 @@ alwan_status alwan__planckian_table_create_range(alwan_planckian_table **out, al
     if (!(start > 0.0) || !(end > start + 2.0) || !(spacing > 1.0)) return ALWAN_E_INVALID;
 
     n = alwan__ohno_temperatures(NULL, start, end, spacing);
-    table = (alwan_planckian_table *)ALWAN_ALLOC(sizeof(*table), sizeof(double));
+    table = (alwan_planckian_table *)alwan_ctx_alloc(sizeof(*table), sizeof(double), ctx);
     if (!table) return ALWAN_E_NOMEM;
     memset(table, 0, sizeof(*table));
-    table->t = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
-    table->u = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
-    table->v = (double *)ALWAN_ALLOC(alwan_safe_array_size(n, sizeof(double)), sizeof(double));
+    table->ctx = ctx;
+    table->t = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(double)), sizeof(double), ctx);
+    table->u = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(double)), sizeof(double), ctx);
+    table->v = (double *)alwan_ctx_alloc(alwan_safe_array_size(n, sizeof(double)), sizeof(double), ctx);
     if (!table->t || !table->u || !table->v) {
         alwan_planckian_table_destroy(table, ctx);
         return ALWAN_E_NOMEM;
@@ -152,12 +154,14 @@ alwan_status alwan_planckian_table_create_f32(alwan_planckian_table **out, alwan
 }
 
 void alwan_planckian_table_destroy(alwan_planckian_table *table, alwan_ctx *ctx) {
-    (void)ctx;
+    alwan_ctx *own;
+    (void)ctx; /* the table frees with the context it was created with */
     if (!table) return;
-    ALWAN_FREE(table->t);
-    ALWAN_FREE(table->u);
-    ALWAN_FREE(table->v);
-    ALWAN_FREE(table);
+    own = table->ctx;
+    alwan_ctx_free(table->t, own);
+    alwan_ctx_free(table->u, own);
+    alwan_ctx_free(table->v, own);
+    alwan_ctx_free(table, own);
 }
 
 size_t alwan_planckian_table_size(alwan_planckian_table const *table) {
