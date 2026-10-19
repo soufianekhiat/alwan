@@ -295,6 +295,7 @@ static void release(alwan__table_entry const *e, void *p) {
 static void unload(alwan__table_entry *e) {
     if (e->f32 && *e->f32) { release(e, (void *)*e->f32); *e->f32 = NULL; }
     if (e->f64 && *e->f64) { release(e, (void *)*e->f64); *e->f64 = NULL; }
+    e->release = NULL; /* the on-demand loader allocates with ALWAN_ALLOC */
 }
 
 #endif /* !ALWAN_EMBED_DATA */
@@ -322,8 +323,12 @@ alwan_status alwan_data_load(void const *pack, size_t size, unsigned groups, alw
             alwan__table_entry const *e = &alwan__table_registry[i];
             load_slot *s = &pl.slots[i];
             size_t const ext = e->extent;
+            /* A table with an f64 twin loads only when the pack has the f64 record:
+             * an f32 copy alone would leave the f64 slot to the on-demand loader,
+             * and one entry would then hold memory from two allocators. */
+            int const whole = !e->f64 || s->has64;
             int const want64 = e->f64 && s->has64;
-            int const want32 = e->f32 && (s->has32 || (e->f64 && s->has64));
+            int const want32 = whole && e->f32 && (s->has32 || (e->f64 && s->has64));
             if (want64) {
                 s->c64 = (alwan_f64 *)alwan_ctx_alloc(ext * sizeof(alwan_f64), 0, ctx);
                 if (!s->c64) { failed = 1; break; }

@@ -48,6 +48,7 @@
  * follows cannot disagree between two passes.
  */
 
+#include "alwan_c_numeric.h"   /* first: POSIX feature macro for uselocale */
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "alwan_xml_common.h"
@@ -115,23 +116,11 @@ struct alwan_clf_s {
 /* ---------------------------------------------------------------- locale */
 
 static char *clf_save_lc_numeric(void) {
-    char const *cur = setlocale(LC_NUMERIC, NULL);
-    size_t n;
-    char *saved;
-    if (!cur) return NULL;
-    n = strlen(cur);
-    saved = (char *)ALWAN_ALLOC(n + 1, 1);
-    if (!saved) return NULL;
-    memcpy(saved, cur, n + 1);
-    setlocale(LC_NUMERIC, "C");
-    return saved;
+    return (char *)alwan__c_numeric_begin();   /* this thread only */
 }
 
 static void clf_restore_lc_numeric(char *saved) {
-    if (saved) {
-        setlocale(LC_NUMERIC, saved);
-        ALWAN_FREE(saved);
-    }
+    alwan__c_numeric_end(saved);
 }
 
 static int clf_finite(double v) {
@@ -271,6 +260,7 @@ static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *n
                 if (channels != 1 && channels != 3) return ALWAN_E_RANGE;
                 op->channels = channels;
                 want = (size_t)op->size * (size_t)channels;
+                if (op->data) return ALWAN_E_INVALID; /* a second Array in one node */
                 op->data = (double *)ALWAN_ALLOC(want * sizeof(double), sizeof(double));
                 if (!op->data) return ALWAN_E_NOMEM;
                 if (!clf_read_numbers(s, op->data, want, &got) || got != want) return ALWAN_E_INVALID;
@@ -282,6 +272,7 @@ static alwan_status clf_parse_body(alwan__xml_scan *s, clf_op *op, char const *n
                 op->channels = 3;
                 if (op->size < 2 || op->size > CLF_MAX_LUT3D) return ALWAN_E_RANGE;
                 want = (size_t)op->size * op->size * op->size * 3;
+                if (op->data) return ALWAN_E_INVALID; /* a second Array in one node */
                 op->data = (double *)ALWAN_ALLOC(want * sizeof(double), sizeof(double));
                 if (!op->data) return ALWAN_E_NOMEM;
                 {
@@ -660,7 +651,8 @@ static void clf_free(alwan_clf *clf) {
     size_t i;
     if (!clf) return;
     if (clf->ops) {
-        for (i = 0; i < clf->count; i++) {
+        /* every slot, not count: a node that failed in its body holds data too */
+        for (i = 0; i < CLF_MAX_NODES; i++) {
             if (clf->ops[i].data) ALWAN_FREE(clf->ops[i].data);
         }
         ALWAN_FREE(clf->ops);

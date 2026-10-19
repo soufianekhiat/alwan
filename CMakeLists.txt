@@ -468,10 +468,12 @@ if(ALWAN_INSTALL)
     alwan_build_config.h
     alwan_config.h
     alwan_foundation.h
+    alwan_foundation_core.h
     alwan_math.h
     alwan_platform.h
     alwan_types.h
     alwan_types_gen.inc
+    alwan_v2_compat.h
     core/alwan_core_f32_setup.h
     core/alwan_core_f64_setup.h
     core/alwan_core_teardown.h

@@ -302,7 +302,8 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__load_tile_typed_aos)(ALWAN_TILE_T *dst,
             {
                 __m128 const inv128 = _mm_set1_ps(1.0f / 255.0f);
                 for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((__m128i const *)(src_u8 + j * 3));
+                    __m128i raw = _mm_loadl_epi64((__m128i const *)(src_u8 + j * 3));   /* 12 bytes, not 16 */
+                    { int t; memcpy(&t, src_u8 + j * 3 + 8, 4); raw = _mm_insert_epi32(raw, t, 2); }
                     __m128 f0 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(raw)), inv128);
                     __m128 f1 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 4))), inv128);
                     __m128 f2 = _mm_mul_ps(_mm_cvtepi32_ps(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 8))), inv128);
@@ -315,7 +316,8 @@ ALWAN_INLINE void ALWAN_TILE_FN(alwan__load_tile_typed_aos)(ALWAN_TILE_T *dst,
             {
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((__m128i const *)(src_u8 + j * 3));
+                    __m128i raw = _mm_loadl_epi64((__m128i const *)(src_u8 + j * 3));   /* 12 bytes, not 16 */
+                    { int t; memcpy(&t, src_u8 + j * 3 + 8, 4); raw = _mm_insert_epi32(raw, t, 2); }
                     _mm256_storeu_pd(&dst[j * 3],     _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(raw)), inv256d));
                     _mm256_storeu_pd(&dst[j * 3 + 4], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 4))), inv256d));
                     _mm256_storeu_pd(&dst[j * 3 + 8], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 8))), inv256d));

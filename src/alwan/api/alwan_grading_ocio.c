@@ -1541,17 +1541,15 @@ static alwan_status alwan_grading_run(void *out, size_t out_stride, void const *
                                       alwan_grading_op op, alwan_grading_style style, alwan_grading_params const *params,
                                       int inverse, int is_f32) {
     size_t const elem = is_f32 ? sizeof(alwan_f32) : sizeof(alwan_f64);
-    alwan_grading_params *defaults = NULL;
+    alwan_grading_params defaults; /* ~10 KB on the stack: maps never allocate */
     alwan_grading_render r;
     alwan_status st;
     size_t i;
     if (!out || !in) return ALWAN_E_INVALID;
     if (out_stride < 3 * elem || in_stride < 3 * elem) return ALWAN_E_INVALID;
     if (!params) { /* an identity grade: the defaults of the style */
-        defaults = (alwan_grading_params *)ALWAN_ALLOC(sizeof(alwan_grading_params), sizeof(double));
-        if (!defaults) return ALWAN_E_NOMEM;
-        alwan_grading_params_init(defaults, style);
-        params = defaults;
+        alwan_grading_params_init(&defaults, style);
+        params = &defaults;
     }
     switch (op) {
     case ALWAN_GRADING_PRIMARY: st = alwan_gp_prepare(&r.gp, style, &params->primary, inverse != 0); break;
@@ -1561,7 +1559,6 @@ static alwan_status alwan_grading_run(void *out, size_t out_stride, void const *
     case ALWAN_GRADING_EXPOSURE_CONTRAST: st = alwan_gec_prepare(&r.gec, style, &params->exposure_contrast, inverse != 0); break;
     default: st = ALWAN_E_INVALID; break;
     }
-    if (defaults) ALWAN_FREE(defaults);
     if (st != ALWAN_OK) return st;
     for (i = 0; i < count; i++) {
         char const *s = (char const *)in + i * in_stride;

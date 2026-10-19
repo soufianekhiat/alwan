@@ -3667,10 +3667,14 @@ static int aces2_hue_interval_f32(float h, float const *hues) {
  * through one output preset, and the back-to-back scalar+map per-pixel paths --
  * reuse the tables instead of rebuilding them every call. Both the f32 and f64
  * APIs route through this builder, so one cache speeds up all of them.
- * Single-threaded optimisation: a race on first build for the same config only
- * causes a benign redundant rebuild (the cached value is deterministic and
- * identical); callers needing concurrent first use should serialise it. */
-static struct {
+ * The cache is per thread. A shared one was not benign: a reader could match a
+ * key another thread was half-way through rewriting and copy torn tables. */
+#if defined(_MSC_VER)
+#define ALWAN__ACES2_TLS __declspec(thread)
+#else
+#define ALWAN__ACES2_TLS _Thread_local
+#endif
+static ALWAN__ACES2_TLS struct {
     int valid;
     alwan_f64 peak;
     alwan_aces_primaries_f64 prim;

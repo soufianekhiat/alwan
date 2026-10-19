@@ -122,7 +122,9 @@ results. Net effect:
 - **No SVML** (GCC/Clang x86, **NEON**): both scalar and SIMD evaluate the same
   polynomial.
 
-Either way the scalar `_v` path and the SIMD map path agree on every platform.
+Either way the scalar `_v` path and the SIMD map path evaluate the same function.
+Suite 88 holds them together within 5e-5 absolute in f32 and 2^40 ULP in f64 in
+the fast build; it does not test them for bitwise agreement.
 Accuracy floor of the polynomial twins vs libm is ~5e-10 absolute over `[0,1]`:
 the documented "fast mode is approximate" trade-off. In deterministic mode this
 file is unused; the canonical `alwan_det_*` polynomials are used instead.

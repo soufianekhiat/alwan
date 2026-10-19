@@ -59,7 +59,8 @@ static int ALWAN_CORE_FNLIT(lut__build_combined_matrix)(
     ALWAN_CORE_T dy = (ALWAN_CORE_T)src_space->white_xy[1] - (ALWAN_CORE_T)dst_space->white_xy[1];
     int need_cat = (ALWAN_ABS(dx) > tol || ALWAN_ABS(dy) > tol);
 
-    if (need_cat && ctx) {
+    (void)ctx; /* the CAT needs none; NULL used to skip adaptation */
+    if (need_cat) {
         ALWAN_CORE_XYY src_xyy, dst_xyy;
         ALWAN_CORE_XYZ src_wp, dst_wp;
         src_xyy.x = (ALWAN_CORE_T)src_space->white_xy[0];

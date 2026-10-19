@@ -27,6 +27,7 @@
  * LUT would pass a round trip through alwan alone and still be wrong.
  */
 
+#include "alwan_c_numeric.h"   /* first: POSIX feature macro for uselocale */
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include <stdio.h>
@@ -40,23 +41,11 @@
 /* ---------------------------------------------------------------- locale */
 
 static char *lutfmt_save_lc_numeric(void) {
-    char const *cur = setlocale(LC_NUMERIC, NULL);
-    size_t n;
-    char *saved;
-    if (!cur) return NULL;
-    n = strlen(cur);
-    saved = (char *)ALWAN_ALLOC(n + 1, 1);
-    if (!saved) return NULL;
-    memcpy(saved, cur, n + 1);
-    setlocale(LC_NUMERIC, "C");
-    return saved;
+    return (char *)alwan__c_numeric_begin();   /* this thread only */
 }
 
 static void lutfmt_restore_lc_numeric(char *saved) {
-    if (saved) {
-        setlocale(LC_NUMERIC, saved);
-        ALWAN_FREE(saved);
-    }
+    alwan__c_numeric_end(saved);
 }
 
 /* ---------------------------------------------------------------- scalars */

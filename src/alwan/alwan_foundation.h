@@ -49,10 +49,9 @@
 
 #include "alwan.h"
 #include "alwan_math.h"
+#include "alwan_foundation_core.h"
 #include <stddef.h>
 #include <stdint.h>
-
-#define ALWAN_FOUNDATION_VERSION 1
 
 /* count x elem_size, or 0 when the product would overflow size_t (or elem_size is 0). */
 static inline size_t alwan_safe_array_size(size_t count, size_t elem_size) {
@@ -60,14 +59,6 @@ static inline size_t alwan_safe_array_size(size_t count, size_t elem_size) {
     if (count > SIZE_MAX / elem_size) return 0;
     return count * elem_size;
 }
-
-#define ALWAN_FOUNDATION_CORE_F32_SETUP "core/alwan_core_f32_setup.h"
-#define ALWAN_FOUNDATION_CORE_F64_SETUP "core/alwan_core_f64_setup.h"
-#define ALWAN_FOUNDATION_CORE_TEARDOWN  "core/alwan_core_teardown.h"
-#define ALWAN_FOUNDATION_TABLE_CORE     "core/alwan_table_core.h"
-#define ALWAN_FOUNDATION_TABLE_READER   "core/alwan_table_reader.inc"
-#define ALWAN_FOUNDATION_HALF_CORE      "core/alwan_half_core.h"
-#define ALWAN_FOUNDATION_MICROFACET_CORE "core/alwan_microfacet_core.h"
 
 #if defined(ALWAN_FOUNDATION_WITH_MAP)
 #include "map/alwan_map_internal.h"

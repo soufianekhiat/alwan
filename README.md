@@ -687,7 +687,7 @@ Re-run it against any checkout to reproduce the table.
 | Internal symbols reached by a test or a public entry point | 265 of 265, [how the last eight were closed](https://github.com/soufianekhiat/alwan_dev/blob/main/docs/api_coverage.md) |
 | Build configurations exercised | 8 |
 | CI platforms | 6 |
-| Cores that compile as HLSL, under dxc and under fxc | 45 of 45 |
+| Cores that compile as HLSL, under dxc and under fxc | 50 of 52 |
 
 Two of these deserve the emphasis:
 

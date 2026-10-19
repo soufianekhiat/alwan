@@ -117,15 +117,23 @@ typedef struct {
  * non-zero `flags`, or one of `alloc_cb` / `free_cb` without the other. */
 alwan_ctx *alwan_create(alwan_config const *cfg);
 
-/* Destroy context and release all resources */
+/* Destroy context and release all resources. Tables alwan_data_load put in this
+ * context's memory are not freed here: call alwan_data_free first, while the
+ * allocator still works.
+ *
+ * Threads: a context is read-only once set up. Any number of threads may pass
+ * the same context at once; its setters (alwan_ctx_set_aces_interp) run before
+ * it is shared, never while another thread uses it. */
 void alwan_destroy(alwan_ctx *ctx);
 
 /* Allocate and free through a context's allocator: the callbacks alwan_create was given, or
  * the default allocator when ctx is NULL or was created without callbacks. align is a power of
  * two (0 means the platform's malloc alignment). alwan_ctx_free(NULL, ctx) does nothing. Free
  * a block with the same ctx (or NULL for both) it was allocated with. These are for libraries
- * built on alwan (see alwan_foundation.h and docs/foundation.md): alwan's own functions
- * allocate the same way. */
+ * built on alwan (see alwan_foundation.h and docs/foundation.md). Inside alwan, the data
+ * loader, the flip, gamut-volume and spline code allocate through the context; most other
+ * create functions still use the default allocator for both create and destroy, and the
+ * mapping functions allocate nothing. docs/host-integration.md lists them. */
 void *alwan_ctx_alloc(size_t bytes, size_t align, alwan_ctx *ctx);
 void alwan_ctx_free(void *ptr, alwan_ctx *ctx);
 
@@ -966,7 +974,8 @@ alwan_status alwan_rgb_convert_map_interleave_f32(alwan_rgb_f32 *dst_rgb, alwan_
  *   the others and this comment used to leave it out.
  * dst_row_stride/src_row_stride: bytes between consecutive rows
  * width/height: image dimensions in pixels
- * ctx: context (required when src and dst white points differ)
+ * ctx: context, may be NULL. Bradford adaptation runs whenever the white points
+ *   differ, with or without a ctx (a NULL ctx used to skip it silently).
  * src_space/dst_space: RGB space descriptors (primaries, white point, TFs)
  * Returns ALWAN_OK on success, ALWAN_E_INVALID on error */
 alwan_status alwan_image_convert_f64(void *dst, size_t dst_row_stride, void const *src, size_t src_row_stride, size_t width, size_t height, alwan_pixel_format dst_fmt, alwan_pixel_format src_fmt, alwan_rgb_space_desc_f64 const *src_space, alwan_rgb_space_desc_f64 const *dst_space, alwan_ctx *ctx);

@@ -151,7 +151,7 @@ float4 PSMain(float2 uv : TEXCOORD) : SV_Target
 - No `alwan_spd` operations: spectral data structures are C-only.
 - No camera profiling or Munsell/ColorChecker lookups: these need the C-side embedded data tables.
 - `ALWAN_CBRT(x)` is a **signed** cube root, `sign(x) * pow(abs(x), 1.0f/3.0f)`, so it matches libm `cbrtf` on negatives, where a bare `pow(x, 1/3)` returns NaN. There is no native HLSL cube root.
-- **All 43 cores compile as HLSL**, under dxc at `cs_6_0` and fxc at `cs_5_0`, in both fast and deterministic modes (`alwan_dev/tools/check_gpu_compile.py`). The last three were `alwan_table_core.h` and the two that include it, `alwan_lut_core.h` and `alwan_vision_core.h`, and they were one cause: the table readers took the table as a pointer, and a shading language has no pointer type.
+- **50 of the 52 cores compile as HLSL, gated in CI** (`alwan_microfacet_core.h` and `alwan_wavelength_table_core.h` are not yet on the clean lists), under dxc at `cs_6_0` and fxc at `cs_5_0`, in both fast and deterministic modes (`alwan_dev/tools/check_gpu_compile.py`). The last three were `alwan_table_core.h` and the two that include it, `alwan_lut_core.h` and `alwan_vision_core.h`, and they were one cause: the table readers took the table as a pointer, and a shading language has no pointer type.
 
 ### Reading a table from a shader
 
@@ -513,7 +513,10 @@ The bootstrap headers (`alwan_hlsl.h`, `alwan_glsl.h`, `alwan_halide.h`, `alwan_
 
 ## Which Modules Are GPU-Compatible
 
-All `*_core.h` files compile on all backends. The following are **C-only** (require context, heap allocation, or C standard library):
+The `*_core.h` files compile as C, HLSL (50 of 52 gated), CUDA and OpenCL. GLSL and
+Halide are not compiled by any build or script, only linted for keywords: treat them as
+unsupported. See `docs/host-integration.md` for which cores have been run against C on each
+backend. The following are **C-only** (require context, heap allocation, or C standard library):
 
 | Feature | Reason |
 |---------|--------|

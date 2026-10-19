@@ -1,5 +1,53 @@
 ## [Unreleased]
 
+### Fixed: host-integration audit
+
+An audit of what a host (a node graph, a compositor, Suwar) relies on when it calls
+alwan; `docs/host-integration.md` now states the contract, gaps included.
+
+- `alwan_image_convert_{T}`, `alwan_image_convert_rgba_{T}`, the 3D LUT bakes and the
+  CLF export skipped the Bradford adaptation when the context was NULL, although
+  nothing in it needs one. They adapt whenever the white points differ.
+- The ACES 2.0 gamut-compression cache was shared by every thread, and a reader could
+  match a key another thread was rewriting and copy torn tables. It is per thread.
+- The `_ex` maps ignored a failing kernel's status and stored its tile anyway, and
+  took any value as a pixel format. They return the status, and `ALWAN_E_INVALID` for
+  a format outside U8 to F16.
+- The U8 3-channel SIMD loads read 4 bytes past the last pixel of a block; they read
+  exactly 12. U8 and U16 stores of a NaN were undefined (a float-to-integer cast of
+  NaN); they store 0.
+- The OCIO grading maps allocated their default parameters on every call when given
+  none. They build them on the stack: no map allocates.
+- The CLF reader leaked a LUT node's array when the node then failed, and a second
+  `<Array>` in one node leaked the first. Both came from untrusted files. A second
+  array is now refused.
+- `alwan_data_load` with a context, then `alwan_data_free`, then an on-demand load,
+  freed the reloaded table with the context's allocator. Each table is now released by
+  the allocator that made it, and a pack holding only the f32 copy of a table with an
+  f64 twin no longer loads half of it.
+- The CLF, `.cube`, LUT-format and import/export functions switched `LC_NUMERIC` with a
+  process-wide `setlocale`, so concurrent calls, or host code beside one, could run in the
+  wrong locale; when the saved name could not be allocated they went on in the host locale.
+  The switch is per thread now (`_configthreadlocale` / `uselocale`) and the common case
+  allocates nothing.
+- Documentation claimed bitwise agreement that no gating test backs: AgX and the
+  deterministic transfer functions on HLSL (they pass at 1e-5 and 1e-6), 25 SIMD
+  conversions at 0 ULP in suite 88 (it allows 4 ULP, and compares scalar with scalar in
+  the deterministic build), GLSL and Halide as working backends (neither is compiled
+  anywhere). The text now says what was measured and how.
+
+### Added: host-integration headers and migration
+
+- `alwan_foundation_core.h`, the shader-safe half of the foundation, for core headers
+  of a library built on alwan; `docs/foundation.md` lists every supported name.
+- `alwan_v2_compat.h`, source shims for the 2.0.0 names 3.0.0 renamed without changing
+  what they do, and `docs/migration-v2-v3.md` with `docs/api_v2_v3.json`, the
+  machine-readable inventory of every v2 to v3 change.
+- alwan_dev: suite 309 (in place, fourth channel, integer saturation, formats, NULL
+  context, grading defaults, CLF arrays, ACES 2.0 on two threads, the shims) and
+  `tools/check_installed_consumer.py`, which builds suwar against an installed alwan
+  package and nothing else.
+
 ### Changed: the CAM16 forward map runs on SIMD lanes
 
 - `alwan_cam16_forward_{T}_map_interleave` computes each correlate across vector

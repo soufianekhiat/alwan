@@ -42,8 +42,9 @@ so check `CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT` before claiming bit-exactness.
 
 The deterministic layer these backends share is complete as of this work: the
 angle family is on it too, so `sin`, `cos`, `tan`, `atan`, `atan2`, `acos` and
-`tanh` no longer fall through to a hardware intrinsic. Verified primitive by
-primitive on OpenCL, all twelve bit-exact over 65536 samples each.
+`tanh` no longer fall through to a hardware intrinsic. A diagnostic
+(`isolate.c`) compared them primitive by primitive on OpenCL, all twelve
+bit-exact over 65536 samples each, once, by hand. It has no runner and no gate.
 
 Two things carry over better than they do to the shading languages. OpenCL C has
 a signed `cbrt` and a truncating `fmod`, both matching libm, where HLSL and GLSL
@@ -125,10 +126,12 @@ Two compile flags are not optional:
   pragma and **nvcc's device compiler does not honour it**, so on CUDA the
   determinism contract rests on the command line instead.
 
-**Verified, RTX 3060 (sm_86) with CUDA 12.6.** All 43 core headers parse and
-type-check under nvcc, fast and deterministic
-(`alwan_dev/tools/check_cuda_compile.py`). Kernels run on the device and are
-compared against the same source on the host (`alwan_dev/cuda_regression/`).
+**Verified, RTX 3060 (sm_86) with CUDA 12.6.** Every core header parses and
+type-checks under nvcc, fast and deterministic
+(`alwan_dev/tools/check_cuda_compile.py`); that proves the headers compile, not
+that each function runs. Six kernels (oklab, Lab, ICtCp PQ, Jzazbz, sRGB OETF and
+EOTF) run on the device and are compared against the same source on the host
+(`alwan_dev/cuda_regression/`). Both checks are run by hand; neither is in CI.
 
 **A deterministic build is bit-exact between the CPU and the GPU.** Every kernel
 measured, both precisions, every sample, zero difference. That is the
@@ -149,8 +152,10 @@ terms rather than on include order.
 
 > **Read this first: verification status.** Run-verified on a GPU (dxc + D3D12
 > WARP, matching the C reference; see `alwan_dev/hlsl_regression/`): the **AgX
-> analytic render** (fast ULP / det bit-exact) and the **deterministic sRGB +
-> BT.2020 transfer set** (bit-exact 64/64).
+> analytic render** (passes at 1e-5 over 8 pixels) and the **deterministic sRGB +
+> BT.2020 transfer set** (passes at 1e-6 over 64 samples; the runner prints how
+> many match exactly but does not fail on a difference). Both are run by hand,
+> under dxc only; neither is a bitwise gate.
 >
 > Also run-verified, under both compilers: **every table reader**, bit-exact
 > against the C f32 path in an ordinary build
@@ -249,8 +254,9 @@ holdouts were fixed:
 | **`alwan_nayatani95_core`** | missing `#else` branch | branch added; compiles under dxc |
 | **`alwan_normalize_core`** | missing `#else` branch; needed `alwan_uint16` on GPU | branch + GPU `uint` typedefs added; compiles under dxc |
 
-`alwan_dev/hlsl_regression/cores_compile.hlsl` keeps these compiling as a
-regression (fast and `-D ALWAN_DETERMINISTIC=1`).
+`alwan_dev/hlsl_regression/cores_compile.hlsl` compiles these (fast and
+`-D ALWAN_DETERMINISTIC=1`), but no script runs it; the gate is
+`check_gpu_compile.py`, which covers them through the clean lists.
 
 For functions that do need out-parameters, the house idiom is
 `ALWAN_PARAM_MAT3_OUT` / `ALWAN_PARAM_VEC3_OUT` / `ALWAN_REF` / `ALWAN_ADDR`

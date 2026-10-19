@@ -312,7 +312,10 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
                 __m128i const shuf_b = _mm_setr_epi8(2,5,8,11, -1,-1,-1,-1, -1,-1,-1,-1, -1,-1,-1,-1);
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((__m128i const *)(src + j * 3));
+                    /* Exactly the 12 bytes of four pixels: a 16-byte load read past the
+                     * caller's buffer on the last group. */
+                    __m128i raw = _mm_loadl_epi64((__m128i const *)(src + j * 3));
+                    { int t; memcpy(&t, src + j * 3 + 8, 4); raw = _mm_insert_epi32(raw, t, 2); }
                     __m128i ri32 = _mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_r));
                     __m128i gi32 = _mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_g));
                     __m128i bi32 = _mm_cvtepu8_epi32(_mm_shuffle_epi8(raw, shuf_b));
@@ -408,6 +411,22 @@ ALWAN_INLINE void alwan__load_tile_typed_3(alwan_simd_lane *ch0, alwan_simd_lane
     }
 }
 
+/* Round half up, clamp to the code range, NaN to 0: alwan__store3_typed's rule, so
+ * every integer store gives the same code for the same value. An out-of-range float
+ * converted to an unsigned type is undefined in C. */
+ALWAN_INLINE uint8_t alwan__u8_sat(alwan_simd_lane x) {
+    alwan_simd_lane v = x * (alwan_simd_lane)255.0 + (alwan_simd_lane)0.5;
+    if (!(v >= (alwan_simd_lane)0.0)) v = (alwan_simd_lane)0.0;
+    if (v > (alwan_simd_lane)255.0) v = (alwan_simd_lane)255.0;
+    return (uint8_t)v;
+}
+ALWAN_INLINE uint16_t alwan__u16_sat(alwan_simd_lane x) {
+    alwan_simd_lane v = x * (alwan_simd_lane)65535.0 + (alwan_simd_lane)0.5;
+    if (!(v >= (alwan_simd_lane)0.0)) v = (alwan_simd_lane)0.0;
+    if (v > (alwan_simd_lane)65535.0) v = (alwan_simd_lane)65535.0;
+    return (uint16_t)v;
+}
+
 ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
                                              size_t offset, size_t stride,
                                              alwan_simd_lane const *ch0, alwan_simd_lane const *ch1, alwan_simd_lane const *ch2,
@@ -446,16 +465,16 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
             }
 #endif
             for (; j < n; j++) {
-                dst_u8[j * 3 + 0] = (uint8_t)(ch0[j] * (alwan_simd_lane)255.0 + (alwan_simd_lane)0.5);
-                dst_u8[j * 3 + 1] = (uint8_t)(ch1[j] * (alwan_simd_lane)255.0 + (alwan_simd_lane)0.5);
-                dst_u8[j * 3 + 2] = (uint8_t)(ch2[j] * (alwan_simd_lane)255.0 + (alwan_simd_lane)0.5);
+                dst_u8[j * 3 + 0] = alwan__u8_sat(ch0[j]);
+                dst_u8[j * 3 + 1] = alwan__u8_sat(ch1[j]);
+                dst_u8[j * 3 + 2] = alwan__u8_sat(ch2[j]);
             }
         } else {
             for (j = 0; j < n; j++) {
                 uint8_t *p = (uint8_t *)((char *)base + (offset + j) * stride);
-                p[0] = (uint8_t)(ch0[j] * (alwan_simd_lane)255.0 + (alwan_simd_lane)0.5);
-                p[1] = (uint8_t)(ch1[j] * (alwan_simd_lane)255.0 + (alwan_simd_lane)0.5);
-                p[2] = (uint8_t)(ch2[j] * (alwan_simd_lane)255.0 + (alwan_simd_lane)0.5);
+                p[0] = alwan__u8_sat(ch0[j]);
+                p[1] = alwan__u8_sat(ch1[j]);
+                p[2] = alwan__u8_sat(ch2[j]);
             }
         }
         break;
@@ -463,9 +482,9 @@ ALWAN_INLINE void alwan__store_tile_typed_3(void *base, alwan_pixel_format fmt,
     case ALWAN_PIXEL_U16: {
         for (j = 0; j < n; j++) {
             uint16_t *p = (uint16_t *)((char *)base + (offset + j) * stride);
-            p[0] = (uint16_t)(ch0[j] * (alwan_simd_lane)65535.0 + (alwan_simd_lane)0.5);
-            p[1] = (uint16_t)(ch1[j] * (alwan_simd_lane)65535.0 + (alwan_simd_lane)0.5);
-            p[2] = (uint16_t)(ch2[j] * (alwan_simd_lane)65535.0 + (alwan_simd_lane)0.5);
+            p[0] = alwan__u16_sat(ch0[j]);
+            p[1] = alwan__u16_sat(ch1[j]);
+            p[2] = alwan__u16_sat(ch2[j]);
         }
         break;
     }
@@ -648,7 +667,8 @@ ALWAN_INLINE void alwan__load_tile_typed_aos(alwan_f64 *dst,
             {
                 __m256d const inv256d = _mm256_set1_pd(1.0 / 255.0);
                 for (; j + 4 <= n; j += 4) {
-                    __m128i raw = _mm_loadu_si128((__m128i const *)(src_u8 + j * 3));
+                    __m128i raw = _mm_loadl_epi64((__m128i const *)(src_u8 + j * 3));   /* 12 bytes, not 16 */
+                    { int t; memcpy(&t, src_u8 + j * 3 + 8, 4); raw = _mm_insert_epi32(raw, t, 2); }
                     _mm256_storeu_pd(&dst[j * 3],     _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(raw)), inv256d));
                     _mm256_storeu_pd(&dst[j * 3 + 4], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 4))), inv256d));
                     _mm256_storeu_pd(&dst[j * 3 + 8], _mm256_mul_pd(_mm256_cvtepi32_pd(_mm_cvtepu8_epi32(_mm_srli_si128(raw, 8))), inv256d));
@@ -1642,6 +1662,16 @@ ALWAN_INLINE void alwan__norm_lane_affine(alwan_simd_lane *d, size_t n, alwan_si
  *   Everything else (U8/U16/F16/F32) -> f32 tiled pipeline
  * ================================================================ */
 
+/* A format the typed tile loaders know. An unknown one used to fall through
+ * their switches, load and store nothing, and report ALWAN_OK. */
+ALWAN_INLINE int alwan__pixel_format_ok(alwan_pixel_format f) {
+    return (int)f >= (int)ALWAN_PIXEL_U8 && (int)f <= (int)ALWAN_PIXEL_F16;
+}
+
+/* Every tiled path below checks the wrapped worker's status before storing the
+ * tile, so a refused call (an invalid standard, a bad bit depth) returns its error
+ * and writes nothing, as the same-format direct call does. */
+
 /* -- Planar dual-dispatch: basic 3-channel ---------------------- */
 
 /* One definition per precision selection. A single-precision build must not
@@ -1656,6 +1686,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
                       (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
@@ -1668,13 +1699,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1684,13 +1717,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1705,6 +1740,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
                       (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
@@ -1713,13 +1749,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1734,6 +1772,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          void const *in0, size_t in_stride, void const *in1, void const *in2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
         return fn_f64((double *)out0, out_stride, (double *)out1, (double *)out2, \
                       (double const *)in0, in_stride, (double const *)in1, (double const *)in2, \
@@ -1742,13 +1781,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1791,13 +1832,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &w_); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1808,13 +1851,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &w_); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1841,13 +1886,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &w_); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1874,13 +1921,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &w_); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1906,6 +1955,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
                       (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
@@ -1918,13 +1968,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, extra_name); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1934,13 +1986,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, extra_name); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1956,6 +2010,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
                       (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
@@ -1964,13 +2019,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, extra_name); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -1986,6 +2043,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
         return fn_f64((double *)out0, out_stride, (double *)out1, (double *)out2, \
                       (double const *)in0, in_stride, (double const *)in1, (double const *)in2, \
@@ -1994,13 +2052,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, extra_name); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -2026,6 +2086,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
                       (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
@@ -2038,13 +2099,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, (double)param); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, (double)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -2054,13 +2117,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, (float)param); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, (float)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -2076,6 +2141,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out0, out_stride, (float *)out1, (float *)out2, \
                       (float const *)in0, in_stride, (float const *)in1, (float const *)in2, \
@@ -2084,13 +2150,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ic0_[ALWAN_TILE_PIXELS_F32], ic1_[ALWAN_TILE_PIXELS_F32], ic2_[ALWAN_TILE_PIXELS_F32]; \
             ALWAN_ALIGN(32) float oc0_[ALWAN_TILE_PIXELS_F32], oc1_[ALWAN_TILE_PIXELS_F32], oc2_[ALWAN_TILE_PIXELS_F32]; \
             alwan__load_tile_typed_ch_f32(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f32(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, (float)param); \
+            st_ = fn_f32(oc0_, sizeof(float), oc1_, oc2_, ic0_, sizeof(float), ic1_, ic2_, tile_, (float)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f32(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f32(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f32(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -2106,6 +2174,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
     if (!in0 || !in1 || !in2 || !out0 || !out1 || !out2 || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
         return fn_f64((double *)out0, out_stride, (double *)out1, (double *)out2, \
                       (double const *)in0, in_stride, (double const *)in1, (double const *)in2, \
@@ -2114,13 +2183,15 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ic0_[ALWAN_TILE_PIXELS_F64], ic1_[ALWAN_TILE_PIXELS_F64], ic2_[ALWAN_TILE_PIXELS_F64]; \
             ALWAN_ALIGN(32) double oc0_[ALWAN_TILE_PIXELS_F64], oc1_[ALWAN_TILE_PIXELS_F64], oc2_[ALWAN_TILE_PIXELS_F64]; \
             alwan__load_tile_typed_ch_f64(ic0_, in0, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic1_, in1, in_fmt, off_, in_stride, tile_); \
             alwan__load_tile_typed_ch_f64(ic2_, in2, in_fmt, off_, in_stride, tile_); \
-            fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, (double)param); \
+            st_ = fn_f64(oc0_, sizeof(double), oc1_, oc2_, ic0_, sizeof(double), ic1_, ic2_, tile_, (double)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_ch_f64(out0, out_fmt, off_, out_stride, oc0_, tile_); \
             alwan__store_tile_typed_ch_f64(out1, out_fmt, off_, out_stride, oc1_, tile_); \
             alwan__store_tile_typed_ch_f64(out2, out_fmt, off_, out_stride, oc2_, tile_); \
@@ -2144,6 +2215,7 @@ alwan_status name(void *out0, size_t out_stride, void *out1, void *out2, \
 alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count); \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
@@ -2152,11 +2224,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2164,11 +2238,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2180,17 +2256,20 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
 alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count); \
     { \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2202,17 +2281,20 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
 alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride, \
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
         return fn_f64((double *)out, out_stride, (double const *)in, in_stride, count); \
     { \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2248,11 +2330,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &w_); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2261,11 +2345,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &w_); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2287,11 +2373,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &w_); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2313,11 +2401,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &w_); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, &w_); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2340,6 +2430,7 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count, extra_name); \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
@@ -2348,11 +2439,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, extra_name); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2360,11 +2453,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, extra_name); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2377,17 +2472,20 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count, extra_name); \
     { \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, extra_name); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2400,17 +2498,20 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          extra_type extra_name) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
         return fn_f64((double *)out, out_stride, (double const *)in, in_stride, count, extra_name); \
     { \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, extra_name); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, extra_name); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2433,6 +2534,7 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count, (float)param); \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
@@ -2441,11 +2543,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, (double)param); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, (double)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2453,11 +2557,13 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, (float)param); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, (float)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2470,17 +2576,20 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F32 && out_fmt == ALWAN_PIXEL_F32) \
         return fn_f32((float *)out, out_stride, (float const *)in, in_stride, count, (float)param); \
     { \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F32) tile_ = ALWAN_TILE_PIXELS_F32; \
             ALWAN_ALIGN(32) float ibuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             ALWAN_ALIGN(32) float obuf_[ALWAN_TILE_PIXELS_F32 * 3]; \
             alwan__load_tile_typed_aos_f32(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, (float)param); \
+            st_ = fn_f32(obuf_, 3 * sizeof(float), ibuf_, 3 * sizeof(float), tile_, (float)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f32(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \
@@ -2493,17 +2602,20 @@ alwan_status name(void *out, size_t out_stride, void const *in, size_t in_stride
          size_t count, alwan_pixel_format out_fmt, alwan_pixel_format in_fmt, \
          alwan_f64 param) { \
     if (!in || !out || count == 0) return ALWAN_E_INVALID; \
+    if (!alwan__pixel_format_ok(in_fmt) || !alwan__pixel_format_ok(out_fmt)) return ALWAN_E_INVALID; \
     if (in_fmt == ALWAN_PIXEL_F64 && out_fmt == ALWAN_PIXEL_F64) \
         return fn_f64((double *)out, out_stride, (double const *)in, in_stride, count, (double)param); \
     { \
         size_t off_ = 0; \
         while (off_ < count) { \
             size_t tile_ = count - off_; \
+            alwan_status st_; \
             if (tile_ > ALWAN_TILE_PIXELS_F64) tile_ = ALWAN_TILE_PIXELS_F64; \
             ALWAN_ALIGN(32) double ibuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             ALWAN_ALIGN(32) double obuf_[ALWAN_TILE_PIXELS_F64 * 3]; \
             alwan__load_tile_typed_aos_f64(ibuf_, in, in_fmt, off_, in_stride, tile_, 3); \
-            fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, (double)param); \
+            st_ = fn_f64(obuf_, 3 * sizeof(double), ibuf_, 3 * sizeof(double), tile_, (double)param); \
+            if (st_ != ALWAN_OK) return st_; \
             alwan__store_tile_typed_aos_f64(out, out_fmt, off_, out_stride, obuf_, tile_, 3); \
             off_ += tile_; \
         } \

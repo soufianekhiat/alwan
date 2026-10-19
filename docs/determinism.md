@@ -231,10 +231,13 @@ optimise differently from the scalar formulas. Two examples we've hit:
    too (scalar `+` vs SIMD `add+add` ordering on MSVC even with
    `/fp:precise`) without needing to enumerate every kernel.
 
-   25 colorspace conversions (sRGB/PQ/HLG OETF/EOTF, JzAzBz, IPT,
-   Oklab, Lab, Luv, HSV, HSL, HWB, HSY, HSP, LCh, JzCzHz, ICtCp,
-   IgPgTg, ICaCb, OSA-UCS, Hunter-Lab, ProLab, DIN99) are verified
-   bit-exact (0 ULP) in det mode by `alwan_dev/tests/88_simd_parity.c`.
+   `alwan_dev/tests/88_simd_parity.c` checks the sRGB, PQ and HLG
+   transfer functions at 0 ULP in det mode (their apply paths keep
+   vector code). Its colour conversions (JzAzBz, IPT, Oklab, Lab, Luv,
+   HSV, HSL, HWB, HSY, HSP, LCh, JzCzHz, ICtCp, IgPgTg, ICaCb, OSA-UCS,
+   Hunter-Lab, ProLab, DIN99 and more) allow up to 4 ULP, and with the
+   width at 1 they compare the scalar tail with the scalar function, so
+   they are not evidence of SIMD bitwise agreement.
 
 This is the largest source of perf cost in det mode. The map kernels
 that fall back to scalar pay roughly the difference between their

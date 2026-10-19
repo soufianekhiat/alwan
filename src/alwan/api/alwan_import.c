@@ -6,6 +6,7 @@
  * LUT import -- .cube file reader
  */
 
+#include "alwan_c_numeric.h"   /* first: POSIX feature macro for uselocale */
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include <stdio.h>
@@ -35,21 +36,11 @@
  * ---------------------------------------------------------------- */
 
 static char *alwan_save_lc_numeric(void) {
-    char const *cur = setlocale(LC_NUMERIC, NULL);
-    if (!cur) return NULL;
-    size_t n = strlen(cur);
-    char *saved = (char *)ALWAN_ALLOC(n + 1, 1);
-    if (!saved) return NULL;
-    memcpy(saved, cur, n + 1);
-    setlocale(LC_NUMERIC, "C");
-    return saved;
+    return (char *)alwan__c_numeric_begin();   /* this thread only */
 }
 
 static void alwan_restore_lc_numeric(char *saved) {
-    if (saved) {
-        setlocale(LC_NUMERIC, saved);
-        ALWAN_FREE(saved);
-    }
+    alwan__c_numeric_end(saved);
 }
 
 /* Skip leading whitespace */

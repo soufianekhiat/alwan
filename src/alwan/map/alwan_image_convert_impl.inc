@@ -53,9 +53,11 @@ alwan_status ALWAN_CORE_FNLIT(alwan_image_convert)(void *dst, size_t dst_row_str
     int need_cat = (ALWAN_CORE_ABS(dx) > tol || ALWAN_CORE_ABS(dy) > tol);
 
     /* Precompute a single combined matrix: xyz_to_dst * [cat *] src_to_xyz
-     * This reduces per-pixel work to one mat3 multiply. */
+     * This reduces per-pixel work to one mat3 multiply. The CAT needs no ctx;
+     * gating it on one silently skipped adaptation when ctx was NULL. */
     ALWAN_CORE_MAT3X3 combined;
-    if (need_cat && ctx) {
+    (void)ctx;
+    if (need_cat) {
         ALWAN_CORE_XYY src_xyy, dst_xyy;
         ALWAN_CORE_XYZ src_wp, dst_wp;
         src_xyy.x = src_space->white_xy[0];
@@ -311,7 +313,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_image_convert_rgba)(void *dst, size_t dst_ro
 
     /* Precompute combined matrix: xyz_to_dst * [cat *] src_to_xyz */
     ALWAN_CORE_MAT3X3 combined;
-    if (need_cat && ctx) {
+    (void)ctx;
+    if (need_cat) {
         ALWAN_CORE_XYY src_xyy, dst_xyy;
         ALWAN_CORE_XYZ src_wp, dst_wp;
         src_xyy.x = src_space->white_xy[0];

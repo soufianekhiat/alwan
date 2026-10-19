@@ -7,6 +7,7 @@
  * Per-pixel LUT math in alwan_lut_core.h
  */
 
+#include "alwan_c_numeric.h"   /* first: POSIX feature macro for uselocale */
 #include "../alwan.h"
 #include "../alwan_internal.h"
 #include "../core/alwan_lut_core.h"
@@ -28,11 +29,10 @@
  * - Numeric formatting (printf/snprintf %f, %g, %e) honors LC_NUMERIC,
  *   so a host locale that uses "," as the decimal separator would
  *   produce unparseable .cube / .clf output. The local_c_numeric
- *   helpers below save the caller's LC_NUMERIC, switch to "C" for
- *   the export block, and restore on exit. NOTE: setlocale is a
- *   process-global; concurrent threads using LC_NUMERIC during the
- *   export will see "C". This is acceptable for LUT export (one-shot,
- *   not per-pixel) and cannot be avoided portably in C99/C11.
+ *   helpers below switch the calling thread's LC_NUMERIC to "C" for
+ *   the export block and restore it on exit (alwan_c_numeric.h:
+ *   _configthreadlocale on Windows, uselocale on POSIX), so other
+ *   threads never see the switch.
  *
  * - All numeric data is formatted with %.17g (f64) or %.9g (f32) so
  *   the round-trip through .cube/.clf is exact (lossless to nearest
@@ -40,21 +40,11 @@
  * ---------------------------------------------------------------- */
 
 static char *alwan_save_lc_numeric(void) {
-    char const *cur = setlocale(LC_NUMERIC, NULL);
-    if (!cur) return NULL;
-    size_t n = strlen(cur);
-    char *saved = (char *)ALWAN_ALLOC(n + 1, 1);
-    if (!saved) return NULL;
-    memcpy(saved, cur, n + 1);
-    setlocale(LC_NUMERIC, "C");
-    return saved;
+    return (char *)alwan__c_numeric_begin();   /* this thread only */
 }
 
 static void alwan_restore_lc_numeric(char *saved) {
-    if (saved) {
-        setlocale(LC_NUMERIC, saved);
-        ALWAN_FREE(saved);
-    }
+    alwan__c_numeric_end(saved);
 }
 
 /* ----------------------------------------------------------------
