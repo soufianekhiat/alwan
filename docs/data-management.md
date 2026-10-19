@@ -210,6 +210,9 @@ if (alwan_data_missing(ALWAN_DATA_GROUP_ALL) != 0) { ... }   /* a pack from an o
   `LIGHT_SOURCES`, `FILM`, `OTHER`, plus `REFRACTIVE` for the
   refractiveindex.info database (`ALWAN_WITH_REFRACTIVE_DATA`). A pack can hold any of them, and a load
   takes only the groups it is asked for.
+- **From a file.** `alwan_data_load_file(path, groups, ctx)` reads a pack from
+  `path` and loads it as `alwan_data_load` does; `ALWAN_E_NODATA` when the file
+  cannot be read. `alwan_data_preload` is this on `<root>/alwan_data.pack`.
 - **Memory.** Each loaded table is copied out of the pack with the context's
   allocator (NULL: the default one), so the pack buffer can be freed after the
   load. `alwan_data_loaded_bytes` reports what is held.
