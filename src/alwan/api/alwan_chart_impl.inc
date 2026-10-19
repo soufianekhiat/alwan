@@ -93,7 +93,12 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__chart_add_header)(ALWAN_CORE_CHART *
     c->header_values = nv;
     nk[c->header_count] = alwan__chart_strdup_n(key, klen, c->ctx);
     nv[c->header_count] = alwan__chart_strdup_n(val, vlen, c->ctx);
-    if (!nk[c->header_count] || !nv[c->header_count]) return ALWAN_E_NOMEM;
+    if (!nk[c->header_count] || !nv[c->header_count]) {
+        /* header_count does not count this slot, so destroy would not free the half that worked */
+        alwan_ctx_free(nk[c->header_count], c->ctx);
+        alwan_ctx_free(nv[c->header_count], c->ctx);
+        return ALWAN_E_NOMEM;
+    }
     for (i = 0; i < klen; i++) nk[c->header_count][i] = alwan__chart_upper(nk[c->header_count][i]);
     c->header_count++;
     return ALWAN_OK;
@@ -359,7 +364,6 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
     }
 
     /* --- allocate --- */
-    c->patch_count = row;
     {
         /* the row count comes from the file, so every product is checked; 0 is an overflow */
         size_t xyz_bytes = alwan_safe_array_size(alwan_safe_array_size(row, 3), sizeof(ALWAN_CORE_T));
@@ -370,6 +374,8 @@ alwan_status ALWAN_CORE_FNLIT(alwan_chart_load_buffer)(ALWAN_CORE_CHART **out,
         if (!c->xyz || !c->patch_names) { st = ALWAN_E_NOMEM; goto fail; }
         memset(c->xyz, 0, xyz_bytes);
         memset(c->patch_names, 0, name_bytes);
+        /* only now: destroy frees patch_count names, and before the memset they were garbage */
+        c->patch_count = row;
         if (c->device_channels > 0) {
             size_t dev_bytes = alwan_safe_array_size(alwan_safe_array_size(row, 4), sizeof(ALWAN_CORE_T));
             if (!dev_bytes) { st = ALWAN_E_NOMEM; goto fail; }

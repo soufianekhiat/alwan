@@ -60,7 +60,6 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__chart_load_cxf)(ALWAN_CORE_CHART **o
     st = ALWAN_CORE_FNLIT(alwan__cxf_pick_source)(&c->source, &d);
     if (st != ALWAN_OK) goto done;
 
-    c->patch_count = d.count;
     {
         /* every product checked even though the parse capped count and bands; 0 is an overflow */
         size_t xyz_bytes = alwan_safe_array_size(alwan_safe_array_size(d.count, 3), sizeof(ALWAN_CORE_T));
@@ -71,6 +70,7 @@ static alwan_status ALWAN_CORE_FNLIT(alwan__chart_load_cxf)(ALWAN_CORE_CHART **o
         if (!c->xyz || !c->patch_names) { st = ALWAN_E_NOMEM; goto done; }
         memset(c->xyz, 0, xyz_bytes);
         memset(c->patch_names, 0, name_bytes);
+        c->patch_count = d.count;   /* only once the names are zeroed: destroy frees that many */
 
         for (i = 0; i < d.count; i++) {
             if (d.objects[i].has_lab) any_lab = 1;
