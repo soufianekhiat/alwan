@@ -74,7 +74,10 @@ These are the names a library may use, spelled out. Suwar uses all of them.
 `ALWAN_FOUNDATION_VERSION` (an integer in `alwan_foundation_core.h`) increases with every
 change to a stable or provisional name; a library can test it at compile time.
 `ALWAN_VERSION_MAJOR` / `_MINOR` / `_PATCH` version the library, and the CMake package
-(`AlwanConfigVersion.cmake`) accepts any 3.x for a request of 3.
+(`AlwanConfigVersion.cmake`, `SameMajorVersion`) accepts any release of the major version a
+consumer asks for. The v3 branch still reports 2.0.0 until it is released, so a consumer of
+it asks for the package without a version (`find_package(Alwan CONFIG)`) and checks the
+foundation with `ALWAN_FOUNDATION_VERSION`.
 
 The cores are header-only and compile into the library that includes them, so a library built
 on alwan is rebuilt against the alwan headers it links with; only the `alwan.h` functions are
